@@ -1,0 +1,17 @@
+[project]
+name = "chatbot-rag-tokenizers"
+version = "0.1.0"
+description = "Grounded RAG chatbot over research papers on LLM tokenizers"
+readme = "README.md"
+authors = [
+    { name = "Mudassir Khan", email = "mudassirkhan19@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+chatbot-rag-tokenizers = "chatbot_rag_tokenizers:main"
+
+[build-system]
+requires = ["uv_build>=0.10.8,<0.11.0"]
+build-backend = "uv_build"

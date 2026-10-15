@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.venv/
+
+# Secrets
+.env
+
+# Downloaded / generated data (PDFs are fetched by script, never committed)
+data/raw/
+data/pdfs/
+*.pdf
+
+# Tooling
+.ipynb_checkpoints/
+.DS_Store
