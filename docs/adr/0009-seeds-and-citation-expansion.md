@@ -1,7 +1,7 @@
 # 0009. Scope boundary, keyword query set, Seeds and citation expansion
 
 - **Date:** 2026-10-16
-- **Status:** Proposed. The Seeds and queries are a draft for the developer to review (#4).
+- **Status:** Accepted. The developer reviewed and approved the Seeds and queries (#4).
 
 ## Context
 The corpus has to be broad and relevant, and a reviewer has to be able to see how discovery was driven (#2, user stories 11–16). Keyword search alone misses papers that use their own vocabulary: an arithmetic paper that talks about "digit splitting", or a model paper whose abstract says "patches" and never "tokenizer". Papers about tokenization also cite each other heavily, so one hop of the citation graph from a few landmark Works reaches many papers that keyword search can't. The two must stay distinguishable so the report can show what expansion adds.
