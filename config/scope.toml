@@ -38,6 +38,18 @@ source = "arxiv"
 topic = "subword-algorithms"
 query = "(ti:tokenizer OR ti:tokenizers OR ti:tokenization OR ti:tokenisation OR ti:tokenizing) AND (cat:cs.CL OR cat:cs.LG OR cat:cs.AI)"
 
+[sources.semantic-scholar]
+# Comma-separated fields of study; a paper with any of them matches.
+fields_of_study = "Computer Science,Linguistics"
+
+# Semantic Scholar matches title and abstract and stems every term, so a bare "tokenizer"
+# also matches "token" (about 103k papers). Phrases keep the query on topic.
+[[queries]]
+id = "s2-subword-phrases"
+source = "semantic-scholar"
+topic = "subword-algorithms"
+query = '"subword tokenization" | "subword tokenizer" | "byte pair encoding" | "byte-pair encoding" | wordpiece | sentencepiece | "tokenizer free" | "tokenization free"'
+
 [rules]
 # Stage 1 keeps a Candidate only if its title or abstract matches at least one of these
 # (case-insensitive regular expressions).

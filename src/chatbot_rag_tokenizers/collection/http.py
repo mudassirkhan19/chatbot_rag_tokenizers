@@ -6,6 +6,7 @@ import httpx
 
 USER_AGENT = "chatbot-rag-tokenizers/0.1 (+https://github.com/mudassirkhan19/chatbot_rag_tokenizers)"
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+MAX_BACKOFF_SECONDS = 60.0
 
 
 class RateLimitedHttp:
@@ -41,5 +42,5 @@ class RateLimitedHttp:
                 if retry_after.isdigit():
                     backoff = max(backoff, float(retry_after))
             time.sleep(backoff)
-            backoff *= 2
+            backoff = min(backoff * 2, MAX_BACKOFF_SECONDS)
         raise AssertionError("unreachable")

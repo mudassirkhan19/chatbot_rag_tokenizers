@@ -1,0 +1,36 @@
+# 0008. Semantic Scholar keyword discovery and combining Editions across sources
+
+- **Date:** 2026-10-16
+- **Status:** Accepted
+
+## Context
+Semantic Scholar is the spec's main discovery source (#2, #3). It covers venue papers that never reach arXiv, and arXiv papers whose titles miss our arXiv query. It describes a paper differently from arXiv, though. A Semantic Scholar record stands for a whole paper and often merges the preprint and the venue Edition into one record, listing their arXiv ID, ACL ID and DOI side by side. The corpus needs one row per Edition, and the dedup stage needs a preprint and its venue Edition to stay as two rows. So we have to decide which Edition a record stands for, and when Candidates from two sources count as the same Edition.
+
+API facts, from the [Graph API spec](https://api.semanticscholar.org/api-docs/graph): `/paper/search/bulk` returns up to 1,000 papers per call along with a continuation `token`. The query is stemmed and matched against title and abstract, and supports `+ | - " * ( ) ~N`. The default `paperId` sort is the one the API says stays stable while the data changes. An API key goes in the `x-api-key` header. Without a key, requests share a public pool that throttles hard: our first spec download got a 429.
+
+## Decision
+- **Endpoint and paging:** `GET /graph/v1/paper/search/bulk` with the fields `paperId,externalIds,url,title,abstract,venue,year,authors`, an optional `fieldsOfStudy` filter from `[sources.semantic-scholar]` and an explicit `sort=paperId:asc`. Each page is stored in the Snapshot under its request description, and the description of the next page includes the token read from the stored page. A replay therefore follows the same chain of pages offline.
+- **Queries** are entries in `config/scope.toml` with `source = "semantic-scholar"` and their own query string. arXiv's field syntax (`ti:`, `cat:`) means nothing to Semantic Scholar, so the same query string can't serve both sources. Because the API stems every term, a bare `tokenizer | tokenization` matches about 103k papers (only 30 of the first 1,000 have the word in the title). The first query uses phrases instead (`"subword tokenization" | "byte pair encoding" | wordpiece | sentencepiece | "tokenizer free" | …`) and returns 1,202 papers. The full query set is #4's job.
+- **API key:** optional, read from `S2_API_KEY` and sent only as a header, so it never reaches the request description, the Snapshot key or the stored record ([0003](0003-commit-the-snapshot.md)). Without a key, a request is tried up to 12 times, starting 1 s apart (at least 1 s between requests in any case), doubling the wait. Doubling now stops at 60 s for every source; arXiv's 6 attempts never reached that cap anyway. A longer `Retry-After` from the server is still honoured.
+- **Which Edition a record stands for:**
+  - A record with an arXiv ID is the **arXiv preprint** Edition. So is a record whose only DOI is arXiv's own `10.48550/arXiv.<id>`. Semantic Scholar reports no Version, so the Edition id is the bare arXiv ID until its arXiv record pins it ([0006](0006-arxiv-records-via-oai-pmh.md)). Its `venue` is left empty, because Semantic Scholar's venue belongs to the venue Edition merged into the same record.
+  - Any other record is a **venue** Edition. Its id is the ACL ID if there is one, otherwise the DOI, otherwise the Semantic Scholar paperId. Its link points to the ACL Anthology, doi.org or Semantic Scholar accordingly.
+  - Every row records `arxiv_id`, `doi`, `acl_id` and `s2_id` as the source reported them.
+- **When Candidates combine:** only on an exact identifier for that Edition. A preprint is matched only by its arXiv ID. A venue Edition is matched by its ACL ID or by its DOI (compared case-insensitively, because Semantic Scholar upper-cases DOIs). Any Edition can also be matched by its Semantic Scholar paperId. The DOI or ACL ID reported for a preprint is never used for matching: it names the venue Edition, and matching on it would merge two Editions of a Work.
+- **What survives a combine:** the Candidate with the newest pinned Version wins (so a bare Semantic Scholar arXiv ID never displaces arXiv's pinned record), otherwise the one found first wins. The other only fills in the external identifiers the winner lacks, and the row lists every Discovery channel that found it. A combined Edition stays findable by every identifier any of its Candidates had, so a later Candidate can't create a second row through an identifier the winner didn't keep.
+- **Identifiers on a preprint row** are the ones the sources reported, so a preprint row can carry its venue Edition's DOI and ACL ID (arXiv itself reports the published DOI). They are evidence for the dedup stage, not the preprint's own venue identity.
+- **Report:** `collect` prints, for each Discovery channel, how many Editions it found and how many of those no other channel found.
+
+## Alternatives considered
+- **Treat a Semantic Scholar record as a Work and emit one row per identifier (preprint and venue):** this gets ahead of #6, which builds venue Editions from ACL Anthology metadata. It also gives venue rows Semantic Scholar's merged title and authors, which may belong to the preprint.
+- **Match on DOI regardless of kind:** arXiv reports the published version's DOI on the preprint (SentencePiece's arXiv record carries `10.18653/v1/D18-2012`). Matching on it would merge the preprint and its EMNLP Edition, which is exactly the duplicate the dedup stage needs to measure.
+- **The relevance-ranked `/paper/search`:** capped at 1,000 results and re-ranked over time, so a rerun can't reproduce the pages.
+- **Run the same query text on both sources:** the two query languages differ, and stemming makes a literal port far too broad.
+- **Prior work (research-bot):** it queries arXiv only and has no Semantic Scholar client, so it misses venue-only papers and has no cross-source identifiers for linking Editions.
+
+## Consequences
+- On the first live run, the Semantic Scholar query found 1,202 Candidates, which combine into 1,195 Editions. 195 of them were also found by the arXiv query, and 1,000 are new: 337 arXiv preprints and 663 venue Editions. The two channels together give 4,285 Editions, of which 1,830 pass the rule pre-filter. The two Semantic Scholar pages add about 750 KB to the Snapshot.
+- Preprints found only by Semantic Scholar get their full arXiv record like any other arXiv Edition, so the first full run fetches about 337 more OAI-PMH records (about 17 minutes at arXiv's rate limit).
+- The counts above come from the run before the arXiv record and judge stages landed. The committed manifest is regenerated once the arXiv record harvest (#5) is in the Snapshot.
+- About 13% of the new venue Editions have neither an ACL ID nor a DOI and are named by their Semantic Scholar id. OpenAlex (#7) or a later lookup may find a better identifier for them.
+- Semantic Scholar sometimes leaves out an abstract. The rule pre-filter then sees only the title, so such a Candidate can fail `missing-required-term` even though a fuller record would pass.

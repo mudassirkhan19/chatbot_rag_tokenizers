@@ -3,32 +3,71 @@
 import sys
 from collections import Counter
 from pathlib import Path
+from typing import Protocol
 
 from . import judge
 from .arxiv import ArxivSource
 from .config import ScopeConfig
-from .editions import Edition
+from .editions import Edition, combine
 from .judge import JudgeVerdict, VerdictCache, prompt_hash
 from .manifest import manifest_row, write_manifest
 from .rules import RuleFilter
+from .semantic_scholar import SemanticScholarSource
 from .snapshot import SnapshotStore
 
 SAVE_VERDICTS_EVERY = 25  # Candidates scored between saves of the verdict cache
 
 
-def discover(config: ScopeConfig, arxiv: ArxivSource) -> list[Edition]:
-    """Run every keyword query and merge repeats of the same Edition, keeping all their channels.
+class KeywordSource(Protocol):
+    def search(self, query: str) -> list[Edition]: ...
 
-    A preprint revised between two page fetches shows up under two Versions; it is still one
-    Edition. Its pin comes later, from the full arXiv record.
+
+class _EditionIndex:
+    """Editions seen so far, findable by every exact identifier any of their Candidates had."""
+
+    def __init__(self) -> None:
+        self._editions: list[Edition] = []  # in the order they were first found
+        self._keys: dict[int, set[str]] = {}  # id(edition) → its keys, including absorbed ones
+        self._by_key: dict[str, Edition] = {}
+
+    def add(self, candidate: Edition) -> None:
+        found = {id(e) for key in candidate.match_keys() if (e := self._by_key.get(key))}
+        matches = [e for e in self._editions if id(e) in found]
+        combined = candidate
+        if matches:
+            combined = matches[0]
+            for other in [*matches[1:], candidate]:
+                combined = combine(combined, other)
+        keys = set(candidate.match_keys()) | set(combined.match_keys())
+        for part in matches:
+            keys |= self._keys.pop(id(part))
+        if found:
+            self._editions = [e for e in self._editions if id(e) not in found]
+        self._editions.append(combined)
+        self._keys[id(combined)] = keys
+        for key in keys:
+            self._by_key[key] = combined
+
+    def editions(self) -> list[Edition]:
+        return list(self._editions)
+
+
+def discover(config: ScopeConfig, sources: dict[str, KeywordSource]) -> list[Edition]:
+    """Run every keyword query and combine Candidates that are the same Edition, keeping all their channels.
+
+    Candidates combine only on an exact identifier for that Edition (see ``Edition.match_keys``),
+    so a preprint and its venue Edition stay two rows. A preprint revised between two page
+    fetches shows up under two Versions; it is still one Edition. Its pin comes later, from the
+    full arXiv record.
     """
-    editions: dict[str, Edition] = {}
+    index = _EditionIndex()
     for query in config.queries:
-        found = arxiv.search(query.query)
+        found = sources[query.source].search(query.query)
         for edition in found:
-            editions.setdefault(edition.arxiv_id, edition).discovery_channels.add(query.discovery_channel)
+            edition.discovery_channels.add(query.discovery_channel)
+            index.add(edition)
         print(f"discover: {query.discovery_channel} found {len(found)} Candidates", file=sys.stderr)
-    return list(editions.values())
+    return index.editions()
 
 
 def add_arxiv_records(editions: list[Edition], arxiv: ArxivSource) -> None:
@@ -88,8 +127,10 @@ def judge_candidates(
 def collect(
     config: ScopeConfig, snapshot_dir: Path, manifest_path: Path, refresh: bool = False, run_judge: bool = True
 ) -> None:
-    arxiv = ArxivSource(SnapshotStore(snapshot_dir), page_size=config.arxiv_page_size)
-    editions = discover(config, arxiv)
+    snapshot = SnapshotStore(snapshot_dir)
+    arxiv = ArxivSource(snapshot, page_size=config.arxiv_page_size)
+    s2 = SemanticScholarSource(snapshot, fields_of_study=config.s2_fields_of_study)
+    editions = discover(config, {"arxiv": arxiv, "semantic-scholar": s2})
     add_arxiv_records(editions, arxiv)
     rules = RuleFilter(config)
     outcomes = {edition.edition_id: rules.apply(edition) for edition in editions}
@@ -104,6 +145,10 @@ def collect(
 
     rejected = Counter(row["rule_pattern"] for row in rows if row["rule_outcome"] == "reject")
     print(f"discover: {len(rows)} Editions", file=sys.stderr)
+    per_channel = Counter(channel for edition in editions for channel in edition.discovery_channels)
+    only_here = Counter(next(iter(e.discovery_channels)) for e in editions if len(e.discovery_channels) == 1)
+    for channel in sorted(per_channel):
+        print(f"  {channel}: {per_channel[channel]} Editions, {only_here[channel]} found by no other channel", file=sys.stderr)
     print(f"rules: {len(rows) - rejected.total()} passed, {rejected.total()} rejected", file=sys.stderr)
     for pattern, count in sorted(rejected.items()):
         print(f"  {pattern}: {count}", file=sys.stderr)

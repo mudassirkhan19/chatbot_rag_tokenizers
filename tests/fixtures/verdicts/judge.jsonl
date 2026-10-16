@@ -1,3 +1,7 @@
+{"edition_id":"10.1162/TACL_A_00999","model":"example/judge-model","p_yes":0.88,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"0123456789abcdef0123456789abcdef01234567"}
+{"edition_id":"1508.07909v5","model":"example/judge-model","p_yes":0.95,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"0123456789abcdef0123456789abcdef01234567"}
 {"edition_id":"1808.06226v2","model":"example/judge-model","p_yes":0.97,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"0123456789abcdef0123456789abcdef01234567"}
 {"edition_id":"2004.03720v3","model":"example/judge-model","p_yes":0.91,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"0123456789abcdef0123456789abcdef01234567"}
 {"edition_id":"2410.20771v3","model":"example/judge-model","p_yes":0.62,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"0123456789abcdef0123456789abcdef01234567"}
+{"edition_id":"708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3","model":"example/judge-model","p_yes":0.3,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"0123456789abcdef0123456789abcdef01234567"}
+{"edition_id":"D18-2012","model":"example/judge-model","p_yes":0.96,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"0123456789abcdef0123456789abcdef01234567"}

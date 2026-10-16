@@ -57,14 +57,19 @@ def test_manifest_has_one_row_per_edition(fixture_snapshot, no_network, tmp_path
     run_collect(fixture_snapshot, manifest)
 
     rows = read_manifest(manifest)
-    # The BPE paper appears on both pages, revised in between: one Edition, pinned to the newer Version.
+    # The BPE paper appears on both arXiv pages, revised in between: one Edition, pinned to the
+    # newer Version. Semantic Scholar adds one preprint and three venue Editions.
     assert sorted(rows) == [
+        "10.1162/TACL_A_00999",
+        "1508.07909v5",
         "1808.06226v2",
         "2004.03720v3",
         "2210.09461v3",
         "2402.00001v1",
         "2403.00002v2",
         "2410.20771v3",
+        "708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3",
+        "D18-2012",
         "hep-th/9901001v1",
     ]
 
@@ -75,7 +80,7 @@ def test_manifest_has_one_row_per_edition(fixture_snapshot, no_network, tmp_path
     assert bpe["year"] == "2020"
     assert bpe["arxiv_id"] == "2004.03720"
     assert bpe["source_link"] == "https://arxiv.org/abs/2004.03720v3"
-    assert bpe["discovery_channels"] == "arxiv:tokenizer-titles"
+    assert bpe["discovery_channels"] == "arxiv:tokenizer-titles|semantic-scholar:subword-phrases"
     assert bpe["rule_outcome"] == "pass"
     assert bpe["relevance_verdict"] == "included"
     assert bpe["funnel_status"] == "relevant"
@@ -110,6 +115,92 @@ def test_arxiv_editions_carry_their_full_record(fixture_snapshot, no_network, tm
     assert old["versions"] == "v1 1999-01-04T00:00:00Z"
     assert old["licence"] == "unknown"
     assert old["arxiv_comments"] == ""
+
+
+def test_semantic_scholar_finds_editions_the_arxiv_query_missed(fixture_snapshot, no_network, tmp_path):
+    manifest = tmp_path / "manifest.csv"
+    run_collect(fixture_snapshot, manifest)
+    rows = read_manifest(manifest)
+
+    # Found only by Semantic Scholar, which reports no Version; its arXiv record pins it.
+    nmt = rows["1508.07909v5"]
+    assert nmt["edition_kind"] == "arxiv-preprint"
+    assert nmt["title"] == "Neural Machine Translation of Rare Words with Subword Units"
+    assert nmt["authors"] == "Rico Sennrich; Barry Haddow; Alexandra Birch"
+    assert nmt["year"] == "2015"
+    assert nmt["source_link"] == "https://arxiv.org/abs/1508.07909v5"
+    assert nmt["versions"].startswith("v1 2015-08-31T16:37:31Z|v2 ")
+    assert nmt["arxiv_comments"] == "accepted at ACL 2016"
+    assert nmt["discovery_channels"] == "semantic-scholar:subword-phrases"
+    # External identifiers as Semantic Scholar reported them.
+    assert nmt["arxiv_id"] == "1508.07909"
+    assert nmt["acl_id"] == "P16-1162"
+    assert nmt["doi"] == "10.18653/v1/P16-1162"
+    assert nmt["s2_id"] == "2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e"
+    assert nmt["rule_outcome"] == "pass"
+    assert nmt["relevance_verdict"] == "included"
+
+
+def test_same_edition_from_two_channels_is_one_row_with_both_identifiers(fixture_snapshot, no_network, tmp_path):
+    manifest = tmp_path / "manifest.csv"
+    run_collect(fixture_snapshot, manifest)
+    rows = read_manifest(manifest)
+
+    # Both sources report arXiv 1808.06226: one row, arXiv's pinned record, both channels, and
+    # the identifiers only Semantic Scholar knows.
+    spm = rows["1808.06226v2"]
+    assert spm["discovery_channels"] == "arxiv:tokenizer-titles|semantic-scholar:subword-phrases"
+    assert spm["source_link"] == "https://arxiv.org/abs/1808.06226v2"
+    assert spm["arxiv_comments"] == "Accepted as a demo paper at EMNLP 2018"
+    assert spm["doi"] == "10.18653/v1/D18-2012"  # as arXiv reported it
+    assert spm["acl_id"] == "D18-2012"
+    assert spm["s2_id"] == "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d"
+    assert spm["venue"] == ""
+
+    # Semantic Scholar knew MrT5 only by its arXiv DOI, which is still an exact arXiv match.
+    mrt5 = rows["2410.20771v3"]
+    assert mrt5["discovery_channels"] == "arxiv:tokenizer-titles|semantic-scholar:subword-phrases"
+    assert mrt5["s2_id"] == "5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f7081"
+
+    # The EMNLP Edition of SentencePiece shares its DOI and ACL ID with the preprint row, but it
+    # is a different Edition of the Work: its own row, left for the dedup stage to link.
+    venue = rows["D18-2012"]
+    assert venue["edition_kind"] == "venue"
+    assert venue["venue"] == "Conference on Empirical Methods in Natural Language Processing"
+    assert venue["year"] == "2018"
+    assert venue["source_link"] == "https://aclanthology.org/D18-2012"
+    assert venue["acl_id"] == "D18-2012"
+    assert venue["doi"] == "10.18653/V1/D18-2012"
+    assert venue["arxiv_id"] == ""
+    assert venue["s2_id"] == "4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f70"
+    assert venue["discovery_channels"] == "semantic-scholar:subword-phrases"
+    assert venue["work_id"] == ""
+
+    # Venue Editions without an ACL ID are named by their DOI, else by their Semantic Scholar id.
+    journal = rows["10.1162/TACL_A_00999"]
+    assert journal["edition_kind"] == "venue"
+    assert journal["source_link"] == "https://doi.org/10.1162/TACL_A_00999"
+    bare = rows["708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3"]
+    assert bare["edition_kind"] == "venue"
+    assert bare["year"] == ""
+    assert bare["source_link"] == "https://www.semanticscholar.org/paper/708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3"
+    assert bare["s2_id"] == "708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3"
+
+    # Venue Editions go through the same relevance stages.
+    assert venue["relevance_verdict"] == "included"
+    assert bare["rule_outcome"] == "pass"
+    assert bare["relevance_verdict"] == "excluded"
+    assert bare["relevance_stage"] == "judge"
+
+
+def test_report_counts_editions_per_discovery_channel(fixture_snapshot, no_network, tmp_path, capsys):
+    run_collect(fixture_snapshot, tmp_path / "manifest.csv")
+    report = capsys.readouterr().err
+
+    # Three Editions are found by both channels: SentencePiece, the BPE paper and MrT5.
+    assert "discover: 11 Editions" in report
+    assert "  arxiv:tokenizer-titles: 7 Editions, 4 found by no other channel" in report
+    assert "  semantic-scholar:subword-phrases: 7 Editions, 4 found by no other channel" in report
 
 
 def test_rule_rejected_candidates_keep_their_row(fixture_snapshot, no_network, tmp_path):
@@ -151,15 +242,33 @@ def test_rerun_from_snapshot_is_byte_identical(fixture_snapshot, no_network, no_
     assert snapshot_files(fixture_snapshot) == before
 
 
+def test_api_key_changes_nothing_and_is_never_stored(fixture_snapshot, no_network, tmp_path, monkeypatch):
+    without_key = tmp_path / "without-key.csv"
+    run_collect(fixture_snapshot, without_key)
+    before = snapshot_files(fixture_snapshot)
+
+    monkeypatch.setenv("S2_API_KEY", "fixture-secret-key")
+    with_key = tmp_path / "with-key.csv"
+    run_collect(fixture_snapshot, with_key)
+
+    assert with_key.read_bytes() == without_key.read_bytes()
+    assert snapshot_files(fixture_snapshot) == before
+    for name, data in before.items():
+        text = gzip.decompress(data) if name.endswith(".gz") else data
+        assert b"fixture-secret-key" not in text, name
+
+
 def test_snapshot_entries_are_compressed_and_credential_free(fixture_snapshot):
     files = snapshot_files(fixture_snapshot / "responses")
-    assert len(files) == 2 + 7  # two results pages, one full record per arXiv Edition
+    # Two arXiv and two Semantic Scholar results pages, one full record per arXiv Edition.
+    assert len(files) == 2 + 2 + 8
     for name, data in files.items():
         assert name.endswith(".json.gz")
         record = json.loads(gzip.decompress(data))
         assert record["collected_at"] == "2026-10-16"
         assert set(record["request"]) == {"source", "url", "params"}
-        assert "<feed" in record["body"] or "<OAI-PMH" in record["body"]
+        assert name.startswith(f"{record['request']['source']}/")
+        assert "<feed" in record["body"] or "<OAI-PMH" in record["body"] or '"data"' in record["body"]
 
 
 def test_rule_passes_get_the_cached_judge_verdict(fixture_snapshot, no_network, tmp_path):
@@ -202,7 +311,15 @@ def test_changing_the_threshold_changes_verdicts_without_loading_the_model(
     assert rows["2004.03720v3"]["relevance_verdict"] == "included"  # fixture verdict 0.91
 
 
-RULE_PASSES = ["1808.06226v2", "2004.03720v3", "2410.20771v3"]
+RULE_PASSES = [
+    "10.1162/TACL_A_00999",
+    "1508.07909v5",
+    "1808.06226v2",
+    "2004.03720v3",
+    "2410.20771v3",
+    "708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3",
+    "D18-2012",
+]
 
 
 @pytest.mark.parametrize(
@@ -232,7 +349,7 @@ def test_changing_model_revision_or_prompt_invalidates_cached_verdicts(
 class FakeJudge:
     """Stands in for the model: P("Yes") is fixed per Edition."""
 
-    PROBABILITIES = {"1808.06226v2": 0.99, "2004.03720v3": 0.35, "2410.20771v3": 0.8}
+    PROBABILITIES = dict.fromkeys(RULE_PASSES, 0.9) | {"1808.06226v2": 0.99, "2004.03720v3": 0.35, "2410.20771v3": 0.8}
 
     def __init__(self) -> None:
         self.scored: list[str] = []

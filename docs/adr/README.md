@@ -12,6 +12,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0005](0005-rule-pre-filter.md) | Stage-1 rule pre-filter for the Relevance verdict | Accepted |
 | [0006](0006-arxiv-records-via-oai-pmh.md) | arXiv Version history, comments and licence from OAI-PMH | Accepted |
 | [0007](0007-local-llm-judge.md) | Stage-2 local LLM judge and verdict cache | Accepted |
+| [0008](0008-semantic-scholar-keyword-discovery.md) | Semantic Scholar keyword discovery and combining Editions across sources | Accepted |
 
 ## Template
 

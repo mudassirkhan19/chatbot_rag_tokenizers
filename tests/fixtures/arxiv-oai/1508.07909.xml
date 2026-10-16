@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
+  <responseDate>2026-10-16T12:00:00Z</responseDate>
+  <request verb="GetRecord" identifier="oai:arXiv.org:1508.07909" metadataPrefix="arXivRaw">http://oaipmh.arxiv.org/oai</request>
+  <GetRecord>
+    <record>
+      <header>
+        <identifier>oai:arXiv.org:1508.07909</identifier>
+        <datestamp>2026-01-01</datestamp>
+      </header>
+      <metadata>
+  <arXivRaw xmlns="http://arxiv.org/OAI/arXivRaw/">
+    <id>1508.07909</id>
+    <version version="v1">
+      <date>Mon, 31 Aug 2015 16:37:31 GMT</date>
+      <size>100kb</size>
+    </version>
+    <version version="v2">
+      <date>Wed, 18 Nov 2015 13:42:05 GMT</date>
+      <size>100kb</size>
+    </version>
+    <version version="v3">
+      <date>Fri, 27 Nov 2015 18:32:18 GMT</date>
+      <size>100kb</size>
+    </version>
+    <version version="v4">
+      <date>Sat, 19 Mar 2016 23:19:12 GMT</date>
+      <size>100kb</size>
+    </version>
+    <version version="v5">
+      <date>Fri, 10 Jun 2016 15:06:34 GMT</date>
+      <size>100kb</size>
+    </version>
+    <title>Neural Machine Translation of Rare Words with Subword Units</title>
+    <comments>accepted at ACL 2016</comments>
+    <license>http://arxiv.org/licenses/nonexclusive-distrib/1.0/</license>
+  </arXivRaw>
+      </metadata>
+    </record>
+  </GetRecord>
+</OAI-PMH>

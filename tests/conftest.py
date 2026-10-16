@@ -41,10 +41,28 @@ def arxiv_record_request(arxiv_id: str) -> dict:
     }
 
 
+S2_API = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
+S2_FIXTURE_QUERY = '"subword tokenization" | sentencepiece'
+
+
+def s2_request(token: str | None) -> dict:
+    """The request description the collector records for one Semantic Scholar bulk-search page."""
+    params = {
+        "query": S2_FIXTURE_QUERY,
+        "fields": "paperId,externalIds,url,title,abstract,venue,year,authors",
+        "fieldsOfStudy": "Computer Science,Linguistics",
+        "sort": "paperId:asc",
+    }
+    if token is not None:
+        params["token"] = token
+    return {"source": "semantic-scholar", "url": S2_API, "params": params}
+
+
 @pytest.fixture
 def fixture_snapshot(tmp_path: Path) -> Path:
-    """A hand-built Snapshot: two arXiv results pages for the fixture query, each Edition's full
-    record, and a cached judge verdict for each Candidate that passes the rules."""
+    """A hand-built Snapshot: two arXiv and two Semantic Scholar results pages for the fixture
+    queries, each arXiv Edition's full record, and a cached judge verdict for each Candidate that
+    passes the rules."""
     root = tmp_path / "snapshot"
     store = SnapshotStore(root)
     for start, page in [(0, "page-0.xml"), (4, "page-1.xml")]:
@@ -53,6 +71,9 @@ def fixture_snapshot(tmp_path: Path) -> Path:
     for record in sorted((FIXTURES / "arxiv-oai").glob("*.xml")):
         arxiv_id = record.stem.replace("_", "/")
         store.save(arxiv_record_request(arxiv_id), record.read_text(), collected_at="2026-10-16")
+    for token, page in [(None, "page-0.json"), ("FIXTURE-TOKEN-1", "page-1.json")]:
+        body = (FIXTURES / "semantic-scholar" / page).read_text()
+        store.save(s2_request(token), body, collected_at="2026-10-16")
     shutil.copytree(FIXTURES / "verdicts", root / "verdicts")
     return root
 

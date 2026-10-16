@@ -13,6 +13,15 @@ source = "arxiv"
 topic = "subword-algorithms"
 query = "ti:tokenizer OR ti:tokenization"
 
+[sources.semantic-scholar]
+fields_of_study = "Computer Science,Linguistics"
+
+[[queries]]
+id = "subword-phrases"
+source = "semantic-scholar"
+topic = "subword-algorithms"
+query = '"subword tokenization" | sentencepiece'
+
 [rules]
 required = ['tokeni[sz]', 'subword', 'byte[- ]pair']
 # Exclusions never fire on a title that matches one of these.

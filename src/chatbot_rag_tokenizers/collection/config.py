@@ -4,7 +4,7 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
-SOURCES = {"arxiv"}
+SOURCES = {"arxiv", "semantic-scholar"}
 
 
 @dataclass(frozen=True)
@@ -41,6 +41,7 @@ class ScopeConfig:
     keep_if_title: list[str]
     exclusions: list[ExclusionPattern]
     arxiv_page_size: int
+    s2_fields_of_study: str  # comma-separated; empty means no filter
     judge: JudgeConfig
 
 
@@ -73,12 +74,14 @@ def load_config(path: Path) -> ScopeConfig:
             raise ConfigError(f"judge prompt has no {placeholder} placeholder")
 
     rules = raw.get("rules", {})
+    sources = raw.get("sources", {})
     return ScopeConfig(
         topics=topics,
         queries=queries,
         required_terms=list(rules.get("required", [])),
         keep_if_title=list(rules.get("keep_if_title", [])),
         exclusions=[ExclusionPattern(**pattern) for pattern in rules.get("exclude", [])],
-        arxiv_page_size=int(raw.get("sources", {}).get("arxiv", {}).get("page_size", 500)),
+        arxiv_page_size=int(sources.get("arxiv", {}).get("page_size", 500)),
+        s2_fields_of_study=str(sources.get("semantic-scholar", {}).get("fields_of_study", "")),
         judge=judge,
     )

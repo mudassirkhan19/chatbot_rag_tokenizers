@@ -1,0 +1,45 @@
+{
+  "total": "7",
+  "data": [
+    {
+      "paperId": "4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f70",
+      "externalIds": {"ACL": "D18-2012", "DOI": "10.18653/V1/D18-2012", "CorpusId": 99000001},
+      "url": "https://www.semanticscholar.org/paper/4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f70",
+      "title": "SentencePiece: A simple and language independent subword tokenizer and detokenizer for Neural Text Processing",
+      "abstract": "This paper describes SentencePiece, a language-independent subword tokenizer and detokenizer.",
+      "venue": "Conference on Empirical Methods in Natural Language Processing",
+      "year": 2018,
+      "authors": [{"authorId": "1", "name": "Taku Kudo"}, {"authorId": "2", "name": "John Richardson"}]
+    },
+    {
+      "paperId": "5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f7081",
+      "externalIds": {"DOI": "10.48550/arXiv.2410.20771", "CorpusId": 273654321},
+      "url": "https://www.semanticscholar.org/paper/5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f7081",
+      "title": "MrT5: Dynamic Token Merging for Efficient Byte-level Language Models",
+      "abstract": "Models that rely on subword tokenization have significant drawbacks.",
+      "venue": "arXiv.org",
+      "year": 2024,
+      "authors": [{"authorId": "8", "name": "Julie Kallini"}]
+    },
+    {
+      "paperId": "6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192",
+      "externalIds": {"DOI": "10.1162/TACL_A_00999", "CorpusId": 99000002},
+      "url": "https://www.semanticscholar.org/paper/6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192",
+      "title": "Subword Vocabularies Across Languages",
+      "abstract": "We compare subword vocabularies for many languages.",
+      "venue": "Transactions of the Association for Computational Linguistics",
+      "year": 2023,
+      "authors": [{"authorId": "9", "name": "A. Linguist"}]
+    },
+    {
+      "paperId": "708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3",
+      "externalIds": {"CorpusId": 99000003},
+      "url": "https://www.semanticscholar.org/paper/708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3",
+      "title": "Tokenization Notes from a Workshop",
+      "abstract": null,
+      "venue": "",
+      "year": null,
+      "authors": []
+    }
+  ]
+}
