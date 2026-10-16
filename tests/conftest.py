@@ -1,3 +1,4 @@
+import shutil
 import socket
 from pathlib import Path
 
@@ -42,7 +43,8 @@ def arxiv_record_request(arxiv_id: str) -> dict:
 
 @pytest.fixture
 def fixture_snapshot(tmp_path: Path) -> Path:
-    """A hand-built Snapshot: two arXiv results pages for the fixture query, and each Edition's full record."""
+    """A hand-built Snapshot: two arXiv results pages for the fixture query, each Edition's full
+    record, and a cached judge verdict for each Candidate that passes the rules."""
     root = tmp_path / "snapshot"
     store = SnapshotStore(root)
     for start, page in [(0, "page-0.xml"), (4, "page-1.xml")]:
@@ -51,6 +53,7 @@ def fixture_snapshot(tmp_path: Path) -> Path:
     for record in sorted((FIXTURES / "arxiv-oai").glob("*.xml")):
         arxiv_id = record.stem.replace("_", "/")
         store.save(arxiv_record_request(arxiv_id), record.read_text(), collected_at="2026-10-16")
+    shutil.copytree(FIXTURES / "verdicts", root / "verdicts")
     return root
 
 

@@ -83,3 +83,22 @@ pattern = 'blockchain|crypto ?currenc|cryptoasset|\bnfts?\b|erc-?20|\bdefi\b|sta
 [[rules.exclude]]
 name = "other-modality-tokenizer"
 pattern = '\b(image|visual|video|audio|speech|vq|motion|molecular|protein) tokeni[sz](er|ers|ation)\b'
+
+[judge]
+# Stage 2 of the Relevance verdict: P("Yes") from a local open-weight model, given the title and
+# abstract of each Candidate that passes the rules. The model is the default from the issue #1
+# shortlist until that benchmark decides; revision pins the Hugging Face commit.
+model = "Qwen/Qwen3-4B-Instruct-2507"
+revision = "cdbee75f17c01a7cc42f958dc650907174af0554"
+# Applied when the manifest is built, so changing it never re-scores. To be tuned on the Audit set (#9).
+threshold = 0.5
+# Changing the prompt changes its hash, which invalidates every cached verdict.
+prompt = """You are screening research papers for a literature corpus about tokenization for language models.
+
+Title: {title}
+
+Abstract: {abstract}
+
+Does this paper make a substantive contribution or finding about tokenization? In scope: subword algorithms (BPE, WordPiece, Unigram, SentencePiece); byte-level, character-level and tokenizer-free models; effects of tokenization on multilingual fairness, arithmetic, code, reasoning, vocabulary size or scaling; vocabulary adaptation and transfer. Out of scope: tokenizers for images, audio or other non-text modalities, unless text tokenization is a central contribution; and uses of "token" unrelated to tokenization, such as token pruning or merging, KV caches or crypto tokens.
+
+Answer with Yes or No."""

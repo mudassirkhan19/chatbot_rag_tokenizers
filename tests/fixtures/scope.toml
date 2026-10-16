@@ -29,3 +29,13 @@ pattern = 'kv[- ]cache'
 [[rules.exclude]]
 name = "crypto-assets"
 pattern = 'blockchain|crypto|erc-20|nft'
+
+[judge]
+model = "example/judge-model"
+revision = "0123456789abcdef0123456789abcdef01234567"
+threshold = 0.5
+prompt = """Title: {title}
+
+Abstract: {abstract}
+
+Does this paper make a substantive contribution or finding about tokenization? Answer Yes or No."""

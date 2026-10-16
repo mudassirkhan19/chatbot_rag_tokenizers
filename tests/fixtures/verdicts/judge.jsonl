@@ -1,0 +1,3 @@
+{"edition_id":"1808.06226v2","model":"example/judge-model","p_yes":0.97,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"0123456789abcdef0123456789abcdef01234567"}
+{"edition_id":"2004.03720v3","model":"example/judge-model","p_yes":0.91,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"0123456789abcdef0123456789abcdef01234567"}
+{"edition_id":"2410.20771v3","model":"example/judge-model","p_yes":0.62,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"0123456789abcdef0123456789abcdef01234567"}
