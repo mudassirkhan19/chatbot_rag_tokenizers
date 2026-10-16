@@ -1,0 +1,41 @@
+{
+  "offset": 0,
+  "data": [
+    {
+      "citedPaper": {
+        "paperId": "2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e",
+        "externalIds": {"ArXiv": "1508.07909", "ACL": "P16-1162", "DOI": "10.18653/v1/P16-1162", "CorpusId": 1114678},
+        "url": "https://www.semanticscholar.org/paper/2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e",
+        "title": "Neural Machine Translation of Rare Words with  Subword Units",
+        "abstract": "We introduce a simpler and more effective approach, making the NMT model capable of open-vocabulary translation by encoding rare and unknown words as sequences of subword units.",
+        "venue": "Annual Meeting of the Association for Computational Linguistics",
+        "year": 2015,
+        "authors": [{"authorId": "3", "name": "Rico Sennrich"}, {"authorId": "4", "name": "Barry Haddow"}, {"authorId": "5", "name": "Alexandra Birch"}]
+      }
+    },
+    {
+      "citedPaper": {
+        "paperId": null,
+        "externalIds": null,
+        "url": null,
+        "title": "A reference Semantic Scholar could not resolve to a paper",
+        "abstract": null,
+        "venue": null,
+        "year": null,
+        "authors": []
+      }
+    },
+    {
+      "citedPaper": {
+        "paperId": "8192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4",
+        "externalIds": {"ArXiv": "1804.10959", "ACL": "P18-1007", "DOI": "10.18653/v1/P18-1007", "CorpusId": 13753208},
+        "url": "https://www.semanticscholar.org/paper/8192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4",
+        "title": "Subword Regularization: Improving Neural Network Translation Models with Multiple Subword Candidates",
+        "abstract": "Subword units are an effective way to alleviate the open vocabulary problems in neural machine translation. We present a subword regularization method based on a unigram language model.",
+        "venue": "Annual Meeting of the Association for Computational Linguistics",
+        "year": 2018,
+        "authors": [{"authorId": "1", "name": "Taku Kudo"}]
+      }
+    }
+  ]
+}

@@ -1,6 +1,8 @@
-"""Semantic Scholar bulk search client: pages through one keyword query, reading the Snapshot first.
+"""Semantic Scholar client: bulk keyword search and a Seed's record, references and citations,
+reading the Snapshot first.
 
-API docs: https://api.semanticscholar.org/api-docs/graph (``/paper/search/bulk``)
+API docs: https://api.semanticscholar.org/api-docs/graph (``/paper/search/bulk``,
+``/paper/{id}``, ``/paper/{id}/references``, ``/paper/{id}/citations``)
 Without a key, requests share a public pool and are often throttled with 429; with a key
 (``S2_API_KEY``, sent as the ``x-api-key`` header) the limit is one request per second.
 """
@@ -9,18 +11,24 @@ import json
 import os
 import re
 import sys
+from collections.abc import Callable
 from datetime import UTC, datetime
 
 from .editions import Edition
 from .http import RateLimitedHttp
 from .snapshot import SnapshotStore, StoredResponse
 
-API_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
+GRAPH_URL = "https://api.semanticscholar.org/graph/v1/paper"
+API_URL = f"{GRAPH_URL}/search/bulk"
 FIELDS = "paperId,externalIds,url,title,abstract,venue,year,authors"
 MIN_INTERVAL_SECONDS = 1.0
 # The shared pool throttles hard; backoff doubles from 1 s, capped by RateLimitedHttp.
 MAX_ATTEMPTS = 12
 API_KEY_ENV = "S2_API_KEY"
+# References and citations come in pages of up to 1,000, and the API refuses any page that
+# would reach past the 10,000th entry ("offset + limit must be < 10000").
+LINK_PAGE_SIZE = 1000
+MAX_LINKS = 9999
 
 # arXiv mints DataCite DOIs for its preprints; Semantic Scholar sometimes reports only that.
 ARXIV_DOI = re.compile(r"^10\.48550/arxiv\.(.+)$", re.IGNORECASE)
@@ -83,13 +91,33 @@ def _parse_page(body: str) -> tuple[str | None, list[Edition]]:
     return page.get("token"), [_parse_paper(paper) for paper in page["data"]]
 
 
+def _parse_seed(body: str) -> Edition:
+    paper = json.loads(body)
+    if not paper.get("paperId"):
+        raise SemanticScholarError(f"Semantic Scholar returned no paper: {body[:200]}")
+    return _parse_paper(paper)
+
+
+def _parse_links(body: str, linked: str) -> tuple[int | None, list[Edition]]:
+    """The next offset and the Editions on one references or citations page.
+
+    ``linked`` is ``citedPaper`` or ``citingPaper``. Entries Semantic Scholar couldn't resolve
+    to a paper have no paperId and are skipped.
+    """
+    page = json.loads(body)
+    if "data" not in page:
+        raise SemanticScholarError(f"Semantic Scholar returned no data: {body[:200]}")
+    papers = [entry.get(linked) or {} for entry in page["data"]]
+    return page.get("next"), [_parse_paper(paper) for paper in papers if paper.get("paperId")]
+
+
 class SemanticScholarSource:
     def __init__(self, snapshot: SnapshotStore, fields_of_study: str) -> None:
         self.snapshot = snapshot
         self.fields_of_study = fields_of_study
         self._http: RateLimitedHttp | None = None  # created on the first Snapshot miss
 
-    def _request(self, query: str, token: str | None) -> dict:
+    def _search_request(self, query: str, token: str | None) -> dict:
         # The default paperId order is the one the API says stays stable while data changes.
         params = {"query": query, "fields": FIELDS}
         if self.fields_of_study:
@@ -99,30 +127,60 @@ class SemanticScholarSource:
             params["token"] = token
         return {"source": "semantic-scholar", "url": API_URL, "params": params}
 
-    def _page(self, query: str, token: str | None) -> tuple[str | None, list[Edition]]:
-        request = self._request(query, token)
+    def _load(self, request: dict, parse: Callable[[str], object], label: str) -> str:
+        """The body for ``request``, from the Snapshot or fetched and stored once ``parse`` accepts it."""
         stored = self.snapshot.load(request)
-        if stored is None:
-            stored = self._fetch(request)
-        return _parse_page(stored.body)
-
-    def _fetch(self, request: dict) -> StoredResponse:
+        if stored is not None:
+            return stored.body
         if self._http is None:
             self._http = RateLimitedHttp(MIN_INTERVAL_SECONDS, max_attempts=MAX_ATTEMPTS)
         key = os.environ.get(API_KEY_ENV)
         # The key travels only as a header, never in the request description the Snapshot stores.
         headers = {"x-api-key": key} if key else None
-        page = "next page" if "token" in request["params"] else "first page"
-        print(f"  semantic-scholar: fetching {page} for {request['params']['query']!r}", file=sys.stderr)
+        print(f"  semantic-scholar: fetching {label}", file=sys.stderr)
         body = self._http.get(request["url"], request["params"], headers=headers)
-        _parse_page(body)  # never store a response that isn't a results page
+        parse(body)  # never store a response that can't be parsed
         collected_at = datetime.now(UTC).date().isoformat()
-        return self.snapshot.save(request, body, collected_at)
+        return self.snapshot.save(request, body, collected_at).body
+
+    def _search_page(self, query: str, token: str | None) -> tuple[str | None, list[Edition]]:
+        page = "next page" if token is not None else "first page"
+        return _parse_page(self._load(self._search_request(query, token), _parse_page, f"{page} for {query!r}"))
 
     def search(self, query: str) -> list[Edition]:
         """Every Edition ``query`` finds, following continuation tokens to the last page."""
-        token, editions = self._page(query, None)
+        token, editions = self._search_page(query, None)
         while token is not None:
-            token, found = self._page(query, token)
+            token, found = self._search_page(query, token)
+            editions.extend(found)
+        return editions
+
+    def paper(self, paper: str) -> Edition:
+        """The Edition Semantic Scholar's record for ``paper`` (e.g. ``ARXIV:1508.07909``) stands for."""
+        request = {"source": "semantic-scholar", "url": f"{GRAPH_URL}/{paper}", "params": {"fields": FIELDS}}
+        return _parse_seed(self._load(request, _parse_seed, f"record of {paper}"))
+
+    def references(self, paper: str) -> list[Edition]:
+        """Every resolvable paper in ``paper``'s bibliography."""
+        return self._links(paper, "references", "citedPaper")
+
+    def citations(self, paper: str) -> list[Edition]:
+        """Every resolvable paper that cites ``paper``, up to the API's limit of 9,999."""
+        return self._links(paper, "citations", "citingPaper")
+
+    def _links(self, paper: str, kind: str, linked: str) -> list[Edition]:
+        def parse(body: str) -> tuple[int | None, list[Edition]]:
+            return _parse_links(body, linked)
+
+        editions: list[Edition] = []
+        offset: int | None = 0
+        while offset is not None:
+            if offset >= MAX_LINKS:
+                print(f"  semantic-scholar: {kind} of {paper} stop at the API's limit of {MAX_LINKS}", file=sys.stderr)
+                break
+            limit = min(LINK_PAGE_SIZE, MAX_LINKS - offset)
+            params = {"fields": FIELDS, "offset": offset, "limit": limit}
+            request = {"source": "semantic-scholar", "url": f"{GRAPH_URL}/{paper}/{kind}", "params": params}
+            offset, found = parse(self._load(request, parse, f"{kind} of {paper} from {offset}"))
             editions.extend(found)
         return editions

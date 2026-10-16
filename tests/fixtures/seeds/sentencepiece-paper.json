@@ -1,0 +1,10 @@
+{
+  "paperId": "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d",
+  "externalIds": {"ArXiv": "1808.06226", "DBLP": "conf/emnlp/KudoR18", "ACL": "D18-2012", "DOI": "10.18653/V1/D18-2012", "CorpusId": 52051958},
+  "url": "https://www.semanticscholar.org/paper/1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d",
+  "title": "SentencePiece: A simple and language independent subword tokenizer and detokenizer for Neural Text Processing",
+  "abstract": "This paper describes SentencePiece, a language-independent subword tokenizer.",
+  "venue": "Conference on Empirical Methods in Natural Language Processing",
+  "year": 2018,
+  "authors": [{"authorId": "1", "name": "Taku Kudo"}, {"authorId": "2", "name": "John Richardson"}]
+}

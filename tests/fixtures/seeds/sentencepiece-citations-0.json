@@ -1,0 +1,30 @@
+{
+  "offset": 0,
+  "next": 1000,
+  "data": [
+    {
+      "citingPaper": {
+        "paperId": "92a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5",
+        "externalIds": {"ACL": "2022.findings-acl.99", "DOI": "10.18653/v1/2022.findings-acl.99", "CorpusId": 248780001},
+        "url": "https://www.semanticscholar.org/paper/92a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5",
+        "title": "Subword Segmentation for Morphologically Rich Low-Resource Languages",
+        "abstract": "We compare unsupervised subword segmentation methods for six morphologically rich languages.",
+        "venue": "Findings",
+        "year": 2022,
+        "authors": [{"authorId": "8", "name": "Ada Example"}]
+      }
+    },
+    {
+      "citingPaper": {
+        "paperId": "a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6",
+        "externalIds": {"ArXiv": "2301.00001", "CorpusId": 255000001},
+        "url": "https://www.semanticscholar.org/paper/a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6",
+        "title": "Domain Adaptation of Neural Machine Translation for Legal Text",
+        "abstract": "We fine-tune a translation model on court decisions and report gains of two BLEU points.",
+        "venue": "arXiv.org",
+        "year": 2023,
+        "authors": [{"authorId": "9", "name": "Ben Example"}]
+      }
+    }
+  ]
+}

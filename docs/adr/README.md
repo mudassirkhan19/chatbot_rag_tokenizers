@@ -10,9 +10,11 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0003](0003-commit-the-snapshot.md) | Commit the Snapshot of raw source responses | Accepted |
 | [0004](0004-arxiv-keyword-queries.md) | arXiv keyword queries: paging, rate limit and query style | Partly superseded by 0006 |
 | [0005](0005-rule-pre-filter.md) | Stage-1 rule pre-filter for the Relevance verdict | Accepted |
-| [0006](0006-arxiv-records-via-oai-pmh.md) | arXiv Version history, comments and licence from OAI-PMH | Accepted |
+| [0006](0006-arxiv-records-via-oai-pmh.md) | arXiv Version history, comments and licence from OAI-PMH | Partly superseded by 0010 |
 | [0007](0007-local-llm-judge.md) | Stage-2 local LLM judge and verdict cache | Accepted |
 | [0008](0008-semantic-scholar-keyword-discovery.md) | Semantic Scholar keyword discovery and combining Editions across sources | Accepted |
+| [0009](0009-seeds-and-citation-expansion.md) | Scope boundary, keyword query set, Seeds and citation expansion | Proposed |
+| [0010](0010-arxiv-records-for-rule-passes-only.md) | Fetch arXiv records only for Editions that pass the rules | Accepted |
 
 ## Template
 

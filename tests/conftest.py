@@ -58,11 +58,25 @@ def s2_request(token: str | None) -> dict:
     return {"source": "semantic-scholar", "url": S2_API, "params": params}
 
 
+S2_GRAPH = "https://api.semanticscholar.org/graph/v1/paper"
+S2_FIELDS = "paperId,externalIds,url,title,abstract,venue,year,authors"
+FIXTURE_SEED = "ARXIV:1808.06226"
+
+
+def s2_seed_request(path: str = "", offset: int | None = None) -> dict:
+    """The request description for a Seed's own record (``path=""``) or one page of its
+    ``/references`` or ``/citations``."""
+    params: dict = {"fields": S2_FIELDS}
+    if offset is not None:
+        params |= {"offset": offset, "limit": 1000}
+    return {"source": "semantic-scholar", "url": f"{S2_GRAPH}/{FIXTURE_SEED}{path}", "params": params}
+
+
 @pytest.fixture
 def fixture_snapshot(tmp_path: Path) -> Path:
     """A hand-built Snapshot: two arXiv and two Semantic Scholar results pages for the fixture
-    queries, each arXiv Edition's full record, and a cached judge verdict for each Candidate that
-    passes the rules."""
+    queries, the fixture Seed's record, references and citations, the full record of each arXiv
+    Edition that passes the rules, and a cached judge verdict for each of those Candidates."""
     root = tmp_path / "snapshot"
     store = SnapshotStore(root)
     for start, page in [(0, "page-0.xml"), (4, "page-1.xml")]:
@@ -74,6 +88,14 @@ def fixture_snapshot(tmp_path: Path) -> Path:
     for token, page in [(None, "page-0.json"), ("FIXTURE-TOKEN-1", "page-1.json")]:
         body = (FIXTURES / "semantic-scholar" / page).read_text()
         store.save(s2_request(token), body, collected_at="2026-10-16")
+    seed_pages = [
+        (s2_seed_request(), "sentencepiece-paper.json"),
+        (s2_seed_request("/references", 0), "sentencepiece-references.json"),
+        (s2_seed_request("/citations", 0), "sentencepiece-citations-0.json"),
+        (s2_seed_request("/citations", 1000), "sentencepiece-citations-1.json"),
+    ]
+    for request, page in seed_pages:
+        store.save(request, (FIXTURES / "seeds" / page).read_text(), collected_at="2026-10-16")
     shutil.copytree(FIXTURES / "verdicts", root / "verdicts")
     return root
 

@@ -1,7 +1,7 @@
 # 0006. arXiv Version history, comments and licence from OAI-PMH
 
 - **Date:** 2026-10-16
-- **Status:** Accepted
+- **Status:** Accepted. Partly superseded by [0010](0010-arxiv-records-for-rule-passes-only.md): rule rejects no longer get their record.
 
 ## Context
 Issue #5 asks that every arXiv Edition row, whichever Discovery channel found it, carry its full arXiv record: every Version with its date, the latest Version pinned as the Edition id, the comments field and the licence (`unknown` when there is none). The dedup stage needs the Version history even for Versions it never downloads. The evaluation author needs the comments, because venue information such as "To be published in Findings of EMNLP 2020" often appears only there. Licences must be recorded so the reviewer can see they were respected.

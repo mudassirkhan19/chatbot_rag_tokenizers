@@ -1,4 +1,5 @@
-"""The `collect` run: keyword queries → Snapshot → Editions → arXiv records → rule pre-filter → LLM judge → manifest."""
+"""The `collect` run: keyword queries and citation expansion → Snapshot → Editions → rule pre-filter
+→ arXiv records → LLM judge → manifest."""
 
 import sys
 from collections import Counter
@@ -7,7 +8,7 @@ from typing import Protocol
 
 from . import judge
 from .arxiv import ArxivSource
-from .config import ScopeConfig
+from .config import ScopeConfig, is_citation_channel, is_keyword_channel
 from .editions import Edition, combine
 from .judge import JudgeVerdict, VerdictCache, prompt_hash
 from .manifest import manifest_row, write_manifest
@@ -20,6 +21,12 @@ SAVE_VERDICTS_EVERY = 25  # Candidates scored between saves of the verdict cache
 
 class KeywordSource(Protocol):
     def search(self, query: str) -> list[Edition]: ...
+
+
+class SeedSource(Protocol):
+    def paper(self, paper: str) -> Edition: ...
+    def references(self, paper: str) -> list[Edition]: ...
+    def citations(self, paper: str) -> list[Edition]: ...
 
 
 class _EditionIndex:
@@ -52,8 +59,12 @@ class _EditionIndex:
         return list(self._editions)
 
 
-def discover(config: ScopeConfig, sources: dict[str, KeywordSource]) -> list[Edition]:
-    """Run every keyword query and combine Candidates that are the same Edition, keeping all their channels.
+def discover(config: ScopeConfig, sources: dict[str, KeywordSource], seed_source: SeedSource) -> list[Edition]:
+    """Run every keyword query, then expand one hop from every Seed, and combine Candidates that are
+    the same Edition, keeping all their channels.
+
+    Expansion adds the Seed's own record and the papers it cites and that cite it, each tagged
+    with a channel naming the Seed.
 
     Candidates combine only on an exact identifier for that Edition (see ``Edition.match_keys``),
     so a preprint and its venue Edition stay two rows. A preprint revised between two page
@@ -67,11 +78,22 @@ def discover(config: ScopeConfig, sources: dict[str, KeywordSource]) -> list[Edi
             edition.discovery_channels.add(query.discovery_channel)
             index.add(edition)
         print(f"discover: {query.discovery_channel} found {len(found)} Candidates", file=sys.stderr)
+    for seed in config.seeds:
+        expansion = [
+            (seed.discovery_channel, [seed_source.paper(seed.paper)]),
+            (seed.references_channel, seed_source.references(seed.paper)),
+            (seed.citations_channel, seed_source.citations(seed.paper)),
+        ]
+        for channel, found in expansion:
+            for edition in found:
+                edition.discovery_channels.add(channel)
+                index.add(edition)
+            print(f"discover: {channel} found {len(found)} Candidates", file=sys.stderr)
     return index.editions()
 
 
 def add_arxiv_records(editions: list[Edition], arxiv: ArxivSource) -> None:
-    """Give every arXiv Edition, whichever channel found it, its full record from arXiv.
+    """Give every arXiv Edition in ``editions``, whichever channel found it, its full record from arXiv.
 
     The record is the authority: the Edition is re-pinned to the latest Version it lists, and
     its comments and licence replace whatever the finding source reported.
@@ -124,22 +146,51 @@ def judge_candidates(
     return verdicts
 
 
+def _report_expansion(rows: list[dict[str, str]]) -> None:
+    """What citation expansion adds beyond keyword search, in Editions and in included Editions.
+
+    A Seed's own record counts as neither: it was picked by hand, not found.
+    """
+
+    keyword, expanded, expansion_only = [], [], []
+    for row in rows:
+        channels = row["discovery_channels"].split("|")
+        found_by_keyword = any(is_keyword_channel(channel) for channel in channels)
+        if found_by_keyword:
+            keyword.append(row)
+        if any(is_citation_channel(channel) for channel in channels):
+            expanded.append(row)
+            if not found_by_keyword:
+                expansion_only.append(row)
+
+    def included(group: list[dict[str, str]]) -> int:
+        return sum(row["relevance_verdict"] == "included" for row in group)
+
+    print(f"  keyword search: {len(keyword)} Editions, {included(keyword)} included", file=sys.stderr)
+    print(
+        f"  citation expansion: {len(expanded)} Editions, {len(expansion_only)} found by no keyword query,"
+        f" {included(expansion_only)} of those included",
+        file=sys.stderr,
+    )
+
+
 def collect(
     config: ScopeConfig, snapshot_dir: Path, manifest_path: Path, refresh: bool = False, run_judge: bool = True
 ) -> None:
     snapshot = SnapshotStore(snapshot_dir)
     arxiv = ArxivSource(snapshot, page_size=config.arxiv_page_size)
     s2 = SemanticScholarSource(snapshot, fields_of_study=config.s2_fields_of_study)
-    editions = discover(config, {"arxiv": arxiv, "semantic-scholar": s2})
-    add_arxiv_records(editions, arxiv)
+    editions = discover(config, {"arxiv": arxiv, "semantic-scholar": s2}, s2)
     rules = RuleFilter(config)
-    outcomes = {edition.edition_id: rules.apply(edition) for edition in editions}
-    passed = [edition for edition in editions if outcomes[edition.edition_id].passed]
+    outcomes = [rules.apply(edition) for edition in editions]
+    passed = [edition for edition, outcome in zip(editions, outcomes, strict=True) if outcome.passed]
+    # Only rule passes get their arXiv record; a reject keeps the id its source reported.
+    add_arxiv_records(passed, arxiv)
     verdicts = judge_candidates(config, passed, VerdictCache(snapshot_dir), refresh, run_judge)
     threshold = config.judge.threshold
     rows = [
-        manifest_row(edition, outcomes[edition.edition_id], verdicts.get(edition.edition_id), threshold)
-        for edition in editions
+        manifest_row(edition, outcome, verdicts.get(edition.edition_id), threshold)
+        for edition, outcome in zip(editions, outcomes, strict=True)
     ]
     write_manifest(manifest_path, rows)
 
@@ -149,6 +200,7 @@ def collect(
     only_here = Counter(next(iter(e.discovery_channels)) for e in editions if len(e.discovery_channels) == 1)
     for channel in sorted(per_channel):
         print(f"  {channel}: {per_channel[channel]} Editions, {only_here[channel]} found by no other channel", file=sys.stderr)
+    _report_expansion(rows)
     print(f"rules: {len(rows) - rejected.total()} passed, {rejected.total()} rejected", file=sys.stderr)
     for pattern, count in sorted(rejected.items()):
         print(f"  {pattern}: {count}", file=sys.stderr)

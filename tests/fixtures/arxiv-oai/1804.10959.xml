@@ -1,21 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
   <responseDate>2026-10-16T12:00:00Z</responseDate>
-  <request verb="GetRecord" identifier="oai:arXiv.org:2402.00001" metadataPrefix="arXivRaw">http://oaipmh.arxiv.org/oai</request>
+  <request verb="GetRecord" identifier="oai:arXiv.org:1804.10959" metadataPrefix="arXivRaw">http://oaipmh.arxiv.org/oai</request>
   <GetRecord>
     <record>
       <header>
-        <identifier>oai:arXiv.org:2402.00001</identifier>
+        <identifier>oai:arXiv.org:1804.10959</identifier>
         <datestamp>2026-01-01</datestamp>
       </header>
       <metadata>
   <arXivRaw xmlns="http://arxiv.org/OAI/arXivRaw/">
-    <id>2402.00001</id>
+    <id>1804.10959</id>
     <version version="v1">
-      <date>Thu, 01 Feb 2024 00:00:00 GMT</date>
-      <size>100kb</size>
+      <date>Sun, 29 Apr 2018 10:12:01 GMT</date>
+      <size>200kb</size>
     </version>
-    <title>Evicting the KV Cache: Which Tokens Matter for Long-Context Decoding</title>
+    <title>Subword Regularization: Improving Neural Network Translation Models with Multiple Subword Candidates</title>
+    <comments>Accepted as a long paper at ACL2018</comments>
     <license>http://arxiv.org/licenses/nonexclusive-distrib/1.0/</license>
   </arXivRaw>
       </metadata>

@@ -1,4 +1,4 @@
-"""The scope config file: scope topics, keyword queries tagged by topic, the rule pre-filter and the judge."""
+"""The scope config file: scope topics, keyword queries and Seeds tagged by topic, the rule pre-filter and the judge."""
 
 import tomllib
 from dataclasses import dataclass
@@ -19,6 +19,39 @@ class KeywordQuery:
         return f"{self.source}:{self.id}"
 
 
+# Discovery channel prefixes for a Seed's own record, its references and its citations.
+SEED_PREFIX, REFERENCES_PREFIX, CITATIONS_PREFIX = "seed:", "seed-references:", "seed-citations:"
+
+
+def is_keyword_channel(channel: str) -> bool:
+    return not channel.startswith((SEED_PREFIX, REFERENCES_PREFIX, CITATIONS_PREFIX))
+
+
+def is_citation_channel(channel: str) -> bool:
+    """A citation hop from a Seed; the Seed's own record is not one."""
+    return channel.startswith((REFERENCES_PREFIX, CITATIONS_PREFIX))
+
+
+@dataclass(frozen=True)
+class Seed:
+    id: str
+    paper: str  # a Semantic Scholar paper id, e.g. "ARXIV:1508.07909" or "DOI:10.1109/..."
+    topic: str
+    reason: str  # one line on why this Work is a starting point
+
+    @property
+    def discovery_channel(self) -> str:
+        return f"{SEED_PREFIX}{self.id}"
+
+    @property
+    def references_channel(self) -> str:
+        return f"{REFERENCES_PREFIX}{self.id}"
+
+    @property
+    def citations_channel(self) -> str:
+        return f"{CITATIONS_PREFIX}{self.id}"
+
+
 @dataclass(frozen=True)
 class ExclusionPattern:
     name: str
@@ -37,6 +70,7 @@ class JudgeConfig:
 class ScopeConfig:
     topics: dict[str, str]
     queries: list[KeywordQuery]
+    seeds: list[Seed]
     required_terms: list[str]
     keep_if_title: list[str]
     exclusions: list[ExclusionPattern]
@@ -64,6 +98,17 @@ def load_config(path: Path) -> ScopeConfig:
         if query.source not in SOURCES:
             raise ConfigError(f"query {query.id!r} uses unsupported source {query.source!r}")
 
+    seeds = [Seed(**seed) for seed in raw.get("seeds", [])]
+    seen.clear()
+    for seed in seeds:
+        if seed.id in seen:
+            raise ConfigError(f"duplicate seed id {seed.id!r}")
+        seen.add(seed.id)
+        if seed.topic not in topics:
+            raise ConfigError(f"seed {seed.id!r} is tagged with unknown topic {seed.topic!r}")
+        if not seed.reason.strip():
+            raise ConfigError(f"seed {seed.id!r} has no reason")
+
     if "judge" not in raw:
         raise ConfigError("missing [judge] section")
     judge = JudgeConfig(**raw["judge"])
@@ -78,6 +123,7 @@ def load_config(path: Path) -> ScopeConfig:
     return ScopeConfig(
         topics=topics,
         queries=queries,
+        seeds=seeds,
         required_terms=list(rules.get("required", [])),
         keep_if_title=list(rules.get("keep_if_title", [])),
         exclusions=[ExclusionPattern(**pattern) for pattern in rules.get("exclude", [])],

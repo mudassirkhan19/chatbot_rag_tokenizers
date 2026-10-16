@@ -38,6 +38,38 @@ source = "arxiv"
 topic = "subword-algorithms"
 query = "(ti:tokenizer OR ti:tokenizers OR ti:tokenization OR ti:tokenisation OR ti:tokenizing) AND (cat:cs.CL OR cat:cs.LG OR cat:cs.AI)"
 
+# arXiv stems and matches phrases loosely; abstract queries reach papers whose titles never
+# say "tokenizer". All are restricted to the language and learning categories.
+[[queries]]
+id = "arxiv-subword-abstracts"
+source = "arxiv"
+topic = "subword-algorithms"
+query = '(abs:"byte pair encoding" OR abs:"byte-pair encoding" OR abs:subword OR abs:subwords OR abs:wordpiece OR abs:sentencepiece) AND (cat:cs.CL OR cat:cs.LG OR cat:cs.AI)'
+
+[[queries]]
+id = "arxiv-byte-level-abstracts"
+source = "arxiv"
+topic = "byte-level"
+query = '(abs:"tokenizer-free" OR abs:"tokenization-free" OR abs:"token-free" OR abs:"byte-level" OR abs:"character-level") AND (cat:cs.CL OR cat:cs.LG OR cat:cs.AI)'
+
+[[queries]]
+id = "arxiv-subword-titles"
+source = "arxiv"
+topic = "subword-algorithms"
+query = '(ti:subword OR ti:subwords) AND (cat:cs.CL OR cat:cs.LG OR cat:cs.AI)'
+
+[[queries]]
+id = "arxiv-byte-level-titles"
+source = "arxiv"
+topic = "byte-level"
+query = '(ti:"byte-level" OR ti:"character-level") AND (cat:cs.CL OR cat:cs.LG OR cat:cs.AI)'
+
+[[queries]]
+id = "arxiv-vocabulary-titles"
+source = "arxiv"
+topic = "vocabulary-adaptation"
+query = '(ti:vocabulary OR ti:vocabularies) AND (cat:cs.CL OR cat:cs.LG OR cat:cs.AI)'
+
 [sources.semantic-scholar]
 # Comma-separated fields of study; a paper with any of them matches.
 fields_of_study = "Computer Science,Linguistics"
@@ -49,6 +81,205 @@ id = "s2-subword-phrases"
 source = "semantic-scholar"
 topic = "subword-algorithms"
 query = '"subword tokenization" | "subword tokenizer" | "byte pair encoding" | "byte-pair encoding" | wordpiece | sentencepiece | "tokenizer free" | "tokenization free"'
+
+[[queries]]
+id = "s2-subword-methods"
+source = "semantic-scholar"
+topic = "subword-algorithms"
+query = '"subword regularization" | "bpe dropout" | "subword segmentation" | "unigram tokenization" | "unigram tokenizer" | "subword vocabulary" | "tokenization algorithm" | "tokenizer training" | "tokenizer design"'
+
+[[queries]]
+id = "s2-byte-level-models"
+source = "semantic-scholar"
+topic = "byte-level"
+query = '"byte-level language model" | "byte-level language models" | "byte-level models" | "character-level language model" | "character-level language models" | "tokenizer-free" | "tokenization-free" | "token-free" | "pixel-based language model"'
+
+[[queries]]
+id = "s2-nmt-subwords"
+source = "semantic-scholar"
+topic = "nmt-subwords"
+query = '("subword" | "byte pair encoding" | "byte-pair encoding" | "character-level" | "word segmentation") + "neural machine translation"'
+
+[[queries]]
+id = "s2-multilingual-fairness"
+source = "semantic-scholar"
+topic = "tokenization-effects"
+query = '"tokenizer fertility" | "tokenization fertility" | "tokenization disparity" | "tokenization disparities" | "tokenization parity" | "tokenization premium" | "tokenization fairness" | "multilingual tokenization" | "multilingual tokenizer" | "multilingual tokenizers" | "multilingual vocabulary"'
+
+[[queries]]
+id = "s2-arithmetic"
+source = "semantic-scholar"
+topic = "tokenization-effects"
+query = '("tokenization" | tokenizer | "byte pair encoding") + (arithmetic | numeracy | "numerical reasoning")'
+
+[[queries]]
+id = "s2-code"
+source = "semantic-scholar"
+topic = "tokenization-effects"
+query = '"code tokenization" | "code tokenizer" | "tokenization of code" | (("subword" | "byte pair encoding") + "source code")'
+
+[[queries]]
+id = "s2-spelling-and-characters"
+source = "semantic-scholar"
+topic = "tokenization-effects"
+query = '(tokenization | tokenizer | subword) + (spelling | "letter counting" | "counting letters" | "character counting" | "character-level understanding")'
+
+# Stemming turns "tokenization" into "token", so this also reaches "token-level reasoning"
+# papers; the rule pre-filter drops those that never say "tokeniz…".
+[[queries]]
+id = "s2-reasoning"
+source = "semantic-scholar"
+topic = "tokenization-effects"
+query = '"tokenization matters" | "tokenization errors" | "tokenization-induced" | "tokenization sensitivity" | "tokenization artifacts" | "tokenizer-induced" | "tokenization reasoning"~4'
+
+[[queries]]
+id = "s2-vocabulary-size"
+source = "semantic-scholar"
+topic = "tokenization-effects"
+query = '"vocabulary size" + ("language model" | "language models" | tokenizer | subword)'
+
+[[queries]]
+id = "s2-token-artifacts"
+source = "semantic-scholar"
+topic = "tokenization-effects"
+query = '"glitch tokens" | "under-trained tokens" | "undertrained tokens" | "tokenization bias" | "token healing" | "tokenization ambiguity" | "non-canonical tokenization"'
+
+[[queries]]
+id = "s2-vocabulary-adaptation"
+source = "semantic-scholar"
+topic = "vocabulary-adaptation"
+query = '"vocabulary adaptation" | "vocabulary expansion" | "vocabulary extension" | "vocabulary transfer" | "vocabulary trimming" | "tokenizer transfer" | "tokenizer adaptation" | "zero-shot tokenizer" | (("embedding initialization" | "embedding initialisation") + (vocabulary | tokenizer))'
+
+# Seeds: hand-picked landmark Works. Each one adds its own record, the papers it cites and the
+# papers that cite it (one hop, via Semantic Scholar) as Candidates, tagged "seed:<id>",
+# "seed-references:<id>" and "seed-citations:<id>". They go through the same relevance stages.
+# `paper` is any id Semantic Scholar accepts: ARXIV:<id>, DOI:<doi>, ACL:<id> or a paperId.
+
+[[seeds]]
+id = "sennrich-bpe"
+paper = "ARXIV:1508.07909"
+topic = "nmt-subwords"
+reason = "Introduced BPE subword units for NMT; nearly every later subword paper cites it"
+
+[[seeds]]
+id = "wordpiece"
+paper = "DOI:10.1109/ICASSP.2012.6289079"
+topic = "subword-algorithms"
+reason = "Schuster and Nakajima's voice-search paper, the origin of WordPiece, which is not on arXiv"
+
+[[seeds]]
+id = "sentencepiece"
+paper = "ARXIV:1808.06226"
+topic = "subword-algorithms"
+reason = "The standard language-independent tokenizer library; cited by most tokenizer work since 2018"
+
+[[seeds]]
+id = "subword-regularization"
+paper = "ARXIV:1804.10959"
+topic = "subword-algorithms"
+reason = "Introduced the Unigram LM tokenizer and sampling over segmentations"
+
+[[seeds]]
+id = "bpe-dropout"
+paper = "ARXIV:1910.13267"
+topic = "subword-algorithms"
+reason = "Stochastic BPE; the main line of work on segmentation regularisation"
+
+[[seeds]]
+id = "bpe-suboptimal"
+paper = "ARXIV:2004.03720"
+topic = "subword-algorithms"
+reason = "First controlled comparison of BPE and Unigram for LM pretraining"
+
+[[seeds]]
+id = "more-than-compression"
+paper = "ARXIV:2402.18376"
+topic = "subword-algorithms"
+reason = "Tests the assumption that better compression makes a better tokenizer; a hub for recent tokenizer theory"
+
+[[seeds]]
+id = "open-vocabulary-survey"
+paper = "ARXIV:2112.10508"
+topic = "subword-algorithms"
+reason = "Survey of open-vocabulary modelling and tokenization; its 200 references span every in-scope topic"
+
+[[seeds]]
+id = "byt5"
+paper = "ARXIV:2105.13626"
+topic = "byte-level"
+reason = "The reference byte-level pretrained model; cited by most byte-level and token-free work"
+
+[[seeds]]
+id = "canine"
+paper = "ARXIV:2103.06874"
+topic = "byte-level"
+reason = "Tokenization-free character-level encoder with downsampling"
+
+[[seeds]]
+id = "byte-latent-transformer"
+paper = "ARXIV:2412.09871"
+topic = "byte-level"
+reason = "Dynamic byte patching that matches tokenized LLMs at scale; the hub for recent byte-level work (Semantic Scholar lists no references yet, so its citations carry the expansion)"
+
+[[seeds]]
+id = "how-good-is-your-tokenizer"
+paper = "ARXIV:2012.15613"
+topic = "tokenization-effects"
+reason = "Showed that the tokenizer drives much of the gap between multilingual and monolingual models"
+
+[[seeds]]
+id = "tokenizer-unfairness"
+paper = "ARXIV:2305.15425"
+topic = "tokenization-effects"
+reason = "Measured the tokenization premium across languages; the anchor for fairness work"
+
+[[seeds]]
+id = "languages-cost"
+paper = "ARXIV:2305.13707"
+topic = "tokenization-effects"
+reason = "Cost and utility disparity of commercial LLM tokenizers across languages"
+
+[[seeds]]
+id = "tokenization-counts"
+paper = "ARXIV:2402.14903"
+topic = "tokenization-effects"
+reason = "Number tokenization changes arithmetic accuracy in frontier LLMs"
+
+[[seeds]]
+id = "code-tokenizer"
+paper = "ARXIV:2402.01035"
+topic = "tokenization-effects"
+reason = "Tokenizer size, pre-tokenization and training data for code LLMs, and changing the tokenizer of a pretrained model"
+
+[[seeds]]
+id = "vocabulary-scaling"
+paper = "ARXIV:2407.13623"
+topic = "tokenization-effects"
+reason = "Scaling laws for vocabulary size"
+
+[[seeds]]
+id = "tokenizer-choice"
+paper = "ARXIV:2310.08754"
+topic = "tokenization-effects"
+reason = "Trained 24 LLMs to measure how tokenizer choice affects downstream and multilingual performance"
+
+[[seeds]]
+id = "wechsel"
+paper = "ARXIV:2112.06598"
+topic = "vocabulary-adaptation"
+reason = "Initialises embeddings for a new language's vocabulary from multilingual word embeddings"
+
+[[seeds]]
+id = "focus"
+paper = "ARXIV:2305.14481"
+topic = "vocabulary-adaptation"
+reason = "Embedding initialisation for specialised vocabularies via overlapping tokens"
+
+[[seeds]]
+id = "zero-shot-tokenizer-transfer"
+paper = "ARXIV:2405.07883"
+topic = "vocabulary-adaptation"
+reason = "Swaps a pretrained LM's tokenizer without retraining via a hypernetwork"
 
 [rules]
 # Stage 1 keeps a Candidate only if its title or abstract matches at least one of these
