@@ -10,4 +10,4 @@
 .claude/settings.local.json
 
 # Snapshot responses and downloads not yet committed, so `collect` stays offline in the worktree
-data/
+/data/

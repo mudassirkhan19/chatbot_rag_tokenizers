@@ -73,6 +73,15 @@ worktrees() {
 
 # ---------------------------------------------------------------------------------------- create
 
+# Undoes a failed `create`: removes the worktree and the branch, if `create` made it.
+rollback() {
+  warn "setup failed; removing $ROLLBACK_WT"
+  git -C "$MAIN_ROOT" worktree remove --force "$ROLLBACK_WT" 2>/dev/null || rm -rf "$ROLLBACK_WT"
+  git -C "$MAIN_ROOT" worktree prune
+  [ "$ROLLBACK_CREATED_BRANCH" = 0 ] || git -C "$MAIN_ROOT" branch -D "$ROLLBACK_BRANCH" >/dev/null 2>&1 || true
+}
+
+
 cmd_create() {
   local name="" base="" branch="" judge=auto verify=1
   while [ $# -gt 0 ]; do
@@ -107,13 +116,9 @@ cmd_create() {
     created_branch=1
   fi
 
-  # From here on, a failure removes the worktree and any branch this run created.
-  rollback() {
-    warn "setup failed; removing $wt"
-    git -C "$MAIN_ROOT" worktree remove --force "$wt" 2>/dev/null || rm -rf "$wt"
-    git -C "$MAIN_ROOT" worktree prune
-    [ "$created_branch" = 0 ] || git -C "$MAIN_ROOT" branch -D "$branch" >/dev/null 2>&1 || true
-  }
+  # From here on, a failure removes the worktree and any branch this run created. The EXIT trap
+  # runs after this function's locals are gone, so it gets its own globals.
+  ROLLBACK_WT=$wt ROLLBACK_BRANCH=$branch ROLLBACK_CREATED_BRANCH=$created_branch
   trap rollback EXIT
 
   mkdir -p "$WORKTREES_BASE"
