@@ -67,6 +67,12 @@ class JudgeConfig:
 
 
 @dataclass(frozen=True)
+class AuditModel:
+    model: str  # Hugging Face model id
+    revision: str  # pinned commit of the model repository
+
+
+@dataclass(frozen=True)
 class ScopeConfig:
     topics: dict[str, str]
     queries: list[KeywordQuery]
@@ -77,6 +83,7 @@ class ScopeConfig:
     arxiv_page_size: int
     s2_fields_of_study: str  # comma-separated; empty means no filter
     judge: JudgeConfig
+    audit_models: list[AuditModel]  # judge models compared on the Audit set, with the [judge] prompt
 
 
 class ConfigError(ValueError):
@@ -118,6 +125,11 @@ def load_config(path: Path) -> ScopeConfig:
         if placeholder not in judge.prompt:
             raise ConfigError(f"judge prompt has no {placeholder} placeholder")
 
+    # Without [[audit.models]], the Audit set measures the configured judge alone.
+    audit_models = [AuditModel(**model) for model in raw.get("audit", {}).get("models", [])]
+    if not audit_models:
+        audit_models = [AuditModel(judge.model, judge.revision)]
+
     rules = raw.get("rules", {})
     sources = raw.get("sources", {})
     return ScopeConfig(
@@ -130,4 +142,5 @@ def load_config(path: Path) -> ScopeConfig:
         arxiv_page_size=int(sources.get("arxiv", {}).get("page_size", 500)),
         s2_fields_of_study=str(sources.get("semantic-scholar", {}).get("fields_of_study", "")),
         judge=judge,
+        audit_models=audit_models,
     )

@@ -34,10 +34,22 @@ uv sync --group judge
 
 The first scoring run downloads the model weights (about 8 GB for the default model) from Hugging Face. Until the full judge run is committed (#11), most Candidates have no cached verdict, so run `collect --no-judge` to rebuild the manifest without the model.
 
+## Measure the Relevance verdict
+
+The Audit set (`data/audit/audit-set.csv`) is a hand-labelled, stratified sample of Candidates used to choose the judge model and threshold and to report precision and recall. See ADR 0011.
+
+```sh
+uv run chatbot-rag-tokenizers audit export   # sample about 180 Candidates with draft labels
+uv run chatbot-rag-tokenizers audit report   # precision, recall and F1 by threshold, per model
+```
+
+- **Export** draws an even share from each stratum (rule rejects, judge rejects, judge accepts, and rule passes still `pending` a verdict, which get no draft), with a fixed `--seed`. Export after the judge has scored the corpus (#11), or most rule passes will be pending. `label` and `reason` start as the pipeline's own verdict; correct them by reading each abstract, and leave `draft_label` and `draft_reason` as they are. The export never overwrites an existing file unless you pass `--force`.
+- **Report** writes `data/audit/report.md`. It covers the rule stage alone and rules plus each model in `[[audit.models]]` (the `[judge]` model when there are none) at thresholds 0.1 to 0.9, with the scoring time per Candidate. Each row is weighted by the size of its stratum, so the figures describe all Candidates, not the sample. Missing verdicts are scored and cached in `data/audit/verdicts.jsonl` (`uv sync --group judge`); `--no-judge` reports cached verdicts only.
+
 ## Tests
 
 ```sh
 uv run pytest
 ```
 
-The tests run `collect` offline against a small hand-built fixture Snapshot with cached judge verdicts (`tests/fixtures/`). They fail if anything touches the network, and they never load a model.
+The tests run `collect` and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model.

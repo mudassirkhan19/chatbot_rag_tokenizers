@@ -3,6 +3,7 @@
 
 import sys
 from collections import Counter
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
@@ -12,7 +13,7 @@ from .config import ScopeConfig, is_citation_channel, is_keyword_channel
 from .editions import Edition, combine
 from .judge import JudgeVerdict, VerdictCache, prompt_hash
 from .manifest import manifest_row, write_manifest
-from .rules import RuleFilter
+from .rules import RuleFilter, RuleOutcome
 from .semantic_scholar import SemanticScholarSource
 from .snapshot import SnapshotStore
 
@@ -174,9 +175,20 @@ def _report_expansion(rows: list[dict[str, str]]) -> None:
     )
 
 
-def collect(
-    config: ScopeConfig, snapshot_dir: Path, manifest_path: Path, refresh: bool = False, run_judge: bool = True
-) -> None:
+@dataclass(frozen=True)
+class Assessed:
+    """A Candidate with both stages of its Relevance verdict: the rule outcome and, if it passed, the judge's."""
+
+    edition: Edition
+    outcome: RuleOutcome
+    verdict: JudgeVerdict | None
+
+    def manifest_row(self, threshold: float) -> dict[str, str]:
+        return manifest_row(self.edition, self.outcome, self.verdict, threshold)
+
+
+def assess(config: ScopeConfig, snapshot_dir: Path, refresh: bool = False, run_judge: bool = True) -> list[Assessed]:
+    """Discover the Candidates, fetch their arXiv records, and apply the rules and the judge."""
     snapshot = SnapshotStore(snapshot_dir)
     arxiv = ArxivSource(snapshot, page_size=config.arxiv_page_size)
     s2 = SemanticScholarSource(snapshot, fields_of_study=config.s2_fields_of_study)
@@ -187,11 +199,19 @@ def collect(
     # Only rule passes get their arXiv record; a reject keeps the id its source reported.
     add_arxiv_records(passed, arxiv)
     verdicts = judge_candidates(config, passed, VerdictCache(snapshot_dir), refresh, run_judge)
-    threshold = config.judge.threshold
-    rows = [
-        manifest_row(edition, outcome, verdicts.get(edition.edition_id), threshold)
+    return [
+        Assessed(edition, outcome, verdicts.get(edition.edition_id))
         for edition, outcome in zip(editions, outcomes, strict=True)
     ]
+
+
+def collect(
+    config: ScopeConfig, snapshot_dir: Path, manifest_path: Path, refresh: bool = False, run_judge: bool = True
+) -> None:
+    assessed = assess(config, snapshot_dir, refresh, run_judge)
+    editions = [candidate.edition for candidate in assessed]
+    threshold = config.judge.threshold
+    rows = [candidate.manifest_row(threshold) for candidate in assessed]
     write_manifest(manifest_path, rows)
 
     rejected = Counter(row["rule_pattern"] for row in rows if row["rule_outcome"] == "reject")

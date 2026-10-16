@@ -37,6 +37,12 @@ COLUMNS = [
 ]
 
 
+def judge_includes(p_yes: float, threshold: float) -> bool:
+    """Whether P("Yes") clears the threshold, compared as the manifest shows it (four decimals),
+    so a row's reason never contradicts itself."""
+    return float(f"{p_yes:.4f}") >= threshold
+
+
 def _relevance(outcome: RuleOutcome, verdict: JudgeVerdict | None, threshold: float) -> dict[str, str]:
     """The Relevance verdict columns. The threshold is applied here, so changing it never re-scores."""
     if not outcome.passed:
@@ -47,9 +53,8 @@ def _relevance(outcome: RuleOutcome, verdict: JudgeVerdict | None, threshold: fl
             "relevance_stage": "",
             "relevance_reason": "no judge verdict for the configured model, revision and prompt",
         }
-    # Compare the probability as the manifest shows it, so the reason never contradicts itself.
     probability = f"{verdict.p_yes:.4f}"
-    included = float(probability) >= threshold
+    included = judge_includes(verdict.p_yes, threshold)
     comparison = ">=" if included else "<"
     return {
         "relevance_verdict": "included" if included else "excluded",

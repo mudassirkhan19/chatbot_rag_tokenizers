@@ -1,0 +1,13 @@
+{"edition_id":"e1","model":"example/model-a","p_yes":0.2,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","seconds":1.0}
+{"edition_id":"e1","model":"example/model-b","p_yes":0.1,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","seconds":3.0}
+{"edition_id":"e2","model":"example/model-a","p_yes":0.4,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","seconds":1.0}
+{"edition_id":"e2","model":"example/model-b","p_yes":0.7,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","seconds":3.0}
+{"edition_id":"i1","model":"example/model-a","p_yes":0.9,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","seconds":1.0}
+{"edition_id":"i1","model":"example/model-b","p_yes":0.95,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","seconds":3.0}
+{"edition_id":"i2","model":"example/model-a","p_yes":0.8,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","seconds":1.0}
+{"edition_id":"i2","model":"example/model-b","p_yes":0.9,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","seconds":3.0}
+{"edition_id":"i3","model":"example/model-a","p_yes":0.7,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","seconds":1.0}
+{"edition_id":"i3","model":"example/model-b","p_yes":0.6,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","seconds":3.0}
+{"edition_id":"i4","model":"example/model-a","p_yes":0.01,"prompt_hash":"0000000000000000000000000000000000000000000000000000000000000000","revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","seconds":1.0}
+{"edition_id":"i4","model":"example/model-a","p_yes":0.6,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","seconds":1.0}
+{"edition_id":"i4","model":"example/model-b","p_yes":0.2,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","seconds":3.0}

@@ -1,0 +1,9 @@
+edition_id,stratum,stratum_size,title,abstract,source_link,draft_label,draft_reason,label,reason
+r1,rules-rejected,40,Token Merging for Fast Vision Transformers,We merge similar patches to speed up vision transformers.,https://example.org/r1,no,token-reduction: title matches 'Token Merging',no,token-reduction: title matches 'Token Merging'
+r2,rules-rejected,40,Learning Rare Word Units for Translation,We split rare words into smaller units learned from data.,https://example.org/r2,no,missing-required-term: no tokenization term in title or abstract,yes,segments rare words into learned units: a subword method the rules miss
+e1,judge-excluded,10,A Tokenizer for Clinical Notes,We release a tokenizer and tagger for clinical text.,https://example.org/e1,no,judge: P(Yes) 0.2000 < threshold 0.5,no,uses a tokenizer as tooling; no finding about tokenization
+e2,judge-excluded,10,Subword Regularization Revisited,We revisit sampling of subword segmentations.,https://example.org/e2,no,judge: P(Yes) 0.4000 < threshold 0.5,yes,studies subword segmentation sampling
+i1,judge-included,20,Byte Pair Encoding and Morphology,How well byte pair encoding merges align with morphemes.,https://example.org/i1,yes,judge: P(Yes) 0.9000 >= threshold 0.5,yes,judge: P(Yes) 0.9000 >= threshold 0.5
+i2,judge-included,20,Tokenization Fairness Across Languages,Tokenization costs differ widely between languages.,https://example.org/i2,yes,judge: P(Yes) 0.8000 >= threshold 0.5,yes,judge: P(Yes) 0.8000 >= threshold 0.5
+i3,judge-included,20,Tokenizer Choice in Code Models,We compare tokenizers for code language models.,https://example.org/i3,yes,judge: P(Yes) 0.7000 >= threshold 0.5,yes,judge: P(Yes) 0.7000 >= threshold 0.5
+i4,judge-included,20,Prompt Pricing by the Token,API prices follow tokenization of the prompt.,https://example.org/i4,yes,judge: P(Yes) 0.6000 >= threshold 0.5,no,about pricing; tokenization is only the billing unit

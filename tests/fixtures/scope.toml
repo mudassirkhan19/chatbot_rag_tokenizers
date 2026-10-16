@@ -55,3 +55,12 @@ prompt = """Title: {title}
 Abstract: {abstract}
 
 Does this paper make a substantive contribution or finding about tokenization? Answer Yes or No."""
+
+# Judge models compared on the Audit set; they share the [judge] prompt.
+[[audit.models]]
+model = "example/model-a"
+revision = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+[[audit.models]]
+model = "example/model-b"
+revision = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
