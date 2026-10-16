@@ -46,5 +46,6 @@ Semantic Scholar's Graph API ([spec](https://api.semanticscholar.org/api-docs/gr
 - To keep that run to hours rather than a day, arXiv records are fetched only for Editions that pass the rules ([0010](0010-arxiv-records-for-rule-passes-only.md)).
 - The Snapshot grows by roughly 15–25 MB of compressed citation pages, still under the 50 MB warning in the spec.
 - Byte Latent Transformer has no references in Semantic Scholar yet, so only its citations expand. A later `--refresh` picks up its references once they are indexed.
+- The WordPiece Seed's publisher (IEEE) withholds its reference list from Semantic Scholar, which answers with null data, so it also expands by citations only.
 - Semantic Scholar sometimes leaves out the abstract of a linked paper, and the arXiv record doesn't fill it in. Such a Candidate is judged on its title alone, so expansion may lose more Candidates to `missing-required-term` than keyword search does, since keyword Candidates matched on their abstract. The first full run should check how often linked papers have no abstract.
 - The funnel counts per channel come from the first full run (#11). That is the evidence for whether expansion earns its cost.

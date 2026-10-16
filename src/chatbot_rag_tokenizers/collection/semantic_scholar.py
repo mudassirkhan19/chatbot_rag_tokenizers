@@ -107,7 +107,8 @@ def _parse_links(body: str, linked: str) -> tuple[int | None, list[Edition]]:
     page = json.loads(body)
     if "data" not in page:
         raise SemanticScholarError(f"Semantic Scholar returned no data: {body[:200]}")
-    papers = [entry.get(linked) or {} for entry in page["data"]]
+    # Null when the publisher withholds the list (e.g. IEEE references): an empty page.
+    papers = [entry.get(linked) or {} for entry in page["data"] or []]
     return page.get("next"), [_parse_paper(paper) for paper in papers if paper.get("paperId")]
 
 

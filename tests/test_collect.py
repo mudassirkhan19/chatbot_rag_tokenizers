@@ -11,7 +11,8 @@ import pytest
 from chatbot_rag_tokenizers.cli import main
 from chatbot_rag_tokenizers.collection import judge
 from chatbot_rag_tokenizers.collection.openalex import OpenAlexError
-from conftest import FIXTURES
+from chatbot_rag_tokenizers.collection.snapshot import SnapshotStore
+from conftest import FIXTURES, s2_seed_request
 
 
 def run_collect(snapshot: Path, manifest: Path, config: Path = FIXTURES / "scope.toml", *flags: str) -> None:
@@ -367,6 +368,18 @@ def test_citation_expansion_finds_candidates_keyword_search_missed(fixture_snaps
 
     # A reference Semantic Scholar could not resolve to a paper is skipped.
     assert not any(row["title"].startswith("A reference Semantic Scholar") for row in rows.values())
+
+
+def test_seed_whose_references_the_publisher_withheld_expands_by_citations_only(fixture_snapshot, no_network, tmp_path):
+    # Semantic Scholar answers with null data when the publisher elides a paper's references.
+    elided = json.dumps({"data": None, "citingPaperInfo": {"openAccessPdf": {"disclaimer": "elided by the publisher"}}})
+    SnapshotStore(fixture_snapshot).save(s2_seed_request("/references", 0), elided, collected_at="2026-10-16")
+    manifest = tmp_path / "manifest.csv"
+    run_collect(fixture_snapshot, manifest)
+    rows = read_manifest(manifest)
+
+    assert not any("seed-references:" in row["discovery_channels"] for row in rows.values())
+    assert any("seed-citations:sentencepiece" in row["discovery_channels"] for row in rows.values())
 
 
 def test_report_counts_editions_per_discovery_channel(fixture_snapshot, no_network, tmp_path, capsys):
