@@ -25,6 +25,7 @@ COLUMNS = [
     "relevance_stage",
     "relevance_reason",
     "licence",
+    "versions",
     "funnel_status",
     "work_id",
 ]
@@ -51,6 +52,7 @@ def manifest_row(edition: Edition, outcome: RuleOutcome) -> dict[str, str]:
         "relevance_stage": "" if outcome.passed else "rules",
         "relevance_reason": outcome.reason,
         "licence": edition.licence,
+        "versions": "|".join(f"{label} {submitted}" for label, submitted in edition.versions),
         # The furthest funnel stage reached: discovered → relevant → full text → indexed.
         "funnel_status": "discovered",
         "work_id": "",  # filled in by the dedup stage

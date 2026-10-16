@@ -18,4 +18,5 @@ class Edition:
     arxiv_id: str = ""
     doi: str = ""
     licence: str = "unknown"
+    versions: list[tuple[str, str]] = field(default_factory=list)  # arXiv only: ("v1", ISO time), oldest first
     discovery_channels: set[str] = field(default_factory=set)

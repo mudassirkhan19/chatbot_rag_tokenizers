@@ -36,7 +36,7 @@ def test_manifest_has_one_row_per_edition(fixture_snapshot, no_network, tmp_path
     rows = read_manifest(manifest)
     # The BPE paper appears on both pages, revised in between: one Edition, pinned to the newer Version.
     assert sorted(rows) == [
-        "1808.06226v1",
+        "1808.06226v2",
         "2004.03720v3",
         "2210.09461v3",
         "2402.00001v1",
@@ -56,14 +56,37 @@ def test_manifest_has_one_row_per_edition(fixture_snapshot, no_network, tmp_path
     assert bpe["rule_outcome"] == "pass"
     assert bpe["relevance_verdict"] == "pending"
     assert bpe["funnel_status"] == "discovered"
-    assert bpe["licence"] == "unknown"
     assert bpe["work_id"] == ""
 
-    spm = rows["1808.06226v1"]
+    spm = rows["1808.06226v2"]
     assert spm["arxiv_comments"] == "Accepted as a demo paper at EMNLP 2018"
     assert spm["journal_ref"] == "EMNLP 2018 System Demonstrations"
     assert spm["doi"] == "10.18653/v1/D18-2012"
     assert spm["title"].startswith("SentencePiece: A simple and language independent subword tokenizer and detokenizer")
+
+
+def test_arxiv_editions_carry_their_full_record(fixture_snapshot, no_network, tmp_path):
+    manifest = tmp_path / "manifest.csv"
+    run_collect(fixture_snapshot, manifest)
+    rows = read_manifest(manifest)
+
+    # Search only ever saw v2 and v3; the full record lists every Version, v1 included.
+    bpe = rows["2004.03720v3"]
+    assert bpe["versions"] == "v1 2020-04-07T21:21:06Z|v2 2020-10-05T17:35:44Z|v3 2021-01-10T09:00:00Z"
+    assert bpe["arxiv_comments"] == "5 pages, 3 figures. To be published in Findings of EMNLP 2020"
+    assert bpe["licence"] == "http://creativecommons.org/licenses/by/4.0/"
+
+    # Revised after the search page was saved: the record's latest Version is the pinned one.
+    spm = rows["1808.06226v2"]
+    assert spm["versions"] == "v1 2018-08-19T00:00:00Z|v2 2018-09-03T12:30:00Z"
+    assert spm["source_link"] == "https://arxiv.org/abs/1808.06226v2"
+    assert spm["licence"] == "http://arxiv.org/licenses/nonexclusive-distrib/1.0/"
+
+    # Rule-rejected Editions get their record too; an old preprint without a licence says so.
+    old = rows["hep-th/9901001v1"]
+    assert old["versions"] == "v1 1999-01-04T00:00:00Z"
+    assert old["licence"] == "unknown"
+    assert old["arxiv_comments"] == ""
 
 
 def test_rule_rejected_candidates_keep_their_row(fixture_snapshot, no_network, tmp_path):
@@ -88,7 +111,7 @@ def test_rule_rejected_candidates_keep_their_row(fixture_snapshot, no_network, t
         assert row["funnel_status"] == "discovered", edition_id
 
     # "Token merging" is an exclusion, but a byte-level title keeps it in.
-    for edition_id in ["1808.06226v1", "2004.03720v3", "2410.20771v3"]:
+    for edition_id in ["1808.06226v2", "2004.03720v3", "2410.20771v3"]:
         assert rows[edition_id]["rule_outcome"] == "pass"
         assert rows[edition_id]["rule_pattern"] == ""
         assert rows[edition_id]["relevance_stage"] == ""
@@ -107,10 +130,11 @@ def test_rerun_from_snapshot_is_byte_identical(fixture_snapshot, no_network, tmp
 
 def test_snapshot_entries_are_compressed_and_credential_free(fixture_snapshot):
     files = snapshot_files(fixture_snapshot)
-    assert len(files) == 2
+    assert len(files) == 2 + 7  # two results pages, one full record per arXiv Edition
     for name, data in files.items():
         assert name.endswith(".json.gz")
         record = json.loads(gzip.decompress(data))
         assert record["collected_at"] == "2026-10-16"
         assert set(record["request"]) == {"source", "url", "params"}
-        assert "<feed" in record["body"]
+        assert "<feed" in record["body"] or "<OAI-PMH" in record["body"]
+

@@ -14,10 +14,11 @@ uv sync
 uv run chatbot-rag-tokenizers collect
 ```
 
-This runs the keyword queries in `config/scope.toml`, applies the rule pre-filter and writes `data/manifest.csv`, with one row per Edition.
+This runs the keyword queries in `config/scope.toml`, fetches each arXiv Edition's full record, applies the rule pre-filter and writes `data/manifest.csv`, with one row per Edition.
 
 - **Reruns are offline.** Every source response is stored in the committed Snapshot (`data/snapshot/`) the first time it is fetched. A rerun reads from there, makes no network calls and writes a byte-identical manifest. No API keys are needed.
-- **Only missing responses are fetched.** After you add or change a query in `config/scope.toml`, only the new requests go to the network. arXiv is queried at most once every 3 seconds.
+- **Only missing responses are fetched.** After you add or change a query in `config/scope.toml`, only the new requests go to the network. arXiv is queried at most once every 3 seconds, so the first run spends about 3 seconds per arXiv Edition fetching its record.
+- **arXiv Editions are pinned to their latest Version.** `versions` lists every Version with its submission time, and `arxiv_comments` and `licence` (`unknown` when arXiv has none) come from the same arXiv record.
 - **Rejected Candidates keep their row.** `relevance_stage` is `rules` and `rule_pattern` names the pattern that fired. Candidates that pass the rules are `pending` until the LLM judge stage exists.
 
 The command prints the counts at each stage. Options: `--config`, `--snapshot` and `--manifest` change the paths.

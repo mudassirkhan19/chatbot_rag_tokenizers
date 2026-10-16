@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
+  <responseDate>2026-10-16T12:00:00Z</responseDate>
+  <request verb="GetRecord" identifier="oai:arXiv.org:2410.20771" metadataPrefix="arXivRaw">http://oaipmh.arxiv.org/oai</request>
+  <GetRecord>
+    <record>
+      <header>
+        <identifier>oai:arXiv.org:2410.20771</identifier>
+        <datestamp>2026-01-01</datestamp>
+      </header>
+      <metadata>
+  <arXivRaw xmlns="http://arxiv.org/OAI/arXivRaw/">
+    <id>2410.20771</id>
+    <version version="v1">
+      <date>Mon, 28 Oct 2024 00:00:00 GMT</date>
+      <size>100kb</size>
+    </version>
+    <version version="v2">
+      <date>Fri, 01 Nov 2024 00:00:00 GMT</date>
+      <size>100kb</size>
+    </version>
+    <version version="v3">
+      <date>Sat, 01 Mar 2025 00:00:00 GMT</date>
+      <size>100kb</size>
+    </version>
+    <title>MrT5: Dynamic Token Merging for Efficient Byte-level Language Models</title>
+    <license>http://creativecommons.org/licenses/by-sa/4.0/</license>
+  </arXivRaw>
+      </metadata>
+    </record>
+  </GetRecord>
+</OAI-PMH>

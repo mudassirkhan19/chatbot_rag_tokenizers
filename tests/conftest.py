@@ -8,6 +8,7 @@ from chatbot_rag_tokenizers.collection.snapshot import SnapshotStore
 FIXTURES = Path(__file__).parent / "fixtures"
 
 ARXIV_API = "https://export.arxiv.org/api/query"
+ARXIV_OAI = "https://oaipmh.arxiv.org/oai"
 FIXTURE_QUERY = "ti:tokenizer OR ti:tokenization"
 
 
@@ -26,14 +27,30 @@ def arxiv_request(start: int, page_size: int) -> dict:
     }
 
 
+def arxiv_record_request(arxiv_id: str) -> dict:
+    """The request description the collector records for one arXiv Edition's full record."""
+    return {
+        "source": "arxiv-oai",
+        "url": ARXIV_OAI,
+        "params": {
+            "verb": "GetRecord",
+            "identifier": f"oai:arXiv.org:{arxiv_id}",
+            "metadataPrefix": "arXivRaw",
+        },
+    }
+
+
 @pytest.fixture
 def fixture_snapshot(tmp_path: Path) -> Path:
-    """A hand-built Snapshot holding two arXiv results pages for the fixture query."""
+    """A hand-built Snapshot: two arXiv results pages for the fixture query, and each Edition's full record."""
     root = tmp_path / "snapshot"
     store = SnapshotStore(root)
     for start, page in [(0, "page-0.xml"), (4, "page-1.xml")]:
         body = (FIXTURES / "arxiv" / page).read_text()
         store.save(arxiv_request(start, 4), body, collected_at="2026-10-16")
+    for record in sorted((FIXTURES / "arxiv-oai").glob("*.xml")):
+        arxiv_id = record.stem.replace("_", "/")
+        store.save(arxiv_record_request(arxiv_id), record.read_text(), collected_at="2026-10-16")
     return root
 
 

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
+  <responseDate>2026-10-16T12:00:00Z</responseDate>
+  <request verb="GetRecord" identifier="oai:arXiv.org:1808.06226" metadataPrefix="arXivRaw">http://oaipmh.arxiv.org/oai</request>
+  <GetRecord>
+    <record>
+      <header>
+        <identifier>oai:arXiv.org:1808.06226</identifier>
+        <datestamp>2026-01-01</datestamp>
+      </header>
+      <metadata>
+  <arXivRaw xmlns="http://arxiv.org/OAI/arXivRaw/">
+    <id>1808.06226</id>
+    <version version="v1">
+      <date>Sun, 19 Aug 2018 00:00:00 GMT</date>
+      <size>100kb</size>
+    </version>
+    <version version="v2">
+      <date>Mon, 03 Sep 2018 12:30:00 GMT</date>
+      <size>100kb</size>
+    </version>
+    <title>SentencePiece: A simple and language independent subword tokenizer and detokenizer for Neural Text Processing</title>
+    <comments>Accepted as a demo paper at EMNLP 2018</comments>
+    <license>http://arxiv.org/licenses/nonexclusive-distrib/1.0/</license>
+  </arXivRaw>
+      </metadata>
+    </record>
+  </GetRecord>
+</OAI-PMH>

@@ -1,7 +1,7 @@
 # 0004. arXiv keyword queries: paging, rate limit and query style
 
 - **Date:** 2026-10-16
-- **Status:** Accepted
+- **Status:** Accepted. Edition pinning partly superseded by [0006](0006-arxiv-records-via-oai-pmh.md), which pins to the latest Version in the arXiv record.
 
 ## Context
 arXiv is the first source wired end to end. Its API ([user manual](https://info.arxiv.org/help/api/user-manual.html), [terms of use](https://info.arxiv.org/help/api/tou.html)) returns Atom XML, pages with `start` and `max_results` (at most 2,000 per call and 30,000 per query), and asks clients to make no more than one request every three seconds over a single connection.
