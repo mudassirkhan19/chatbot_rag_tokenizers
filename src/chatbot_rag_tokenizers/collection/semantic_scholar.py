@@ -22,8 +22,10 @@ GRAPH_URL = "https://api.semanticscholar.org/graph/v1/paper"
 API_URL = f"{GRAPH_URL}/search/bulk"
 FIELDS = "paperId,externalIds,url,title,abstract,venue,year,authors"
 MIN_INTERVAL_SECONDS = 1.0
-# The shared pool throttles hard; backoff doubles from 1 s, capped by RateLimitedHttp.
-MAX_ATTEMPTS = 12
+# The shared pool can refuse every request for many minutes. Backoff doubles from 1 s up to
+# 5 min, so 16 attempts wait out about 38 min of throttling before a run gives up.
+MAX_ATTEMPTS = 16
+MAX_BACKOFF_SECONDS = 300.0
 API_KEY_ENV = "S2_API_KEY"
 # References and citations come in pages of up to 1,000, and the API refuses any page that
 # would reach past the 10,000th entry ("offset + limit must be < 10000").
@@ -134,7 +136,7 @@ class SemanticScholarSource:
         if stored is not None:
             return stored.body
         if self._http is None:
-            self._http = RateLimitedHttp(MIN_INTERVAL_SECONDS, max_attempts=MAX_ATTEMPTS)
+            self._http = RateLimitedHttp(MIN_INTERVAL_SECONDS, max_attempts=MAX_ATTEMPTS, max_backoff=MAX_BACKOFF_SECONDS)
         key = os.environ.get(API_KEY_ENV)
         # The key travels only as a header, never in the request description the Snapshot stores.
         headers = {"x-api-key": key} if key else None

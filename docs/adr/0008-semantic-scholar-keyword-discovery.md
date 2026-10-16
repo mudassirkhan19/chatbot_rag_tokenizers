@@ -1,7 +1,7 @@
 # 0008. Semantic Scholar keyword discovery and combining Editions across sources
 
 - **Date:** 2026-10-16
-- **Status:** Accepted
+- **Status:** Accepted. Retry limits for Semantic Scholar superseded by [0016](0016-semantic-scholar-waits-out-long-throttles.md).
 
 ## Context
 Semantic Scholar is the spec's main discovery source (#2, #3). It covers venue papers that never reach arXiv, and arXiv papers whose titles miss our arXiv query. It describes a paper differently from arXiv, though. A Semantic Scholar record stands for a whole paper and often merges the preprint and the venue Edition into one record, listing their arXiv ID, ACL ID and DOI side by side. The corpus needs one row per Edition, and the dedup stage needs a preprint and its venue Edition to stay as two rows. So we have to decide which Edition a record stands for, and when Candidates from two sources count as the same Edition.

@@ -10,9 +10,16 @@ MAX_BACKOFF_SECONDS = 60.0
 
 
 class RateLimitedHttp:
-    def __init__(self, min_interval: float, max_attempts: int = 6, timeout: float = 60.0) -> None:
+    def __init__(
+        self,
+        min_interval: float,
+        max_attempts: int = 6,
+        timeout: float = 60.0,
+        max_backoff: float = MAX_BACKOFF_SECONDS,
+    ) -> None:
         self.min_interval = min_interval
         self.max_attempts = max_attempts
+        self.max_backoff = max_backoff
         self._client = httpx.Client(timeout=timeout, headers={"User-Agent": USER_AGENT}, follow_redirects=True)
         self._last_request = float("-inf")
 
@@ -46,5 +53,5 @@ class RateLimitedHttp:
                 if retry_after.isdigit():
                     backoff = max(backoff, float(retry_after))
             time.sleep(backoff)
-            backoff = min(backoff * 2, MAX_BACKOFF_SECONDS)
+            backoff = min(backoff * 2, self.max_backoff)
         raise AssertionError("unreachable")

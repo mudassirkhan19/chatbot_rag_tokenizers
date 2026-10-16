@@ -4,8 +4,10 @@ import csv
 import gzip
 import json
 import shutil
+import time
 from pathlib import Path
 
+import httpx
 import pytest
 
 from chatbot_rag_tokenizers.cli import main
@@ -244,6 +246,26 @@ def test_openalex_can_be_switched_off(fixture_snapshot, no_network, no_model, tm
     assert rows["10.1162/TACL_A_00999"]["openalex_id"] == ""
     assert rows["10.1162/TACL_A_00999"]["oa_pdf_urls"] == ""
     assert "discover: 17 Editions" in capsys.readouterr().err
+
+
+def test_semantic_scholar_waits_out_a_half_hour_throttle(fixture_snapshot, no_network, tmp_path, monkeypatch):
+    # Without an API key the shared pool can refuse every request for many minutes on end.
+    SnapshotStore(fixture_snapshot)._path(s2_seed_request()).unlink()
+    record = (FIXTURES / "seeds" / "sentencepiece-paper.json").read_bytes()
+    clock = [0.0]
+
+    def answer(transport, request: httpx.Request) -> httpx.Response:
+        if clock[0] < 30 * 60:
+            return httpx.Response(429, request=request)
+        return httpx.Response(200, content=record, request=request)
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", answer)
+    monkeypatch.setattr(time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(time, "sleep", lambda seconds: clock.__setitem__(0, clock[0] + seconds))
+    manifest = tmp_path / "manifest.csv"
+    run_collect(fixture_snapshot, manifest)
+
+    assert "seed:sentencepiece" in read_manifest(manifest)["1808.06226v2"]["discovery_channels"]
 
 
 def test_openalex_without_a_key_explains_what_to_do(fixture_snapshot, no_network, tmp_path, monkeypatch):
