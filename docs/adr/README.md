@@ -16,6 +16,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0009](0009-seeds-and-citation-expansion.md) | Scope boundary, keyword query set, Seeds and citation expansion | Accepted |
 | [0010](0010-arxiv-records-for-rule-passes-only.md) | Fetch arXiv records only for Editions that pass the rules | Accepted |
 | [0011](0011-audit-set-and-relevance-metrics.md) | Audit set sampling and relevance metrics | Accepted |
+| [0012](0012-acl-anthology-venue-editions.md) | ACL Anthology venue Editions from per-paper pages | Accepted |
 
 ## Template
 

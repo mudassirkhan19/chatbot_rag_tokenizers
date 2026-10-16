@@ -1,5 +1,5 @@
-"""The `collect` run: keyword queries and citation expansion → Snapshot → Editions → rule pre-filter
-→ arXiv records → LLM judge → manifest."""
+"""The `collect` run: keyword queries and citation expansion → Snapshot → Editions → ACL Editions
+→ rule pre-filter → arXiv records → LLM judge → manifest."""
 
 import sys
 from collections import Counter
@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Protocol
 
 from . import judge
+from .acl_anthology import AclAnthologySource
 from .arxiv import ArxivSource
 from .config import ScopeConfig, is_citation_channel, is_keyword_channel
 from .editions import Edition, combine
@@ -112,6 +113,55 @@ def add_arxiv_records(editions: list[Edition], arxiv: ArxivSource) -> None:
     print(f"arxiv: {len(preprints)} records", file=sys.stderr)
 
 
+def add_acl_editions(editions: list[Edition], acl: AclAnthologySource) -> None:
+    """Give every reported ACL ID a venue Edition built from its ACL Anthology page.
+
+    A venue Edition a source already found under that ACL ID or the Anthology's DOI is updated
+    in place; the Anthology is the authority for it. Otherwise, for example when only a preprint
+    reported the ACL ID, a new venue Edition is added. It is never combined with the preprint:
+    the two stay linked only by the identifiers both carry. The venue Edition is credited to every
+    Discovery channel whose Candidates reported its ACL ID.
+    """
+    reporters: dict[str, list[Edition]] = {}  # ACL ID → Editions that reported it, in order found
+    venues: dict[str, Edition] = {}  # match key → venue Edition
+    for edition in editions:
+        if acl_id := edition.reported_acl_id:
+            reporters.setdefault(acl_id, []).append(edition)
+        if edition.edition_kind == "venue":
+            for key in edition.match_keys():
+                venues.setdefault(key, edition)
+
+    added = 0
+    for done, (acl_id, reported_by) in enumerate(reporters.items(), 1):
+        record = acl.record(acl_id)
+        if done % 100 == 0:
+            print(f"  acl-anthology: {done}/{len(reporters)} pages", file=sys.stderr)
+        if record is None:
+            continue
+        venue = venues.get(f"acl:{acl_id}")
+        if venue is None and (by_doi := venues.get(f"doi:{record.doi.lower()}")) and by_doi.acl_id in ("", acl_id):
+            venue = by_doi  # never take over a row that names a different ACL Edition
+        if venue is None:
+            venue = Edition(edition_id=acl_id, edition_kind="venue", title="", abstract="", authors=[], year="")
+            editions.append(venue)
+            added += 1
+        venue.edition_id = venue.acl_id = acl_id
+        venue.title = record.title
+        venue.authors = record.authors
+        # Many older Anthology papers have no abstract. The reporting source's abstract describes
+        # the same Work, and without one the rules and the judge would see only the title.
+        venue.abstract = record.abstract or venue.abstract or next((e.abstract for e in reported_by if e.abstract), "")
+        venue.year = record.year
+        venue.venue = "|".join(record.venues)
+        venue.doi = record.doi
+        venue.licence = record.licence
+        venue.source_link = record.source_link
+        venue.pdf_link = record.pdf_link
+        for edition in reported_by:
+            venue.discovery_channels |= edition.discovery_channels
+    print(f"acl-anthology: {len(reporters)} ACL IDs, {added} new venue Editions", file=sys.stderr)
+
+
 def judge_candidates(
     config: ScopeConfig, editions: list[Edition], cache: VerdictCache, refresh: bool, run_judge: bool
 ) -> dict[str, JudgeVerdict]:
@@ -193,6 +243,8 @@ def assess(config: ScopeConfig, snapshot_dir: Path, refresh: bool = False, run_j
     arxiv = ArxivSource(snapshot, page_size=config.arxiv_page_size)
     s2 = SemanticScholarSource(snapshot, fields_of_study=config.s2_fields_of_study)
     editions = discover(config, {"arxiv": arxiv, "semantic-scholar": s2}, s2)
+    # Before the rules, so ACL Editions get a Relevance verdict like every other row.
+    add_acl_editions(editions, AclAnthologySource(snapshot))
     rules = RuleFilter(config)
     outcomes = [rules.apply(edition) for edition in editions]
     passed = [edition for edition, outcome in zip(editions, outcomes, strict=True) if outcome.passed]

@@ -4,7 +4,7 @@
     {
       "citingPaper": {
         "paperId": "3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f",
-        "externalIds": {"ArXiv": "2004.03720", "ACL": "2020.findings-emnlp.414", "DOI": "10.18653/V1/2020.FINDINGS-EMNLP.414", "CorpusId": 215238718},
+        "externalIds": {"ArXiv": "2004.03720", "DOI": "10.18653/V1/2020.FINDINGS-EMNLP.414", "CorpusId": 215238718},
         "url": "https://www.semanticscholar.org/paper/3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f",
         "title": "Byte Pair Encoding is Suboptimal for Language Model Pretraining",
         "abstract": null,

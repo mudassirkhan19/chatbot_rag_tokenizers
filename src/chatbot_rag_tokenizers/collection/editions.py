@@ -1,6 +1,13 @@
 """The common Edition record that every source's results are normalised into."""
 
+import re
 from dataclasses import dataclass, field
+
+# ACL mints its DOIs from the ACL ID, but sources disagree on their case (Semantic Scholar
+# upper-cases them). Old-style ACL IDs (P16-1162) are upper-case, new-style ones
+# (2020.findings-emnlp.414) lower-case.
+ACL_DOI = re.compile(r"^10\.18653/v1/(.+)$", re.IGNORECASE)
+OLD_STYLE_ACL_ID = re.compile(r"^[a-z]\d{2}-\d{4}$", re.IGNORECASE)
 
 
 @dataclass
@@ -15,6 +22,7 @@ class Edition:
     arxiv_comments: str = ""
     journal_ref: str = ""
     source_link: str = ""
+    pdf_link: str = ""  # ACL Anthology only, for now
     arxiv_id: str = ""
     doi: str = ""
     acl_id: str = ""
@@ -28,6 +36,16 @@ class Edition:
         """The pinned arXiv Version, or 0 when the source didn't report one."""
         _, sep, version = self.edition_id.rpartition("v")
         return int(version) if self.edition_kind == "arxiv-preprint" and sep and version.isdigit() else 0
+
+    @property
+    def reported_acl_id(self) -> str:
+        """The ACL ID a source reported for this Edition, directly or as an ACL DOI (``10.18653/v1/<ACL ID>``)."""
+        if self.acl_id:
+            return self.acl_id
+        if not (match := ACL_DOI.match(self.doi)):
+            return ""
+        acl_id = match.group(1)
+        return acl_id.upper() if OLD_STYLE_ACL_ID.match(acl_id) else acl_id.lower()
 
     def match_keys(self) -> list[str]:
         """The exact identifiers that name this Edition and no other.

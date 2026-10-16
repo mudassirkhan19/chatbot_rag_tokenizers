@@ -58,14 +58,16 @@ def test_manifest_has_one_row_per_edition(fixture_snapshot, no_network, tmp_path
 
     rows = read_manifest(manifest)
     # The BPE paper appears on both arXiv pages, revised in between: one Edition, pinned to the
-    # newer Version. Semantic Scholar's query adds one preprint and three venue Editions, and
-    # expansion from the Seed adds two preprints and one venue Edition.
+    # newer Version. Semantic Scholar's query adds one preprint and three venue Editions,
+    # expansion from the Seed adds two preprints and one venue Edition, and the ACL Anthology
+    # three venue Editions for ACL IDs that only preprints reported.
     assert sorted(rows) == [
         "10.1162/TACL_A_00999",
         "1508.07909v5",
         "1804.10959v1",
         "1808.06226v2",
         "2004.03720v3",
+        "2020.findings-emnlp.414",
         "2022.findings-acl.99",
         "2210.09461v3",
         "2301.00001",
@@ -74,6 +76,8 @@ def test_manifest_has_one_row_per_edition(fixture_snapshot, no_network, tmp_path
         "2410.20771v3",
         "708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3",
         "D18-2012",
+        "P16-1162",
+        "P18-1007",
         "hep-th/9901001v1",
     ]
 
@@ -148,6 +152,51 @@ def test_semantic_scholar_finds_editions_the_arxiv_query_missed(fixture_snapshot
     assert nmt["relevance_verdict"] == "included"
 
 
+def test_preprint_and_its_acl_edition_are_two_rows(fixture_snapshot, no_network, tmp_path):
+    manifest = tmp_path / "manifest.csv"
+    run_collect(fixture_snapshot, manifest)
+    rows = read_manifest(manifest)
+
+    # Semantic Scholar reported the preprint's ACL ID; the ACL Anthology page makes it a venue
+    # Edition of its own, linked to the preprint only by the identifiers both rows carry.
+    preprint, venue = rows["1508.07909v5"], rows["P16-1162"]
+    assert preprint["edition_kind"] == "arxiv-preprint"
+    assert preprint["acl_id"] == venue["acl_id"] == "P16-1162"
+    assert preprint["doi"] == venue["doi"] == "10.18653/v1/P16-1162"
+
+    assert venue["edition_kind"] == "venue"
+    assert venue["title"] == "Neural Machine Translation of Rare Words with Subword Units"
+    assert venue["authors"] == "Rico Sennrich; Barry Haddow; Alexandra Birch"
+    assert venue["venue"] == "Annual Meeting of the Association for Computational Linguistics"
+    assert venue["year"] == "2016"
+    assert venue["licence"] == "https://creativecommons.org/licenses/by/4.0/"
+    assert venue["source_link"] == "https://aclanthology.org/P16-1162"
+    assert venue["pdf_link"] == "https://aclanthology.org/P16-1162.pdf"
+    assert venue["arxiv_id"] == ""
+    assert venue["s2_id"] == ""
+    assert venue["versions"] == ""
+    assert venue["work_id"] == preprint["work_id"] == ""
+    # Found through the preprint, so by the query and the Seed hop that found the preprint.
+    assert venue["discovery_channels"] == "seed-references:sentencepiece|semantic-scholar:subword-phrases"
+
+    # Semantic Scholar named the BPE paper's Findings Edition only by an upper-cased ACL DOI; the
+    # venue row still gets the ACL ID in the Anthology's own case.
+    bpe = rows["2004.03720v3"]
+    assert bpe["acl_id"] == ""
+    assert bpe["doi"] == "10.18653/V1/2020.FINDINGS-EMNLP.414"
+    findings = rows["2020.findings-emnlp.414"]
+    assert findings["acl_id"] == "2020.findings-emnlp.414"
+    assert findings["doi"] == "10.18653/v1/2020.findings-emnlp.414"
+    assert findings["venue"] == "Findings of the Association for Computational Linguistics"
+
+    # An ACL ID the Anthology doesn't have leaves the row as its source reported it.
+    unknown = rows["2022.findings-acl.99"]
+    assert unknown["edition_kind"] == "venue"
+    assert unknown["venue"] == "Findings"
+    assert unknown["licence"] == "unknown"
+    assert unknown["pdf_link"] == ""
+
+
 def test_same_edition_from_two_channels_is_one_row_with_both_identifiers(fixture_snapshot, no_network, tmp_path):
     manifest = tmp_path / "manifest.csv"
     run_collect(fixture_snapshot, manifest)
@@ -170,17 +219,22 @@ def test_same_edition_from_two_channels_is_one_row_with_both_identifiers(fixture
     assert mrt5["s2_id"] == "5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f7081"
 
     # The EMNLP Edition of SentencePiece shares its DOI and ACL ID with the preprint row, but it
-    # is a different Edition of the Work: its own row, left for the dedup stage to link.
+    # is a different Edition of the Work: its own row, left for the dedup stage to link. Semantic
+    # Scholar found it; its ACL Anthology page is the authority for its metadata.
     venue = rows["D18-2012"]
     assert venue["edition_kind"] == "venue"
     assert venue["venue"] == "Conference on Empirical Methods in Natural Language Processing"
     assert venue["year"] == "2018"
+    assert venue["licence"] == "https://creativecommons.org/licenses/by/4.0/"
     assert venue["source_link"] == "https://aclanthology.org/D18-2012"
+    assert venue["pdf_link"] == "https://aclanthology.org/D18-2012.pdf"
     assert venue["acl_id"] == "D18-2012"
-    assert venue["doi"] == "10.18653/V1/D18-2012"
+    assert venue["doi"] == "10.18653/v1/D18-2012"  # as the ACL Anthology reports it
     assert venue["arxiv_id"] == ""
     assert venue["s2_id"] == "4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f70"
-    assert venue["discovery_channels"] == "semantic-scholar:subword-phrases"
+    # The preprints that arXiv and the Seed record found reported this Edition's DOI or ACL ID,
+    # so those channels found it too.
+    assert venue["discovery_channels"] == "arxiv:tokenizer-titles|seed:sentencepiece|semantic-scholar:subword-phrases"
     assert venue["work_id"] == ""
 
     # Venue Editions without an ACL ID are named by their DOI, else by their Semantic Scholar id.
@@ -250,25 +304,28 @@ def test_report_counts_editions_per_discovery_channel(fixture_snapshot, no_netwo
     run_collect(fixture_snapshot, tmp_path / "manifest.csv")
     report = capsys.readouterr().err
 
-    # Three Editions are found by both keyword queries: SentencePiece, the BPE paper and MrT5.
-    # The Seed's references also reach the Sennrich paper, which only Semantic Scholar's query found.
-    assert "discover: 14 Editions" in report
-    assert "  arxiv:tokenizer-titles: 7 Editions, 4 found by no other channel" in report
-    assert "  semantic-scholar:subword-phrases: 7 Editions, 3 found by no other channel" in report
-    assert "  seed:sentencepiece: 1 Editions, 0 found by no other channel" in report
-    assert "  seed-references:sentencepiece: 2 Editions, 1 found by no other channel" in report
-    assert "  seed-citations:sentencepiece: 3 Editions, 2 found by no other channel" in report
+    # Three preprints are found by both keyword queries: SentencePiece, the BPE paper and MrT5. The
+    # Seed's references also reach the Sennrich paper, which only Semantic Scholar's query found.
+    # An ACL Edition counts for every channel that found a preprint reporting its ACL ID.
+    assert "discover: 17 Editions" in report
+    assert "  arxiv:tokenizer-titles: 9 Editions, 4 found by no other channel" in report
+    assert "  semantic-scholar:subword-phrases: 9 Editions, 2 found by no other channel" in report
+    assert "  seed:sentencepiece: 2 Editions, 0 found by no other channel" in report
+    assert "  seed-references:sentencepiece: 4 Editions, 2 found by no other channel" in report
+    assert "  seed-citations:sentencepiece: 4 Editions, 2 found by no other channel" in report
+    assert "acl-anthology: 5 ACL IDs, 3 new venue Editions" in report
 
 
 def test_report_shows_what_citation_expansion_adds_beyond_keyword_search(fixture_snapshot, no_network, tmp_path, capsys):
     run_collect(fixture_snapshot, tmp_path / "manifest.csv")
     report = capsys.readouterr().err
 
-    # The Seed's own record isn't a citation hop, so expansion reaches five Editions. Three of
-    # them no keyword query found: subword regularization and the Findings paper are included,
-    # the legal-MT citer is rule-rejected.
-    assert "  keyword search: 11 Editions, 6 included" in report
-    assert "  citation expansion: 5 Editions, 3 found by no keyword query, 2 of those included" in report
+    # The Seed's own record isn't a citation hop, so expansion reaches eight Editions, three of
+    # them ACL Editions of preprints it reached. Four of them no keyword query found: subword
+    # regularization's preprint and ACL Edition and the Findings paper are included, the legal-MT
+    # citer is rule-rejected.
+    assert "  keyword search: 13 Editions, 8 included" in report
+    assert "  citation expansion: 8 Editions, 4 found by no keyword query, 3 of those included" in report
 
 
 def test_rule_rejected_candidates_keep_their_row(fixture_snapshot, no_network, tmp_path):
@@ -329,15 +386,18 @@ def test_api_key_changes_nothing_and_is_never_stored(fixture_snapshot, no_networ
 def test_snapshot_entries_are_compressed_and_credential_free(fixture_snapshot):
     files = snapshot_files(fixture_snapshot / "responses")
     # Two arXiv and two Semantic Scholar results pages, the Seed's record, references and two
-    # citations pages, and one full record per arXiv Edition that passes the rules.
-    assert len(files) == 2 + 2 + 4 + 5
+    # citations pages, one full record per arXiv Edition that passes the rules, and one ACL
+    # Anthology page per reported ACL ID.
+    assert len(files) == 2 + 2 + 4 + 5 + 5
     for name, data in files.items():
         assert name.endswith(".json.gz")
         record = json.loads(gzip.decompress(data))
         assert record["collected_at"] == "2026-10-16"
         assert set(record["request"]) == {"source", "url", "params"}
         assert name.startswith(f"{record['request']['source']}/")
-        assert "<feed" in record["body"] or "<OAI-PMH" in record["body"] or '"paperId"' in record["body"]
+        markers = ["<feed", "<OAI-PMH", '"paperId"', "citation_title"]
+        stored_404 = record["request"]["source"] == "acl-anthology" and record["body"] == ""
+        assert stored_404 or any(marker in record["body"] for marker in markers)
 
 
 def test_rule_passes_get_the_cached_judge_verdict(fixture_snapshot, no_network, tmp_path):
@@ -386,10 +446,13 @@ RULE_PASSES = [
     "1804.10959v1",
     "1808.06226v2",
     "2004.03720v3",
+    "2020.findings-emnlp.414",
     "2022.findings-acl.99",
     "2410.20771v3",
     "708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3",
     "D18-2012",
+    "P16-1162",
+    "P18-1007",
 ]
 
 
@@ -460,3 +523,36 @@ def test_refresh_rescores_every_rule_pass(fixture_snapshot, no_network, monkeypa
 
     assert sorted(fake.scored) == RULE_PASSES
     assert read_manifest(manifest)["2004.03720v3"]["judge_probability"] == "0.3500"
+
+
+class RecordingJudge(FakeJudge):
+    """A FakeJudge that also keeps the abstract each Edition was scored on."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.abstracts: dict[str, str] = {}
+
+    def score(self, editions):
+        self.abstracts |= {edition.edition_id: edition.abstract for edition in editions}
+        return super().score(editions)
+
+
+def test_acl_editions_are_judged_on_an_abstract(fixture_snapshot, no_network, monkeypatch, tmp_path):
+    fake = RecordingJudge()
+    monkeypatch.setattr(judge, "load_judge", lambda config: fake)
+    manifest = tmp_path / "manifest.csv"
+
+    run_collect(fixture_snapshot, manifest, FIXTURES / "scope.toml", "--refresh")
+
+    # The ACL Anthology's own abstract, where it has one.
+    assert fake.abstracts["2020.findings-emnlp.414"].startswith(
+        "The success of pretrained transformer language models (LMs) in natural language processing"
+    )
+    # It has none for this 2016 paper, so the abstract Semantic Scholar reported with the ACL ID is used.
+    assert fake.abstracts["P16-1162"] == (
+        "We introduce a simpler and more effective approach, making the NMT model capable of"
+        " open-vocabulary translation by encoding rare and unknown words as sequences of subword units."
+    )
+    rows = read_manifest(manifest)
+    assert rows["P16-1162"]["relevance_verdict"] == "included"
+    assert rows["P16-1162"]["judge_probability"] == "0.9000"

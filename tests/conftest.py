@@ -72,11 +72,17 @@ def s2_seed_request(path: str = "", offset: int | None = None) -> dict:
     return {"source": "semantic-scholar", "url": f"{S2_GRAPH}/{FIXTURE_SEED}{path}", "params": params}
 
 
+def acl_request(acl_id: str) -> dict:
+    """The request description the collector records for one ACL Anthology paper page."""
+    return {"source": "acl-anthology", "url": f"https://aclanthology.org/{acl_id}/", "params": {}}
+
+
 @pytest.fixture
 def fixture_snapshot(tmp_path: Path) -> Path:
     """A hand-built Snapshot: two arXiv and two Semantic Scholar results pages for the fixture
     queries, the fixture Seed's record, references and citations, the full record of each arXiv
-    Edition that passes the rules, and a cached judge verdict for each of those Candidates."""
+    Edition that passes the rules, the ACL Anthology page of each reported ACL ID, and a cached
+    judge verdict for each Candidate that passes the rules."""
     root = tmp_path / "snapshot"
     store = SnapshotStore(root)
     for start, page in [(0, "page-0.xml"), (4, "page-1.xml")]:
@@ -96,6 +102,11 @@ def fixture_snapshot(tmp_path: Path) -> Path:
     ]
     for request, page in seed_pages:
         store.save(request, (FIXTURES / "seeds" / page).read_text(), collected_at="2026-10-16")
+    for paper in sorted((FIXTURES / "acl-anthology").glob("*.html")):
+        store.save(acl_request(paper.stem), paper.read_text(), collected_at="2026-10-16")
+    # The Findings paper that cites the Seed is invented for the fixtures, so the Anthology has no
+    # such paper: the collector stores a 404 as an empty body.
+    store.save(acl_request("2022.findings-acl.99"), "", collected_at="2026-10-16")
     shutil.copytree(FIXTURES / "verdicts", root / "verdicts")
     return root
 
