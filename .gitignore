@@ -21,3 +21,7 @@ data/pdfs/
 
 # Local reference material (not part of the submission)
 tmp/
+
+# Local git worktrees and personal Claude Code settings (hack/worktree.sh)
+.claude/worktrees/
+.claude/settings.local.json

@@ -1,0 +1,13 @@
+# Local files that git does not carry, copied from the main checkout into every new worktree
+# by `hack/worktree.sh create` (gitignore syntax). Only untracked and ignored files match;
+# tracked files always come from the worktree's own branch. See docs/adr/0013.
+
+# Secrets (ADR 0002)
+.env
+.env.*
+
+# Personal Claude Code settings
+.claude/settings.local.json
+
+# Snapshot responses and downloads not yet committed, so `collect` stays offline in the worktree
+data/

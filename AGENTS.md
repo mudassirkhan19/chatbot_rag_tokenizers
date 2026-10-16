@@ -13,3 +13,7 @@ The labels are the five defaults: `needs-triage`, `needs-info`, `ready-for-agent
 ### Domain docs
 
 Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. ADRs follow the template in `docs/adr/README.md`. See `docs/agents/domain.md`.
+
+### Worktrees
+
+Create and remove worktrees with `hack/worktree.sh`, which sets up `.env`, `.venv` and local data so commands run as in the main checkout. See `.claude/skills/worktree/SKILL.md`.
