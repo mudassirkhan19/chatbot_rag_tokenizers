@@ -1,0 +1,31 @@
+# Scope config for the offline fixture run. Same shape as config/scope.toml.
+
+[[topics]]
+id = "subword-algorithms"
+description = "BPE, WordPiece, Unigram and SentencePiece"
+
+[sources.arxiv]
+page_size = 4
+
+[[queries]]
+id = "tokenizer-titles"
+source = "arxiv"
+topic = "subword-algorithms"
+query = "ti:tokenizer OR ti:tokenization"
+
+[rules]
+required = ['tokeni[sz]', 'subword', 'byte[- ]pair']
+# Exclusions never fire on a title that matches one of these.
+keep_if_title = ['byte[- ]level']
+
+[[rules.exclude]]
+name = "token-reduction"
+pattern = 'token (merging|pruning|dropping)'
+
+[[rules.exclude]]
+name = "kv-cache"
+pattern = 'kv[- ]cache'
+
+[[rules.exclude]]
+name = "crypto-assets"
+pattern = 'blockchain|crypto|erc-20|nft'

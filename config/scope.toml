@@ -1,0 +1,85 @@
+# Scope config for corpus collection.
+#
+# Topics are the in-scope areas of the corpus. Every keyword query is tagged with the topic
+# it covers, so coverage per topic can be checked at a glance.
+#
+# Out of scope: discrete tokenizers for other modalities (VQ image tokens, audio codecs) and
+# uses of "token" that are not about tokenization (token pruning or merging, KV-cache
+# eviction, crypto tokens). Mixed-modality papers stay in only when text tokenization is a
+# central contribution; the LLM judge decides those.
+
+[[topics]]
+id = "subword-algorithms"
+description = "Subword algorithms for text LMs: BPE, WordPiece, Unigram, SentencePiece"
+
+[[topics]]
+id = "byte-level"
+description = "Byte-level, character-level and tokenizer-free models"
+
+[[topics]]
+id = "nmt-subwords"
+description = "Foundational NMT-era subword papers"
+
+[[topics]]
+id = "tokenization-effects"
+description = "Effects of tokenization: multilingual fertility and fairness, arithmetic, code, reasoning, vocabulary size and scaling"
+
+[[topics]]
+id = "vocabulary-adaptation"
+description = "Vocabulary adaptation and transfer"
+
+[sources.arxiv]
+# Results per API call; the API allows up to 2000 but large pages time out more often.
+page_size = 500
+
+[[queries]]
+id = "arxiv-tokenizer-titles"
+source = "arxiv"
+topic = "subword-algorithms"
+query = "(ti:tokenizer OR ti:tokenizers OR ti:tokenization OR ti:tokenisation OR ti:tokenizing) AND (cat:cs.CL OR cat:cs.LG OR cat:cs.AI)"
+
+[rules]
+# Stage 1 keeps a Candidate only if its title or abstract matches at least one of these
+# (case-insensitive regular expressions).
+required = [
+  'tokeni[sz]',
+  'sub-?words?',
+  'byte[- ]pair',
+  'word ?piece',
+  'sentence ?piece',
+  'vocabular(y|ies)',
+  'byte[- ]level',
+  'character[- ]level',
+]
+
+# Exclusions never fire on a title that matches one of these strong on-topic terms
+# (e.g. "Dynamic Token Merging for Efficient Byte-level Language Models" stays in).
+keep_if_title = [
+  'sub-?words?',
+  'byte[- ]pair',
+  '\bbpe\b',
+  'word ?piece',
+  'sentence ?piece',
+  'byte[- ]level',
+  'tokeni[sz](er|ation)[- ]free',
+  'vocabular(y|ies)',
+]
+
+# Otherwise it is rejected if its title matches one of these off-topic senses of "token".
+# The name of the first pattern that fires is recorded in the manifest.
+
+[[rules.exclude]]
+name = "token-reduction"
+pattern = 'token (merging|merge|pruning|prune|dropping|reduction|sparsification|selection|compression)'
+
+[[rules.exclude]]
+name = "kv-cache"
+pattern = 'kv[- ]?cache'
+
+[[rules.exclude]]
+name = "crypto-assets"
+pattern = 'blockchain|crypto ?currenc|cryptoasset|\bnfts?\b|erc-?20|defi\b|stablecoin|asset tokeni[sz]ation|tokeni[sz]ed (assets?|securities)'
+
+[[rules.exclude]]
+name = "other-modality-tokenizer"
+pattern = '\b(image|visual|video|audio|speech|vq|motion|molecular|protein) tokeni[sz](er|ers|ation)\b'

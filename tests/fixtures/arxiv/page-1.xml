@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom">
+  <id>https://arxiv.org/api/fixture-page-1</id>
+  <title>arXiv Query: fixture</title>
+  <updated>2026-10-16T00:00:00Z</updated>
+  <opensearch:totalResults>8</opensearch:totalResults>
+  <opensearch:startIndex>4</opensearch:startIndex>
+  <opensearch:itemsPerPage>4</opensearch:itemsPerPage>
+  <entry>
+    <id>http://arxiv.org/abs/2402.00001v1</id>
+    <updated>2024-02-01T00:00:00Z</updated>
+    <published>2024-02-01T00:00:00Z</published>
+    <title>Evicting the KV Cache: Which Tokens Matter for Long-Context Decoding</title>
+    <summary>We study which tokens to keep in the KV cache, independent of the
+      tokenizer used by the model.</summary>
+    <author><name>B. Systems</name></author>
+    <link href="http://arxiv.org/abs/2402.00001v1" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/2402.00001v1" rel="related" type="application/pdf"/>
+    <arxiv:primary_category term="cs.LG"/>
+    <category term="cs.LG"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2403.00002v2</id>
+    <updated>2024-04-01T00:00:00Z</updated>
+    <published>2024-03-01T00:00:00Z</published>
+    <title>Tokenization of Real-World Assets on the Blockchain</title>
+    <summary>We study the tokenization of property and the market for ERC-20
+      security tokens.</summary>
+    <author><name>C. Finance</name></author>
+    <link href="http://arxiv.org/abs/2403.00002v2" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/2403.00002v2" rel="related" type="application/pdf"/>
+    <arxiv:primary_category term="q-fin.GN"/>
+    <category term="q-fin.GN"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2004.03720v2</id>
+    <updated>2020-10-05T00:00:00Z</updated>
+    <published>2020-04-07T00:00:00Z</published>
+    <title>Byte Pair Encoding is Suboptimal for Language Model Pretraining</title>
+    <summary>We analyze differences between unigram LM tokenization and byte-pair
+      encoding (BPE) for pretraining.</summary>
+    <author><name>Kaj Bostrom</name></author>
+    <author><name>Greg Durrett</name></author>
+    <link href="http://arxiv.org/abs/2004.03720v2" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/2004.03720v2" rel="related" type="application/pdf"/>
+    <arxiv:primary_category term="cs.CL"/>
+    <category term="cs.CL"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2410.20771v3</id>
+    <updated>2025-03-01T00:00:00Z</updated>
+    <published>2024-10-28T00:00:00Z</published>
+    <title>MrT5: Dynamic Token Merging for Efficient Byte-level Language Models</title>
+    <summary>Byte-level models avoid subword tokenization but are slow; we learn to
+      delete byte tokens dynamically.</summary>
+    <author><name>Julie Kallini</name></author>
+    <link href="http://arxiv.org/abs/2410.20771v3" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/2410.20771v3" rel="related" type="application/pdf"/>
+    <arxiv:primary_category term="cs.CL"/>
+    <category term="cs.CL"/>
+  </entry>
+</feed>

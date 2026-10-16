@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom">
+  <id>https://arxiv.org/api/fixture-page-0</id>
+  <title>arXiv Query: fixture</title>
+  <updated>2026-10-16T00:00:00Z</updated>
+  <opensearch:totalResults>8</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <opensearch:itemsPerPage>4</opensearch:itemsPerPage>
+  <entry>
+    <id>http://arxiv.org/abs/hep-th/9901001v1</id>
+    <updated>1999-01-04T00:00:00Z</updated>
+    <published>1999-01-04T00:00:00Z</published>
+    <title>Branes and Fluxes in
+      Compact Dimensions</title>
+    <summary>We study brane configurations in flux compactifications.</summary>
+    <author><name>A. Physicist</name></author>
+    <link href="http://arxiv.org/abs/hep-th/9901001v1" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/hep-th/9901001v1" rel="related" type="application/pdf"/>
+    <arxiv:primary_category term="hep-th"/>
+    <category term="hep-th"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/1808.06226v1</id>
+    <updated>2018-08-19T00:00:00Z</updated>
+    <published>2018-08-19T00:00:00Z</published>
+    <title>SentencePiece: A simple and language independent subword tokenizer and
+      detokenizer for Neural Text Processing</title>
+    <summary>This paper describes SentencePiece, a language-independent subword
+      tokenizer and detokenizer designed for neural text processing.</summary>
+    <author><name>Taku Kudo</name></author>
+    <author><name>John Richardson</name></author>
+    <arxiv:doi>10.18653/v1/D18-2012</arxiv:doi>
+    <arxiv:comment>Accepted as a demo paper at EMNLP 2018</arxiv:comment>
+    <arxiv:journal_ref>EMNLP 2018 System Demonstrations</arxiv:journal_ref>
+    <link href="http://arxiv.org/abs/1808.06226v1" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/1808.06226v1" rel="related" type="application/pdf"/>
+    <arxiv:primary_category term="cs.CL"/>
+    <category term="cs.CL"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2004.03720v2</id>
+    <updated>2020-10-05T00:00:00Z</updated>
+    <published>2020-04-07T00:00:00Z</published>
+    <title>Byte Pair Encoding is Suboptimal for Language Model Pretraining</title>
+    <summary>We analyze differences between unigram LM tokenization and byte-pair
+      encoding (BPE) for pretraining.</summary>
+    <author><name>Kaj Bostrom</name></author>
+    <author><name>Greg Durrett</name></author>
+    <link href="http://arxiv.org/abs/2004.03720v2" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/2004.03720v2" rel="related" type="application/pdf"/>
+    <arxiv:primary_category term="cs.CL"/>
+    <category term="cs.CL"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2210.09461v3</id>
+    <updated>2023-03-01T00:00:00Z</updated>
+    <published>2022-10-17T00:00:00Z</published>
+    <title>Token Merging: Your ViT But Faster</title>
+    <summary>We introduce Token Merging, which combines similar visual tokens in a
+      vision transformer, a form of dynamic tokenization of images.</summary>
+    <author><name>Daniel Bolya</name></author>
+    <link href="http://arxiv.org/abs/2210.09461v3" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/2210.09461v3" rel="related" type="application/pdf"/>
+    <arxiv:primary_category term="cs.CV"/>
+    <category term="cs.CV"/>
+  </entry>
+</feed>

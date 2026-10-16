@@ -1,7 +1,7 @@
 # 0002. Keep PDFs, downloaded data and secrets out of git
 
 - **Date:** 2026-10-15
-- **Status:** Accepted
+- **Status:** Accepted; the part about downloaded data is superseded by [0003](0003-commit-the-snapshot.md)
 
 ## Context
 The brief asks us not to commit the paper PDFs, but to commit the script that downloads them, and to keep API keys out of the repository. Papers also carry their own licences, so redistributing them is not ours to decide.
