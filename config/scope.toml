@@ -284,7 +284,7 @@ reason = "Initialises embeddings for a new language's vocabulary from multilingu
 
 [[seeds]]
 id = "focus"
-paper = "ARXIV:2305.14481"
+paper = "DOI:10.18653/v1/2023.emnlp-main.829"
 topic = "vocabulary-adaptation"
 reason = "Embedding initialisation for specialised vocabularies via overlapping tokens"
 
