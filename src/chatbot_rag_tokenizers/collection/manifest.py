@@ -35,6 +35,7 @@ COLUMNS = [
     "relevance_reason",
     "licence",
     "versions",
+    "pdf_files",
     "funnel_status",
     "work_id",
 ]
@@ -101,7 +102,8 @@ def manifest_row(
         "relevance_reason": relevance["relevance_reason"],
         "licence": edition.licence,
         "versions": "|".join(f"{label} {submitted}" for label, submitted in edition.versions),
-        # The furthest funnel stage reached: discovered → relevant → full text → indexed.
+        "pdf_files": "",  # filled in from the Fetcher's record
+        # The furthest funnel stage reached: discovered → relevant → full text (or no_fulltext) → indexed.
         "funnel_status": "relevant" if relevance["relevance_verdict"] == "included" else "discovered",
         "work_id": "",  # filled in by the dedup stage
     }

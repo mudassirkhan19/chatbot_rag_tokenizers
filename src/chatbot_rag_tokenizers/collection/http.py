@@ -24,6 +24,13 @@ class RateLimitedHttp:
 
     def get(self, url: str, params: dict, headers: dict | None = None) -> str:
         """GET and return the body text. Credentials belong in ``headers``, never in ``params``."""
+        response = self.response(url, params, headers)
+        response.raise_for_status()
+        return response.text
+
+    def response(self, url: str, params: dict | None = None, headers: dict | None = None) -> httpx.Response:
+        """GET with retries on transport errors, 429 and 5xx, and return the final response,
+        whatever its status."""
         backoff = self.min_interval
         for attempt in range(1, self.max_attempts + 1):
             self._wait_for_slot()
@@ -33,11 +40,8 @@ class RateLimitedHttp:
                 if attempt == self.max_attempts:
                     raise
             else:
-                if response.status_code not in RETRYABLE_STATUS:
-                    response.raise_for_status()
-                    return response.text
-                if attempt == self.max_attempts:
-                    response.raise_for_status()
+                if response.status_code not in RETRYABLE_STATUS or attempt == self.max_attempts:
+                    return response
                 retry_after = response.headers.get("Retry-After", "")
                 if retry_after.isdigit():
                     backoff = max(backoff, float(retry_after))

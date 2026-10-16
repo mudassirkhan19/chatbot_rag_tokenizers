@@ -19,6 +19,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0012](0012-acl-anthology-venue-editions.md) | ACL Anthology venue Editions from per-paper pages | Accepted |
 | [0013](0013-working-worktrees.md) | Fully working worktrees for parallel work | Accepted |
 | [0014](0014-openalex-discovery-channel.md) | OpenAlex as a separate, switchable Discovery channel | Accepted |
+| [0015](0015-pdf-fetcher-pinned-files-and-hashes.md) | PDF Fetcher: pinned files, hashes in the Snapshot, open-access fallback | Accepted |
 
 ## Template
 

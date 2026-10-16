@@ -1,0 +1,321 @@
+"""The Fetcher: full-text PDFs for included Editions, each pinned to an exact Version or Edition.
+
+An arXiv preprint gets its latest Version, plus v1 when it has several, always from a versioned
+``export.arxiv.org`` URL. A venue Edition gets its ACL Anthology PDF, or else the first of its
+OpenAlex open-access copies that serves a PDF. The sha256 of every file is kept in a committed
+record in the Snapshot (``fulltext/pdfs.jsonl``), so `collect` rebuilds the manifest's file
+columns and funnel status without the PDFs, and a re-download is checked against it. The PDFs
+themselves are never committed.
+"""
+
+import csv
+import hashlib
+import json
+import re
+import sys
+from collections import Counter
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+from urllib.parse import urlsplit
+
+import httpx
+
+from .http import RateLimitedHttp
+from .manifest import COLUMNS, write_manifest
+
+ARXIV_PDF_URL = "https://export.arxiv.org/pdf/{}"  # arXiv asks harvesters to use the export host
+ARXIV_MIN_INTERVAL_SECONDS = 3.0  # arXiv's terms of use: one request every three seconds
+OTHER_MIN_INTERVAL_SECONDS = 1.0  # the ACL Anthology and open-access hosts publish no limit
+GONE_STATUS = {404, 410}
+
+
+@dataclass(frozen=True)
+class PinnedFile:
+    """One file an Edition's full text is pinned to, and where to get it, best source first."""
+
+    name: str  # under the PDF directory, e.g. "2004.03720v1.pdf"
+    urls: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class FetchedFile:
+    """One line of the record: a file fetched for an Edition, or why it has no open PDF."""
+
+    edition_id: str
+    file: str  # "" when the Edition has no open PDF
+    url: str
+    sha256: str
+    size: int
+    fetched_at: str
+    unavailable: str = ""  # why no source served a PDF; empty for a fetched file
+
+
+class FetchError(RuntimeError):
+    """A file that should have been fetched wasn't."""
+
+
+class UpstreamDrift(FetchError):
+    """A source no longer serves the file the record pins, or serves different bytes."""
+
+
+class FetchFailed(FetchError):
+    """A file never fetched before couldn't be fetched: a network error, a server error or a body that isn't a PDF."""
+
+
+class FetchErrors(RuntimeError):
+    def __init__(self, errors: list[FetchError]) -> None:
+        self.errors = errors
+        drift = [e for e in errors if isinstance(e, UpstreamDrift)]
+        failed = [e for e in errors if isinstance(e, FetchFailed)]
+        lines = []
+        if drift:
+            lines.append(
+                f"{_files(len(drift))} changed upstream since the record was made. This is upstream drift,"
+                " not a pipeline failure. To re-pin a file to what its source serves now, delete its line from"
+                " the record and fetch again."
+            )
+            lines += [f"  upstream drift: {e}" for e in drift]
+        if failed:
+            lines.append(
+                f"{_files(len(failed), pinned=False)} couldn't be fetched. Nothing was recorded for them, so a rerun tries again."
+            )
+            lines += [f"  fetch failed: {e}" for e in failed]
+        super().__init__("\n".join(lines))
+
+
+def _files(count: int, pinned: bool = True) -> str:
+    noun = "pinned file" if pinned else "file"
+    return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
+
+
+class FulltextRecord:
+    """The record at ``<snapshot>/fulltext/pdfs.jsonl``: one JSON line per file, sorted by Edition and file."""
+
+    def __init__(self, snapshot_root: Path) -> None:
+        self.path = snapshot_root / "fulltext" / "pdfs.jsonl"
+        self._entries: dict[tuple[str, str], FetchedFile] = {}
+        if self.path.exists():
+            for line in self.path.read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    entry = FetchedFile(**json.loads(line))
+                    self._entries[entry.edition_id, entry.file] = entry
+
+    def get(self, edition_id: str, file: str) -> FetchedFile | None:
+        return self._entries.get((edition_id, file))
+
+    def entries(self, edition_id: str) -> list[FetchedFile]:
+        return [entry for key, entry in sorted(self._entries.items()) if key[0] == edition_id]
+
+    def put(self, entry: FetchedFile) -> None:
+        self._entries[entry.edition_id, entry.file] = entry
+
+    def save(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        lines = [json.dumps(asdict(self._entries[key]), sort_keys=True, separators=(",", ":")) for key in sorted(self._entries)]
+        self.path.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
+
+
+def _file_name(pinned_id: str) -> str:
+    """A file name for a pinned id: old-style arXiv ids and DOIs contain slashes."""
+    return re.sub(r"[^A-Za-z0-9._-]", "_", pinned_id) + ".pdf"
+
+
+def pinned_files(row: dict[str, str]) -> list[PinnedFile]:
+    """The files a manifest row's full text is pinned to; empty when it has no open PDF source."""
+    if row["edition_kind"] == "arxiv-preprint":
+        labels = [entry.split(" ", 1)[0] for entry in row["versions"].split("|") if entry]
+        latest = row["edition_id"].removeprefix(row["arxiv_id"])
+        if not labels or latest not in labels:
+            return []  # never fetch an unpinned preprint
+        pinned = ["v1", latest] if latest != "v1" else [latest]
+        return [
+            PinnedFile(_file_name(f"{row['arxiv_id']}{v}"), (ARXIV_PDF_URL.format(f"{row['arxiv_id']}{v}"),))
+            for v in pinned
+        ]
+    # An arXiv copy among a venue Edition's open-access links is the preprint, a different Edition.
+    urls = [row["pdf_link"]] if row["pdf_link"] else []
+    urls += [url for url in row["oa_pdf_urls"].split("|") if url and not _is_arxiv(url)]
+    return [PinnedFile(_file_name(row["edition_id"]), tuple(dict.fromkeys(urls)))] if urls else []
+
+
+def _is_arxiv(url: str) -> bool:
+    host = urlsplit(url).hostname or ""
+    return host == "arxiv.org" or host.endswith(".arxiv.org")
+
+
+def apply_record(rows: list[dict[str, str]], record: FulltextRecord) -> None:
+    """Fill in each row's fetched files and, for included rows, its funnel status from the record.
+
+    An included row reaches "full text" once every file it is pinned to is recorded, and is
+    ``no_fulltext`` when it has no open PDF source or none of its sources served a PDF.
+    """
+    for row in rows:
+        entries = record.entries(row["edition_id"])
+        row["pdf_files"] = "|".join(f"{entry.file} {entry.sha256}" for entry in entries if entry.file)
+        if row["relevance_verdict"] != "included":
+            continue
+        pinned = pinned_files(row)
+        if not pinned or any(entry.unavailable for entry in entries):
+            row["funnel_status"] = "no_fulltext"
+        elif all(record.get(row["edition_id"], file.name) for file in pinned):
+            row["funnel_status"] = "full text"
+        else:
+            row["funnel_status"] = "relevant"
+
+
+def report(rows: list[dict[str, str]]) -> None:
+    status = Counter(row["funnel_status"] for row in rows if row["relevance_verdict"] == "included")
+    print(
+        f"fulltext: {status['full text']} with full text, {status['no_fulltext']} with no open PDF,"
+        f" {status['relevant']} still to fetch",
+        file=sys.stderr,
+    )
+
+
+def _sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _is_pdf(data: bytes) -> bool:
+    return data.startswith(b"%PDF-")
+
+
+class _Downloader:
+    """Rate-limited GETs: arXiv on its own three-second clock, every other host on a one-second clock."""
+
+    def __init__(self) -> None:
+        self._arxiv: RateLimitedHttp | None = None
+        self._other: RateLimitedHttp | None = None
+
+    def get(self, url: str) -> httpx.Response:
+        if _is_arxiv(url):
+            self._arxiv = self._arxiv or RateLimitedHttp(ARXIV_MIN_INTERVAL_SECONDS)
+            return self._arxiv.response(url)
+        self._other = self._other or RateLimitedHttp(OTHER_MIN_INTERVAL_SECONDS)
+        return self._other.response(url)
+
+
+def _describe(response: httpx.Response) -> str:
+    if response.status_code != 200:
+        return f"HTTP {response.status_code}"
+    content_type = response.headers.get("Content-Type", "no content type")
+    return f"not a PDF ({content_type}, starts {response.content[:16]!r})"
+
+
+def _write(path: Path, data: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    partial = path.with_name(path.name + ".part")
+    partial.write_bytes(data)
+    partial.replace(path)
+
+
+def _refetch(downloader: _Downloader, entry: FetchedFile, path: Path) -> None:
+    """Download a recorded file again and check it against the recorded hash."""
+    pinned = f"{entry.file} from {entry.url} (sha256 {entry.sha256}, recorded {entry.fetched_at})"
+    try:
+        response = downloader.get(entry.url)
+    except httpx.TransportError as error:
+        raise FetchFailed(f"{entry.file}: {entry.url}: {error!r}") from error
+    if response.status_code in GONE_STATUS:
+        raise UpstreamDrift(f"{pinned} is no longer available: HTTP {response.status_code}")
+    if response.status_code != 200 or not _is_pdf(response.content):
+        raise FetchFailed(f"{entry.file}: {entry.url}: {_describe(response)}; the record pins sha256 {entry.sha256}")
+    if (digest := _sha256(response.content)) != entry.sha256:
+        raise UpstreamDrift(f"hash mismatch for {pinned}: it now serves sha256 {digest}")
+    _write(path, response.content)
+
+
+def _fetch_new(downloader: _Downloader, edition_id: str, kind: str, pinned: PinnedFile, path: Path) -> FetchedFile:
+    """Fetch a file never fetched before from the first of its sources that serves a PDF.
+
+    A venue Edition whose sources all answer that they have no PDF (gone, forbidden, or a web
+    page instead) is recorded as having no open PDF. A preprint's pinned Version must exist, so
+    for it that is a failure. So is a network or server error, which a rerun may not repeat;
+    a venue Edition's next source is still tried first.
+    """
+    refused, failed = [], []
+    for url in pinned.urls:
+        try:
+            response = downloader.get(url)
+        except httpx.TransportError as error:
+            failed.append(f"{url}: {error!r}")
+            continue
+        if response.status_code == 200 and _is_pdf(response.content):
+            _write(path, response.content)
+            return FetchedFile(
+                edition_id, pinned.name, url, _sha256(response.content), len(response.content), _today()
+            )
+        if response.status_code >= 500 or kind == "arxiv-preprint":
+            failed.append(f"{url}: {_describe(response)}")
+        else:
+            refused.append(f"{url}: {_describe(response)}")
+    if failed:
+        raise FetchFailed(f"{pinned.name}: {'; '.join(failed + refused)}")
+    return FetchedFile(edition_id, "", "", "", 0, _today(), unavailable="; ".join(refused))
+
+
+def _today() -> str:
+    return datetime.now(UTC).date().isoformat()
+
+
+def read_manifest(path: Path) -> list[dict[str, str]]:
+    with path.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        if reader.fieldnames != COLUMNS:
+            raise SystemExit(f"{path} has different columns from this version of the pipeline; run `collect` first")
+        return list(reader)
+
+
+def fetch(snapshot_dir: Path, manifest_path: Path, pdf_dir: Path, limit: int | None = None) -> None:
+    """Download the pinned PDFs of every included Edition in the manifest, record their hashes and
+    update the manifest.
+
+    A file already in ``pdf_dir`` whose hash matches the record is kept; any other recorded file
+    is downloaded again and must match its recorded hash. ``limit`` caps the number of files
+    downloaded. A failed file doesn't stop the run: every failure is reported at the end.
+    """
+    rows = read_manifest(manifest_path)
+    record = FulltextRecord(snapshot_dir)
+    downloader = _Downloader()
+    errors: list[FetchError] = []
+    downloads = 0
+    included = sorted((row for row in rows if row["relevance_verdict"] == "included"), key=lambda row: row["edition_id"])
+    try:
+        for row in included:
+            edition_id = row["edition_id"]
+            if any(entry.unavailable for entry in record.entries(edition_id)):
+                continue
+            for pinned in pinned_files(row):
+                path = pdf_dir / pinned.name
+                entry = record.get(edition_id, pinned.name)
+                if entry and path.exists() and _sha256(path.read_bytes()) == entry.sha256:
+                    continue
+                if limit is not None and downloads >= limit:
+                    raise _LimitReached
+                downloads += 1
+                try:
+                    if entry:
+                        _refetch(downloader, entry, path)
+                    else:
+                        record.put(_fetch_new(downloader, edition_id, row["edition_kind"], pinned, path))
+                        record.save()
+                except FetchError as error:
+                    print(f"fetch: {error}", file=sys.stderr)
+                    errors.append(error)
+                    break
+            if downloads and downloads % 50 == 0:
+                print(f"  fetch: {downloads} files downloaded", file=sys.stderr)
+    except _LimitReached:
+        print(f"fetch: stopped at the limit of {limit} downloads", file=sys.stderr)
+    finally:
+        apply_record(rows, record)
+        write_manifest(manifest_path, rows)
+    print(f"fetch: {downloads} files downloaded into {pdf_dir}", file=sys.stderr)
+    report(rows)
+    if errors:
+        raise FetchErrors(errors)
+
+
+class _LimitReached(Exception):
+    pass

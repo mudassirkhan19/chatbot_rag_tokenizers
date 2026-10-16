@@ -1,5 +1,5 @@
 """The `collect` run: keyword queries and citation expansion → Snapshot → Editions → ACL Editions
-→ rule pre-filter → arXiv records → LLM judge → manifest."""
+→ rule pre-filter → arXiv records → LLM judge → manifest, with the Fetcher's recorded PDFs."""
 
 import sys
 from collections import Counter
@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from . import judge
+from . import fulltext, judge
 from .acl_anthology import AclAnthologySource
 from .arxiv import ArxivSource
 from .config import ScopeConfig, is_citation_channel, is_keyword_channel
@@ -303,6 +303,7 @@ def collect(
     editions = [candidate.edition for candidate in assessed]
     threshold = config.judge.threshold
     rows = [candidate.manifest_row(threshold) for candidate in assessed]
+    fulltext.apply_record(rows, fulltext.FulltextRecord(snapshot_dir))
     write_manifest(manifest_path, rows)
 
     rejected = Counter(row["rule_pattern"] for row in rows if row["rule_outcome"] == "reject")
@@ -321,4 +322,5 @@ def collect(
         f" (threshold {threshold:g})",
         file=sys.stderr,
     )
+    fulltext.report(rows)
     print(f"manifest: wrote {manifest_path}", file=sys.stderr)

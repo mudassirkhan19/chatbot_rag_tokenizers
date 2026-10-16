@@ -1,9 +1,10 @@
 """Command-line entry point."""
 
 import argparse
+import sys
 from pathlib import Path
 
-from .collection import audit
+from .collection import audit, fulltext
 from .collection.config import load_config
 from .collection.pipeline import collect
 
@@ -29,6 +30,20 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="never load the judge model; Candidates without a cached verdict stay pending",
     )
+
+    fetch_cmd = commands.add_parser(
+        "fetch",
+        help="download the pinned PDFs of every included Edition and record their hashes",
+        description=(
+            "Reads the manifest written by `collect`. Fetches v1 and the latest Version of each included arXiv"
+            " preprint and the ACL Anthology or open-access PDF of each included venue Edition, checks re-downloads"
+            " against the hashes recorded in the Snapshot, and updates the manifest."
+        ),
+    )
+    fetch_cmd.add_argument("--snapshot", type=Path, default=Path("data/snapshot"))
+    fetch_cmd.add_argument("--manifest", type=Path, default=Path("data/manifest.csv"))
+    fetch_cmd.add_argument("--pdfs", type=Path, default=Path("data/pdfs"), help="where PDFs go (default data/pdfs, gitignored)")
+    fetch_cmd.add_argument("--limit", type=int, help="download at most this many files, e.g. for a smoke test")
 
     audit_cmd = commands.add_parser("audit", help="build the Audit set and measure the Relevance verdict on it")
     audit_commands = audit_cmd.add_subparsers(dest="audit_command", required=True)
@@ -69,6 +84,11 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
     if args.command == "collect":
         collect(load_config(args.config), args.snapshot, args.manifest, refresh=args.refresh, run_judge=not args.no_judge)
+    elif args.command == "fetch":
+        try:
+            fulltext.fetch(args.snapshot, args.manifest, args.pdfs, args.limit)
+        except fulltext.FetchErrors as errors:
+            sys.exit(f"fetch: {errors}")
     elif args.command == "audit" and args.audit_command == "export":
         audit.export(load_config(args.config), args.snapshot, args.output, args.size, args.seed, force=args.force)
     elif args.command == "audit" and args.audit_command == "report":
