@@ -14,7 +14,7 @@ from chatbot_rag_tokenizers.cli import main
 from chatbot_rag_tokenizers.collection import judge
 from chatbot_rag_tokenizers.collection.openalex import OpenAlexError
 from chatbot_rag_tokenizers.collection.snapshot import SnapshotStore
-from conftest import FIXTURES, s2_seed_request
+from conftest import FIXTURES, acl_request, s2_seed_request
 
 
 def run_collect(snapshot: Path, manifest: Path, config: Path = FIXTURES / "scope.toml", *flags: str) -> None:
@@ -266,6 +266,33 @@ def test_semantic_scholar_waits_out_a_half_hour_throttle(fixture_snapshot, no_ne
     run_collect(fixture_snapshot, manifest)
 
     assert "seed:sentencepiece" in read_manifest(manifest)["1808.06226v2"]["discovery_channels"]
+
+
+def test_acl_id_of_a_volume_counts_as_no_paper(fixture_snapshot, no_network, tmp_path, monkeypatch, capsys):
+    # Semantic Scholar has records for whole proceedings volumes, whose ACL ID the Anthology
+    # redirects to the volume's page.
+    paper_page = acl_request("2022.findings-acl.99")
+    SnapshotStore(fixture_snapshot)._path(paper_page).unlink()
+    volume_page = "https://aclanthology.org/volumes/2022.findings-acl.99/"
+    volume_html = "<html><title>Findings of ACL 2022 - ACL Anthology</title><dl><dt>Anthology ID:</dt></dl></html>"
+
+    def answer(transport, request: httpx.Request) -> httpx.Response:
+        if str(request.url) == paper_page["url"]:
+            return httpx.Response(301, headers={"Location": volume_page}, request=request)
+        assert str(request.url) == volume_page
+        return httpx.Response(200, text=volume_html, request=request)
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", answer)
+    monkeypatch.setattr(time, "sleep", lambda seconds: None)
+    manifest = tmp_path / "manifest.csv"
+    run_collect(fixture_snapshot, manifest)
+
+    assert "acl-anthology: 2022.findings-acl.99 is a volume, not a paper" in capsys.readouterr().err
+    unknown = read_manifest(manifest)["2022.findings-acl.99"]
+    assert unknown["venue"] == "Findings"
+    assert unknown["pdf_link"] == ""
+    # Remembered like a 404, so a replay stays offline.
+    assert SnapshotStore(fixture_snapshot).load(paper_page).body == ""
 
 
 def test_openalex_without_a_key_explains_what_to_do(fixture_snapshot, no_network, tmp_path, monkeypatch):

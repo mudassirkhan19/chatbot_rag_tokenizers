@@ -14,8 +14,6 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from html.parser import HTMLParser
 
-import httpx
-
 from .http import RateLimitedHttp
 from .snapshot import SnapshotStore, StoredResponse
 
@@ -152,15 +150,18 @@ class AclAnthologySource:
     def _fetch(self, acl_id: str, request: dict) -> StoredResponse:
         if self._http is None:
             self._http = RateLimitedHttp(MIN_INTERVAL_SECONDS)
-        try:
-            body = self._http.get(request["url"], request["params"])
-        except httpx.HTTPStatusError as error:
-            if error.response.status_code != 404:
-                raise
-            # Sources sometimes report an ACL ID the Anthology doesn't have; remember the miss.
+        response = self._http.response(request["url"], request["params"])
+        # Sources sometimes report an ACL ID the Anthology doesn't have, or the ID of a whole
+        # proceedings volume, which redirects to its volume page; remember either miss.
+        if response.status_code == 404:
             print(f"  acl-anthology: no paper {acl_id}", file=sys.stderr)
             body = NOT_FOUND
+        elif response.url.path.startswith("/volumes/"):
+            print(f"  acl-anthology: {acl_id} is a volume, not a paper", file=sys.stderr)
+            body = NOT_FOUND
         else:
+            response.raise_for_status()
+            body = response.text
             _parse_page(acl_id, body)  # never store a page that isn't this paper's
         collected_at = datetime.now(UTC).date().isoformat()
         return self.snapshot.save(request, body, collected_at)

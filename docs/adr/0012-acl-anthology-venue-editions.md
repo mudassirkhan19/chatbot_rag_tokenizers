@@ -1,7 +1,7 @@
 # 0012. ACL Anthology venue Editions
 
 - **Date:** 2026-10-16
-- **Status:** Accepted
+- **Status:** Accepted. A volume ID counts as no paper ([0017](0017-acl-volume-ids-count-as-no-paper.md)).
 
 ## Context
 Issue #6 asks for every Work with an ACL Anthology Edition to get a venue row of its own, with its venue, year, licence and PDF link taken from the Anthology. The dedup stage needs real preprint vs. venue duplicates to detect and measure, so the venue row must never be merged into the preprint. They may share only the external identifiers the sources recorded. After [0008](0008-semantic-scholar-keyword-discovery.md), a Semantic Scholar record with an arXiv ID becomes the preprint row and keeps the ACL ID only as an identifier. That leaves the venue Edition of most ACL papers that are also on arXiv (SentencePiece, Sennrich et al.'s subword NMT paper) without a row.
