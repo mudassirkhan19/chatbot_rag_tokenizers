@@ -55,7 +55,7 @@ def web(monkeypatch: pytest.MonkeyPatch) -> FakeWeb:
     """Stand in for the network: every HTTP request goes to an in-memory web, and rate-limit waits are skipped.
 
     It serves the pinned Versions of each included preprint, the ACL Anthology PDFs and some
-    open-access copies of venue Editions.
+    open-access locations of venue Editions.
     """
     fake = FakeWeb()
     for arxiv_id, versions in ARXIV_PDFS.items():
@@ -64,7 +64,7 @@ def web(monkeypatch: pytest.MonkeyPatch) -> FakeWeb:
     for acl_id in ["2020.findings-emnlp.414", "D18-2012", "P16-1162", "P18-1007"]:
         fake.serve(f"https://aclanthology.org/{acl_id}.pdf", pdf(acl_id))
     fake.serve("https://direct.mit.edu/tacl/article-pdf/doi/10.1162/tacl_a_00999/tacl_a_00999.pdf", pdf("tacl"))
-    # The first open-access copy of the LRM paper is gone; the second one serves it.
+    # The LRM Edition's first open-access location is gone; the second one serves its PDF.
     fake.serve("https://lrm.example.org/articles/7.pdf", pdf("lrm-7"))
     monkeypatch.setattr(httpx.HTTPTransport, "handle_request", lambda self, request: fake.handle(request))
     monkeypatch.setattr(time, "sleep", lambda seconds: None)
@@ -102,7 +102,7 @@ def test_multi_version_preprint_gets_v1_and_its_latest_version(fixture_snapshot,
     assert bpe["funnel_status"] == "full text"
 
 
-def test_venue_editions_get_their_acl_pdf_or_else_an_open_access_copy(fixture_snapshot, collected, web, tmp_path):
+def test_venue_editions_get_their_acl_pdf_or_else_an_open_access_pdf(fixture_snapshot, collected, web, tmp_path):
     pdfs = tmp_path / "pdfs"
     run_fetch(fixture_snapshot, collected, pdfs)
     rows = read_manifest(collected)
@@ -110,7 +110,7 @@ def test_venue_editions_get_their_acl_pdf_or_else_an_open_access_copy(fixture_sn
     assert (pdfs / "P16-1162.pdf").read_bytes() == pdf("P16-1162")
     assert rows["P16-1162"]["pdf_files"] == f"P16-1162.pdf {sha256(pdf('P16-1162'))}"
     assert rows["P16-1162"]["funnel_status"] == "full text"
-    # No ACL PDF: the first open-access copy that serves a PDF, here the second one.
+    # No ACL PDF: the first open-access location that serves a PDF, here the second one.
     assert rows["10.5555/lrm.2022.7"]["pdf_files"] == f"10.5555_lrm.2022.7.pdf {sha256(pdf('lrm-7'))}"
     assert rows["10.5555/lrm.2022.7"]["funnel_status"] == "full text"
     # The Anthology has no page for this ACL ID, so there is no PDF anywhere: the row stays, as no_fulltext.
@@ -119,7 +119,7 @@ def test_venue_editions_get_their_acl_pdf_or_else_an_open_access_copy(fixture_sn
 
 
 def test_only_pinned_files_of_included_editions_are_requested(fixture_snapshot, collected, web, tmp_path):
-    # An arXiv copy among a venue Edition's open-access links is the unversioned preprint: never fetched.
+    # An arXiv link among a venue Edition's open-access links is the unversioned preprint: never fetched.
     text = collected.read_text()
     tacl = "https://direct.mit.edu/tacl/article-pdf/doi/10.1162/tacl_a_00999/tacl_a_00999.pdf"
     collected.write_text(text.replace(tacl, f"https://arxiv.org/pdf/2301.99999|{tacl}"))
@@ -231,7 +231,7 @@ def test_a_file_that_could_not_be_fetched_is_a_failure_not_drift(fixture_snapsho
         run_fetch(fixture_snapshot, collected, pdfs)
 
     message = str(raised.value.code)
-    assert "2 files couldn't be fetched. Nothing was recorded for them, so a rerun tries again." in message
+    assert "2 files couldn't be fetched. Their record is unchanged, so a rerun tries again." in message
     assert "fetch failed: 1808.06226v2.pdf: https://export.arxiv.org/pdf/1808.06226v2: HTTP 503" in message
     assert "fetch failed: 2410.20771v3.pdf: https://export.arxiv.org/pdf/2410.20771v3: not a PDF" in message
     assert "upstream drift" not in message
@@ -262,7 +262,7 @@ def test_a_venue_edition_whose_open_access_links_all_fail_has_no_fulltext(fixtur
     assert tacl not in web.requested
 
 
-def test_an_unreachable_open_access_host_falls_through_to_the_next_copy(fixture_snapshot, collected, web, tmp_path):
+def test_an_unreachable_open_access_host_falls_through_to_the_next_location(fixture_snapshot, collected, web, tmp_path):
     web.unreachable.add("https://repo.example.edu/1234/lrm-7.pdf")
     web.unreachable.add("https://direct.mit.edu/tacl/article-pdf/doi/10.1162/tacl_a_00999/tacl_a_00999.pdf")
     with pytest.raises(SystemExit) as raised:
@@ -270,6 +270,49 @@ def test_an_unreachable_open_access_host_falls_through_to_the_next_copy(fixture_
 
     rows = read_manifest(collected)
     assert rows["10.5555/lrm.2022.7"]["funnel_status"] == "full text"
-    # With no other copy, an unreachable host is a failure to retry, never a recorded "no open PDF".
+    # With no other location, an unreachable host is a failure to retry, never a recorded "no open PDF".
     assert "fetch failed: 10.1162_TACL_A_00999.pdf: https://direct.mit.edu/" in str(raised.value.code)
     assert rows["10.1162/TACL_A_00999"]["funnel_status"] == "relevant"
+
+
+def test_a_throttled_host_is_a_failure_to_retry_not_a_missing_pdf(fixture_snapshot, collected, web, tmp_path):
+    tacl = "https://direct.mit.edu/tacl/article-pdf/doi/10.1162/tacl_a_00999/tacl_a_00999.pdf"
+    web.serve(tacl, b"Too Many Requests", status=429)
+    with pytest.raises(SystemExit) as raised:
+        run_fetch(fixture_snapshot, collected, tmp_path / "pdfs")
+
+    assert f"fetch failed: 10.1162_TACL_A_00999.pdf: {tacl}: HTTP 429" in str(raised.value.code)
+    assert read_manifest(collected)["10.1162/TACL_A_00999"]["funnel_status"] == "relevant"
+
+
+def test_a_preprint_pinned_to_a_newer_version_lists_only_its_pinned_files(fixture_snapshot, collected, web, tmp_path):
+    pdfs = tmp_path / "pdfs"
+    run_fetch(fixture_snapshot, collected, pdfs)
+    # A refreshed Snapshot finds v4 of the BPE paper.
+    text = collected.read_text().replace("2004.03720v3", "2004.03720v4")
+    collected.write_text(text.replace("v3 2021-01-10T09:00:00Z", "v3 2021-01-10T09:00:00Z|v4 2022-02-02T00:00:00Z"))
+    rows = read_manifest(collected)
+    assert rows["2004.03720v4"]["versions"].endswith("|v4 2022-02-02T00:00:00Z")
+
+    run_fetch(fixture_snapshot, collected, pdfs, "--limit", "0")
+    bpe = read_manifest(collected)["2004.03720v4"]
+    assert bpe["pdf_files"] == f"2004.03720v1.pdf {sha256(pdf('2004.03720v1'))}"
+    assert bpe["funnel_status"] == "relevant"
+
+    web.serve("https://export.arxiv.org/pdf/2004.03720v4", pdf("2004.03720v4"))
+    run_fetch(fixture_snapshot, collected, pdfs)
+    assert read_manifest(collected)["2004.03720v4"]["funnel_status"] == "full text"
+
+
+def test_a_venue_edition_with_a_new_source_is_tried_again(fixture_snapshot, collected, web, tmp_path):
+    tacl = "https://direct.mit.edu/tacl/article-pdf/doi/10.1162/tacl_a_00999/tacl_a_00999.pdf"
+    web.serve(tacl, b"<html>Sign in</html>", status=403)
+    pdfs = tmp_path / "pdfs"
+    run_fetch(fixture_snapshot, collected, pdfs)
+    assert read_manifest(collected)["10.1162/TACL_A_00999"]["funnel_status"] == "no_fulltext"
+
+    # A refreshed Snapshot lists another open-access location.
+    collected.write_text(collected.read_text().replace(tacl, f"{tacl}|https://repo.example.edu/tacl-999.pdf"))
+    web.serve("https://repo.example.edu/tacl-999.pdf", pdf("tacl"))
+    run_fetch(fixture_snapshot, collected, pdfs)
+    assert read_manifest(collected)["10.1162/TACL_A_00999"]["funnel_status"] == "full text"

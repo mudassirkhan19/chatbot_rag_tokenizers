@@ -2,7 +2,7 @@
 
 An arXiv preprint gets its latest Version, plus v1 when it has several, always from a versioned
 ``export.arxiv.org`` URL. A venue Edition gets its ACL Anthology PDF, or else the first of its
-OpenAlex open-access copies that serves a PDF. The sha256 of every file is kept in a committed
+OpenAlex open-access locations that serves a PDF. The sha256 of every file is kept in a committed
 record in the Snapshot (``fulltext/pdfs.jsonl``), so `collect` rebuilds the manifest's file
 columns and funnel status without the PDFs, and a re-download is checked against it. The PDFs
 themselves are never committed.
@@ -28,6 +28,7 @@ ARXIV_PDF_URL = "https://export.arxiv.org/pdf/{}"  # arXiv asks harvesters to us
 ARXIV_MIN_INTERVAL_SECONDS = 3.0  # arXiv's terms of use: one request every three seconds
 OTHER_MIN_INTERVAL_SECONDS = 1.0  # the ACL Anthology and open-access hosts publish no limit
 GONE_STATUS = {404, 410}
+RETRY_LATER_STATUS = {408, 429}  # the host is busy, not refusing
 
 
 @dataclass(frozen=True)
@@ -48,7 +49,7 @@ class FetchedFile:
     sha256: str
     size: int
     fetched_at: str
-    unavailable: str = ""  # why no source served a PDF; empty for a fetched file
+    unavailable: str = ""  # why no source served a PDF; empty for a fetched file. ``url`` then lists the sources tried.
 
 
 class FetchError(RuntimeError):
@@ -64,6 +65,8 @@ class FetchFailed(FetchError):
 
 
 class FetchErrors(RuntimeError):
+    """Every file a run couldn't fetch, upstream drift first, worded for the person running it."""
+
     def __init__(self, errors: list[FetchError]) -> None:
         self.errors = errors
         drift = [e for e in errors if isinstance(e, UpstreamDrift)]
@@ -71,20 +74,20 @@ class FetchErrors(RuntimeError):
         lines = []
         if drift:
             lines.append(
-                f"{_files(len(drift))} changed upstream since the record was made. This is upstream drift,"
+                f"{_count_files(len(drift))} changed upstream since the record was made. This is upstream drift,"
                 " not a pipeline failure. To re-pin a file to what its source serves now, delete its line from"
                 " the record and fetch again."
             )
             lines += [f"  upstream drift: {e}" for e in drift]
         if failed:
             lines.append(
-                f"{_files(len(failed), pinned=False)} couldn't be fetched. Nothing was recorded for them, so a rerun tries again."
+                f"{_count_files(len(failed), pinned=False)} couldn't be fetched. Their record is unchanged, so a rerun tries again."
             )
             lines += [f"  fetch failed: {e}" for e in failed]
         super().__init__("\n".join(lines))
 
 
-def _files(count: int, pinned: bool = True) -> str:
+def _count_files(count: int, pinned: bool = True) -> str:
     noun = "pinned file" if pinned else "file"
     return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
 
@@ -101,11 +104,24 @@ class FulltextRecord:
                     entry = FetchedFile(**json.loads(line))
                     self._entries[entry.edition_id, entry.file] = entry
 
-    def get(self, edition_id: str, file: str) -> FetchedFile | None:
-        return self._entries.get((edition_id, file))
+    def get(self, file: str) -> FetchedFile | None:
+        """The fetched file by name. The name is the pinned id, so it stays the same when an Edition is re-pinned."""
+        return next((entry for (_, name), entry in self._entries.items() if name == file), None) if file else None
 
     def entries(self, edition_id: str) -> list[FetchedFile]:
         return [entry for key, entry in sorted(self._entries.items()) if key[0] == edition_id]
+
+    def has_no_open_pdf(self, edition_id: str, pinned: list[PinnedFile]) -> bool:
+        """Whether every source the Edition is pinned to was tried and none served a PDF.
+
+        A source added since, say by a refreshed Snapshot, makes it worth trying again.
+        """
+        return any(
+            entry.unavailable and entry.url == _sources(file)
+            for file in pinned
+            for entry in self.entries(edition_id)
+            if not entry.file
+        )
 
     def put(self, entry: FetchedFile) -> None:
         self._entries[entry.edition_id, entry.file] = entry
@@ -133,10 +149,14 @@ def pinned_files(row: dict[str, str]) -> list[PinnedFile]:
             PinnedFile(_file_name(f"{row['arxiv_id']}{v}"), (ARXIV_PDF_URL.format(f"{row['arxiv_id']}{v}"),))
             for v in pinned
         ]
-    # An arXiv copy among a venue Edition's open-access links is the preprint, a different Edition.
+    # An arXiv link among a venue Edition's open-access links is the preprint, a different Edition.
     urls = [row["pdf_link"]] if row["pdf_link"] else []
     urls += [url for url in row["oa_pdf_urls"].split("|") if url and not _is_arxiv(url)]
     return [PinnedFile(_file_name(row["edition_id"]), tuple(dict.fromkeys(urls)))] if urls else []
+
+
+def _sources(file: PinnedFile) -> str:
+    return "|".join(file.urls)
 
 
 def _is_arxiv(url: str) -> bool:
@@ -151,14 +171,15 @@ def apply_record(rows: list[dict[str, str]], record: FulltextRecord) -> None:
     ``no_fulltext`` when it has no open PDF source or none of its sources served a PDF.
     """
     for row in rows:
-        entries = record.entries(row["edition_id"])
-        row["pdf_files"] = "|".join(f"{entry.file} {entry.sha256}" for entry in entries if entry.file)
+        pinned = pinned_files(row)
+        # A file the row is no longer pinned to, such as an older latest Version, stays in the record but not here.
+        entries = [entry for file in pinned if (entry := record.get(file.name))]
+        row["pdf_files"] = "|".join(f"{entry.file} {entry.sha256}" for entry in entries)
         if row["relevance_verdict"] != "included":
             continue
-        pinned = pinned_files(row)
-        if not pinned or any(entry.unavailable for entry in entries):
+        if not pinned or record.has_no_open_pdf(row["edition_id"], pinned):
             row["funnel_status"] = "no_fulltext"
-        elif all(record.get(row["edition_id"], file.name) for file in pinned):
+        elif len(entries) == len(pinned):
             row["funnel_status"] = "full text"
         else:
             row["funnel_status"] = "relevant"
@@ -246,13 +267,13 @@ def _fetch_new(downloader: _Downloader, edition_id: str, kind: str, pinned: Pinn
             return FetchedFile(
                 edition_id, pinned.name, url, _sha256(response.content), len(response.content), _today()
             )
-        if response.status_code >= 500 or kind == "arxiv-preprint":
+        if response.status_code >= 500 or response.status_code in RETRY_LATER_STATUS or kind == "arxiv-preprint":
             failed.append(f"{url}: {_describe(response)}")
         else:
             refused.append(f"{url}: {_describe(response)}")
     if failed:
         raise FetchFailed(f"{pinned.name}: {'; '.join(failed + refused)}")
-    return FetchedFile(edition_id, "", "", "", 0, _today(), unavailable="; ".join(refused))
+    return FetchedFile(edition_id, "", _sources(pinned), "", 0, _today(), unavailable="; ".join(refused))
 
 
 def _today() -> str:
@@ -265,6 +286,10 @@ def read_manifest(path: Path) -> list[dict[str, str]]:
         if reader.fieldnames != COLUMNS:
             raise SystemExit(f"{path} has different columns from this version of the pipeline; run `collect` first")
         return list(reader)
+
+
+class _LimitReached(Exception):
+    """Raised to stop a run once ``--limit`` files have been downloaded."""
 
 
 def fetch(snapshot_dir: Path, manifest_path: Path, pdf_dir: Path, limit: int | None = None) -> None:
@@ -284,16 +309,19 @@ def fetch(snapshot_dir: Path, manifest_path: Path, pdf_dir: Path, limit: int | N
     try:
         for row in included:
             edition_id = row["edition_id"]
-            if any(entry.unavailable for entry in record.entries(edition_id)):
+            files = pinned_files(row)
+            if record.has_no_open_pdf(edition_id, files):
                 continue
-            for pinned in pinned_files(row):
+            for pinned in files:
                 path = pdf_dir / pinned.name
-                entry = record.get(edition_id, pinned.name)
+                entry = record.get(pinned.name)
                 if entry and path.exists() and _sha256(path.read_bytes()) == entry.sha256:
                     continue
                 if limit is not None and downloads >= limit:
                     raise _LimitReached
                 downloads += 1
+                if downloads % 50 == 0:
+                    print(f"  fetch: {downloads} files downloaded", file=sys.stderr)
                 try:
                     if entry:
                         _refetch(downloader, entry, path)
@@ -304,8 +332,6 @@ def fetch(snapshot_dir: Path, manifest_path: Path, pdf_dir: Path, limit: int | N
                     print(f"fetch: {error}", file=sys.stderr)
                     errors.append(error)
                     break
-            if downloads and downloads % 50 == 0:
-                print(f"  fetch: {downloads} files downloaded", file=sys.stderr)
     except _LimitReached:
         print(f"fetch: stopped at the limit of {limit} downloads", file=sys.stderr)
     finally:
@@ -315,7 +341,3 @@ def fetch(snapshot_dir: Path, manifest_path: Path, pdf_dir: Path, limit: int | N
     report(rows)
     if errors:
         raise FetchErrors(errors)
-
-
-class _LimitReached(Exception):
-    pass
