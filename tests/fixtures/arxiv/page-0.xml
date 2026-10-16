@@ -57,7 +57,7 @@
     <published>2022-10-17T00:00:00Z</published>
     <title>Token Merging: Your ViT But Faster</title>
     <summary>We introduce Token Merging, which combines similar visual tokens in a
-      vision transformer, a form of dynamic tokenization of images.</summary>
+      vision transformer to speed it up.</summary>
     <author><name>Daniel Bolya</name></author>
     <link href="http://arxiv.org/abs/2210.09461v3" rel="alternate" type="text/html"/>
     <link title="pdf" href="http://arxiv.org/pdf/2210.09461v3" rel="related" type="application/pdf"/>

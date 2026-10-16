@@ -33,16 +33,16 @@
     <category term="q-fin.GN"/>
   </entry>
   <entry>
-    <id>http://arxiv.org/abs/2004.03720v2</id>
-    <updated>2020-10-05T00:00:00Z</updated>
+    <id>http://arxiv.org/abs/2004.03720v3</id>
+    <updated>2021-01-10T00:00:00Z</updated>
     <published>2020-04-07T00:00:00Z</published>
     <title>Byte Pair Encoding is Suboptimal for Language Model Pretraining</title>
     <summary>We analyze differences between unigram LM tokenization and byte-pair
       encoding (BPE) for pretraining.</summary>
     <author><name>Kaj Bostrom</name></author>
     <author><name>Greg Durrett</name></author>
-    <link href="http://arxiv.org/abs/2004.03720v2" rel="alternate" type="text/html"/>
-    <link title="pdf" href="http://arxiv.org/pdf/2004.03720v2" rel="related" type="application/pdf"/>
+    <link href="http://arxiv.org/abs/2004.03720v3" rel="alternate" type="text/html"/>
+    <link title="pdf" href="http://arxiv.org/pdf/2004.03720v3" rel="related" type="application/pdf"/>
     <arxiv:primary_category term="cs.CL"/>
     <category term="cs.CL"/>
   </entry>

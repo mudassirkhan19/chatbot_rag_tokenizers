@@ -7,7 +7,6 @@ Terms of use: at most one request every three seconds, one connection at a time.
 import re
 import sys
 import xml.etree.ElementTree as ET
-from collections.abc import Callable
 from datetime import UTC, datetime
 
 from .editions import Edition
@@ -66,16 +65,10 @@ def _parse_page(body: str) -> tuple[int, list[Edition]]:
 
 
 class ArxivSource:
-    def __init__(
-        self,
-        snapshot: SnapshotStore,
-        page_size: int,
-        http_factory: Callable[[], RateLimitedHttp] = lambda: RateLimitedHttp(MIN_INTERVAL_SECONDS),
-    ) -> None:
+    def __init__(self, snapshot: SnapshotStore, page_size: int) -> None:
         self.snapshot = snapshot
         self.page_size = page_size
-        self._http_factory = http_factory
-        self._http: RateLimitedHttp | None = None
+        self._http: RateLimitedHttp | None = None  # created on the first Snapshot miss
 
     def _request(self, query: str, start: int) -> dict:
         # Ascending submission date keeps earlier pages stable while new papers arrive at the end.
@@ -100,20 +93,28 @@ class ArxivSource:
 
     def _fetch(self, request: dict, start: int) -> StoredResponse:
         if self._http is None:
-            self._http = self._http_factory()
-        for _ in range(EMPTY_PAGE_RETRIES):
-            print(f"  arxiv: fetching results {start}+ for {request['params']['search_query']!r}", file=sys.stderr)
+            self._http = RateLimitedHttp(MIN_INTERVAL_SECONDS)
+        for attempt in range(1, EMPTY_PAGE_RETRIES + 1):
+            print(f"  arxiv: fetching entries {start}+ for {request['params']['search_query']!r}", file=sys.stderr)
             body = self._http.get(request["url"], request["params"])
             total, editions = _parse_page(body)
-            # arXiv sometimes returns an empty page mid-query; never store one as if it were the answer.
-            if editions or start >= total:
+            # arXiv sometimes returns an empty page, even "0 total" for a query that has matches.
+            # Never store one as if it were the answer: retry, and accept an empty first page
+            # only once it has come back empty every time.
+            genuinely_empty = start == 0 and total == 0 and attempt == EMPTY_PAGE_RETRIES
+            if editions or (0 < total <= start) or genuinely_empty:
                 collected_at = datetime.now(UTC).date().isoformat()
                 return self.snapshot.save(request, body, collected_at)
         raise ArxivError(f"arXiv kept returning an empty page at start={start} of {total}")
 
     def search(self, query: str) -> list[Edition]:
-        """All results for ``query``, in API order, possibly with repeats across pages."""
+        """Every Edition ``query`` finds, in API order, possibly with repeats across pages."""
         total, editions = self._page(query, 0)
+        if total > MAX_RESULTS_PER_QUERY:
+            print(
+                f"  arxiv: {query!r} matches {total} entries; the API stops at {MAX_RESULTS_PER_QUERY}, narrow the query",
+                file=sys.stderr,
+            )
         for start in range(self.page_size, min(total, MAX_RESULTS_PER_QUERY), self.page_size):
             editions.extend(self._page(query, start)[1])
         return editions

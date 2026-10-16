@@ -8,10 +8,10 @@ arXiv is the first source wired end to end. Its API ([user manual](https://info.
 
 ## Decision
 - **Endpoint:** `https://export.arxiv.org/api/query`, using `search_query` with field prefixes (`ti:`, `abs:`, `cat:`) and boolean operators.
-- **Paging:** 500 results per call, sorted by `submittedDate` **ascending**. New papers then land at the end of the result list, so earlier pages stay stable between runs. Paging stops at the reported total or at 30,000.
+- **Paging:** 500 entries per call, sorted by `submittedDate` **ascending**. New papers then land at the end of the list, so earlier pages stay stable between runs. Paging stops at the reported total, or at 30,000 with a warning to narrow the query.
 - **Rate limit:** at least 3 s between requests, one at a time, with exponential backoff (honouring `Retry-After`) on 429, 5xx and connection errors. Requests carry a User-Agent that names the project.
-- **Empty pages:** arXiv sometimes returns an empty page in the middle of a query. A page with no entries before the reported total is retried and never stored, so a transient glitch can't become part of the Snapshot.
-- **Edition ids:** the feed's id includes the Version (`2004.03720v2`). That pinned id is the Edition id, and the unversioned id is kept as `arxiv_id`. Old-style ids (`hep-th/9901001v1`) are handled the same way.
+- **Empty pages:** arXiv sometimes returns an empty page, sometimes even reporting zero total matches. An empty page is retried and never stored, so a transient glitch can't become part of the Snapshot. An empty first page is stored only after it has come back empty on every retry, which means the query really matches nothing.
+- **Edition ids:** the feed's id includes the Version (`2004.03720v2`). That pinned id is the Edition id, and the unversioned id is kept as `arxiv_id`. Old-style ids (`hep-th/9901001v1`) are handled the same way. If a preprint is revised between two page fetches, it appears under two Versions. It is still one Edition, pinned to the newest Version seen.
 - **Kept fields:** title, abstract (used by the rules, not written to the manifest), authors, the v1 submission year, comments, journal reference and DOI.
 - **Queries live in `config/scope.toml`**, each tagged with a scope topic.
 
@@ -22,5 +22,5 @@ arXiv is the first source wired end to end. Its API ([user manual](https://info.
 - **Prior work (research-bot):** it uses the plain-HTTP endpoint, sorts by descending date or relevance, and restricts queries to the last few months. We need the whole history (the spec has no date floor) and stable pages, so we sort ascending and use no date window. Like research-bot, we keep the comments field, since venue information often appears only there.
 
 ## Consequences
-- The first query takes about 20 s for about 3.3k results.
-- arXiv's search stems terms, so `ti:tokenizer` also matches titles that only contain "token" (token-level labelling, token swapping). About two thirds of the first query's results are off-topic for that reason. The rule pre-filter ([0005](0005-rule-pre-filter.md)) rejects them cheaply, and the reason is visible in the manifest.
+- The first query takes about 20 s for about 3.3k Candidates.
+- arXiv's search stems terms, so `ti:tokenizer` also matches titles that only contain "token" (token-level labelling, token swapping). About two thirds of the first query's Candidates are off-topic for that reason. The rule pre-filter ([0005](0005-rule-pre-filter.md)) rejects them cheaply, and the reason is visible in the manifest.

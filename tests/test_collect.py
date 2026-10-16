@@ -34,10 +34,10 @@ def test_manifest_has_one_row_per_edition(fixture_snapshot, no_network, tmp_path
     run_collect(fixture_snapshot, manifest)
 
     rows = read_manifest(manifest)
-    # The BPE paper appears on both pages but is one Edition.
+    # The BPE paper appears on both pages, revised in between: one Edition, pinned to the newer Version.
     assert sorted(rows) == [
         "1808.06226v1",
-        "2004.03720v2",
+        "2004.03720v3",
         "2210.09461v3",
         "2402.00001v1",
         "2403.00002v2",
@@ -45,13 +45,13 @@ def test_manifest_has_one_row_per_edition(fixture_snapshot, no_network, tmp_path
         "hep-th/9901001v1",
     ]
 
-    bpe = rows["2004.03720v2"]
+    bpe = rows["2004.03720v3"]
     assert bpe["edition_kind"] == "arxiv-preprint"
     assert bpe["title"] == "Byte Pair Encoding is Suboptimal for Language Model Pretraining"
     assert bpe["authors"] == "Kaj Bostrom; Greg Durrett"
     assert bpe["year"] == "2020"
     assert bpe["arxiv_id"] == "2004.03720"
-    assert bpe["source_link"] == "https://arxiv.org/abs/2004.03720v2"
+    assert bpe["source_link"] == "https://arxiv.org/abs/2004.03720v3"
     assert bpe["discovery_channels"] == "arxiv:tokenizer-titles"
     assert bpe["rule_outcome"] == "pass"
     assert bpe["relevance_verdict"] == "pending"
@@ -71,6 +71,7 @@ def test_rule_rejected_candidates_keep_their_row(fixture_snapshot, no_network, t
     run_collect(fixture_snapshot, manifest)
     rows = read_manifest(manifest)
 
+    # Token Merging has no required term either; the exclusion that names it is reported.
     expected_rejections = {
         "2210.09461v3": "token-reduction",
         "2402.00001v1": "kv-cache",
@@ -87,7 +88,7 @@ def test_rule_rejected_candidates_keep_their_row(fixture_snapshot, no_network, t
         assert row["funnel_status"] == "discovered", edition_id
 
     # "Token merging" is an exclusion, but a byte-level title keeps it in.
-    for edition_id in ["1808.06226v1", "2004.03720v2", "2410.20771v3"]:
+    for edition_id in ["1808.06226v1", "2004.03720v3", "2410.20771v3"]:
         assert rows[edition_id]["rule_outcome"] == "pass"
         assert rows[edition_id]["rule_pattern"] == ""
         assert rows[edition_id]["relevance_stage"] == ""

@@ -78,7 +78,7 @@ pattern = 'kv[- ]?cache'
 
 [[rules.exclude]]
 name = "crypto-assets"
-pattern = 'blockchain|crypto ?currenc|cryptoasset|\bnfts?\b|erc-?20|defi\b|stablecoin|asset tokeni[sz]ation|tokeni[sz]ed (assets?|securities)'
+pattern = 'blockchain|crypto ?currenc|cryptoasset|\bnfts?\b|erc-?20|\bdefi\b|stablecoin|asset tokeni[sz]ation|tokeni[sz]ed (assets?|securities)'
 
 [[rules.exclude]]
 name = "other-modality-tokenizer"
