@@ -3,6 +3,7 @@
 
 import sys
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -14,6 +15,7 @@ from .config import ScopeConfig, is_citation_channel, is_keyword_channel
 from .editions import Edition, combine
 from .judge import JudgeVerdict, VerdictCache, prompt_hash
 from .manifest import manifest_row, write_manifest
+from .openalex import OpenAlexSource
 from .rules import RuleFilter, RuleOutcome
 from .semantic_scholar import SemanticScholarSource
 from .snapshot import SnapshotStore
@@ -74,7 +76,7 @@ def discover(config: ScopeConfig, sources: dict[str, KeywordSource], seed_source
     full arXiv record.
     """
     index = _EditionIndex()
-    for query in config.queries:
+    for query in config.enabled_queries():
         found = sources[query.source].search(query.query)
         for edition in found:
             edition.discovery_channels.add(query.discovery_channel)
@@ -225,6 +227,42 @@ def _report_expansion(rows: list[dict[str, str]]) -> None:
     )
 
 
+def _source_of(channel: str) -> str:
+    """The source a Discovery channel searched; a Seed and its citation hops count as "seeds"."""
+    return channel.partition(":")[0] if is_keyword_channel(channel) else "seeds"
+
+
+def _report_found_by(
+    editions: list[Edition], rows: dict[str, dict[str, str]], kind: str, group: Callable[[str], str]
+) -> None:
+    """Print, per Discovery channel or source, how many Editions it found and what only it found.
+
+    The Editions no other channel or source found are its added value, so their rule passes,
+    inclusions and still-pending verdicts are counted too.
+    """
+    found: Counter[str] = Counter()
+    alone: Counter[str] = Counter()
+    passed: Counter[str] = Counter()
+    included: Counter[str] = Counter()
+    pending: Counter[str] = Counter()
+    for edition in editions:
+        groups = {group(channel) for channel in edition.discovery_channels}
+        found.update(groups)
+        if len(groups) == 1:
+            (name,) = groups
+            row = rows[edition.edition_id]
+            alone[name] += 1
+            passed[name] += row["rule_outcome"] == "pass"
+            included[name] += row["relevance_verdict"] == "included"
+            pending[name] += row["relevance_verdict"] == "pending"
+    for name in sorted(found):
+        print(
+            f"  {name}: {found[name]} Editions, {alone[name]} found by no other {kind}"
+            f" ({passed[name]} pass the rules, {included[name]} included, {pending[name]} pending)",
+            file=sys.stderr,
+        )
+
+
 @dataclass(frozen=True)
 class Assessed:
     """A Candidate with both stages of its Relevance verdict: the rule outcome and, if it passed, the judge's."""
@@ -242,7 +280,8 @@ def assess(config: ScopeConfig, snapshot_dir: Path, refresh: bool = False, run_j
     snapshot = SnapshotStore(snapshot_dir)
     arxiv = ArxivSource(snapshot, page_size=config.arxiv_page_size)
     s2 = SemanticScholarSource(snapshot, fields_of_study=config.s2_fields_of_study)
-    editions = discover(config, {"arxiv": arxiv, "semantic-scholar": s2}, s2)
+    openalex = OpenAlexSource(snapshot)
+    editions = discover(config, {"arxiv": arxiv, "semantic-scholar": s2, "openalex": openalex}, s2)
     # Before the rules, so ACL Editions get a Relevance verdict like every other row.
     add_acl_editions(editions, AclAnthologySource(snapshot))
     rules = RuleFilter(config)
@@ -268,10 +307,10 @@ def collect(
 
     rejected = Counter(row["rule_pattern"] for row in rows if row["rule_outcome"] == "reject")
     print(f"discover: {len(rows)} Editions", file=sys.stderr)
-    per_channel = Counter(channel for edition in editions for channel in edition.discovery_channels)
-    only_here = Counter(next(iter(e.discovery_channels)) for e in editions if len(e.discovery_channels) == 1)
-    for channel in sorted(per_channel):
-        print(f"  {channel}: {per_channel[channel]} Editions, {only_here[channel]} found by no other channel", file=sys.stderr)
+    by_id = {row["edition_id"]: row for row in rows}
+    _report_found_by(editions, by_id, "channel", lambda channel: channel)
+    print("discover: by source", file=sys.stderr)
+    _report_found_by(editions, by_id, "source", _source_of)
     _report_expansion(rows)
     print(f"rules: {len(rows) - rejected.total()} passed, {rejected.total()} rejected", file=sys.stderr)
     for pattern, count in sorted(rejected.items()):

@@ -18,6 +18,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0011](0011-audit-set-and-relevance-metrics.md) | Audit set sampling and relevance metrics | Accepted |
 | [0012](0012-acl-anthology-venue-editions.md) | ACL Anthology venue Editions from per-paper pages | Accepted |
 | [0013](0013-working-worktrees.md) | Fully working worktrees for parallel work | Accepted |
+| [0014](0014-openalex-discovery-channel.md) | OpenAlex as a separate, switchable Discovery channel | Accepted |
 
 ## Template
 

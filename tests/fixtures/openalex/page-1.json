@@ -1,0 +1,70 @@
+{
+  "meta": {"count": 4, "per_page": 100, "next_cursor": null},
+  "results": [
+    {
+      "id": "https://openalex.org/W4300000102",
+      "doi": "https://doi.org/10.1162/tacl_a_00999",
+      "ids": {"openalex": "https://openalex.org/W4300000102", "doi": "https://doi.org/10.1162/tacl_a_00999"},
+      "title": "Subword Vocabularies Across Languages",
+      "publication_year": 2023,
+      "type": "article",
+      "authorships": [{"author_position": "first", "author": {"id": "https://openalex.org/A5", "display_name": "A. Linguist"}}],
+      "abstract_inverted_index": null,
+      "primary_location": {
+        "id": "doi:10.1162/tacl_a_00999",
+        "landing_page_url": "https://doi.org/10.1162/tacl_a_00999",
+        "pdf_url": "https://direct.mit.edu/tacl/article-pdf/doi/10.1162/tacl_a_00999/tacl_a_00999.pdf",
+        "is_oa": true,
+        "version": "publishedVersion",
+        "source": {"display_name": "Transactions of the Association for Computational Linguistics", "type": "journal"}
+      },
+      "locations": [
+        {
+          "id": "doi:10.1162/tacl_a_00999",
+          "landing_page_url": "https://doi.org/10.1162/tacl_a_00999",
+          "pdf_url": "https://direct.mit.edu/tacl/article-pdf/doi/10.1162/tacl_a_00999/tacl_a_00999.pdf",
+          "is_oa": true,
+          "version": "publishedVersion",
+          "source": {"display_name": "Transactions of the Association for Computational Linguistics", "type": "journal"}
+        }
+      ],
+      "best_oa_location": {
+        "id": "doi:10.1162/tacl_a_00999",
+        "landing_page_url": "https://doi.org/10.1162/tacl_a_00999",
+        "pdf_url": "https://direct.mit.edu/tacl/article-pdf/doi/10.1162/tacl_a_00999/tacl_a_00999.pdf",
+        "is_oa": true,
+        "version": "publishedVersion",
+        "source": {"display_name": "Transactions of the Association for Computational Linguistics", "type": "journal"}
+      }
+    },
+    {
+      "id": "https://openalex.org/W4400000103",
+      "doi": null,
+      "ids": {"openalex": "https://openalex.org/W4400000103"},
+      "title": "Tokenized Real Estate on the Blockchain",
+      "publication_year": 2024,
+      "type": "article",
+      "authorships": [],
+      "abstract_inverted_index": {"Asset": [0], "tokenization": [1], "on": [2], "public": [3], "ledgers.": [4]},
+      "primary_location": {
+        "id": "mag:4400000103",
+        "landing_page_url": "https://ledger.example.com/103",
+        "pdf_url": null,
+        "is_oa": false,
+        "version": null,
+        "source": null
+      },
+      "locations": [
+        {
+          "id": "mag:4400000103",
+          "landing_page_url": "https://ledger.example.com/103",
+          "pdf_url": null,
+          "is_oa": false,
+          "version": null,
+          "source": null
+        }
+      ],
+      "best_oa_location": null
+    }
+  ]
+}

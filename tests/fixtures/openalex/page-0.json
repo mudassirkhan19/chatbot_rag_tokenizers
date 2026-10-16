@@ -1,0 +1,99 @@
+{
+  "meta": {"count": 4, "per_page": 100, "next_cursor": "FIXTURE-CURSOR-1"},
+  "results": [
+    {
+      "id": "https://openalex.org/W4200000100",
+      "doi": "https://doi.org/10.5555/lrm.2022.7",
+      "ids": {"openalex": "https://openalex.org/W4200000100", "doi": "https://doi.org/10.5555/lrm.2022.7"},
+      "title": "Unigram Tokenization for Morphologically Rich Languages",
+      "publication_year": 2022,
+      "type": "article",
+      "authorships": [
+        {"author_position": "first", "author": {"id": "https://openalex.org/A1", "display_name": "Ayşe Yılmaz"}},
+        {"author_position": "last", "author": {"id": "https://openalex.org/A2", "display_name": "Juan  Pérez"}}
+      ],
+      "abstract_inverted_index": {"We": [0], "compare": [1], "subword": [2], "tokenization": [3, 8], "for": [4], "morphologically": [5], "rich": [6], "languages:": [7], "Unigram": [9], "wins.": [10]},
+      "primary_location": {
+        "id": "doi:10.5555/lrm.2022.7",
+        "landing_page_url": "https://doi.org/10.5555/lrm.2022.7",
+        "pdf_url": "https://lrm.example.org/articles/7.pdf",
+        "is_oa": true,
+        "version": "publishedVersion",
+        "source": {"display_name": "Journal of Low-Resource Morphology", "type": "journal"}
+      },
+      "locations": [
+        {
+          "id": "doi:10.5555/lrm.2022.7",
+          "landing_page_url": "https://doi.org/10.5555/lrm.2022.7",
+          "pdf_url": "https://lrm.example.org/articles/7.pdf",
+          "is_oa": true,
+          "version": "publishedVersion",
+          "source": {"display_name": "Journal of Low-Resource Morphology", "type": "journal"}
+        },
+        {
+          "id": "pmh:oai:repo.example.edu:1234",
+          "landing_page_url": "https://repo.example.edu/1234",
+          "pdf_url": "https://repo.example.edu/1234/lrm-7.pdf",
+          "is_oa": true,
+          "version": "acceptedVersion",
+          "source": {"display_name": "Example University Repository", "type": "repository"}
+        },
+        {
+          "id": "mag:4200000100",
+          "landing_page_url": "https://paywalled.example.com/lrm-7",
+          "pdf_url": "https://paywalled.example.com/lrm-7.pdf",
+          "is_oa": false,
+          "version": "publishedVersion",
+          "source": null
+        }
+      ],
+      "best_oa_location": {
+        "id": "pmh:oai:repo.example.edu:1234",
+        "landing_page_url": "https://repo.example.edu/1234",
+        "pdf_url": "https://repo.example.edu/1234/lrm-7.pdf",
+        "is_oa": true,
+        "version": "acceptedVersion",
+        "source": {"display_name": "Example University Repository", "type": "repository"}
+      }
+    },
+    {
+      "id": "https://openalex.org/W3000000101",
+      "doi": "https://doi.org/10.48550/arxiv.2004.03720",
+      "ids": {"openalex": "https://openalex.org/W3000000101", "doi": "https://doi.org/10.48550/arxiv.2004.03720"},
+      "title": "Byte Pair Encoding is Suboptimal for Language Model Pretraining",
+      "publication_year": 2020,
+      "type": "preprint",
+      "authorships": [
+        {"author_position": "first", "author": {"id": "https://openalex.org/A3", "display_name": "Kaj Bostrom"}},
+        {"author_position": "last", "author": {"id": "https://openalex.org/A4", "display_name": "Greg Durrett"}}
+      ],
+      "abstract_inverted_index": {"The": [0], "success": [1], "of": [2], "pretrained": [3], "transformer": [4], "language": [5], "models": [6]},
+      "primary_location": {
+        "id": "pmh:oai:arXiv.org:2004.03720",
+        "landing_page_url": "http://arxiv.org/abs/2004.03720",
+        "pdf_url": "https://arxiv.org/pdf/2004.03720",
+        "is_oa": true,
+        "version": "submittedVersion",
+        "source": {"display_name": "arXiv (Cornell University)", "type": "repository"}
+      },
+      "locations": [
+        {
+          "id": "pmh:oai:arXiv.org:2004.03720",
+          "landing_page_url": "http://arxiv.org/abs/2004.03720",
+          "pdf_url": "https://arxiv.org/pdf/2004.03720",
+          "is_oa": true,
+          "version": "submittedVersion",
+          "source": {"display_name": "arXiv (Cornell University)", "type": "repository"}
+        }
+      ],
+      "best_oa_location": {
+        "id": "pmh:oai:arXiv.org:2004.03720",
+        "landing_page_url": "http://arxiv.org/abs/2004.03720",
+        "pdf_url": "https://arxiv.org/pdf/2004.03720",
+        "is_oa": true,
+        "version": "submittedVersion",
+        "source": {"display_name": "arXiv (Cornell University)", "type": "repository"}
+      }
+    }
+  ]
+}

@@ -150,6 +150,19 @@ source = "semantic-scholar"
 topic = "vocabulary-adaptation"
 query = '"vocabulary adaptation" | "vocabulary expansion" | "vocabulary extension" | "vocabulary transfer" | "vocabulary trimming" | "tokenizer transfer" | "tokenizer adaptation" | "zero-shot tokenizer" | (("embedding initialization" | "embedding initialisation") + (vocabulary | tokenizer))'
 
+[sources.openalex]
+# A separate Discovery channel, so what it adds can be measured; `enabled = false` skips its
+# queries. Fetching needs a free key in OPENALEX_API_KEY; a rerun from the Snapshot doesn't.
+enabled = true
+
+# The Semantic Scholar phrases in OpenAlex's syntax: uppercase OR, matched against title and
+# abstract, stemmed (about 1,540 works).
+[[queries]]
+id = "openalex-subword-phrases"
+source = "openalex"
+topic = "subword-algorithms"
+query = '"subword tokenization" OR "subword tokenizer" OR "byte pair encoding" OR "byte-pair encoding" OR wordpiece OR sentencepiece OR "tokenizer free" OR "tokenization free"'
+
 # Seeds: hand-picked landmark Works. Each one adds its own record, the papers it cites and the
 # papers that cite it (one hop, via Semantic Scholar) as Candidates, tagged "seed:<id>",
 # "seed-references:<id>" and "seed-citations:<id>". They go through the same relevance stages.

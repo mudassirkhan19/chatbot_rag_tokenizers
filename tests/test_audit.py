@@ -11,10 +11,11 @@ from chatbot_rag_tokenizers.collection import judge
 from conftest import FIXTURES
 
 # The fixture Snapshot's Editions by stratum, as the fixture verdicts and threshold 0.5 place them.
-RULE_REJECTS = {"2210.09461v3", "2301.00001", "2402.00001v1", "2403.00002v2", "hep-th/9901001v1"}
+RULE_REJECTS = {"2210.09461v3", "2301.00001", "2402.00001v1", "2403.00002v2", "W4400000103", "hep-th/9901001v1"}
 JUDGE_REJECTS = {"708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3"}
 JUDGE_ACCEPTS = {
     "10.1162/TACL_A_00999",
+    "10.5555/lrm.2022.7",
     "1508.07909v5",
     "1804.10959v1",
     "1808.06226v2",

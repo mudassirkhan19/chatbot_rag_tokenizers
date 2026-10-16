@@ -1,4 +1,5 @@
 {"edition_id":"10.1162/TACL_A_00999","model":"example/judge-model","p_yes":0.88,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"0123456789abcdef0123456789abcdef01234567"}
+{"edition_id":"10.5555/lrm.2022.7","model":"example/judge-model","p_yes":0.81,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"0123456789abcdef0123456789abcdef01234567"}
 {"edition_id":"1508.07909v5","model":"example/judge-model","p_yes":0.95,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"0123456789abcdef0123456789abcdef01234567"}
 {"edition_id":"1804.10959v1","model":"example/judge-model","p_yes":0.93,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"0123456789abcdef0123456789abcdef01234567"}
 {"edition_id":"1808.06226v2","model":"example/judge-model","p_yes":0.97,"prompt_hash":"b596f804ef041f06809812e04d2d075ad9daf9399c2543556c414166edefd07e","revision":"0123456789abcdef0123456789abcdef01234567"}

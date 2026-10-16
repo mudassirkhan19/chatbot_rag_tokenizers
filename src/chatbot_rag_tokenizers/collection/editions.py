@@ -27,6 +27,8 @@ class Edition:
     doi: str = ""
     acl_id: str = ""
     s2_id: str = ""  # Semantic Scholar paperId
+    openalex_id: str = ""  # OpenAlex work id, e.g. "W2885185669"
+    oa_pdf_urls: list[str] = field(default_factory=list)  # venue Editions only: open-access PDFs, best first
     licence: str = "unknown"
     versions: list[tuple[str, str]] = field(default_factory=list)  # arXiv only: ("v1", ISO time), oldest first
     discovery_channels: set[str] = field(default_factory=set)
@@ -62,6 +64,8 @@ class Edition:
                 keys.append(f"doi:{self.doi.lower()}")
         if self.s2_id:
             keys.append(f"s2:{self.s2_id}")
+        if self.openalex_id:
+            keys.append(f"openalex:{self.openalex_id}")
         return keys
 
 
@@ -69,11 +73,15 @@ def combine(kept: Edition, new: Edition) -> Edition:
     """Combine two Candidates that are the same Edition into one, keeping every Discovery channel.
 
     The newer pinned Version wins (a source without Versions never displaces one that has
-    them), otherwise the Candidate found first does. The other only fills in the external
-    identifiers the winner lacks; its descriptive fields describe the same Edition less well.
+    them), otherwise the Candidate found first does. The other only fills in what the winner
+    lacks: external identifiers and, for a venue Edition, its venue and open-access PDFs. Its
+    other descriptive fields describe the same Edition less well.
     """
     base, other = (new, kept) if new.version > kept.version else (kept, new)
-    for name in ("arxiv_id", "doi", "acl_id", "s2_id"):
+    filled = ["arxiv_id", "doi", "acl_id", "s2_id", "openalex_id"]
+    if base.edition_kind == "venue":
+        filled += ["venue", "oa_pdf_urls"]
+    for name in filled:
         if not getattr(base, name):
             setattr(base, name, getattr(other, name))
     base.discovery_channels |= other.discovery_channels

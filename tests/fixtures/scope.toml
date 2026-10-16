@@ -22,6 +22,15 @@ source = "semantic-scholar"
 topic = "subword-algorithms"
 query = '"subword tokenization" | sentencepiece'
 
+[sources.openalex]
+enabled = true
+
+[[queries]]
+id = "keyword-phrases"
+source = "openalex"
+topic = "subword-algorithms"
+query = '"subword tokenization" OR "byte pair encoding"'
+
 # One Seed: its own record, its references and two pages of its citations.
 [[seeds]]
 id = "sentencepiece"

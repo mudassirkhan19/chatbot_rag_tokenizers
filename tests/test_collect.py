@@ -3,12 +3,14 @@
 import csv
 import gzip
 import json
+import shutil
 from pathlib import Path
 
 import pytest
 
 from chatbot_rag_tokenizers.cli import main
 from chatbot_rag_tokenizers.collection import judge
+from chatbot_rag_tokenizers.collection.openalex import OpenAlexError
 from conftest import FIXTURES
 
 
@@ -60,9 +62,11 @@ def test_manifest_has_one_row_per_edition(fixture_snapshot, no_network, tmp_path
     # The BPE paper appears on both arXiv pages, revised in between: one Edition, pinned to the
     # newer Version. Semantic Scholar's query adds one preprint and three venue Editions,
     # expansion from the Seed adds two preprints and one venue Edition, and the ACL Anthology
-    # three venue Editions for ACL IDs that only preprints reported.
+    # three venue Editions for ACL IDs that only preprints reported. OpenAlex adds two
+    # more venue Editions.
     assert sorted(rows) == [
         "10.1162/TACL_A_00999",
+        "10.5555/lrm.2022.7",
         "1508.07909v5",
         "1804.10959v1",
         "1808.06226v2",
@@ -78,6 +82,7 @@ def test_manifest_has_one_row_per_edition(fixture_snapshot, no_network, tmp_path
         "D18-2012",
         "P16-1162",
         "P18-1007",
+        "W4400000103",
         "hep-th/9901001v1",
     ]
 
@@ -89,7 +94,7 @@ def test_manifest_has_one_row_per_edition(fixture_snapshot, no_network, tmp_path
     assert bpe["arxiv_id"] == "2004.03720"
     assert bpe["source_link"] == "https://arxiv.org/abs/2004.03720v3"
     assert bpe["discovery_channels"] == (
-        "arxiv:tokenizer-titles|seed-citations:sentencepiece|semantic-scholar:subword-phrases"
+        "arxiv:tokenizer-titles|openalex:keyword-phrases|seed-citations:sentencepiece|semantic-scholar:subword-phrases"
     )
     assert bpe["rule_outcome"] == "pass"
     assert bpe["relevance_verdict"] == "included"
@@ -197,6 +202,58 @@ def test_preprint_and_its_acl_edition_are_two_rows(fixture_snapshot, no_network,
     assert unknown["pdf_link"] == ""
 
 
+def test_openalex_finds_a_venue_edition_no_other_channel_found(fixture_snapshot, no_network, tmp_path):
+    manifest = tmp_path / "manifest.csv"
+    run_collect(fixture_snapshot, manifest)
+    rows = read_manifest(manifest)
+
+    journal = rows["10.5555/lrm.2022.7"]
+    assert journal["edition_kind"] == "venue"
+    assert journal["title"] == "Unigram Tokenization for Morphologically Rich Languages"
+    assert journal["authors"] == "Ayşe Yılmaz; Juan Pérez"
+    assert journal["year"] == "2022"
+    assert journal["venue"] == "Journal of Low-Resource Morphology"
+    assert journal["source_link"] == "https://doi.org/10.5555/lrm.2022.7"
+    assert journal["doi"] == "10.5555/lrm.2022.7"
+    assert journal["openalex_id"] == "W4200000100"
+    assert journal["arxiv_id"] == journal["acl_id"] == journal["s2_id"] == ""
+    # Every open-access PDF OpenAlex lists, its best one first; the paywalled copy is left out.
+    assert journal["oa_pdf_urls"] == "https://repo.example.edu/1234/lrm-7.pdf|https://lrm.example.org/articles/7.pdf"
+    assert journal["discovery_channels"] == "openalex:keyword-phrases"
+    # The abstract, rebuilt from OpenAlex's inverted index, is what the rules and judge see.
+    assert journal["rule_outcome"] == "pass"
+    assert journal["relevance_verdict"] == "included"
+
+    # Without a DOI, an OpenAlex venue Edition is named by its OpenAlex id.
+    ledger = rows["W4400000103"]
+    assert ledger["source_link"] == "https://openalex.org/W4400000103"
+    assert ledger["oa_pdf_urls"] == ""
+    assert ledger["rule_pattern"] == "crypto-assets"
+
+
+def test_openalex_can_be_switched_off(fixture_snapshot, no_network, no_model, tmp_path, capsys):
+    config = edited_config(tmp_path, "[sources.openalex]\nenabled = true", "[sources.openalex]\nenabled = false")
+    manifest = tmp_path / "manifest.csv"
+    run_collect(fixture_snapshot, manifest, config)
+    rows = read_manifest(manifest)
+
+    assert "10.5555/lrm.2022.7" not in rows
+    assert "W4400000103" not in rows
+    assert not any("openalex" in row["discovery_channels"] for row in rows.values())
+    assert rows["10.1162/TACL_A_00999"]["openalex_id"] == ""
+    assert rows["10.1162/TACL_A_00999"]["oa_pdf_urls"] == ""
+    assert "discover: 17 Editions" in capsys.readouterr().err
+
+
+def test_openalex_without_a_key_explains_what_to_do(fixture_snapshot, no_network, tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENALEX_API_KEY", raising=False)
+    shutil.rmtree(fixture_snapshot / "responses" / "openalex")
+
+    # Without a key OpenAlex can't page past the first results, so a fetch never starts.
+    with pytest.raises(OpenAlexError, match="OPENALEX_API_KEY is not set"):
+        run_collect(fixture_snapshot, tmp_path / "manifest.csv")
+
+
 def test_same_edition_from_two_channels_is_one_row_with_both_identifiers(fixture_snapshot, no_network, tmp_path):
     manifest = tmp_path / "manifest.csv"
     run_collect(fixture_snapshot, manifest)
@@ -241,6 +298,18 @@ def test_same_edition_from_two_channels_is_one_row_with_both_identifiers(fixture
     journal = rows["10.1162/TACL_A_00999"]
     assert journal["edition_kind"] == "venue"
     assert journal["source_link"] == "https://doi.org/10.1162/TACL_A_00999"
+
+    # OpenAlex reports the TACL paper under the same DOI in lower case: one row, which OpenAlex
+    # enriches with its id and open-access PDF while the first Candidate's fields stay.
+    assert journal["discovery_channels"] == "openalex:keyword-phrases|semantic-scholar:subword-phrases"
+    assert journal["openalex_id"] == "W4300000102"
+    assert journal["oa_pdf_urls"] == "https://direct.mit.edu/tacl/article-pdf/doi/10.1162/tacl_a_00999/tacl_a_00999.pdf"
+    assert journal["venue"] == "Transactions of the Association for Computational Linguistics"
+
+    # An OpenAlex work with an arXiv location is the preprint; its venue and PDFs aren't recorded.
+    bpe = rows["2004.03720v3"]
+    assert bpe["openalex_id"] == "W3000000101"
+    assert bpe["oa_pdf_urls"] == ""
     bare = rows["708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3"]
     assert bare["edition_kind"] == "venue"
     assert bare["year"] == ""
@@ -276,9 +345,9 @@ def test_citation_expansion_finds_candidates_keyword_search_missed(fixture_snaps
     assert segmentation["edition_kind"] == "venue"
     assert segmentation["relevance_verdict"] == "included"
 
-    # Found on the second citations page and by both keyword queries: one row, every channel.
+    # Found on the second citations page and by every keyword query: one row, every channel.
     assert rows["2004.03720v3"]["discovery_channels"] == (
-        "arxiv:tokenizer-titles|seed-citations:sentencepiece|semantic-scholar:subword-phrases"
+        "arxiv:tokenizer-titles|openalex:keyword-phrases|seed-citations:sentencepiece|semantic-scholar:subword-phrases"
     )
     # The Seed's own record is a Candidate too, and the Seed's references reach a keyword Candidate.
     assert rows["1808.06226v2"]["discovery_channels"] == (
@@ -306,13 +375,21 @@ def test_report_counts_editions_per_discovery_channel(fixture_snapshot, no_netwo
 
     # Three preprints are found by both keyword queries: SentencePiece, the BPE paper and MrT5. The
     # Seed's references also reach the Sennrich paper, which only Semantic Scholar's query found.
-    # An ACL Edition counts for every channel that found a preprint reporting its ACL ID.
-    assert "discover: 17 Editions" in report
+    # OpenAlex also finds the BPE paper and the TACL paper, and two venue Editions nothing else
+    # finds. An ACL Edition counts for every channel that found a preprint reporting its ACL ID.
+    assert "discover: 19 Editions" in report
     assert "  arxiv:tokenizer-titles: 9 Editions, 4 found by no other channel" in report
-    assert "  semantic-scholar:subword-phrases: 9 Editions, 2 found by no other channel" in report
+    assert "  semantic-scholar:subword-phrases: 9 Editions, 1 found by no other channel" in report
     assert "  seed:sentencepiece: 2 Editions, 0 found by no other channel" in report
     assert "  seed-references:sentencepiece: 4 Editions, 2 found by no other channel" in report
     assert "  seed-citations:sentencepiece: 4 Editions, 2 found by no other channel" in report
+    assert "  openalex:keyword-phrases: 5 Editions, 2 found by no other channel (1 pass the rules, 1 included, 0 pending)" in report
+    # The same counts by source, so a source with several queries is measured as a whole. A Seed
+    # and its citation hops count as one source.
+    assert "  arxiv: 9 Editions, 4 found by no other source (0 pass the rules, 0 included, 0 pending)" in report
+    assert "  semantic-scholar: 9 Editions, 1 found by no other source (1 pass the rules, 0 included, 0 pending)" in report
+    assert "  openalex: 5 Editions, 2 found by no other source (1 pass the rules, 1 included, 0 pending)" in report
+    assert "  seeds: 10 Editions, 4 found by no other source (3 pass the rules, 3 included, 0 pending)" in report
     assert "acl-anthology: 5 ACL IDs, 3 new venue Editions" in report
 
 
@@ -324,8 +401,17 @@ def test_report_shows_what_citation_expansion_adds_beyond_keyword_search(fixture
     # them ACL Editions of preprints it reached. Four of them no keyword query found: subword
     # regularization's preprint and ACL Edition and the Findings paper are included, the legal-MT
     # citer is rule-rejected.
-    assert "  keyword search: 13 Editions, 8 included" in report
+    assert "  keyword search: 15 Editions, 9 included" in report
     assert "  citation expansion: 8 Editions, 4 found by no keyword query, 3 of those included" in report
+
+
+def test_report_counts_pending_verdicts_apart_from_exclusions(fixture_snapshot, no_network, no_model, tmp_path, capsys):
+    # A new model invalidates every cached verdict; without the judge they stay pending.
+    config = edited_config(tmp_path, 'model = "example/judge-model"', 'model = "example/other-model"')
+    run_collect(fixture_snapshot, tmp_path / "manifest.csv", config, "--no-judge")
+    report = capsys.readouterr().err
+
+    assert "  openalex: 5 Editions, 2 found by no other source (1 pass the rules, 0 included, 1 pending)" in report
 
 
 def test_rule_rejected_candidates_keep_their_row(fixture_snapshot, no_network, tmp_path):
@@ -373,6 +459,7 @@ def test_api_key_changes_nothing_and_is_never_stored(fixture_snapshot, no_networ
     before = snapshot_files(fixture_snapshot)
 
     monkeypatch.setenv("S2_API_KEY", "fixture-secret-key")
+    monkeypatch.setenv("OPENALEX_API_KEY", "fixture-openalex-key")
     with_key = tmp_path / "with-key.csv"
     run_collect(fixture_snapshot, with_key)
 
@@ -381,21 +468,22 @@ def test_api_key_changes_nothing_and_is_never_stored(fixture_snapshot, no_networ
     for name, data in before.items():
         text = gzip.decompress(data) if name.endswith(".gz") else data
         assert b"fixture-secret-key" not in text, name
+        assert b"fixture-openalex-key" not in text, name
 
 
 def test_snapshot_entries_are_compressed_and_credential_free(fixture_snapshot):
     files = snapshot_files(fixture_snapshot / "responses")
-    # Two arXiv and two Semantic Scholar results pages, the Seed's record, references and two
-    # citations pages, one full record per arXiv Edition that passes the rules, and one ACL
-    # Anthology page per reported ACL ID.
-    assert len(files) == 2 + 2 + 4 + 5 + 5
+    # Two results pages each from arXiv, Semantic Scholar and OpenAlex, the Seed's record,
+    # references and two citations pages, one full record per arXiv Edition that passes the rules,
+    # and one ACL Anthology page per reported ACL ID.
+    assert len(files) == 2 + 2 + 2 + 4 + 5 + 5
     for name, data in files.items():
         assert name.endswith(".json.gz")
         record = json.loads(gzip.decompress(data))
         assert record["collected_at"] == "2026-10-16"
         assert set(record["request"]) == {"source", "url", "params"}
         assert name.startswith(f"{record['request']['source']}/")
-        markers = ["<feed", "<OAI-PMH", '"paperId"', "citation_title"]
+        markers = ["<feed", "<OAI-PMH", '"paperId"', "citation_title", '"results"']
         stored_404 = record["request"]["source"] == "acl-anthology" and record["body"] == ""
         assert stored_404 or any(marker in record["body"] for marker in markers)
 
@@ -442,6 +530,7 @@ def test_changing_the_threshold_changes_verdicts_without_loading_the_model(
 
 RULE_PASSES = [
     "10.1162/TACL_A_00999",
+    "10.5555/lrm.2022.7",
     "1508.07909v5",
     "1804.10959v1",
     "1808.06226v2",

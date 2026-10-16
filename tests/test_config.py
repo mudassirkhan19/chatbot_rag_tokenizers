@@ -43,3 +43,11 @@ def test_invalid_seed_is_rejected(tmp_path, seed, message):
     path.write_text('[[topics]]\nid = "a"\ndescription = "A"\n[[seeds]]\n' + seed)
     with pytest.raises(ConfigError, match=message):
         load_config(path)
+
+
+def test_settings_for_an_unknown_source_are_rejected(tmp_path):
+    # A misspelt source name would otherwise leave the real source switched on without a word.
+    path = tmp_path / "scope.toml"
+    path.write_text('[sources.openalx]\nenabled = false\n[judge]\nmodel = "m"\nrevision = "r"\nthreshold = 0.5\nprompt = "{title} {abstract}"\n')
+    with pytest.raises(ConfigError, match="unknown source 'openalx'"):
+        load_config(path)

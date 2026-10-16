@@ -4,7 +4,7 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
-SOURCES = {"arxiv", "semantic-scholar"}
+SOURCES = {"arxiv", "semantic-scholar", "openalex"}
 
 
 @dataclass(frozen=True)
@@ -82,8 +82,12 @@ class ScopeConfig:
     exclusions: list[ExclusionPattern]
     arxiv_page_size: int
     s2_fields_of_study: str  # comma-separated; empty means no filter
+    disabled_sources: set[str]  # sources whose queries are skipped (`enabled = false`)
     judge: JudgeConfig
     audit_models: list[AuditModel]  # judge models compared on the Audit set, with the [judge] prompt
+
+    def enabled_queries(self) -> list[KeywordQuery]:
+        return [query for query in self.queries if query.source not in self.disabled_sources]
 
 
 class ConfigError(ValueError):
@@ -132,6 +136,9 @@ def load_config(path: Path) -> ScopeConfig:
 
     rules = raw.get("rules", {})
     sources = raw.get("sources", {})
+    for name in sources:
+        if name not in SOURCES:
+            raise ConfigError(f"settings for unknown source {name!r} under [sources]")
     return ScopeConfig(
         topics=topics,
         queries=queries,
@@ -141,6 +148,7 @@ def load_config(path: Path) -> ScopeConfig:
         exclusions=[ExclusionPattern(**pattern) for pattern in rules.get("exclude", [])],
         arxiv_page_size=int(sources.get("arxiv", {}).get("page_size", 500)),
         s2_fields_of_study=str(sources.get("semantic-scholar", {}).get("fields_of_study", "")),
+        disabled_sources={name for name, settings in sources.items() if not settings.get("enabled", True)},
         judge=judge,
         audit_models=audit_models,
     )

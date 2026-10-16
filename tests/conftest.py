@@ -77,12 +77,32 @@ def acl_request(acl_id: str) -> dict:
     return {"source": "acl-anthology", "url": f"https://aclanthology.org/{acl_id}/", "params": {}}
 
 
+OPENALEX_API = "https://api.openalex.org/works"
+OPENALEX_FIXTURE_QUERY = '"subword tokenization" OR "byte pair encoding"'
+
+
+def openalex_request(cursor: str) -> dict:
+    """The request description the collector records for one OpenAlex works page."""
+    return {
+        "source": "openalex",
+        "url": OPENALEX_API,
+        "params": {
+            "search.title_and_abstract": OPENALEX_FIXTURE_QUERY,
+            "select": "id,doi,ids,title,publication_year,type,authorships,abstract_inverted_index,"
+            "primary_location,locations,best_oa_location",
+            "sort": "publication_date:asc",
+            "per_page": 100,
+            "cursor": cursor,
+        },
+    }
+
+
 @pytest.fixture
 def fixture_snapshot(tmp_path: Path) -> Path:
-    """A hand-built Snapshot: two arXiv and two Semantic Scholar results pages for the fixture
-    queries, the fixture Seed's record, references and citations, the full record of each arXiv
-    Edition that passes the rules, the ACL Anthology page of each reported ACL ID, and a cached
-    judge verdict for each Candidate that passes the rules."""
+    """A hand-built Snapshot: two results pages from each of arXiv, Semantic Scholar and OpenAlex
+    for the fixture queries, the fixture Seed's record, references and citations, the full record of
+    each arXiv Edition that passes the rules, the ACL Anthology page of each reported ACL ID, and a
+    cached judge verdict for each Candidate that passes the rules."""
     root = tmp_path / "snapshot"
     store = SnapshotStore(root)
     for start, page in [(0, "page-0.xml"), (4, "page-1.xml")]:
@@ -107,6 +127,9 @@ def fixture_snapshot(tmp_path: Path) -> Path:
     # The Findings paper that cites the Seed is invented for the fixtures, so the Anthology has no
     # such paper: the collector stores a 404 as an empty body.
     store.save(acl_request("2022.findings-acl.99"), "", collected_at="2026-10-16")
+    for cursor, page in [("*", "page-0.json"), ("FIXTURE-CURSOR-1", "page-1.json")]:
+        body = (FIXTURES / "openalex" / page).read_text()
+        store.save(openalex_request(cursor), body, collected_at="2026-10-16")
     shutil.copytree(FIXTURES / "verdicts", root / "verdicts")
     return root
 
