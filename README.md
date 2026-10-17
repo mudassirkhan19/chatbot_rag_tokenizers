@@ -36,6 +36,20 @@ just grobid-down   # stop and remove the container
 - **Both recipes are safe to rerun.** `grobid-up` leaves a running container from the pinned image on the configured port alone, and replaces a stopped one or one from an older pin or another port. `grobid-down` says so when nothing is running.
 - **Failures say what to do.** A missing Docker or a stopped daemon is reported as in `init`. If GROBID doesn't answer in time, `grobid-up` stops with the URL it tried and points to `docker logs chatbot-rag-tokenizers-grobid`. GROBID needs about 4 GB of memory for full-text parsing, so raise Docker's limit if the container is killed.
 
+## Reproduce the committed corpus
+
+The corpus is committed: the Snapshot of every source response, judge verdict and PDF hash (`data/snapshot/`), the manifest (`data/manifest.csv`) and the funnel and channel report (`data/report.md`). **Snapshot date: 2026-10-16**, the day every source query was run. The arXiv records were fetched on 2026-10-16 and 2026-10-17, and the judge scores and PDF hashes were recorded on 2026-10-17 (dates are UTC, as recorded in the Snapshot). To rebuild the manifest and report from the Snapshot, offline and with no API keys, Ollama or Docker:
+
+```sh
+git clone https://github.com/mudassirkhan19/chatbot_rag_tokenizers.git
+cd chatbot_rag_tokenizers
+uv sync --locked              # or just init, which also sets up GROBID and the judge
+just collect                  # uv run chatbot-rag-tokenizers collect
+git status --short data/      # prints nothing: the manifest and report are byte-identical
+```
+
+`collect` reads everything from the Snapshot, makes no network calls and loads no model. It then prints the Snapshot's size, with a warning because it is over about 50 MB (83 MB, 48 MB of it ACL Anthology pages; see ADR 0026). The PDFs are not committed (ADR 0002). `just fetch` downloads them again (about 3.5 GB, roughly 2 h at arXiv's rate limit) and checks each one against its recorded hash. Of the 2,798 included Editions, 2,086 have full text and 706 have no open PDF. 6 are still to fetch: four withdrawn arXiv Versions with no PDF and two venue PDFs whose hosts were down (#29). So `fetch` reports those 6 and exits non-zero.
+
 ## Collect the corpus
 
 ```sh
@@ -53,9 +67,13 @@ This runs the keyword queries in `config/scope.toml` against arXiv, Semantic Sch
 - **Rejected Candidates keep their row.** `relevance_stage` is `rules` and `rule_pattern` names the pattern that fired, or `judge` with the judge's probability and the threshold it was compared with.
 - **The judge is a local model.** Candidates that pass the rules are scored by the open-weight model set in `[judge]`: Tev1 4B, a decision model served by [Ollama](https://ollama.com), which gives P("Yes") for the `[judge.decision]` question (ADR 0021). Chat models give P("Yes") from their next-token logits for "Yes" and "No", run with transformers or Ollama. The threshold is applied when the manifest is written, so changing it needs no re-scoring. Changing the model, its revision (for Ollama, the model digest and the Ollama version), the prompt or the decision question invalidates the cached verdicts.
 
-The command prints the counts at each stage, including, per Discovery channel and per source, the Editions nothing else found and how many of those pass the rules and the judge. Options: `--config`, `--snapshot` and `--manifest` change the paths. `--refresh` re-scores every Candidate that passes the rules, and `--no-judge` never loads the model, so Candidates without a cached verdict stay `pending`.
+The command prints the counts at each stage, including, per Discovery channel and per source, the Editions nothing else found and how many of those pass the rules and the judge. It writes the same counts to `data/report.md` as Markdown tables: the funnel (discovered, rejected by the rules, rejected by the judge, included, full text), rule rejections by pattern, per-source and per-channel counts, and what citation expansion adds (ADR 0026). The report is built from the manifest alone, so `fetch` rewrites it too. `collect` then prints the Snapshot's size, with a warning above about 50 MB. If `S2_API_KEY` or `OPENALEX_API_KEY` is set, it also stops with an error should that key's value appear anywhere in the Snapshot.
 
-Scoring with the default judge needs Ollama running at the pinned version (0.40.5) with the model at its pinned digest; `just init` checks both and pulls the model (by hand: `ollama pull tev1:4b`). Scoring the full set takes about 1.5 h on an M1 Max. A transformers model in `[[audit.models]]` also needs torch and transformers, which `just init` installs (by hand: `uv sync --group judge`), and downloads its weights from Hugging Face. Until the full judge run is committed (#11), most Candidates have no cached verdict, so run `collect --no-judge` to rebuild the manifest without the model.
+Options: `--config`, `--snapshot`, `--manifest` and `--report` change the paths. `--no-judge` never loads the model, so Candidates without a cached verdict stay `pending`.
+
+**What `--refresh` does and doesn't do.** `--refresh` re-scores every Candidate that passes the rules with the configured judge, ignoring cached verdicts, and replaces them in the Snapshot. It needs Ollama, like any scoring. It never re-queries a source: stored responses are always reused, so `--refresh` doesn't pick up papers published after 2026-10-16. To collect newer papers, delete a source's stored responses (`data/snapshot/responses/<source>/`) and rerun with the network. That changes the manifest, so commit the new Snapshot with it. Changing the judge's model, pin, prompt or decision question re-scores without `--refresh`, because cached verdicts only count for the judge they were made with. Changing the threshold never re-scores.
+
+Scoring with the default judge needs Ollama running at the pinned version (0.40.5) with the model at its pinned digest; `just init` checks both and pulls the model (by hand: `ollama pull tev1:4b`). Scoring the full set takes about 2.5 h on an M1 Max. Tev1 takes at most 2,048 tokens, so the few abstracts Ollama refuses as too long are cut at a word boundary until they fit. Inputs that fit are never cut (ADR 0025). A transformers model in `[[audit.models]]` also needs torch and transformers, which `just init` installs (by hand: `uv sync --group judge`), and downloads its weights from Hugging Face.
 
 ## Fetch the full texts
 
@@ -81,7 +99,7 @@ uv run chatbot-rag-tokenizers audit label    # check and correct labels on a loc
 uv run chatbot-rag-tokenizers audit report   # precision, recall and F1 by threshold, per model
 ```
 
-- **Export** draws an even share from each stratum (rule rejects, judge rejects, judge accepts, and rule passes still `pending` a verdict, which get no draft), with a fixed `--seed`. Export after the judge has scored the corpus (#11), or most rule passes will be pending. `label` and `reason` start as the pipeline's own verdict, and `draft_label` and `draft_reason` keep it. The export never overwrites an existing file unless you pass `--force`.
+- **Export** draws an even share from each stratum (rule rejects, judge rejects, judge accepts, and rule passes still `pending` a verdict, which get no draft), with a fixed `--seed`. Export after the judge has scored the corpus, or most rule passes will be pending. `label` and `reason` start as the pipeline's own verdict, and `draft_label` and `draft_reason` keep it. The export never overwrites an existing file unless you pass `--force`.
 - **Label** serves a page at http://localhost:8765. It shows each Candidate's abstract, the pipeline's verdict in plain words, and the current label, and saves each change straight to the file. `labelled_by` records who set each label (`draft`, `agent` or `developer`), and `review_note` says why a row was flagged for checking.
 - **Report** writes `data/audit/report.md`. It covers the rule stage alone and rules plus each model in `[[audit.models]]` (the `[judge]` model when there are none) at thresholds 0.1 to 0.9 (`--thresholds` sets others), with a comparison of each model at its best threshold and the scoring time per Candidate. Each row is weighted by the size of its stratum, so the figures describe all Candidates, not the sample. Missing verdicts are scored and cached in `data/audit/verdicts.jsonl` (`uv sync --group judge`); `--no-judge` reports cached verdicts only.
 
