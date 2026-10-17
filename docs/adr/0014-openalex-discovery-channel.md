@@ -1,7 +1,7 @@
 # 0014. OpenAlex as a separate, switchable Discovery channel
 
 - **Date:** 2026-10-16
-- **Status:** Accepted
+- **Status:** Accepted. The first live run kept OpenAlex on ([0019](0019-openalex-stays-on.md)).
 
 ## Context
 #7 adds OpenAlex as a third keyword source. It indexes venues that arXiv and Semantic Scholar cover poorly, and it lists, for each work, where open-access copies are hosted. That matters for venue Editions not on arXiv or the ACL Anthology, which otherwise have no PDF source. OpenAlex also costs something: another source to page through, more Snapshot bytes, and Candidates that may be off topic. So it stays a separate channel that can be switched off, and the report shows what it adds on its own.
