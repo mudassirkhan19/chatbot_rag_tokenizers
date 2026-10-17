@@ -6,7 +6,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | # | Decision | Status |
 |---|---|---|
 | [0001](0001-python-3.12-with-uv.md) | Python 3.12, managed with uv | Accepted, setup superseded by 0022 |
-| [0002](0002-no-pdfs-or-secrets-in-git.md) | Keep PDFs, downloaded data and secrets out of git | Partly superseded by 0003 |
+| [0002](0002-no-pdfs-or-secrets-in-git.md) | Keep PDFs, downloaded data and secrets out of git | Partly superseded by 0003; amended by 0031 |
 | [0003](0003-commit-the-snapshot.md) | Commit the Snapshot of raw source responses | Accepted |
 | [0004](0004-arxiv-keyword-queries.md) | arXiv keyword queries: paging, rate limit and query style | Partly superseded by 0006 |
 | [0005](0005-rule-pre-filter.md) | Stage-1 rule pre-filter for the Relevance verdict | Accepted |
@@ -35,6 +35,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0028](0028-parse-cache-keys-and-determinism-checks.md) | Parse cache keys and determinism checks | Accepted |
 | [0029](0029-parse-reads-the-full-text-record.md) | Parse reads the full-text record: pinned ids from the record, local problems outside the report | Accepted |
 | [0030](0030-chunks-carry-their-edition-id.md) | Chunks carry their Edition id | Accepted |
+| [0031](0031-cc-by-tei-fixtures-may-be-committed.md) | CC BY TEI fixtures may be committed; the parse cache may not | Accepted |
 
 ## Template
 
