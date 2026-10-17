@@ -47,3 +47,33 @@ _Avoid_: Cache (the local, uncommitted copy), dump
 **Audit set**:
 A hand-labelled sample of Candidates used to choose and measure the relevance verdict, never to train it.
 _Avoid_: Gold set, test set (the RAG evaluation set is a different thing)
+
+### Parsing
+
+**Section**:
+A headed division of a paper's body as its authors numbered it; an appendix is a Section too, marked as one.
+_Avoid_: Heading, part
+
+**Chunk**:
+A contiguous run of text from one Section of one parsed file, and the unit that is retrieved and cited. Its kind is text (paragraphs), table (one linearised table, or part of one) or caption (a figure caption).
+_Avoid_: Passage (that word is for an evaluation question's answer span, which may cover several Chunks or part of one), segment, split
+
+**Context header**:
+The paper title and Section path a Chunk is embedded with ("WECHSEL: … › 5 Results › 5.3 Is freezing necessary?"), stored apart from the Chunk's text so citations quote clean text.
+_Avoid_: Prefix, breadcrumb, title (alone)
+
+**Citation anchor**:
+What a Chunk is cited by: the pinned Edition id with its Version, the Section number and title, and the page range.
+_Avoid_: Reference (that is a bibliography entry), source
+
+**Parse cache**:
+The local, uncommitted directory of GROBID's TEI, the Chunks and the bibliography for each parsed file, keyed by the file's sha256.
+_Avoid_: Snapshot (that is committed), index
+
+**Quality gate**:
+The check that keeps garbled and empty parses out of the index: a file fails it when GROBID errors or times out, or when it has too few Sections or too little Section text, and a failed file gets no Chunks.
+_Avoid_: Filter (that is the rule pre-filter of `collect`), validation
+
+**Parse report**:
+The committed summary of a parse run: the parser and chunking config used, one line per file and the totals.
+_Avoid_: Log, manifest

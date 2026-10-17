@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Hand-trimmed from GROBID 0.9.1-crf's TEI for WECHSEL v2 (arXiv 2112.06598v2, CC BY 4.0), rearranged
+     the way GROBID lays out other Seeds: the appendices and the acknowledgements land in <body> after
+     the Conclusion, with the appendix letter in the head text and no @n. Two things are made up for the
+     tests: "A closer look.", a run-in heading that ends in a full stop and so is not an appendix;
+     Figure 5, a caption cited only by its number; "C." with a full stop after the letter, as ICML
+     papers print it; and "2.1 Limitations", a body Section that GROBID put in the annex. -->
+<TEI xml:space="preserve" xmlns="http://www.tei-c.org/ns/1.0">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main" coords="1,104.15,73.48,386.57,12.90">WECHSEL: Effective initialization of subword embeddings for cross-lingual transfer of monolingual language models</title>
+			</titleStmt>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.1" ident="GROBID" when="2000-01-01T00:00+0000"/>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div><p coords="1,87.87,239.66,184.25,8.64"><s coords="1,87.87,239.66,184.25,8.64">Large pretrained language models (LMs) have become the central building block of many NLP applications.</s></p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<text xml:lang="en">
+		<body>
+<div><head n="1" coords="1,70.87,633.10,82.81,10.75">Introduction</head><p coords="1,70.87,655.53,220.08,9.46"><s coords="1,70.87,655.53,220.08,9.46">Large LMs based on the Transformer architecture have become the central building block of many NLP applications.</s></p></div>
+<div><head coords="2,70.87,100.00,100.00,9.81">A closer look.</head><p coords="2,70.87,110.00,220.08,9.46"><s coords="2,70.87,110.00,220.08,9.46">Previous work using the TransInner method freezes the Transformer body.</s></p></div>
+<div><head n="2" coords="9,306.14,73.58,75.07,10.75">Conclusion</head><p coords="9,305.63,95.35,218.78,9.46"><s coords="9,305.63,95.35,218.78,9.46">We introduced WECHSEL, a method to transfer monolingual language models to new languages.</s></p></div>
+<div><head coords="9,306.14,388.66,111.46,10.75">Acknowledgments</head><p coords="9,306.14,410.43,218.27,9.46"><s coords="9,306.14,410.43,218.27,9.46">Research supported with Cloud TPUs from Google's TPU Research Cloud (TRC).</s></p></div>
+<div><p coords="9,306.14,423.97,218.54,9.46"><s coords="9,306.14,423.97,218.54,9.46">We thank Andy Koh and Artus Krohn-Grimberghe for providing additional computational resources.</s></p></div>
+<div><head coords="12,306.14,442.14,146.27,10.75">A Grid search over k and τ</head><p coords="12,305.80,467.14,218.61,9.81"><s coords="12,305.80,467.14,218.61,9.81">To choose number of neighbors k and temperature τ for WECHSEL we conduct a grid search over linear probes (Figure <ref type="figure">5</ref>).</s></p></div>
+<div><head coords="12,306.14,600.00,146.27,10.75">A.1 Probing tasks</head><p coords="12,305.80,620.00,218.61,9.81"><s coords="12,305.80,620.00,218.61,9.81">We probe on NLI by taking a concatenation of the mean of all token representations in the premise and the hypothesis.</s></p></div>
+<div><head coords="12,306.14,650.00,50.00,9.81">Summary.</head><p coords="12,305.80,660.00,218.61,9.81"><s coords="12,305.80,660.00,218.61,9.81">The grid search picks k and τ for all languages at once.</s></p></div>
+<div><head coords="12,306.14,697.93,110.78,10.75">B Hyperparameters</head><p coords="12,306.14,723.27,218.27,9.46"><s coords="12,306.14,723.27,218.27,9.46">Hyperparameters used to fine-tune RoBERTa on downstream tasks are shown in Table 6.</s></p></div>
+<div><head coords="13,306.14,100.00,110.78,10.75">C. Qualitative subword correspondence</head><p coords="13,70.35,463.89,218.78,9.46"><s coords="13,70.35,463.89,218.78,9.46">Samples of tokens in each language and their most similar tokens are shown in Table 8.</s></p></div>
+<figure xml:id="fig_4" coords="13,70.87,300.00,218.27,8.64"><head>Figure 5 :</head><label>5</label><figDesc><div><p><s coords="13,70.87,300.00,218.27,8.64">Linear probe scores over k and τ.</s></p></div></figDesc><graphic coords="13,70.87,100.00,218.27,180.00" type="bitmap"/></figure>
+		</body>
+		<back>
+			<div type="annex">
+<div><head n="2.1" coords="13,306.14,471.08,165.05,10.75">Limitations</head><p coords="13,305.63,502.88,220.60,9.46"><s coords="13,305.63,502.88,220.60,9.46">We only transfer models to languages with existing word embeddings.</s></p></div>
+			</div>
+			<div type="references">
+				<listBibl/>
+			</div>
+		</back>
+	</text>
+</TEI>
