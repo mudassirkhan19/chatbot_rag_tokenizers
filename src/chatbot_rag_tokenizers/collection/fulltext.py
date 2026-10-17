@@ -108,6 +108,10 @@ class FulltextRecord:
         """The fetched file by name. The name is the pinned id, so it stays the same when an Edition is re-pinned."""
         return next((entry for (_, name), entry in self._entries.items() if name == file), None) if file else None
 
+    def all(self) -> list[FetchedFile]:
+        """Every line of the record, in its sorted order."""
+        return [self._entries[key] for key in sorted(self._entries)]
+
     def entries(self, edition_id: str) -> list[FetchedFile]:
         return [entry for key, entry in sorted(self._entries.items()) if key[0] == edition_id]
 
@@ -132,7 +136,7 @@ class FulltextRecord:
         self.path.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
 
 
-def _file_name(pinned_id: str) -> str:
+def file_name(pinned_id: str) -> str:
     """A file name for a pinned id: old-style arXiv ids and DOIs contain slashes."""
     return re.sub(r"[^A-Za-z0-9._-]", "_", pinned_id) + ".pdf"
 
@@ -146,13 +150,13 @@ def pinned_files(row: dict[str, str]) -> list[PinnedFile]:
             return []  # never fetch an unpinned preprint
         pinned = ["v1", latest] if latest != "v1" else [latest]
         return [
-            PinnedFile(_file_name(f"{row['arxiv_id']}{v}"), (ARXIV_PDF_URL.format(f"{row['arxiv_id']}{v}"),))
+            PinnedFile(file_name(f"{row['arxiv_id']}{v}"), (ARXIV_PDF_URL.format(f"{row['arxiv_id']}{v}"),))
             for v in pinned
         ]
     # An arXiv link among a venue Edition's open-access links is the preprint, a different Edition.
     urls = [row["pdf_link"]] if row["pdf_link"] else []
     urls += [url for url in row["oa_pdf_urls"].split("|") if url and not _is_arxiv(url)]
-    return [PinnedFile(_file_name(row["edition_id"]), tuple(dict.fromkeys(urls)))] if urls else []
+    return [PinnedFile(file_name(row["edition_id"]), tuple(dict.fromkeys(urls)))] if urls else []
 
 
 def _sources(file: PinnedFile) -> str:
