@@ -1,4 +1,4 @@
-"""The TEI reader: turns GROBID's TEI into a structured document, applying the element rules (ADR 0026).
+"""The TEI reader: turns GROBID's TEI into a structured document, applying the element rules (ADR 0028).
 
 It reads only content that is the same on every parse of a file (ADR 0024): the title, the abstract,
 each Section's head, sentences, block formulas and the pages they sit on, the tables and figure
@@ -9,7 +9,7 @@ GROBID gives Sections as a flat list of ``div``s, so each Section's path is rebu
 3.1 sits under 3 when the paper has a Section 3, and directly under the title when GROBID lost that
 heading. An unnumbered head (often a run-in paragraph heading) sits under the last numbered Section.
 
-The element rules (ADR 0026):
+The element rules (ADR 0028):
 - Front matter other than the title and the abstract (authors, affiliations, funders) is not read.
 - Block formulas join the paragraph before them, as GROBID renders their text.
 - Acknowledgements are dropped, from ``back`` and from a ``body`` Section headed as such.

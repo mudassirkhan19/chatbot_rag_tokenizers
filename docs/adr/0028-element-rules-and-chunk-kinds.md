@@ -1,10 +1,10 @@
-# 0026. Element rules: tables, captions, references, appendices and the Chunk kinds
+# 0028. Element rules: tables, captions, references, appendices and the Chunk kinds
 
 - **Date:** 2026-10-18
 - **Status:** Accepted
 
 ## Context
-The parse tracer ([0025](0025-parse-tracer-paragraph-packing-pinned-tokenizer-and-parse-cache.md)) turned only body paragraphs into Chunks. Issue #19 (part of #14) asks for a rule for each kind of element GROBID finds. Numbers that appear only in tables and findings stated only in captions must be retrievable. Bibliographies, which mention every keyword, and acknowledgements must stay out of search. The bibliography is still worth keeping for the duplicate stage. The assignment also asks us to explain what happens to tables, equations, figure captions and reference lists.
+The parse tracer ([0027](0027-parse-tracer-paragraph-packing-pinned-tokenizer-and-parse-cache.md)) turned only body paragraphs into Chunks. Issue #19 (part of #14) asks for a rule for each kind of element GROBID finds. Numbers that appear only in tables and findings stated only in captions must be retrievable. Bibliographies, which mention every keyword, and acknowledgements must stay out of search. The bibliography is still worth keeping for the duplicate stage. The assignment also asks us to explain what happens to tables, equations, figure captions and reference lists.
 
 The spike ([0024](0024-grobid-stays-the-parser-after-the-docling-spike.md)) showed how GROBID 0.9.1 lays these out. Figures and tables come at the end of `body` or of the annex, with no link to a Section. In-text `ref`s point to them by id, or carry only the printed number. Appendices are often in `body` and not in `div[@type="annex"]`, with the letter in the head text and no `@n`. GROBID finds about half the tables, and some of the ones it finds have wrong rows.
 
@@ -34,7 +34,7 @@ The rules are applied in the TEI reader (`parsing/tei.py`). The Chunker only pac
 - **Front matter** other than the title and the abstract isn't read: authors, emails, affiliations, keywords and funders. The abstract stays a Section titled "Abstract".
 - **Footnotes** aren't read. GROBID collects them at the end of `body`, outside every Section, so they have no Section to be cited by. They are mostly URLs and asides.
 - **Other back matter** (`div[@type="availability"]`, funding `listOrg`) isn't read either.
-- **Chunk shape** changes only in `kind`, which is now `text`, `table` or `caption`. `appendix` is now set. Every other field is as in 0025, and table and caption Chunks have the same context header and citation anchor as text Chunks.
+- **Chunk shape** changes only in `kind`, which is now `text`, `table` or `caption`. `appendix` is now set. Every other field is as in 0027, and table and caption Chunks have the same context header and citation anchor as text Chunks.
 - **The parse report** gives, for each file, its table Chunks and caption Chunks beside its Sections and Chunks, and their totals. GROBID misses about half the tables (0024), so the per-file count shows where table recall is low.
 
 ## Alternatives considered

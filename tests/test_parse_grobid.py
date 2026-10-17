@@ -1,4 +1,4 @@
-"""The opt-in integration test (#21, ADR 0028): a real Seed PDF through the running GROBID container.
+"""The opt-in integration test (#21, ADR 0030): a real Seed PDF through the running GROBID container.
 
 Skipped unless RUN_GROBID_TESTS=1. It needs the Seed PDFs in data/pdfs/seeds and GROBID up:
 

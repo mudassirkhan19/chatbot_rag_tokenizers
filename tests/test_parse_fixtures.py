@@ -1,5 +1,5 @@
 """The committed TEI fixtures carry paper text, so each must come from a paper whose licence lets us share it
-(ADR 0031): each is attributed in fixtures/tei/README.md, under a CC BY licence the manifest records."""
+(ADR 0033): each is attributed in fixtures/tei/README.md, under a CC BY licence the manifest records."""
 
 import csv
 import re

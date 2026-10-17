@@ -1,9 +1,9 @@
-"""The parse cache: a local, gitignored directory with one folder per file sha256 (ADRs 0025 and 0028).
+"""The parse cache: a local, gitignored directory with one folder per file sha256 (ADRs 0027 and 0030).
 
     <root>/<sha256>/<parser key>.tei.xml                       GROBID's raw TEI, kept as it came
-    <root>/<sha256>/<parser key>.bibliography.jsonl            the file's references, one per line, in order (ADR 0026)
+    <root>/<sha256>/<parser key>.bibliography.jsonl            the file's references, one per line, in order (ADR 0028)
     <root>/<sha256>/<parser key>.<chunking key>.chunks.jsonl   the Chunks, one JSON object per line, in order
-    <root>/<sha256>/<parser key>.<chunking key>.failure.json   or why the file failed the quality gate (ADR 0027)
+    <root>/<sha256>/<parser key>.<chunking key>.failure.json   or why the file failed the quality gate (ADR 0029)
 
 The parser key names the pinned GROBID image, so a new image never reads an old parse. The chunking
 key hashes the chunking config, so each config's Chunks are kept apart and a config change re-chunks

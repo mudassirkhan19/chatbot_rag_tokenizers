@@ -1,4 +1,4 @@
-"""The element rules of `parse` (#19, ADR 0026), run through the CLI against a fake GROBID service.
+"""The element rules of `parse` (#19, ADR 0028), run through the CLI against a fake GROBID service.
 
 `wechsel-elements.tei.xml` is the WECHSEL v2 TEI (CC BY 4.0) trimmed by hand to a few body Sections,
 one figure and one table in the body, the acknowledgements, two annex Sections with a table, and three
@@ -101,7 +101,7 @@ def test_each_figure_caption_is_one_chunk_in_the_section_that_cites_it(tmp_path,
 
 
 def test_a_caption_over_the_budget_is_cut_at_its_sentences_like_a_paragraph(tmp_path, elements):
-    # The one departure from "one Chunk per caption" (ADR 0026): Figure 2's caption is over 40 tokens.
+    # The one departure from "one Chunk per caption" (ADR 0028): Figure 2's caption is over 40 tokens.
     run_parse(tmp_path, elements, config=config_with_budget(tmp_path, 40))
 
     captions = of_kind(read_chunks(tmp_path, elements), "caption")

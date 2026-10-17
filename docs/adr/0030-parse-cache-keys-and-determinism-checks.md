@@ -1,17 +1,17 @@
-# 0028. Parse cache keys and determinism checks
+# 0030. Parse cache keys and determinism checks
 
 - **Date:** 2026-10-18
 - **Status:** Accepted
 
 ## Context
-#21 asks that cached parse results are always right and always reproducible ([0025](0025-parse-tracer-paragraph-packing-pinned-tokenizer-and-parse-cache.md) built the cache). Changing the parser must re-parse. Changing the chunking config must only re-chunk, so tuning the Chunk size during the embedding comparison stays cheap. The same inputs must give byte-identical Chunks and parse report. GROBID's raw TEI is not byte-stable ([0024](0024-grobid-stays-the-parser-after-the-docling-spike.md)): the request time, random funder ids and a figure's graphic change from parse to parse.
+#21 asks that cached parse results are always right and always reproducible ([0027](0027-parse-tracer-paragraph-packing-pinned-tokenizer-and-parse-cache.md) built the cache). Changing the parser must re-parse. Changing the chunking config must only re-chunk, so tuning the Chunk size during the embedding comparison stays cheap. The same inputs must give byte-identical Chunks and parse report. GROBID's raw TEI is not byte-stable ([0024](0024-grobid-stays-the-parser-after-the-docling-spike.md)): the request time, random funder ids and a figure's graphic change from parse to parse.
 
 ## Decision
 - **Two keys.** In each file's folder (`<cache>/<sha256>/`):
-  - the TEI is `<parser key>.tei.xml`. It is keyed by the file hash and the parser version, as 0025 set up. The parser key is `grobid-<tag>-<first 12 hex digits of the image digest>`, so a new image digest re-parses and keeps the old image's TEI beside the new one.
+  - the TEI is `<parser key>.tei.xml`. It is keyed by the file hash and the parser version, as 0027 set up. The parser key is `grobid-<tag>-<first 12 hex digits of the image digest>`, so a new image digest re-parses and keeps the old image's TEI beside the new one.
   - the Chunks are `<parser key>.<chunking key>.chunks.jsonl`. They are keyed by the file hash, the parser version and the chunking-config hash. The chunking key is `chunking-<first 12 hex digits of the sha256 of ChunkingConfig.describe() as sorted-key JSON>`. `describe()` is the same set of settings the report prints, so any setting added there (such as #20's quality-gate thresholds) changes the key. The tokenizer file's location is left out, because it doesn't change the Chunks; its sha256 is in.
 - **A record that depends on the config goes under both keys.** `ParseCache` has `_parser_path` for records of the parse alone and `_chunking_path` for records of the parse under a config. #20's failure records use one or the other, as the failure depends on GROBID alone or on the quality gate's thresholds too.
-- **Chunks are still rebuilt from the cached TEI on every run** (0025), and written under their key. Rebuilding takes milliseconds per file and keeps the Chunks matching the current code as well as the config, which a key cannot promise without a hand-maintained code version. Keying them by config keeps each config's Chunks side by side, so two Chunk sizes can be compared from one cache, and a config's Chunks are never read as another's.
+- **Chunks are still rebuilt from the cached TEI on every run** (0027), and written under their key. Rebuilding takes milliseconds per file and keeps the Chunks matching the current code as well as the config, which a key cannot promise without a hand-maintained code version. Keying them by config keeps each config's Chunks side by side, so two Chunk sizes can be compared from one cache, and a config's Chunks are never read as another's.
 - **Deterministic output.** Files are processed in pinned-id order (then hash), whatever order they are given in. Chunks are JSON with sorted keys, one per line. The cache and the report are written as UTF-8 with `\n` line ends, so the bytes don't depend on the machine's locale. Nothing in the Chunks or the report holds a time, a path or a machine name.
 - **Tests at the CLI seam** (`tests/test_parse_cache.py`, offline against the fake GROBID service):
   - a chunking-config change re-chunks without calling GROBID, and the old config's Chunks stay where they were;

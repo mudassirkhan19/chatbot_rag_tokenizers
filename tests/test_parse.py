@@ -62,7 +62,7 @@ def test_the_abstract_and_each_body_section_are_sections_with_paths_rebuilt_from
         ("5 Results", "5.3 Is freezing necessary?"),
         ("6.2 Risks",),
         ("7 Conclusion",),
-        # The annex: appendix Sections number their own (ADR 0026).
+        # The annex: appendix Sections number their own (ADR 0028).
         ("A Grid search over k and τ",),
         ("B Hyperparameters",),
         ("C Qualitative subword correspondence",),

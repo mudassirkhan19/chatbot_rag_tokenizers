@@ -1,4 +1,4 @@
-"""The quality gate: keeps garbled and empty parses out of the index (ADR 0027).
+"""The quality gate: keeps garbled and empty parses out of the index (ADR 0029).
 
 A file fails when GROBID errors or times out on it, or when its document has fewer Sections or
 fewer characters of Section text than the chunking config allows. A failed file gets no Chunks.

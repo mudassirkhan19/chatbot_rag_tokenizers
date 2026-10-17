@@ -141,7 +141,7 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(f"fetch: {errors}")
     elif args.command == "parse":
         files, problems = (inputs.from_paths(args.files), []) if args.files else inputs.from_record(args.snapshot, args.pdfs)
-        # A smoke run must not quietly replace the committed report of the full run (ADR 0027).
+        # A smoke run must not quietly replace the committed report of the full run (ADR 0029).
         report = args.report or (None if args.limit is not None else Path("data/parse-report.md"))
         messages = []
         try:

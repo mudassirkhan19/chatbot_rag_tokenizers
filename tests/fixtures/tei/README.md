@@ -1,6 +1,6 @@
 # TEI fixtures
 
-These files are GROBID 0.9.1-crf's TEI output for two papers, some of them trimmed or rearranged by hand. They hold text from those papers, which may be shared because both papers are under CC BY 4.0: the licence the Snapshot's arXiv record gives for that Version, as `data/manifest.csv` shows. ADR 0031 says why these may be committed while the parse cache may not; `tests/test_parse_fixtures.py` checks every fixture is listed here under a licence the manifest records.
+These files are GROBID 0.9.1-crf's TEI output for two papers, some of them trimmed or rearranged by hand. They hold text from those papers, which may be shared because both papers are under CC BY 4.0: the licence the Snapshot's arXiv record gives for that Version, as `data/manifest.csv` shows. ADR 0033 says why these may be committed while the parse cache may not; `tests/test_parse_fixtures.py` checks every fixture is listed here under a licence the manifest records.
 
 | Fixture | Paper | Authors | arXiv | Licence | Changes |
 |---|---|---|---|---|---|

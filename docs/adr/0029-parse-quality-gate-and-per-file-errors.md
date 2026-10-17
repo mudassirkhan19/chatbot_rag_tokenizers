@@ -1,10 +1,10 @@
-# 0027. Parse quality gate, permanent failures and per-file errors
+# 0029. Parse quality gate, permanent failures and per-file errors
 
 - **Date:** 2026-10-18
 - **Status:** Accepted
 
 ## Context
-Issue #20 of the parse step (#14): garbled or empty parses must never reach the index, and a long parse run over about 5k files must always finish and report what went wrong. Scanned PDFs (no text layer) and PDFs GROBID can't read are expected in the corpus; OCR is out of scope, so they fail and are counted. The tracer ([0025](0025-parse-tracer-paragraph-packing-pinned-tokenizer-and-parse-cache.md)) left the gate between the TEI reader and the Chunker, and the error handling around the parser client.
+Issue #20 of the parse step (#14): garbled or empty parses must never reach the index, and a long parse run over about 5k files must always finish and report what went wrong. Scanned PDFs (no text layer) and PDFs GROBID can't read are expected in the corpus; OCR is out of scope, so they fail and are counted. The tracer ([0027](0027-parse-tracer-paragraph-packing-pinned-tokenizer-and-parse-cache.md)) left the gate between the TEI reader and the Chunker, and the error handling around the parser client.
 
 ## Decision
 - **The gate.** A file fails when:
@@ -14,7 +14,7 @@ Issue #20 of the parse step (#14): garbled or empty parses must never reach the 
   - its Sections hold fewer than `min_body_characters` characters of text (2,000; the abstract counts, front matter and references don't): *too little body text*.
 
   The checks run in that order and the first one that fails is the reason. A failed file gets no Chunks.
-- **Thresholds in `[chunking]`** of `config/parse.toml`, as #14 asks. They are part of `ChunkingConfig.describe()`, so the report lists them with the rest of the chunking config, and the chunking key ([0028](0028-parse-cache-keys-and-determinism-checks.md)) changes when they do.
+- **Thresholds in `[chunking]`** of `config/parse.toml`, as #14 asks. They are part of `ChunkingConfig.describe()`, so the report lists them with the rest of the chunking config, and the chunking key ([0030](0030-parse-cache-keys-and-determinism-checks.md)) changes when they do.
 - **Failures are permanent for hash, parser and config.** A failure is written to the parse cache as `<parser key>.<chunking key>.failure.json` (`reason`, `detail`, `sections`), under the same key as the Chunks would be, and any old Chunks file for that key is removed. A rerun that finds the record reports the failure again without calling GROBID or re-reading the TEI. Because the record shares the Chunks' key, a new parser image or chunking config (thresholds included) retries the file. **`--retry-failed`** retries every recorded failure under the current keys, as #14 allows ("not retried unless asked"): the file is parsed as if new, from its cached TEI when there is one (a quality-gate failure), else by GROBID (a GROBID error or timeout, whose TEI was never cached), and its new outcome replaces the record. *(Added after review; at first the only way to retry was to delete the `.failure.json` file, which still works.)*
 - **Report.** The failed file's Status cell reads `failed: <reason> (<detail>)`, e.g. `failed: too few Sections (0, minimum 2)`, so the table keeps its columns. A *Quality gate* section states the rule with the thresholds used, the totals add *Parsed* and *Failed*, and *Failures by reason* counts them.
 - **Per-file errors never stop the run.** Each failure is printed to stderr as it happens. After the report is written, every failed file is printed together and the exit is non-zero whenever there was one, as #14 asks and as `fetch` does. That includes failures recorded by an earlier run and not retried: they are listed in a block of their own ("2 files failed, on an earlier run. …"), after this run's, so the message still tells a new failure from a known one, but the exit doesn't. *(Amended after review: at first, recorded failures only got a one-line note and the exit stayed zero.)*

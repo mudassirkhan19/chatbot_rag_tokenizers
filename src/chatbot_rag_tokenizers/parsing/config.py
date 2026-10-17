@@ -1,4 +1,4 @@
-"""The parse config file: the pinned GROBID service (ADR 0023) and the chunking config (ADR 0025)."""
+"""The parse config file: the pinned GROBID service (ADR 0023) and the chunking config (ADR 0027)."""
 
 import hashlib
 import json
@@ -44,7 +44,7 @@ class ChunkingConfig:
     tokenizer_revision: str  # the commit of that repo the file was taken from
     tokenizer_file: Path  # resolved against the config file's directory
     tokenizer_sha256: str
-    min_sections: int  # the quality gate (ADR 0027): a file with fewer Sections fails
+    min_sections: int  # the quality gate (ADR 0029): a file with fewer Sections fails
     min_body_characters: int  # and so does one with less text in its Sections
 
     def describe(self) -> dict[str, Any]:

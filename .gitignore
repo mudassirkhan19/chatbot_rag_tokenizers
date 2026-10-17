@@ -26,5 +26,5 @@ tmp/
 .claude/worktrees/
 .claude/settings.local.json
 
-# The parse cache: TEI and Chunks derived from papers whose licences are not ours (ADR 0025)
+# The parse cache: TEI and Chunks derived from papers whose licences are not ours (ADR 0027)
 data/parse-cache/

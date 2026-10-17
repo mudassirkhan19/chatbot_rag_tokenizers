@@ -1,4 +1,4 @@
-"""The Chunker: turns a structured document into Chunks under the chunking config (ADR 0025).
+"""The Chunker: turns a structured document into Chunks under the chunking config (ADR 0027).
 
 A pure function of the document, the file it came from and the config, so Chunks can be rebuilt
 from cached TEI without the parser. Within each Section, whole paragraphs are packed in order up to
@@ -6,7 +6,7 @@ the token budget. A paragraph over the budget is split at its sentences, and a s
 budget at its words, so no Chunk is over the budget. A Chunk never crosses a Section, and Chunks
 never overlap.
 
-Each Section's text Chunks come first, then its tables, then its figure captions (ADR 0026). A table
+Each Section's text Chunks come first, then its tables, then its figure captions (ADR 0028). A table
 is one Chunk of kind "table": its label, Section heading and caption on the first line, then one line
 per row with cells joined by " | ". A table over the budget is cut between rows (a row over the budget
 between words), and each part repeats the first line and the first row (the column heads), unless they

@@ -6,7 +6,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | # | Decision | Status |
 |---|---|---|
 | [0001](0001-python-3.12-with-uv.md) | Python 3.12, managed with uv | Accepted, setup superseded by 0022 |
-| [0002](0002-no-pdfs-or-secrets-in-git.md) | Keep PDFs, downloaded data and secrets out of git | Partly superseded by 0003; amended by 0031 |
+| [0002](0002-no-pdfs-or-secrets-in-git.md) | Keep PDFs, downloaded data and secrets out of git | Partly superseded by 0003; amended by 0033 |
 | [0003](0003-commit-the-snapshot.md) | Commit the Snapshot of raw source responses | Accepted |
 | [0004](0004-arxiv-keyword-queries.md) | arXiv keyword queries: paging, rate limit and query style | Partly superseded by 0006 |
 | [0005](0005-rule-pre-filter.md) | Stage-1 rule pre-filter for the Relevance verdict | Accepted |
@@ -29,13 +29,13 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0022](0022-uv-and-just-from-homebrew-docker-left-to-the-user.md) | uv and just from Homebrew, Docker and Ollama left to the user | Accepted |
 | [0023](0023-grobid-crf-image-pinned-by-digest.md) | GROBID's CRF image, pinned by digest in config/parse.toml | Accepted |
 | [0024](0024-grobid-stays-the-parser-after-the-docling-spike.md) | GROBID stays the parser after the spike against Docling | Accepted |
-| [0025](0025-parse-tracer-paragraph-packing-pinned-tokenizer-and-parse-cache.md) | Parse tracer: paragraph packing, a pinned tokenizer, the parse cache and the report | Accepted |
-| [0026](0026-element-rules-and-chunk-kinds.md) | Element rules: tables, captions, references, appendices and the Chunk kinds | Accepted |
-| [0027](0027-parse-quality-gate-and-per-file-errors.md) | Parse quality gate, permanent failures and per-file errors | Accepted |
-| [0028](0028-parse-cache-keys-and-determinism-checks.md) | Parse cache keys and determinism checks | Accepted |
-| [0029](0029-parse-reads-the-full-text-record.md) | Parse reads the full-text record: pinned ids from the record, local problems outside the report | Accepted |
-| [0030](0030-chunks-carry-their-edition-id.md) | Chunks carry their Edition id | Accepted |
-| [0031](0031-cc-by-tei-fixtures-may-be-committed.md) | CC BY TEI fixtures may be committed; the parse cache may not | Accepted |
+| [0027](0027-parse-tracer-paragraph-packing-pinned-tokenizer-and-parse-cache.md) | Parse tracer: paragraph packing, a pinned tokenizer, the parse cache and the report | Accepted |
+| [0028](0028-element-rules-and-chunk-kinds.md) | Element rules: tables, captions, references, appendices and the Chunk kinds | Accepted |
+| [0029](0029-parse-quality-gate-and-per-file-errors.md) | Parse quality gate, permanent failures and per-file errors | Accepted |
+| [0030](0030-parse-cache-keys-and-determinism-checks.md) | Parse cache keys and determinism checks | Accepted |
+| [0031](0031-parse-reads-the-full-text-record.md) | Parse reads the full-text record: pinned ids from the record, local problems outside the report | Accepted |
+| [0032](0032-chunks-carry-their-edition-id.md) | Chunks carry their Edition id | Accepted |
+| [0033](0033-cc-by-tei-fixtures-may-be-committed.md) | CC BY TEI fixtures may be committed; the parse cache may not | Accepted |
 
 ## Template
 

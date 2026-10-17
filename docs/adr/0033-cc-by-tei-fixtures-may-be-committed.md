@@ -1,10 +1,10 @@
-# 0031. CC BY TEI fixtures may be committed; the parse cache may not
+# 0033. CC BY TEI fixtures may be committed; the parse cache may not
 
 - **Date:** 2026-10-18
 - **Status:** Accepted
 
 ## Context
-[0002](0002-no-pdfs-or-secrets-in-git.md) keeps PDFs and downloaded data out of git because each paper carries its own licence, so redistributing it isn't ours to decide. [0025](0025-parse-tracer-paragraph-packing-pinned-tokenizer-and-parse-cache.md) keeps the parse cache local for the same reason: its TEI and Chunks are text derived from the papers. Yet the offline `parse` tests answer with five committed TEI fixtures in `tests/fixtures/tei/`, which hold real paper text: WECHSEL v2 whole, three files trimmed or rearranged from it or from Sennrich et al. v5. #14 asks for CC BY fixtures with the licence checked in the manifest. Until now the licence was named only in test docstrings and one file's comment, with no attribution of the authors and no check.
+[0002](0002-no-pdfs-or-secrets-in-git.md) keeps PDFs and downloaded data out of git because each paper carries its own licence, so redistributing it isn't ours to decide. [0027](0027-parse-tracer-paragraph-packing-pinned-tokenizer-and-parse-cache.md) keeps the parse cache local for the same reason: its TEI and Chunks are text derived from the papers. Yet the offline `parse` tests answer with five committed TEI fixtures in `tests/fixtures/tei/`, which hold real paper text: WECHSEL v2 whole, three files trimmed or rearranged from it or from Sennrich et al. v5. #14 asks for CC BY fixtures with the licence checked in the manifest. Until now the licence was named only in test docstrings and one file's comment, with no attribution of the authors and no check.
 
 ## Decision
 - **A fixture holding paper text may be committed when the Version it comes from is under CC BY 4.0, as the manifest's `licence` column records it** (the arXiv record's licence for the Edition's current Version, [0006](0006-arxiv-records-via-oai-pmh.md), or the ACL Anthology's, [0012](0012-acl-anthology-venue-editions.md); either spelling of the CC BY 4.0 URL counts). CC BY 4.0 lets anyone share and adapt the work, commercially or not, given attribution, a link to the licence, and a note of any changes. Nothing else the corpus holds is shared this way: share-alike, non-commercial and unknown licences are not used for fixtures, and arXiv's default non-exclusive licence grants nothing to third parties.

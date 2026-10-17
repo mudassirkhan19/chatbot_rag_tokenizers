@@ -1,4 +1,4 @@
-"""Token counts from the one pinned tokenizer named in the chunking config (ADR 0025)."""
+"""Token counts from the one pinned tokenizer named in the chunking config (ADR 0027)."""
 
 import hashlib
 

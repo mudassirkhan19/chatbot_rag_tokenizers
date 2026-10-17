@@ -1,4 +1,4 @@
-"""Cache invalidation and determinism of `parse` (#21, ADR 0028), run offline against the fake GROBID service.
+"""Cache invalidation and determinism of `parse` (#21, ADR 0030), run offline against the fake GROBID service.
 
 Cached TEI is keyed by file hash and parser version, Chunks by those and the chunking-config hash: a
 chunking-config change re-chunks from the cached TEI, and a parser change re-parses.

@@ -1,4 +1,4 @@
-"""The parse report writer: the committed Markdown summary of a parse run (ADR 0025).
+"""The parse report writer: the committed Markdown summary of a parse run (ADR 0027).
 
 It names the parser and the chunking config, gives one line per file and the totals. Nothing in it
 depends on the time or the machine, so the same inputs give the same report.
@@ -21,7 +21,7 @@ class FileResult:
     sections: int
     chunks: int
     failure: Failure | None = None  # why the file failed the quality gate; None when it was parsed
-    tables: int = 0  # table Chunks (ADR 0026)
+    tables: int = 0  # table Chunks (ADR 0028)
     captions: int = 0  # figure caption Chunks
 
     @property

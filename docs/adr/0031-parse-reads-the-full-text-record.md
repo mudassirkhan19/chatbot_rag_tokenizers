@@ -1,4 +1,4 @@
-# 0029. Parse reads the full-text record: pinned ids from the record, local problems outside the report
+# 0031. Parse reads the full-text record: pinned ids from the record, local problems outside the report
 
 - **Date:** 2026-10-18
 - **Status:** Accepted
@@ -7,7 +7,7 @@
 Issue #22 makes `parse` with no `--files` parse exactly the files whose hashes the Snapshot's full-text record holds ([0015](0015-pdf-fetcher-pinned-files-and-hashes.md)). The record keeps, per file, the Edition id, the file name and the sha256, plus lines for Editions with no open PDF. File names are pinned ids with unsafe characters replaced (`hep-th_9901001v1.pdf`, `10.5555_lrm.2022.7.pdf`), so a file name can't always be turned back into the id a Chunk must cite. A file in `data/pdfs/` may also be missing or differ from the record, for example after a partial fetch or a hand edit.
 
 ## Decision
-- **Inputs:** with no `--files`, `parse` reads `<snapshot>/fulltext/pdfs.jsonl` (`--snapshot`, default `data/snapshot`) and the PDFs directory (`--pdfs`, default `data/pdfs`), and takes every line that has a hash, in the record's order (the pipeline sorts them again by pinned id). Lines recorded as having no open PDF are skipped. `--files` stays as the route for the Seed PDFs ([0025](0025-parse-tracer-paragraph-packing-pinned-tokenizer-and-parse-cache.md)).
+- **Inputs:** with no `--files`, `parse` reads `<snapshot>/fulltext/pdfs.jsonl` (`--snapshot`, default `data/snapshot`) and the PDFs directory (`--pdfs`, default `data/pdfs`), and takes every line that has a hash, in the record's order (the pipeline sorts them again by pinned id). Lines recorded as having no open PDF are skipped. `--files` stays as the route for the Seed PDFs ([0027](0027-parse-tracer-paragraph-packing-pinned-tokenizer-and-parse-cache.md)).
 - **Pinned ids from the record.** When the Edition id is an arXiv id pinned to a Version (new-style `2112.06598v2` or old-style `hep-th/9901001v2`), the file is one of its Versions: the pinned id is the arXiv id plus the Version that follows the arXiv id's file name in the file name (`hep-th_9901001v1.pdf` → `hep-th/9901001v1`, Version `v1`). Otherwise the file is the venue Edition itself: the pinned id is the Edition id (`10.5555/lrm.2022.7`) and the Version is empty.
 - **The bytes must match the record.** Each file's sha256 is computed on the spot. A recorded file missing locally, or whose hash differs from the record, is not parsed. Every such file is listed together at the end, with the recorded hash, a hint to run `just fetch` (which re-downloads and checks against the record), and a non-zero exit. The other files are parsed as usual.
 - **These problems stay out of the parse report.** They describe the local PDFs directory, not the corpus, so a reviewer's committed report doesn't change because one machine has an incomplete download.
