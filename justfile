@@ -171,3 +171,7 @@ collect *args:
 # Download the pinned PDFs of included Editions; extra arguments go to the CLI
 fetch *args:
     uv run chatbot-rag-tokenizers fetch "$@"
+
+# Parse the recorded PDFs (or --files) into Chunks with GROBID; extra arguments go to the CLI
+parse *args:
+    uv run chatbot-rag-tokenizers parse "$@"
