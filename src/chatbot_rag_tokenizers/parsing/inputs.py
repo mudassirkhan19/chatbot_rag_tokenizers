@@ -20,13 +20,28 @@ class InputFile:
     pdf: bytes
 
 
+class NotFiles(ValueError):
+    """Paths passed by hand that aren't files, each with what is there instead, worded for the person running it."""
+
+    def __init__(self, problems: list[str]) -> None:
+        self.problems = problems
+        count = "1 path given with --files isn't a file" if len(problems) == 1 else f"{len(problems)} paths given with --files aren't files"
+        super().__init__("\n".join([f"{count}; nothing was parsed:", *(f"  {problem}" for problem in problems)]))
+
+
 def from_paths(paths: list[Path]) -> list[InputFile]:
     """Files passed by hand (`--files`): the pinned id comes from the name, the hash from the bytes.
 
     A Seed name drops its prefix; any other name is taken as the file name `fetch` gives a pinned id. With no
     record to name the Edition, it is taken the way `fetch` pins one: an arXiv Version's Edition is the latest
     Version of the same arXiv id among the files given, and any other file is its own Edition.
+
+    Raises NotFiles, before any file is read, when a path is missing or isn't a file: the files given decide
+    each other's Editions, so none is parsed until every one is there.
     """
+    problems = [f"{path}: {'a directory' if path.is_dir() else 'no such file'}" for path in paths if not path.is_file()]
+    if problems:
+        raise NotFiles(problems)
     named = []
     for path in paths:
         pdf = path.read_bytes()

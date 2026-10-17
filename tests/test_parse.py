@@ -197,6 +197,26 @@ def test_files_given_by_hand_take_the_latest_version_given_as_their_edition(tmp_
     ]
 
 
+def test_a_files_path_that_is_not_a_file_stops_the_run_before_anything_is_parsed(tmp_path, wechsel, grobid):
+    # A path given by hand that isn't there is a mistake in the command, and the files given decide each
+    # other's Editions, so nothing is parsed, cached or reported until every path is a file.
+    missing = tmp_path / "bpe-dropout_1910.13267v2.pdf"
+    directory = tmp_path / "seeds"
+    directory.mkdir()
+
+    with pytest.raises(SystemExit) as raised:
+        run_parse(tmp_path, wechsel, missing, directory)
+
+    assert str(raised.value) == (
+        "parse: 2 paths given with --files aren't files; nothing was parsed:\n"
+        f"  {missing}: no such file\n"
+        f"  {directory}: a directory"
+    )
+    assert grobid.requests == []
+    assert not (tmp_path / "cache").exists()
+    assert not (tmp_path / "parse-report.md").exists()
+
+
 def test_a_rerun_reuses_the_cached_parse_without_calling_grobid(tmp_path, wechsel, grobid):
     run_parse(tmp_path, wechsel)
     first = read_chunks(tmp_path, wechsel)

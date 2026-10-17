@@ -36,6 +36,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0031](0031-parse-reads-the-full-text-record.md) | Parse reads the full-text record: pinned ids from the record, local problems outside the report | Accepted |
 | [0032](0032-chunks-carry-their-edition-id.md) | Chunks carry their Edition id | Accepted |
 | [0033](0033-cc-by-tei-fixtures-may-be-committed.md) | CC BY TEI fixtures may be committed; the parse cache may not | Accepted |
+| [0034](0034-parse-files-stops-on-a-path-that-is-not-a-file.md) | `parse --files` stops on a path that isn't a file | Accepted |
 
 ## Template
 

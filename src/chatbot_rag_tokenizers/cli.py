@@ -140,7 +140,10 @@ def main(argv: list[str] | None = None) -> None:
         except fulltext.FetchErrors as errors:
             sys.exit(f"fetch: {errors}")
     elif args.command == "parse":
-        files, problems = (inputs.from_paths(args.files), []) if args.files else inputs.from_record(args.snapshot, args.pdfs)
+        try:
+            files, problems = (inputs.from_paths(args.files), []) if args.files else inputs.from_record(args.snapshot, args.pdfs)
+        except inputs.NotFiles as error:
+            sys.exit(f"parse: {error}")
         # A smoke run must not quietly replace the committed report of the full run (ADR 0029).
         report = args.report or (None if args.limit is not None else Path("data/parse-report.md"))
         messages = []
