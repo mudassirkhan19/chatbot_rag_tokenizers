@@ -87,7 +87,7 @@ This sends each PDF to the pinned GROBID service and cuts its text into Chunks t
 - **Chunks** pack whole paragraphs up to 350 tokens, counted with the pinned BERT WordPiece tokenizer in `config/tokenizers/` (`[chunking]` in `config/parse.toml`). A longer paragraph is split at its sentences. Chunks don't overlap. Each Chunk carries its context header (title › Section path) apart from its text, and its citation anchor: pinned id, Version, Section and pages.
 - **Element rules** (ADR 0026). Each kind of element GROBID finds follows one rule:
   - *Reference lists* produce no Chunks; each file's bibliography is kept as structured data (title, authors, year, identifiers, the printed reference) in the parse cache.
-  - *Tables* become `table` Chunks, linearised row by row (cells joined by ` | `) after a first line with the table's label, Section and caption. A table over the budget is cut between rows, and each part repeats that first line.
+  - *Tables* become `table` Chunks, linearised row by row (cells joined by ` | `) after a first line with the table's label, Section and caption. A table over the budget is cut between rows, and each part repeats that first line and the table's first row, which holds its column heads.
   - *Figure captions* become one small `caption` Chunk each. Tables and captions go to the Section that cites them, or else the one their page falls in.
   - *Equations* stay inline in the paragraph text, as GROBID renders them.
   - *Appendices* stay as Sections, marked as appendices in their Chunks, whether GROBID puts them in the annex or in the body.
@@ -98,6 +98,7 @@ This sends each PDF to the pinned GROBID service and cuts its text into Chunks t
 - **The parse cache** (`data/parse-cache/`, `--cache`, never committed) keeps GROBID's TEI and the bibliography per file sha256 and parser version, and the Chunks per file sha256, parser version and chunking-config hash (ADR 0028). A file whose TEI is cached is not sent to GROBID again, so a rerun only parses new files; a new GROBID digest re-parses it, and a chunking-config change only re-chunks it from the cached TEI.
 - **Reproducible.** Files are processed in sorted order and nothing in the output depends on time or the machine, so the same PDFs and config give byte-identical Chunks and report. GROBID's raw TEI is not byte-stable (ADR 0024); the Chunks are.
 - **The parse report** (`data/parse-report.md`, `--report`, committed) names the GROBID image and version and the chunking config, and gives a line per file (with its table and caption Chunks) and the totals.
+- **Seeds only, for now.** The committed report is the run on the 34 Seed PDFs (`just parse --files data/pdfs/seeds/*.pdf`): 889 Sections and 2,055 Chunks (1,640 text, 234 table, 181 caption), no failures. The full-corpus parse waits on the final judge run (#1, #11) and on `fetch`, which pins and downloads the corpus's PDFs and writes the full-text record `parse` reads by default.
 
 ## Measure the Relevance verdict
 

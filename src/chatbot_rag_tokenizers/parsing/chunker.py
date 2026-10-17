@@ -9,8 +9,8 @@ never overlap.
 Each Section's text Chunks come first, then its tables, then its figure captions (ADR 0026). A table
 is one Chunk of kind "table": its label, Section heading and caption on the first line, then one line
 per row with cells joined by " | ". A table over the budget is cut between rows (a row over the budget
-between words), and each part repeats the first line, unless that line alone would take more than half
-the budget. A figure caption is one Chunk of kind "caption", packed like a paragraph.
+between words), and each part repeats the first line and the first row (the column heads), unless they
+would take more than half the budget together; then only the first line, if it alone takes no more. A figure caption is one Chunk of kind "caption", packed like a paragraph.
 """
 
 from collections.abc import Callable, Iterator
@@ -104,11 +104,17 @@ def _table_texts(table: Table, section: Section, token_budget: int, count_tokens
     whole = ROW_BREAK.join([first, *rows])
     if count_tokens(whole) <= token_budget:
         return [whole]
-    repeat = count_tokens(first) <= token_budget // 2
-    lead = [first] if repeat else []
-    room = token_budget - count_tokens(first) if repeat else token_budget
+    # Each part repeats the first line and, when they fit in half the budget together, the first row,
+    # which holds the column heads in nearly every table GROBID reads (GROBID doesn't mark header rows).
+    if rows and count_tokens(ROW_BREAK.join([first, rows[0]])) <= token_budget // 2:
+        lead, rest = [first, rows[0]], rows[1:]
+    elif count_tokens(first) <= token_budget // 2:
+        lead, rest = [first], rows
+    else:
+        lead, rest = [], [first, *rows]
+    room = token_budget - count_tokens(ROW_BREAK.join(lead)) if lead else token_budget
     units = []
-    for line in rows if repeat else [first, *rows]:
+    for line in rest:
         units += [line] if count_tokens(line) <= room else _word_runs(line, room, count_tokens)
     texts: list[str] = []
     current: list[str] = []

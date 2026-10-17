@@ -69,23 +69,25 @@ def test_each_table_is_one_chunk_linearised_row_by_row_after_its_caption_and_sec
     assert table_2["header"] == f"{WECHSEL_TITLE} › 5 Results › 5.1 Transferring RoBERTa"
 
 
-def test_a_table_over_the_budget_is_cut_between_rows_and_each_part_names_the_table(tmp_path, elements):
+def test_a_table_over_the_budget_is_cut_between_rows_and_each_part_names_the_table_and_its_columns(tmp_path, elements):
     run_parse(tmp_path, elements)  # the repo's budget of 350 tokens: Table 2's 19 rows don't fit in one Chunk
 
     parts = [t for t in of_kind(read_chunks(tmp_path, elements), "table") if t["section_number"] == "5.1"]
     assert len(parts) > 1
-    first_line = parts[0]["text"].split("\n")[0]
+    first_line, column_heads = parts[0]["text"].split("\n")[:2]
     assert first_line.startswith("Table 2 (5.1 Transferring RoBERTa): Results from fine-tuning")
+    assert column_heads.startswith("Lang | Model | Score@0 NLI NER Avg")
     rows = []
     for part in parts:
         assert part["token_count"] <= 350
-        [line, *part_rows] = part["text"].split("\n")
-        assert line == first_line
+        # Each part names the table and repeats its first row, which holds the column heads, so the
+        # numbers in a later part still say what they measure.
+        [line, heads, *part_rows] = part["text"].split("\n")
+        assert (line, heads) == (first_line, column_heads)
         rows += part_rows
-    # Together the parts hold every row once, in order.
-    assert len(rows) == 19
-    assert rows[0].startswith("Lang | Model")
-    assert rows[1].startswith(" | WECHSEL-RoBERTa 78.25")
+    # Together the parts hold every other row once, in order.
+    assert len(rows) == 18
+    assert rows[0].startswith(" | WECHSEL-RoBERTa 78.25")
     assert rows[-1] == " | XLM-RBase | - | - | - | - | - | - | - | - | -69.18 87.37 | 78.28"
 
 
