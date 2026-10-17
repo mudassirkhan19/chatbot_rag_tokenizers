@@ -127,8 +127,10 @@ class TransformersJudge:
 
     def _chat(self, edition: Edition) -> str:
         content = self.config.prompt.format(title=edition.title, abstract=edition.abstract)
+        # Hybrid models such as Qwen3-1.7B would think before answering; templates without the
+        # switch ignore it.
         chat = self.tokenizer.apply_chat_template(
-            [{"role": "user", "content": content}], tokenize=False, add_generation_prompt=True
+            [{"role": "user", "content": content}], tokenize=False, add_generation_prompt=True, enable_thinking=False
         )
         assert isinstance(chat, str)
         return chat

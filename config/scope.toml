@@ -360,7 +360,16 @@ Does this paper make a substantive contribution or finding about tokenization? I
 Answer with Yes or No."""
 
 # Judge models that `audit report` compares on the Audit set, with the [judge] prompt. Without
-# any, it measures the [judge] model alone. For issue #1, add the shortlist, each pinned:
-# [[audit.models]]
-# model = "<Hugging Face model id>"
-# revision = "<commit>"
+# any, it measures the [judge] model alone. The issue #1 shortlist, each pinned. The judge runs in
+# float32, so on a 32 GB M1 Max the 7–8B models first shortlisted do not fit; these are ≤4B.
+[[audit.models]]
+model = "Qwen/Qwen3-4B-Instruct-2507"
+revision = "cdbee75f17c01a7cc42f958dc650907174af0554"
+
+[[audit.models]]
+model = "Qwen/Qwen3-1.7B"
+revision = "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e"
+
+[[audit.models]]
+model = "ibm-granite/granite-4.0-micro"
+revision = "56111ae135df9c53a78c99028e7bc24035a9e979"
