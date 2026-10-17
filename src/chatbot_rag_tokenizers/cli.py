@@ -10,6 +10,7 @@ from .collection.pipeline import collect
 from .parsing import inputs
 from .parsing import pipeline as parsing
 from .parsing.config import load_parse_config
+from .parsing.grobid import GrobidUnreachable
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -59,6 +60,7 @@ def main(argv: list[str] | None = None) -> None:
     parse_cmd.add_argument("--config", type=Path, default=Path("config/parse.toml"))
     parse_cmd.add_argument("--cache", type=Path, default=Path("data/parse-cache"), help="the parse cache (default data/parse-cache, gitignored)")
     parse_cmd.add_argument("--report", type=Path, default=Path("data/parse-report.md"))
+    parse_cmd.add_argument("--limit", type=int, help="parse at most this many files, the first in pinned-id order, e.g. for a smoke test")
     parse_cmd.add_argument(
         "--files",
         type=Path,
@@ -121,7 +123,10 @@ def main(argv: list[str] | None = None) -> None:
         except fulltext.FetchErrors as errors:
             sys.exit(f"fetch: {errors}")
     elif args.command == "parse":
-        parsing.parse(load_parse_config(args.config), inputs.from_paths(args.files), args.cache, args.report)
+        try:
+            parsing.parse(load_parse_config(args.config), inputs.from_paths(args.files), args.cache, args.report, args.limit)
+        except (parsing.ParseErrors, GrobidUnreachable) as errors:
+            sys.exit(f"parse: {errors}")
     elif args.command == "audit" and args.audit_command == "export":
         audit.export(load_config(args.config), args.snapshot, args.output, args.size, args.seed, force=args.force)
     elif args.command == "audit" and args.audit_command == "report":

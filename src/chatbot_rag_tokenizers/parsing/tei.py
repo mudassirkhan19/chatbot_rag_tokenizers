@@ -17,6 +17,10 @@ NS = {"tei": "http://www.tei-c.org/ns/1.0"}
 ABSTRACT = "Abstract"
 
 
+class UnreadableTei(ValueError):
+    """GROBID's answer can't be read as a document."""
+
+
 @dataclass(frozen=True)
 class Sentence:
     text: str
@@ -53,10 +57,14 @@ class Document:
 
 
 def read_tei(tei: str) -> Document:
-    root = ET.fromstring(tei)
+    """The document in GROBID's TEI. Raises UnreadableTei when it isn't well-formed TEI with a header."""
+    try:
+        root = ET.fromstring(tei)
+    except ET.ParseError as error:
+        raise UnreadableTei(str(error)) from error
     header = root.find("tei:teiHeader", NS)
     if header is None:
-        raise ValueError("the TEI has no teiHeader")
+        raise UnreadableTei("no teiHeader")
     application = header.find(".//tei:appInfo/tei:application[@ident='GROBID']", NS)
     sections = list(_abstract(header))
     sections += _body_sections(root.find("tei:text/tei:body", NS))

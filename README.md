@@ -84,6 +84,8 @@ This sends each PDF to the pinned GROBID service and cuts its body text into Chu
 - **Chunks** pack whole paragraphs up to 350 tokens, counted with the pinned BERT WordPiece tokenizer in `config/tokenizers/` (`[chunking]` in `config/parse.toml`). A longer paragraph is split at its sentences. Each Chunk carries its context header (title › Section path) apart from its text, and its citation anchor: pinned id, Version, Section and pages.
 - **The parse cache** (`data/parse-cache/`, never committed) keeps GROBID's TEI and the Chunks per file sha256. A file whose TEI is cached is not sent to GROBID again.
 - **The parse report** (`data/parse-report.md`, committed) names the GROBID image and version and the chunking config, and gives a line per file and the totals.
+- **The quality gate** fails a file when GROBID errors or times out on it, or when it has fewer than 2 Sections or 2,000 characters of Section text (`min_sections`, `min_body_characters` in `[chunking]`). A failed file gets no Chunks; its report line gives the reason, and the report counts failures by reason. The failure is recorded in the parse cache, so a rerun doesn't retry it (ADR 0027).
+- **Errors** never stop the run: the files that failed are listed together at the end and the exit is non-zero. An unreachable GROBID stops the run at once with a pointer to `just grobid-up`. `--limit N` parses only the first N files, for a smoke test.
 
 ## Measure the Relevance verdict
 
