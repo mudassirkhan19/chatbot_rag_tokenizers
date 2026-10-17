@@ -142,7 +142,13 @@ class TransformersJudge:
         return float(torch.softmax(logits[[self.yes_id, self.no_id]], dim=-1)[0])
 
     def score(self, editions: Sequence[Edition]) -> list[float]:
-        return [self._p_yes(edition) for edition in editions]
+        scores = [self._p_yes(edition) for edition in editions]
+        if self.device == "mps":
+            # Every prompt has its own length, so the MPS allocator keeps caching buffers of new
+            # sizes. Kept, they grew by about 1 GB per 50–75 prompts until the system ran out of
+            # memory (ADR 0018). Releasing them leaves every score bit-identical.
+            self._torch.mps.empty_cache()
+        return scores
 
 
 def load_judge(config: JudgeConfig) -> Judge:
