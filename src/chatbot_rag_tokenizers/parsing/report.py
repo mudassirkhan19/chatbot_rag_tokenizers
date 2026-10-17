@@ -69,4 +69,4 @@ def write_report(path: Path, config: ParseConfig, grobid_versions: set[str], res
         *([f"- {reason}: {count}" for reason, count in sorted(Counter(f.reason for f in failures).items())] or ["- none"]),
     ]
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(lines) + "\n")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")  # the same bytes on every machine

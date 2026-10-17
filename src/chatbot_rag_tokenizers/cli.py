@@ -60,13 +60,17 @@ def main(argv: list[str] | None = None) -> None:
     parse_cmd.add_argument("--config", type=Path, default=Path("config/parse.toml"))
     parse_cmd.add_argument("--cache", type=Path, default=Path("data/parse-cache"), help="the parse cache (default data/parse-cache, gitignored)")
     parse_cmd.add_argument("--report", type=Path, default=Path("data/parse-report.md"))
+    parse_cmd.add_argument("--snapshot", type=Path, default=Path("data/snapshot"))
+    parse_cmd.add_argument("--pdfs", type=Path, default=Path("data/pdfs"), help="where `fetch` put the PDFs (default data/pdfs)")
     parse_cmd.add_argument("--limit", type=int, help="parse at most this many files, the first in pinned-id order, e.g. for a smoke test")
     parse_cmd.add_argument(
         "--files",
         type=Path,
         nargs="+",
-        required=True,
-        help="PDFs to parse, each named by its pinned id, or as a Seed PDF (<seed>_<pinned id>.pdf)",
+        help=(
+            "parse these PDFs instead of the files in the full-text record, each named by its pinned id,"
+            " or as a Seed PDF (<seed>_<pinned id>.pdf)"
+        ),
     )
 
     audit_cmd = commands.add_parser("audit", help="build the Audit set and measure the Relevance verdict on it")
@@ -123,10 +127,21 @@ def main(argv: list[str] | None = None) -> None:
         except fulltext.FetchErrors as errors:
             sys.exit(f"fetch: {errors}")
     elif args.command == "parse":
+        files, problems = (inputs.from_paths(args.files), []) if args.files else inputs.from_record(args.snapshot, args.pdfs)
+        messages = []
         try:
-            parsing.parse(load_parse_config(args.config), inputs.from_paths(args.files), args.cache, args.report, args.limit)
-        except (parsing.ParseErrors, GrobidUnreachable) as errors:
-            sys.exit(f"parse: {errors}")
+            parsing.parse(load_parse_config(args.config), files, args.cache, args.report, args.limit)
+        except parsing.ParseErrors as errors:
+            messages.append(f"parse: {errors}")
+        except GrobidUnreachable as error:
+            sys.exit(f"parse: {error}")
+        if problems:
+            messages.append(
+                f"parse: {len(problems)} recorded file(s) weren't parsed. Run `just fetch` to download them again:\n"
+                + "\n".join(f"  {problem}" for problem in problems)
+            )
+        if messages:
+            sys.exit("\n".join(messages))
     elif args.command == "audit" and args.audit_command == "export":
         audit.export(load_config(args.config), args.snapshot, args.output, args.size, args.seed, force=args.force)
     elif args.command == "audit" and args.audit_command == "report":

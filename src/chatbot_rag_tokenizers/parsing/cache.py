@@ -1,10 +1,13 @@
-"""The parse cache: a local, gitignored directory with one folder per file sha256 (ADR 0025).
+"""The parse cache: a local, gitignored directory with one folder per file sha256 (ADRs 0025 and 0028).
 
-    <root>/<sha256>/<parser key>.tei.xml       GROBID's raw TEI, kept as it came
-    <root>/<sha256>/<parser key>.chunks.jsonl  the Chunks, one JSON object per line, in order
-    <root>/<sha256>/<parser key>.failure.json  or why the file failed the quality gate (ADR 0027)
+    <root>/<sha256>/<parser key>.tei.xml                       GROBID's raw TEI, kept as it came
+    <root>/<sha256>/<parser key>.<chunking key>.chunks.jsonl   the Chunks, one JSON object per line, in order
+    <root>/<sha256>/<parser key>.<chunking key>.failure.json   or why the file failed the quality gate (ADR 0027)
 
-The parser key names the pinned GROBID image, so a new image never reads an old parse.
+The parser key names the pinned GROBID image, so a new image never reads an old parse. The chunking
+key hashes the chunking config, so each config's Chunks are kept apart and a config change re-chunks
+from the cached TEI. A record that depends on the config as well as the parse (Chunks, a failure)
+goes under both keys, through `_chunking_path`.
 """
 
 import json
@@ -22,27 +25,32 @@ class RecordedFailure:
 
 
 class ParseCache:
-    def __init__(self, root: Path, parser_key: str) -> None:
+    def __init__(self, root: Path, parser_key: str, chunking_key: str) -> None:
         self.root = root
         self.parser_key = parser_key
+        self.chunking_key = chunking_key
 
-    def _path(self, sha256: str, suffix: str) -> Path:
+    def _parser_path(self, sha256: str, suffix: str) -> Path:
+        """A record of the parse alone: file hash plus parser version."""
         return self.root / sha256 / f"{self.parser_key}{suffix}"
 
+    def _chunking_path(self, sha256: str, suffix: str) -> Path:
+        """A record of the parse under the chunking config: file hash, parser version and config hash."""
+        return self.root / sha256 / f"{self.parser_key}.{self.chunking_key}{suffix}"
+
     def tei(self, sha256: str) -> str | None:
-        path = self._path(sha256, ".tei.xml")
-        return path.read_text() if path.exists() else None
+        path = self._parser_path(sha256, ".tei.xml")
+        return path.read_text(encoding="utf-8") if path.exists() else None
 
     def put_tei(self, sha256: str, tei: str) -> None:
-        _write(self._path(sha256, ".tei.xml"), tei)
+        _write(self._parser_path(sha256, ".tei.xml"), tei)
 
     def _chunks_path(self, sha256: str) -> Path:
-        return self._path(sha256, ".chunks.jsonl")
+        return self._chunking_path(sha256, ".chunks.jsonl")
 
     def _failure_path(self, sha256: str) -> Path:
-        """Beside the Chunks and under the same key: a failure is the outcome the Chunks would have been."""
-        chunks = self._chunks_path(sha256)
-        return chunks.with_name(chunks.name.removesuffix(".chunks.jsonl") + ".failure.json")
+        """Under the same key as the Chunks: a failure is the outcome the Chunks would have been."""
+        return self._chunking_path(sha256, ".failure.json")
 
     def put_chunks(self, sha256: str, chunks: list[Chunk]) -> None:
         lines = [json.dumps(asdict(chunk), sort_keys=True, ensure_ascii=False) + "\n" for chunk in chunks]
@@ -53,7 +61,7 @@ class ParseCache:
         path = self._failure_path(sha256)
         if not path.exists():
             return None
-        record = json.loads(path.read_text())
+        record = json.loads(path.read_text(encoding="utf-8"))
         return RecordedFailure(Failure(record["reason"], record["detail"]), record["sections"])
 
     def put_failure(self, sha256: str, failure: Failure, sections: int) -> None:
@@ -64,8 +72,11 @@ class ParseCache:
 
 
 def _write(path: Path, text: str) -> None:
-    """Write through a temporary file, so an interrupted run never leaves half a file in the cache."""
+    """Write through a temporary file, so an interrupted run never leaves half a file in the cache.
+
+    Always UTF-8 with "\\n" line ends, so the bytes don't depend on the machine's locale.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     partial = path.with_name(path.name + ".partial")
-    partial.write_text(text)
+    partial.write_text(text, encoding="utf-8", newline="\n")
     partial.replace(path)

@@ -31,7 +31,7 @@ def parse(config: ParseConfig, files: list[InputFile], cache_dir: Path, report_p
     A file that fails the quality gate gets no Chunks and doesn't stop the run: this run's failures are
     raised together as ParseErrors once the report is written. An unreachable GROBID stops the run at once.
     """
-    cache = ParseCache(cache_dir, config.grobid.parser_key)
+    cache = ParseCache(cache_dir, config.grobid.parser_key, config.chunking.key)
     client = GrobidClient(config.grobid)
     counter = TokenCounter(config.chunking)
     results: list[FileResult] = []
