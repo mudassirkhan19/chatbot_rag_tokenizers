@@ -33,11 +33,11 @@ def test_a_garbled_file_fails_the_gate_with_its_reason_and_gets_no_chunks(tmp_pa
     assert chunk_files(tmp_path, wechsel)
     text = report(tmp_path)
     assert (
-        f"| 2112.06598v2 | `{sha256(wechsel.read_bytes())}` | parsed | 20 | 52 | 11 | 5 |\n"
-        f"| 2401.00001v1 | `{sha256(near_empty.read_bytes())}` | failed: too little body text (1594 characters, minimum 2000) | 2 | 0 | 0 | 0 |\n"
-        f"| 2401.00002v1 | `{sha256(scanned.read_bytes())}` | failed: too few Sections (0, minimum 2) | 0 | 0 | 0 | 0 |\n"
+        f"| 2112.06598v2 | `{sha256(wechsel.read_bytes())}` | parsed | 20 | 52 | 11 | 5 | 0 |\n"
+        f"| 2401.00001v1 | `{sha256(near_empty.read_bytes())}` | failed: too little body text (1594 characters, minimum 2000) | 2 | 0 | 0 | 0 | 0 |\n"
+        f"| 2401.00002v1 | `{sha256(scanned.read_bytes())}` | failed: too few Sections (0, minimum 2) | 0 | 0 | 0 | 0 | 0 |\n"
     ) in text
-    assert "- Files: 3\n- Sections: 22\n- Chunks: 52\n- Table Chunks: 11\n- Caption Chunks: 5\n- Parsed: 1\n- Failed: 2\n" in text
+    assert "- Files: 3\n- Sections: 22\n- Chunks: 52\n- Table Chunks: 11\n- Caption Chunks: 5\n- Numeric text Chunks: 0\n- Parsed: 1\n- Failed: 2\n" in text
     assert "## Failures by reason\n\n- too few Sections: 1\n- too little body text: 1\n" in text
     assert "- min_sections: `2`\n- min_body_characters: `2000`\n" in text
     message = str(raised.value.code)

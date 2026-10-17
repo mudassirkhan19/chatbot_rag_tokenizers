@@ -248,7 +248,7 @@ def test_the_report_names_the_parser_and_config_and_gives_a_line_per_file_and_to
     assert "- tokenizer: `google-bert/bert-base-uncased`" in report
     # One line per file in pinned-id order: the abstract, 13 body Sections and 6 appendix Sections.
     assert (
-        f"| 1508.07909v5 | `{sha256(fake_pdf('sennrich v5'))}` | parsed | 20 | 52 | 11 | 5 |\n"
-        f"| 2112.06598v2 | `{sha256(fake_pdf('wechsel v2'))}` | parsed | 20 | 52 | 11 | 5 |\n"
+        f"| 1508.07909v5 | `{sha256(fake_pdf('sennrich v5'))}` | parsed | 20 | 52 | 11 | 5 | 0 |\n"
+        f"| 2112.06598v2 | `{sha256(fake_pdf('wechsel v2'))}` | parsed | 20 | 52 | 11 | 5 | 0 |\n"
     ) in report
     assert "- Files: 2\n- Sections: 40\n- Chunks: 104\n" in report

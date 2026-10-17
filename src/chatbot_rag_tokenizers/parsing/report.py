@@ -4,12 +4,25 @@ It names the parser and the chunking config, gives one line per file and the tot
 depends on the time or the machine, so the same inputs give the same report.
 """
 
+import re
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
 from .config import ParseConfig
 from .quality import Failure
+
+# A text Chunk is counted as mostly numeric when more than this share of its words are numbers. Most such
+# Chunks hold the cells of a table GROBID missed; they are kept, and only counted (ADR 0035).
+NUMERIC_SHARE = 0.35
+# A word that is a number, apart from the punctuation around it, with an optional sign and unit letter:
+# "31.78", "(+2.8)", "4.7%" and "50k" are; "1.2e21" isn't, and "500 000" is two.
+_NUMBER = re.compile(r"\W*[-+−]?\d[\d.,]*[kKMB×x]?\W*")
+
+
+def is_mostly_numeric(text: str) -> bool:
+    words = text.split()
+    return bool(words) and sum(1 for word in words if _NUMBER.fullmatch(word)) > NUMERIC_SHARE * len(words)
 
 
 @dataclass(frozen=True)
@@ -23,6 +36,7 @@ class FileResult:
     failure: Failure | None = None  # why the file failed the quality gate; None when it was parsed
     tables: int = 0  # table Chunks (ADR 0028)
     captions: int = 0  # figure caption Chunks
+    numeric: int = 0  # text Chunks that are mostly numbers (ADR 0035)
 
     @property
     def status(self) -> str:
@@ -54,10 +68,13 @@ def write_report(path: Path, config: ParseConfig, grobid_versions: set[str], res
         "",
         "## Files",
         "",
-        "| Pinned id | sha256 | Status | Sections | Chunks | Tables | Captions |",
-        "|---|---|---|---:|---:|---:|---:|",
+        f"Numeric counts the text Chunks in which more than {NUMERIC_SHARE:.0%} of their words are numbers. Most hold"
+        " the cells of a table GROBID missed. They are kept as text Chunks.",
+        "",
+        "| Pinned id | sha256 | Status | Sections | Chunks | Tables | Captions | Numeric |",
+        "|---|---|---|---:|---:|---:|---:|---:|",
         *[
-            f"| {r.pinned_id} | `{r.sha256}` | {r.status} | {r.sections} | {r.chunks} | {r.tables} | {r.captions} |"
+            f"| {r.pinned_id} | `{r.sha256}` | {r.status} | {r.sections} | {r.chunks} | {r.tables} | {r.captions} | {r.numeric} |"
             for r in results
         ],
         "",
@@ -68,6 +85,7 @@ def write_report(path: Path, config: ParseConfig, grobid_versions: set[str], res
         f"- Chunks: {sum(r.chunks for r in results)}",
         f"- Table Chunks: {sum(r.tables for r in results)}",
         f"- Caption Chunks: {sum(r.captions for r in results)}",
+        f"- Numeric text Chunks: {sum(r.numeric for r in results)}",
         f"- Parsed: {sum(1 for r in results if not r.failure)}",
         f"- Failed: {len(failures)}",
         "",

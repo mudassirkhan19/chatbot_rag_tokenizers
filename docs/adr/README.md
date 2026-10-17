@@ -37,6 +37,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0032](0032-chunks-carry-their-edition-id.md) | Chunks carry their Edition id | Accepted |
 | [0033](0033-cc-by-tei-fixtures-may-be-committed.md) | CC BY TEI fixtures may be committed; the parse cache may not | Accepted |
 | [0034](0034-parse-files-stops-on-a-path-that-is-not-a-file.md) | `parse --files` stops on a path that isn't a file | Accepted |
+| [0035](0035-missed-table-cells-stay-in-text-chunks.md) | The cells of a missed table stay in text Chunks and are counted | Accepted |
 
 ## Template
 

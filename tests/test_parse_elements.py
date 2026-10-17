@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from parse_support import WECHSEL_TITLE, FakeGrobid, config_with_budget, fake_pdf, read_chunks, run_parse, sha256
+from parse_support import WECHSEL_TITLE, FakeGrobid, config_with_budget, fake_pdf, read_chunks, run_parse, seed_pdf, sha256
 
 
 def serve(tmp_path: Path, grobid: FakeGrobid, fixture: str) -> Path:
@@ -232,11 +232,30 @@ def test_the_report_counts_table_and_caption_chunks_per_file(tmp_path, grobid, e
     run_parse(tmp_path, elements, other, config=small_paper_config(tmp_path, 1000))
 
     report = (tmp_path / "parse-report.md").read_text()
-    assert "| Pinned id | sha256 | Status | Sections | Chunks | Tables | Captions |\n|---|---|---|---:|---:|---:|---:|\n" in report
+    assert "| Pinned id | sha256 | Status | Sections | Chunks | Tables | Captions | Numeric |\n|---|---|---|---:|---:|---:|---:|---:|\n" in report
     # 10 Sections of one short paragraph each and a caption; at 1,000 tokens WECHSEL's Introduction and
     # Section 5.1 take two text Chunks each, beside one Chunk for each of its 2 tables and 1 caption.
     assert (
-        f"| 1508.07909v5 | `{sha256(other.read_bytes())}` | parsed | 10 | 11 | 0 | 1 |\n"
-        f"| 2112.06598v2 | `{sha256(elements.read_bytes())}` | parsed | 7 | 12 | 2 | 1 |\n"
+        f"| 1508.07909v5 | `{sha256(other.read_bytes())}` | parsed | 10 | 11 | 0 | 1 | 0 |\n"
+        f"| 2112.06598v2 | `{sha256(elements.read_bytes())}` | parsed | 7 | 12 | 2 | 1 | 0 |\n"
     ) in report
-    assert "- Sections: 17\n- Chunks: 23\n- Table Chunks: 2\n- Caption Chunks: 2\n" in report
+    assert "- Sections: 17\n- Chunks: 23\n- Table Chunks: 2\n- Caption Chunks: 2\n- Numeric text Chunks: 0\n" in report
+
+
+def test_text_chunks_made_mostly_of_a_missed_tables_cells_are_kept_and_counted(tmp_path, grobid):
+    # Sennrich v5's Sections 4.1 and 5.1 as GROBID gives them: it missed Tables 1 and 3, so their cells
+    # are paragraph text, alone in one Chunk of 5.1 and after a paragraph of prose in one Chunk of 4.1.
+    pdf = seed_pdf(tmp_path, grobid, "sennrich-bpe_1508.07909v5.pdf", "missed-table.tei.xml")
+
+    run_parse(tmp_path, pdf)
+
+    chunks = read_chunks(tmp_path, pdf)
+    [cells] = [c for c in chunks if c["text"].startswith("vocabulary BLEU CHRF3 unigram F1 (%) name segmentation")]
+    assert (cells["kind"], cells["section_number"]) == ("text", "5.1")
+    [mixed] = [c for c in chunks if c["text"].startswith("11 We highlighted the limitations of word-level attention")]
+    assert (mixed["kind"], mixed["section_number"]) == ("text", "4.1")
+    report = (tmp_path / "parse-report.md").read_text()
+    assert "| Pinned id | sha256 | Status | Sections | Chunks | Tables | Captions | Numeric |\n" in report
+    assert f"| 1508.07909v5 | `{sha256(pdf.read_bytes())}` | parsed | 3 | 8 | 0 | 0 | 2 |\n" in report
+    assert "- Numeric text Chunks: 2\n" in report
+    assert "more than 35% of their words are numbers" in report

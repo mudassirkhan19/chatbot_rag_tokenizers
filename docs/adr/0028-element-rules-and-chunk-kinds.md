@@ -58,7 +58,7 @@ The rules are applied in the TEI reader (`parsing/tei.py`). The Chunker only pac
   - a formula fragment can become a Section head (Sennrich v5, "←h m ).");
   - text from appendix figures can join a body Section, which then spans pages 10 to 18 (languages-cost v1, "Language statistics of ChatGPT training data").
   
-  Tables GROBID misses turn up as text Chunks that are mostly numbers: 172 of the 1,640 text Chunks have more than 35% of their words numeric. They are kept for now (#24).
+  Tables GROBID misses turn up as text Chunks that are mostly numbers: 172 of the 1,640 text Chunks have more than 35% of their words numeric. They are kept, and the parse report counts them ([0035](0035-missed-table-cells-stay-in-text-chunks.md)).
 - How good the table Chunks are depends on GROBID. Tables it misses still turn up as noise paragraphs, and some rows hold text from another caption (Sennrich v5, Table 2). The quality gate (#20) doesn't judge tables.
 - When GROBID splits an appendix between `body` and the annex, the Sections come in TEI order: the body part first (how-good-is-your-tokenizer v1: A.2, B, C, then A, A.1).
 - An unnumbered body head that starts with "A " to "H " and doesn't end in a full stop, after the numbered body, opens the appendix. A run-in heading like "A Simple Baseline" late in a paper would be misread. None of the Seeds has one.

@@ -9,7 +9,7 @@ from .config import ParseConfig
 from .grobid import GrobidClient, GrobidFailed
 from .inputs import InputFile
 from .quality import Failure, Reason, gate
-from .report import FileResult, write_report
+from .report import FileResult, is_mostly_numeric, write_report
 from .tei import UnreadableTei, read_tei
 from .tokens import TokenCounter
 
@@ -83,7 +83,10 @@ def parse(
         cache.put_chunks(sha256, chunks)
         cache.put_bibliography(sha256, document.bibliography)
         kinds = [chunk.kind for chunk in chunks]
-        results.append(FileResult(pinned_id, sha256, sections, len(chunks), tables=kinds.count("table"), captions=kinds.count("caption")))
+        numeric = sum(1 for chunk in chunks if chunk.kind == "text" and is_mostly_numeric(chunk.text))
+        results.append(
+            FileResult(pinned_id, sha256, sections, len(chunks), tables=kinds.count("table"), captions=kinds.count("caption"), numeric=numeric)
+        )
         print(f"{pinned_id}: {sections} Sections, {len(chunks)} Chunks")
     summary = f"parse: {len(results)} files, {sum(r.chunks for r in results)} Chunks"
     if report_path is None:
