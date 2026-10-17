@@ -29,11 +29,21 @@ def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+# How a request fails when the service isn't there: nothing listens on the port (refused), the container
+# stopped while the request was being read (reset), or it closed the connection without an answer.
+DROPS: dict[str, tuple[type[httpx.TransportError], str]] = {
+    "refused": (httpx.ConnectError, "[Errno 61] Connection refused"),
+    "reset": (httpx.ReadError, "[Errno 54] Connection reset by peer"),
+    "disconnected": (httpx.RemoteProtocolError, "Server disconnected without sending a response."),
+}
+
+
 class FakeGrobid:
     """Stands in for the GROBID service: the sha256 of the uploaded PDF picks the TEI it answers with.
 
     Every request's URL and form fields are recorded. It can also fail on chosen files the ways the real
-    service does: an error answer, a timeout, or nothing listening on the port at all.
+    service does (an error answer, a timeout), or go away: then each request fails the way a stopped
+    service fails one, its connection refused, reset or dropped (DROPS).
     """
 
     def __init__(self) -> None:
@@ -41,7 +51,8 @@ class FakeGrobid:
         self.requests: list[tuple[str, list[tuple[str, str]]]] = []
         self.errors: dict[str, tuple[int, str]] = {}
         self.timeouts: set[str] = set()
-        self.down = False  # True: nothing listens on GROBID's port
+        self.down: str | None = None  # a key of DROPS: the service has gone away, and requests fail this way
+        self.down_after: int | None = None  # with down: answer this many requests first, then go away
 
     def serve(self, pdf: bytes, tei_fixture: str) -> None:
         self.tei_by_hash[sha256(pdf)] = (TEI / tei_fixture).read_text()
@@ -68,8 +79,9 @@ class FakeGrobid:
                 fields.append((name, payload.decode()))
         self.requests.append((str(request.url), fields))
         uploaded = sha256(upload)
-        if self.down:
-            raise httpx.ConnectError("[Errno 61] Connection refused", request=request)
+        if self.down and (self.down_after is None or len(self.requests) > self.down_after):
+            error, message = DROPS[self.down]
+            raise error(message, request=request)
         if uploaded in self.timeouts:
             raise httpx.ReadTimeout("timed out", request=request)
         if uploaded in self.errors:

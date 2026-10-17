@@ -19,7 +19,7 @@ TIMEOUT_SECONDS = 300.0  # a long paper takes a few seconds; a busy service may 
 
 
 class GrobidUnreachable(RuntimeError):
-    """The service isn't running: no file can be parsed, so the run stops."""
+    """The service isn't running, or stopped mid-request: no file can be parsed, so the run stops."""
 
     def __init__(self, url: str) -> None:
         super().__init__(f"the GROBID service isn't reachable at {url}. Start it with `just grobid-up` and run parse again.")
@@ -51,7 +51,9 @@ class GrobidClient:
                 files={"input": ("input.pdf", pdf, "application/pdf")},
                 headers={"Accept": "application/xml"},
             )
-        except httpx.ConnectError as error:
+        except (httpx.NetworkError, httpx.RemoteProtocolError) as error:
+            # Refused, reset or dropped without an answer: the service is down or went down mid-request,
+            # which is no fault of this file (ADR 0036). Recording a failure would keep it failed after a restart.
             raise GrobidUnreachable(self.service_url) from error
         except httpx.TimeoutException as error:
             raise GrobidFailed(Failure(Reason.GROBID_TIMEOUT, f"no answer within {TIMEOUT_SECONDS:g} s")) from error

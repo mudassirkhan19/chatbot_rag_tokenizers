@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from chatbot_rag_tokenizers.cli import main
-from parse_support import REPO_CONFIG, run_parse, seed_pdf, sha256
+from parse_support import DROPS, REPO_CONFIG, run_parse, seed_pdf, sha256
 
 
 def chunk_files(tmp_path: Path, pdf: Path) -> list[Path]:
@@ -125,7 +125,7 @@ def test_retry_failed_tries_recorded_failures_again(tmp_path, wechsel, grobid):
 
 def test_an_unreachable_grobid_stops_the_run_straight_away_and_points_to_grobid_up(tmp_path, wechsel, grobid):
     other = seed_pdf(tmp_path, grobid, "sennrich-bpe_1508.07909v5.pdf", "wechsel_2112.06598v2.tei.xml")
-    grobid.down = True
+    grobid.down = "refused"
 
     with pytest.raises(SystemExit) as raised:
         run_parse(tmp_path, wechsel, other)
@@ -137,9 +137,30 @@ def test_an_unreachable_grobid_stops_the_run_straight_away_and_points_to_grobid_
     assert len(grobid.requests) == 1  # the second file was never tried
     # Nothing is recorded as failed, so the files are parsed once the service is up.
     assert not (tmp_path / "parse-report.md").exists()
-    grobid.down = False
+    grobid.down = None
     run_parse(tmp_path, wechsel, other)
     assert chunk_files(tmp_path, wechsel) and chunk_files(tmp_path, other)
+
+
+@pytest.mark.parametrize("drop", sorted(DROPS))
+def test_a_grobid_that_goes_away_mid_run_stops_it_and_records_no_failure(tmp_path, wechsel, grobid, drop):
+    other = seed_pdf(tmp_path, grobid, "sennrich-bpe_1508.07909v5.pdf", "wechsel_2112.06598v2.tei.xml")
+    later = seed_pdf(tmp_path, grobid, "later_2401.00005v1.pdf", "wechsel_2112.06598v2.tei.xml")
+    grobid.down, grobid.down_after = drop, 1  # e.g. Docker stops the container after the first file
+
+    with pytest.raises(SystemExit) as raised:
+        run_parse(tmp_path, wechsel, other, later)
+
+    assert str(raised.value.code) == (
+        "parse: the GROBID service isn't reachable at http://localhost:8070."
+        " Start it with `just grobid-up` and run parse again."
+    )
+    assert len(grobid.requests) == 2  # the third file was never tried
+    assert chunk_files(tmp_path, other) and not list((tmp_path / "cache").glob("*/*.failure.json"))
+    # Once the service is back, a plain rerun parses the rest: nothing waits on --retry-failed.
+    grobid.down = None
+    run_parse(tmp_path, wechsel, other, later)
+    assert chunk_files(tmp_path, wechsel) and chunk_files(tmp_path, later)
 
 
 def test_a_retried_failure_that_parses_stays_parsed_on_the_next_run(tmp_path, wechsel, grobid):
