@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit Set Labeller</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #fff; --ink: #1c1c1a; --muted: #6b6b66; --line: #e2e2dc;
+    --yes: #1f7a4a; --yes-bg: #e3f3ea; --no: #a8322d; --no-bg: #f8e4e2; --warn-bg: #fff4d6; --accent: #2f5fd0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161615; --card: #20201e; --ink: #ecece8; --muted: #9a9a93; --line: #34342f;
+      --yes: #5fcf8f; --yes-bg: #183626; --no: #f0807a; --no-bg: #3d1d1b; --warn-bg: #3a3218; --accent: #8aa8ff; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 -apple-system, system-ui, sans-serif; }
+  header { position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; z-index: 1; }
+  header .pos { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .bar { flex: 1; min-width: 120px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .bar div { height: 100%; background: var(--accent); }
+  select, input, button, textarea { font: inherit; color: inherit; }
+  select, input[type=number] { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; }
+  main { max-width: 860px; margin: 0 auto; padding: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; }
+  .meta { color: var(--muted); font-size: 13px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--line); border-radius: 99px; padding: 0 8px; }
+  h1 { font-size: 20px; line-height: 1.35; margin: 8px 0 10px; }
+  .abstract { white-space: pre-wrap; }
+  .empty { color: var(--muted); font-style: italic; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 8px; }
+  .verdict { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; }
+  .verdict dt { color: var(--muted); }
+  .verdict dd { margin: 0; }
+  .note { background: var(--warn-bg); border-radius: 8px; padding: 8px 12px; margin-top: 10px; }
+  .choices { display: flex; gap: 10px; margin-bottom: 10px; }
+  .choices button { flex: 1; padding: 10px; border-radius: 8px; border: 2px solid var(--line); background: var(--card); cursor: pointer; font-weight: 600; }
+  .choices button.yes.on { border-color: var(--yes); background: var(--yes-bg); color: var(--yes); }
+  .choices button.no.on { border-color: var(--no); background: var(--no-bg); color: var(--no); }
+  .choices button.skip.on { border-color: var(--muted); }
+  textarea { width: 100%; min-height: 64px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); resize: vertical; }
+  .nav { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+  .nav button { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); cursor: pointer; }
+  .nav .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .status { color: var(--muted); font-size: 13px; margin-left: auto; }
+  .help { color: var(--muted); font-size: 13px; }
+  kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; font-size: 12px; }
+  details { margin-top: 6px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <span class="pos" id="pos"></span>
+  <div class="bar"><div id="progress"></div></div>
+  <span id="count" class="help"></span>
+  <label class="help">Show
+    <select id="filter">
+      <option value="all">all rows</option>
+      <option value="flagged">flagged for review</option>
+      <option value="todo">not checked by the developer</option>
+      <option value="developer">checked by the developer</option>
+      <option value="changed">changed from draft</option>
+      <option value="rules-rejected">rules-rejected</option>
+      <option value="judge-excluded">judge-excluded</option>
+      <option value="judge-included">judge-included</option>
+    </select>
+  </label>
+  <label class="help">Row <input id="jump" type="number" min="0" style="width:64px"></label>
+</header>
+<main>
+  <div class="card">
+    <div class="meta" id="meta"></div>
+    <h1 id="title"></h1>
+    <div class="abstract" id="abstract"></div>
+    <div style="margin-top:10px"><a id="link" target="_blank" rel="noopener">Open source page ↗</a></div>
+  </div>
+
+  <div class="card">
+    <h2>What the pipeline decided (draft)</h2>
+    <dl class="verdict" id="verdict"></dl>
+    <div class="note" id="note" hidden></div>
+  </div>
+
+  <div class="card">
+    <h2>Your label</h2>
+    <div class="choices">
+      <button class="yes" data-label="yes">Yes — relevant <kbd>Y</kbd></button>
+      <button class="no" data-label="no">No — not relevant <kbd>N</kbd></button>
+      <button class="skip" data-label="">Unsure / skip <kbd>U</kbd></button>
+    </div>
+    <textarea id="reason" placeholder="One line: why (Ctrl/⌘+Enter saves and moves on)"></textarea>
+    <div class="nav">
+      <button id="prev">← Prev</button>
+      <button id="next" class="primary">Save &amp; next →</button>
+      <span class="status" id="status"></span>
+    </div>
+    <details>
+      <summary class="help">The question and the scope</summary>
+      <p class="help"><b>Does this paper make a substantive contribution or finding about tokenization?</b> (Not: is it <i>mainly</i> about tokenization.)<br>
+      <b>Yes:</b> subword algorithms (BPE, WordPiece, Unigram, SentencePiece); byte-level and tokenizer-free models; NMT-era subword papers; effects of tokenization (multilingual cost and fairness, arithmetic, code, reasoning, vocabulary size); vocabulary adaptation and transfer.<br>
+      <b>No:</b> tokenizers for other modalities (image, video, audio, EEG, protein, music); token pruning or merging, KV cache, crypto tokens; papers that only use a tokenizer as preprocessing. Mixed-modality papers only if text tokenization is central.</p>
+      <p class="help">Keys: <kbd>Y</kbd> <kbd>N</kbd> <kbd>U</kbd> set the label · <kbd>R</kbd> edit reason · <kbd>Enter</kbd> save &amp; next · <kbd>←</kbd> <kbd>→</kbd> move without saving · <kbd>O</kbd> open source page</p>
+    </details>
+  </div>
+</main>
+<script>
+const STRATA = {
+  "rules-rejected": "Stage 1 (rules) rejected it before the LLM saw it.",
+  "judge-excluded": "Passed the rules; the LLM judge gave P(Yes) below the threshold, so it was excluded.",
+  "judge-included": "Passed the rules; the LLM judge gave P(Yes) at or above the threshold, so it was included.",
+  "pending": "Passed the rules; not scored by the judge yet.",
+};
+const SOURCES = {
+  draft: "the pipeline's draft (not yet checked)",
+  agent: "a labelling agent that saw only the title, abstract and link",
+  developer: "the developer",
+};
+let rows = [], judge = { model: "", threshold: 0.5 }, view = [], at = 0, label = "";
+const $ = (id) => document.getElementById(id);
+const checked = (r) => r.labelled_by === "developer";
+
+function explainReason(reason) {
+  const m = reason.match(/P\(Yes\) ([\d.]+)/);
+  if (m) {
+    const p = parseFloat(m[1]);
+    return `${reason} — the judge (${judge.model}) put ${(p * 100).toFixed(1)}% probability on "Yes" vs "No" given title + abstract; included when ≥ ${judge.threshold}.`;
+  }
+  const pattern = reason.split(":")[0];
+  if (pattern === "missing-required-term") return `${reason} — no tokenization term (tokeniz*, subword, BPE, byte-level, vocabulary, …) in title or abstract.`;
+  return `${reason} — exclusion pattern “${pattern}” fired.`;
+}
+
+function applyFilter() {
+  const f = $("filter").value;
+  const current = view[at];
+  view = rows.filter((r) =>
+    f === "all" ? true :
+    f === "flagged" ? !!r.review_note :
+    f === "todo" ? !checked(r) :
+    f === "developer" ? checked(r) :
+    f === "changed" ? r.label !== r.draft_label :
+    r.stratum === f).map((r) => r.index);
+  at = Math.max(0, view.indexOf(current));
+  render();
+}
+
+function render() {
+  const done = rows.filter(checked).length;
+  $("progress").style.width = `${(100 * done) / rows.length}%`;
+  $("count").textContent = `${done}/${rows.length} checked by the developer · ${rows.filter((r) => r.label !== r.draft_label).length} changed from draft`;
+  if (!view.length) { $("pos").textContent = "No rows in this view"; return; }
+  const r = rows[view[at]];
+  label = r.label;
+  $("pos").textContent = `${at + 1} / ${view.length}  (row ${r.index})`;
+  $("meta").innerHTML = "";
+  for (const t of [r.stratum, `${r.stratum_size} in stratum`, r.edition_id, checked(r) ? "✓ checked by the developer" : "not checked by the developer"]) {
+    const s = document.createElement("span"); s.className = "chip"; s.textContent = t; $("meta").append(s);
+  }
+  $("title").textContent = r.title;
+  $("abstract").textContent = r.abstract || "No abstract recorded (the judge saw the title only). Open the source page.";
+  $("abstract").className = r.abstract ? "abstract" : "abstract empty";
+  $("link").href = r.source_link;
+  $("verdict").innerHTML = "";
+  for (const [k, v] of [["Stage", STRATA[r.stratum] || r.stratum], ["Draft label", r.draft_label || "(none)"], ["Draft reason", explainReason(r.draft_reason)]]) {
+    const dt = document.createElement("dt"); dt.textContent = k;
+    const dd = document.createElement("dd"); dd.textContent = v;
+    $("verdict").append(dt, dd);
+  }
+  const notes = [];
+  if (r.review_note) notes.push(`Flagged for review: ${r.review_note}.`);
+  notes.push(`Current label (below) is from ${SOURCES[r.labelled_by] || r.labelled_by}.`);
+  $("note").hidden = !notes.length;
+  $("note").textContent = notes.join("\n");
+  $("note").style.whiteSpace = "pre-wrap";
+  $("reason").value = r.reason;
+  paintChoice();
+  $("jump").value = r.index;
+  $("status").textContent = "";
+}
+
+function paintChoice() {
+  document.querySelectorAll(".choices button").forEach((b) => b.classList.toggle("on", b.dataset.label === label));
+}
+
+async function save() {
+  const r = rows[view[at]];
+  const reason = $("reason").value.trim();
+  $("status").textContent = "Saving…";
+  const res = await fetch("/save", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ index: r.index, label, reason }) });
+  if (res.ok) Object.assign(r, { label, reason, labelled_by: "developer" });
+  $("status").textContent = res.ok ? "Saved to the Audit set file" : "Save failed!";
+  return res.ok;
+}
+
+async function saveAndNext() {
+  if (await save()) { if (at < view.length - 1) at++; render(); }
+}
+function move(d) { at = Math.min(view.length - 1, Math.max(0, at + d)); render(); }
+function setLabel(l) { label = l; paintChoice(); }
+
+document.querySelectorAll(".choices button").forEach((b) => b.onclick = () => setLabel(b.dataset.label));
+$("next").onclick = saveAndNext;
+$("prev").onclick = () => move(-1);
+$("filter").onchange = applyFilter;
+$("jump").onchange = () => { $("filter").value = "all"; applyFilter(); at = Math.max(0, view.indexOf(+$("jump").value)); render(); };
+$("reason").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveAndNext(); }
+  if (e.key === "Escape") $("reason").blur();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.metaKey || e.ctrlKey) return;
+  const k = e.key.toLowerCase();
+  if (k === "y") setLabel("yes");
+  else if (k === "n") setLabel("no");
+  else if (k === "u") setLabel("");
+  else if (k === "r") { e.preventDefault(); $("reason").focus(); }
+  else if (k === "enter") saveAndNext();
+  else if (k === "arrowright") move(1);
+  else if (k === "arrowleft") move(-1);
+  else if (k === "o") window.open(rows[view[at]].source_link, "_blank");
+});
+
+fetch("/rows").then((r) => r.json()).then((d) => { rows = d.rows; judge = d.judge; applyFilter(); });
+</script>
+</body>
+</html>

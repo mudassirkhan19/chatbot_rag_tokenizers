@@ -55,17 +55,19 @@ The Audit set (`data/audit/audit-set.csv`) is a hand-labelled, stratified sample
 
 ```sh
 uv run chatbot-rag-tokenizers audit export   # sample about 180 Candidates with draft labels
+uv run chatbot-rag-tokenizers audit label    # check and correct labels on a local page, one Candidate at a time
 uv run chatbot-rag-tokenizers audit report   # precision, recall and F1 by threshold, per model
 ```
 
-- **Export** draws an even share from each stratum (rule rejects, judge rejects, judge accepts, and rule passes still `pending` a verdict, which get no draft), with a fixed `--seed`. Export after the judge has scored the corpus (#11), or most rule passes will be pending. `label` and `reason` start as the pipeline's own verdict; correct them by reading each abstract, and leave `draft_label` and `draft_reason` as they are. The export never overwrites an existing file unless you pass `--force`.
+- **Export** draws an even share from each stratum (rule rejects, judge rejects, judge accepts, and rule passes still `pending` a verdict, which get no draft), with a fixed `--seed`. Export after the judge has scored the corpus (#11), or most rule passes will be pending. `label` and `reason` start as the pipeline's own verdict, and `draft_label` and `draft_reason` keep it. The export never overwrites an existing file unless you pass `--force`.
+- **Label** serves a page at http://localhost:8765. It shows each Candidate's abstract, the pipeline's verdict in plain words, and the current label, and saves each change straight to the file. `labelled_by` records who set each label (`draft`, `agent` or `developer`), and `review_note` says why a row was flagged for checking.
 - **Report** writes `data/audit/report.md`. It covers the rule stage alone and rules plus each model in `[[audit.models]]` (the `[judge]` model when there are none) at thresholds 0.1 to 0.9, with the scoring time per Candidate. Each row is weighted by the size of its stratum, so the figures describe all Candidates, not the sample. Missing verdicts are scored and cached in `data/audit/verdicts.jsonl` (`uv sync --group judge`); `--no-judge` reports cached verdicts only.
 
-> **Pending (#9):** the Audit set is not built yet. It needs judge verdicts for the whole corpus first (#11). Then:
-> 1. `uv run chatbot-rag-tokenizers audit export`
-> 2. Correct `label` and `reason` in `data/audit/audit-set.csv` against each abstract, then commit it.
-> 3. Run `uv run chatbot-rag-tokenizers audit report` and commit `data/audit/report.md`. For #1, first add the shortlisted models to `[[audit.models]]` in `config/scope.toml`.
-> 4. Close #9.
+The committed Audit set has 180 Candidates from the first full run:
+- Three agents labelled them blind, from title, abstract and link only.
+- The developer checked 48 rows: all 37 flagged ones, plus 11 more.
+
+ADR 0011 has the details. To compare judge models for #1, add the shortlist to `[[audit.models]]` in `config/scope.toml` and rerun `audit report`.
 
 ## Tests
 

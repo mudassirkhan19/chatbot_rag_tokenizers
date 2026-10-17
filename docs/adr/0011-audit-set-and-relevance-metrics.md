@@ -16,7 +16,8 @@ The Relevance verdict has two stages: the rules ([0005](0005-rule-pre-filter.md)
   - Claude's earlier read was borderline
   - the agent disagreed with the developer
 
-  This was 37 of 180. The risk moves from anchoring on the judge to sharing the agents' blind spots. The developer's check of the hard cases is what limits it.
+  This was 37 of 180. The developer checked all of them and 11 more rows, and changed two labels. The risk moves from anchoring on the judge to sharing the agents' blind spots. The developer's check of the hard cases is what limits it.
+- **Provenance in the file, checked on a page.** Two columns record who set each label: `labelled_by` (`draft`, `agent` or `developer`) and `review_note` (why a row was flagged). A reviewer can see which labels a person checked without trusting this ADR. `audit label` serves a local page that shows one Candidate at a time, with the judge's probability in plain words. Every save from the page marks that row `developer`. The agents' prompts and the merge script were one-off session tooling and are not in the repository.
 - **One file, committed.** The Audit set is `data/audit/audit-set.csv`. The export refuses to overwrite it without `--force`, because it holds corrected labels.
 - **What the report measures.** `audit report` re-applies the current rules to each row's title and abstract, so a rule change shows up without a new export. It reports:
   - the rule stage alone (rule pass = relevant), whose recall is the ceiling for the whole pipeline

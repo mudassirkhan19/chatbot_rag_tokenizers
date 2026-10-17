@@ -46,6 +46,8 @@ COLUMNS = [
     "draft_reason",
     "label",
     "reason",
+    "labelled_by",  # who set the label: draft (the pipeline's verdict), agent or developer
+    "review_note",  # why the row was flagged for the developer to check, if it was
 ]
 DEFAULT_THRESHOLDS = [round(0.1 * step, 1) for step in range(1, 10)]
 
@@ -93,6 +95,8 @@ def sample(assessed: list[Assessed], threshold: float, size: int, seed: int) -> 
                     "draft_reason": row["relevance_reason"],
                     "label": label,
                     "reason": row["relevance_reason"],
+                    "labelled_by": "draft",
+                    "review_note": "",
                 }
             )
     return sorted(rows, key=lambda row: (STRATA.index(row["stratum"]), row["edition_id"]))

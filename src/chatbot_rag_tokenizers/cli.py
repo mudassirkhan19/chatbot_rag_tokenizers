@@ -4,7 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from .collection import audit, fulltext
+from .collection import audit, audit_label, fulltext
 from .collection.config import load_config
 from .collection.pipeline import collect
 
@@ -81,6 +81,15 @@ def main(argv: list[str] | None = None) -> None:
     )
     report_cmd.add_argument("--no-judge", action="store_true", help="never load a model; report only cached verdicts")
 
+    label_cmd = audit_commands.add_parser(
+        "label",
+        help="serve a local page for checking and correcting the Audit set's labels one Candidate at a time",
+        description="Each save rewrites that row of the Audit set file and marks it labelled_by=developer.",
+    )
+    label_cmd.add_argument("--config", type=Path, default=Path("config/scope.toml"))
+    label_cmd.add_argument("--audit-set", type=Path, default=Path("data/audit/audit-set.csv"))
+    label_cmd.add_argument("--port", type=int, default=8765)
+
     args = parser.parse_args(argv)
     if args.command == "collect":
         collect(load_config(args.config), args.snapshot, args.manifest, refresh=args.refresh, run_judge=not args.no_judge)
@@ -95,3 +104,5 @@ def main(argv: list[str] | None = None) -> None:
         audit.report(
             load_config(args.config), args.audit_set, args.verdicts, args.output, args.thresholds, run_judge=not args.no_judge
         )
+    elif args.command == "audit" and args.audit_command == "label":
+        audit_label.serve(load_config(args.config), args.audit_set, args.port)
