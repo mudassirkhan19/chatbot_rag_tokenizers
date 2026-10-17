@@ -88,7 +88,7 @@ This sends each PDF to the pinned GROBID service and cuts its text into Chunks t
 - **Element rules** (ADR 0026). Each kind of element GROBID finds follows one rule:
   - *Reference lists* produce no Chunks; each file's bibliography is kept as structured data (title, authors, year, identifiers, the printed reference) in the parse cache.
   - *Tables* become `table` Chunks, linearised row by row (cells joined by ` | `) after a first line with the table's label, Section and caption. A table over the budget is cut between rows, and each part repeats that first line and the table's first row, which holds its column heads.
-  - *Figure captions* become one small `caption` Chunk each. Tables and captions go to the Section that cites them, or else the one their page falls in.
+  - *Figure captions* become one small `caption` Chunk each; a caption over the budget would be cut at its sentences, which none of the Seeds' is. Tables and captions go to the Section that cites them, or else the one their page falls in.
   - *Equations* stay inline in the paragraph text, as GROBID renders them.
   - *Appendices* stay as Sections, marked as appendices in their Chunks, whether GROBID puts them in the annex or in the body.
   - *Acknowledgements* and footnotes are dropped.

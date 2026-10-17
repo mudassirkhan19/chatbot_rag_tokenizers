@@ -100,6 +100,18 @@ def test_each_figure_caption_is_one_chunk_in_the_section_that_cites_it(tmp_path,
     assert kinds == sorted(kinds, key=["text", "table", "caption"].index)
 
 
+def test_a_caption_over_the_budget_is_cut_at_its_sentences_like_a_paragraph(tmp_path, elements):
+    # The one departure from "one Chunk per caption" (ADR 0026): Figure 2's caption is over 40 tokens.
+    run_parse(tmp_path, elements, config=config_with_budget(tmp_path, 40))
+
+    captions = of_kind(read_chunks(tmp_path, elements), "caption")
+    assert [c["text"] for c in captions] == [
+        "Figure2: Test scores over training steps from fine-tuning RoBERTa models on NLI (using XNLI) and NER (using WikiANN).",
+        "Perplexity on the held-out set over training steps of GPT-2 models. We evaluate every 12.5k steps.",
+    ]
+    assert all(c["token_count"] <= 40 and c["section_number"] == "5.1" for c in captions)
+
+
 def read_bibliography(tmp_path: Path, pdf: Path) -> list[dict]:
     """The bibliography the parse cache holds for one file."""
     [path] = (tmp_path / "cache" / sha256(pdf.read_bytes())).glob("*.bibliography.jsonl")
