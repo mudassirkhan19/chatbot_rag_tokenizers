@@ -13,7 +13,7 @@ from .tokens import TokenCounter
 
 
 def parse(config: ParseConfig, files: list[InputFile], cache_dir: Path, report_path: Path) -> None:
-    cache = ParseCache(cache_dir, config.grobid.parser_key)
+    cache = ParseCache(cache_dir, config.grobid.parser_key, config.chunking.key)
     client = GrobidClient(config.grobid)
     counter = TokenCounter(config.chunking)
     results = []

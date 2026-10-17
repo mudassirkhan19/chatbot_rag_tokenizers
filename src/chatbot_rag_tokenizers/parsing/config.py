@@ -1,5 +1,7 @@
 """The parse config file: the pinned GROBID service (ADR 0023) and the chunking config (ADR 0025)."""
 
+import hashlib
+import json
 import re
 import tomllib
 from dataclasses import asdict, dataclass
@@ -48,6 +50,12 @@ class ChunkingConfig:
         settings = asdict(self)
         del settings["tokenizer_file"]
         return settings
+
+    @property
+    def key(self) -> str:
+        """Names the chunking config in the parse cache: a short hash of every setting `describe` gives."""
+        settings = json.dumps(self.describe(), sort_keys=True, ensure_ascii=False)
+        return f"chunking-{hashlib.sha256(settings.encode()).hexdigest()[:12]}"
 
 
 @dataclass(frozen=True)

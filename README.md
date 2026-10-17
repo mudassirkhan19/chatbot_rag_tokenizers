@@ -82,7 +82,8 @@ This sends each PDF to the pinned GROBID service and cuts its body text into Chu
 
 - **Pinned ids from file names.** A Seed PDF named `<seed>_<pinned id>.pdf` (`bpe-dropout_1910.13267v1.pdf`) is cited as `1910.13267v1`; any other file is taken to be named by its pinned id, as `fetch` names files. Its sha256 is computed on each run.
 - **Chunks** pack whole paragraphs up to 350 tokens, counted with the pinned BERT WordPiece tokenizer in `config/tokenizers/` (`[chunking]` in `config/parse.toml`). A longer paragraph is split at its sentences. Each Chunk carries its context header (title › Section path) apart from its text, and its citation anchor: pinned id, Version, Section and pages.
-- **The parse cache** (`data/parse-cache/`, never committed) keeps GROBID's TEI and the Chunks per file sha256. A file whose TEI is cached is not sent to GROBID again.
+- **The parse cache** (`data/parse-cache/`, never committed) keeps GROBID's TEI per file sha256 and parser version, and the Chunks per file sha256, parser version and chunking-config hash (ADR 0028). A file whose TEI is cached is not sent to GROBID again; a new GROBID digest re-parses it, and a chunking-config change only re-chunks it from the cached TEI.
+- **Reproducible.** Files are processed in sorted order and nothing in the output depends on time or the machine, so the same PDFs and config give byte-identical Chunks and report. GROBID's raw TEI is not byte-stable (ADR 0024); the Chunks are.
 - **The parse report** (`data/parse-report.md`, committed) names the GROBID image and version and the chunking config, and gives a line per file and the totals.
 
 ## Measure the Relevance verdict
@@ -112,6 +113,13 @@ ADR 0020 has the details. ADR 0021 records the judge models compared on it and t
 just test        # uv run pytest; extra arguments go to pytest
 just typecheck   # uv run mypy src tests
 just lint        # uv run ruff check src tests (errors only, not style)
+```
+
+The test against the real GROBID container is opt-in. It parses `data/pdfs/seeds/wechsel_2112.06598v2.pdf` twice from an empty cache and checks that it passes and that both runs give byte-identical Chunks and report:
+
+```sh
+just grobid-up
+RUN_GROBID_TESTS=1 just test tests/test_parse_grobid.py
 ```
 
 The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model. `tests/test_dev_setup.py` also runs `just` to check the recipes, that `init` stops when Docker is missing, and, with a fake `docker` and `curl` on PATH, that `init` pulls GROBID by digest and that `grobid-up` and `grobid-down` behave; it skips without just.

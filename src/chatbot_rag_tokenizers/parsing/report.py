@@ -50,4 +50,4 @@ def write_report(path: Path, config: ParseConfig, grobid_versions: set[str], res
         f"- Chunks: {sum(r.chunks for r in results)}",
     ]
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(lines) + "\n")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")  # the same bytes on every machine
