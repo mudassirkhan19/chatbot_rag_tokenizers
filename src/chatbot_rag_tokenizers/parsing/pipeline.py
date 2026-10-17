@@ -24,13 +24,26 @@ class ParseErrors(RuntimeError):
             lines.append(f"{_files(len(new))} failed. They have no Chunks; the parse report gives each one's reason.")
             lines += [f"  {result.pinned_id}: {result.failure}" for result in new]
         if earlier:
-            lines.append(f"{_files(len(earlier))} failed, on an earlier run. They were not retried and have no Chunks.")
+            lines.append(
+                f"{_files(len(earlier))} failed, on an earlier run. They were not retried and have no Chunks;"
+                " run parse with --retry-failed to try them again."
+            )
             lines += [f"  {result.pinned_id}: {result.failure}" for result in earlier]
         super().__init__("\n".join(lines))
 
 
-def parse(config: ParseConfig, files: list[InputFile], cache_dir: Path, report_path: Path, limit: int | None = None) -> None:
+def parse(
+    config: ParseConfig,
+    files: list[InputFile],
+    cache_dir: Path,
+    report_path: Path,
+    limit: int | None = None,
+    retry_failed: bool = False,
+) -> None:
     """Parse each file in pinned-id order, the first ``limit`` of them when it is given.
+
+    A file whose failure is recorded is not tried again unless ``retry_failed`` is set; then it is parsed
+    like a new file, from its cached TEI when there is one, else by GROBID.
 
     A file that fails the quality gate gets no Chunks and doesn't stop the run: every failure, this run's
     and those recorded by an earlier run, is raised together as ParseErrors once the report is written.
@@ -45,7 +58,7 @@ def parse(config: ParseConfig, files: list[InputFile], cache_dir: Path, report_p
     versions: set[str] = set()
     for file in sorted(files, key=lambda f: (f.identity.pinned_id, f.identity.sha256))[:limit]:
         pinned_id, sha256 = file.identity.pinned_id, file.identity.sha256
-        if recorded := cache.failure(sha256):
+        if not retry_failed and (recorded := cache.failure(sha256)):
             earlier_failures.append(FileResult(pinned_id, sha256, recorded.sections, 0, recorded.failure))
             results.append(earlier_failures[-1])
             continue

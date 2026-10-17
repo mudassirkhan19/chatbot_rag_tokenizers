@@ -64,6 +64,11 @@ def main(argv: list[str] | None = None) -> None:
     parse_cmd.add_argument("--pdfs", type=Path, default=Path("data/pdfs"), help="where `fetch` put the PDFs (default data/pdfs)")
     parse_cmd.add_argument("--limit", type=int, help="parse at most this many files, the first in pinned-id order, e.g. for a smoke test")
     parse_cmd.add_argument(
+        "--retry-failed",
+        action="store_true",
+        help="try again the files whose failure an earlier run recorded, instead of reporting the recorded failure",
+    )
+    parse_cmd.add_argument(
         "--files",
         type=Path,
         nargs="+",
@@ -130,7 +135,7 @@ def main(argv: list[str] | None = None) -> None:
         files, problems = (inputs.from_paths(args.files), []) if args.files else inputs.from_record(args.snapshot, args.pdfs)
         messages = []
         try:
-            parsing.parse(load_parse_config(args.config), files, args.cache, args.report, args.limit)
+            parsing.parse(load_parse_config(args.config), files, args.cache, args.report, args.limit, args.retry_failed)
         except parsing.ParseErrors as errors:
             messages.append(f"parse: {errors}")
         except GrobidUnreachable as error:

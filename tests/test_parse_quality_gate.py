@@ -94,8 +94,33 @@ def test_a_failure_is_permanent_for_the_file_parser_and_config(tmp_path, wechsel
     # Recorded failures still count: they are listed at the end and the exit is non-zero.
     message = str(raised.value.code)
     assert message.startswith("parse: 2 files failed, on an earlier run.")
+    assert "run parse with --retry-failed to try them again" in message
     assert "2401.00001v1: too little body text (1594 characters, minimum 2000)" in message
     assert "2401.00003v1: GROBID error (HTTP 500: [BAD_INPUT_DATA]" in message
+
+
+def test_retry_failed_tries_recorded_failures_again(tmp_path, wechsel, grobid):
+    broken = seed_pdf(tmp_path, grobid, "broken_2401.00003v1.pdf", "wechsel_2112.06598v2.tei.xml")
+    grobid.fail(broken.read_bytes(), 500, "[BAD_INPUT_DATA] PDF to XML conversion failed with error code: 1")
+    near_empty = seed_pdf(tmp_path, grobid, "near-empty_2401.00001v1.pdf", "near-empty.tei.xml")
+    with pytest.raises(SystemExit):
+        run_parse(tmp_path, wechsel, broken, near_empty)
+    assert len(grobid.requests) == 3
+
+    # GROBID would now answer for the broken file; asked to, the rerun tries both failures again.
+    del grobid.errors[sha256(broken.read_bytes())]
+    with pytest.raises(SystemExit) as raised:
+        run_parse(tmp_path, wechsel, broken, near_empty, options=("--retry-failed",))
+
+    # The broken file is sent again and now parses. The near-empty file's TEI is cached, so it is
+    # gated again without a request, and fails again as a failure of this run.
+    assert len(grobid.requests) == 4
+    assert chunk_files(tmp_path, broken)
+    assert f"| 2401.00003v1 | `{sha256(broken.read_bytes())}` | parsed |" in report(tmp_path)
+    message = str(raised.value.code)
+    assert message.startswith("parse: 1 file failed.")
+    assert "2401.00001v1: too little body text" in message
+    assert "earlier run" not in message
 
 
 def test_an_unreachable_grobid_stops_the_run_straight_away_and_points_to_grobid_up(tmp_path, wechsel, grobid):
