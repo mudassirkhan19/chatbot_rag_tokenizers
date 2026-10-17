@@ -1,15 +1,13 @@
-"""The parse config file: the pinned GROBID service (ADR 0022).
-
-Run as a module, it prints the GROBID settings as shell assignments for the justfile.
-"""
+"""The parse config file: the pinned GROBID service (ADR 0022)."""
 
 import re
-import shlex
-import sys
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
+from chatbot_rag_tokenizers.config import ConfigError
+
+DEFAULT_PATH = Path("config/parse.toml")
 DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
 
 
@@ -30,27 +28,23 @@ class GrobidConfig:
         return f"http://localhost:{self.port}"
 
 
-class ConfigError(ValueError):
-    pass
-
-
-def load_grobid_config(path: Path) -> GrobidConfig:
+def load_grobid_config(path: Path = DEFAULT_PATH) -> GrobidConfig:
     raw = tomllib.loads(path.read_text())
     if "grobid" not in raw:
         raise ConfigError(f"{path} has no [grobid] section")
-    grobid = GrobidConfig(**raw["grobid"])
+    fields = raw["grobid"]
+    expected = {"image": str, "tag": str, "digest": str, "port": int}
+    if unknown := sorted(set(fields) - set(expected)):
+        raise ConfigError(f"[grobid] in {path} has unknown fields: {', '.join(unknown)}")
+    for name, kind in expected.items():
+        if name not in fields:
+            raise ConfigError(f"[grobid] in {path} has no {name}")
+        # bool is a subclass of int, so `port = true` would otherwise pass.
+        if not isinstance(fields[name], kind) or isinstance(fields[name], bool):
+            raise ConfigError(f"GROBID {name} {fields[name]!r} is not a {kind.__name__}")
+    grobid = GrobidConfig(**fields)
     if not DIGEST.fullmatch(grobid.digest):
         raise ConfigError(f"GROBID digest {grobid.digest!r} is not sha256: followed by 64 hex digits")
+    if not 1 <= grobid.port <= 65535:
+        raise ConfigError(f"GROBID port {grobid.port} is not between 1 and 65535")
     return grobid
-
-
-def main(argv: list[str] | None = None) -> None:
-    """Print GROBID_REFERENCE, GROBID_TAG and GROBID_PORT as shell assignments."""
-    args = sys.argv[1:] if argv is None else argv
-    grobid = load_grobid_config(Path(args[0]) if args else Path("config/parse.toml"))
-    for name, value in [("GROBID_REFERENCE", grobid.reference), ("GROBID_TAG", grobid.tag), ("GROBID_PORT", grobid.port)]:
-        print(f"{name}={shlex.quote(str(value))}")
-
-
-if __name__ == "__main__":
-    main()

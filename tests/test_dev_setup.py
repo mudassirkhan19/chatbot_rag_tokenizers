@@ -16,10 +16,10 @@ JUST = shutil.which("just")
 needs_just = pytest.mark.skipif(JUST is None, reason="just is not installed")
 
 
-def just(*args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+def just(*args: str, env: dict[str, str] | None = None, justfile: Path = ROOT / "justfile") -> subprocess.CompletedProcess[str]:
     assert JUST is not None
     return subprocess.run(
-        [JUST, "--justfile", str(ROOT / "justfile"), *args],
+        [JUST, "--justfile", str(justfile), *args],
         cwd=ROOT,
         env=env,
         capture_output=True,
@@ -43,6 +43,7 @@ def test_project_sets_a_minimum_uv_version():
 
 
 @needs_just
+@pytest.mark.skipif(shutil.which("uv") is None, reason="uv is not installed")
 def test_init_stops_with_a_clear_message_when_docker_is_missing(tmp_path):
     # A PATH holding only uv, just and the system shell tools, so docker is never found.
     bin_dir = tmp_path / "bin"
@@ -60,6 +61,7 @@ def test_init_stops_with_a_clear_message_when_docker_is_missing(tmp_path):
 
 
 # A fake docker CLI and curl, keeping their state in files, so the GROBID recipes run without Docker.
+# A container is three files: its image, its host port binding ("ip:port") and whether it is running.
 FAKE_DOCKER = r"""#!/bin/bash
 state="$FAKE_STATE"
 echo "$*" >> "$state/calls"
@@ -70,13 +72,15 @@ case "$1" in
   inspect)
     [ -f "$state/container" ] || { echo "Error: No such object: ${@: -1}" >&2; exit 1; }
     case "$*" in
+      *PortBindings*) echo "$(cat "$state/running") $(cat "$state/container") $(cat "$state/binding")" ;;
       *State.Running*) cat "$state/running" ;;
-      *Config.Image*) cat "$state/container" ;;
       *) echo "[]" ;;
     esac
     exit 0 ;;
-  run) echo "${@: -1}" > "$state/container"; echo true > "$state/running"; echo 1234abcd; exit 0 ;;
-  rm) rm -f "$state/container" "$state/running"; exit 0 ;;
+  run)
+    while [ $# -gt 1 ]; do [ "$1" = -p ] && echo "${2%:*}" > "$state/binding"; shift; done
+    echo "$1" > "$state/container"; echo true > "$state/running"; echo 1234abcd; exit 0 ;;
+  rm) rm -f "$state/container" "$state/running" "$state/binding"; exit 0 ;;
   logs) echo "fake GROBID log"; exit 0 ;;
 esac
 exit 0
@@ -96,7 +100,9 @@ esac
 REFERENCE = "grobid/grobid@sha256:223957791ac2bbe48609dcc58a689b16b60baeae13a8734ef440ae6bfb38f4cd"
 
 
-class FakeDocker:
+class FakeDockerCurlAndUv:
+    """Puts a fake docker, curl and uv first on PATH and runs `just` with them."""
+
     def __init__(self, root: Path):
         self.state = root / "state"
         self.state.mkdir()
@@ -109,8 +115,8 @@ class FakeDocker:
         assert real_uv is not None
         self.env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "FAKE_STATE": str(self.state), "REAL_UV": real_uv}
 
-    def just(self, *args: str) -> subprocess.CompletedProcess[str]:
-        return just(*args, env=self.env)
+    def just(self, *args: str, justfile: Path = ROOT / "justfile") -> subprocess.CompletedProcess[str]:
+        return just(*args, env=self.env, justfile=justfile)
 
     def calls(self, command: str) -> list[str]:
         path = self.state / "calls"
@@ -120,50 +126,57 @@ class FakeDocker:
     def has_image(self) -> None:
         (self.state / "images").write_text(REFERENCE + "\n")
 
+    def has_running_container(self, image: str, binding: str) -> None:
+        (self.state / "container").write_text(image + "\n")
+        (self.state / "binding").write_text(binding + "\n")
+        (self.state / "running").write_text("true\n")
+
     def becomes_healthy(self) -> None:
         (self.state / "healthy").touch()
 
 
 @pytest.fixture
-def docker(tmp_path):
-    return FakeDocker(tmp_path)
+def fake_tools(tmp_path):
+    if shutil.which("uv") is None:
+        pytest.skip("uv is not installed")
+    return FakeDockerCurlAndUv(tmp_path)
 
 
 @needs_just
-def test_init_pulls_the_pinned_grobid_image_by_digest(docker):
-    result = docker.just("init")
+def test_init_pulls_the_pinned_grobid_image_by_digest(fake_tools):
+    result = fake_tools.just("init")
 
     assert result.returncode == 0, result.stderr
-    assert docker.calls("pull") == [f"pull {REFERENCE}"]
+    assert fake_tools.calls("pull") == [f"pull {REFERENCE}"]
 
 
 @needs_just
-def test_init_skips_the_pull_when_the_image_is_present(docker):
-    docker.has_image()
+def test_init_skips_the_pull_when_the_image_is_present(fake_tools):
+    fake_tools.has_image()
 
-    result = docker.just("init")
+    result = fake_tools.just("init")
 
     assert result.returncode == 0, result.stderr
-    assert docker.calls("pull") == []
+    assert fake_tools.calls("pull") == []
 
 
 @needs_just
-def test_grobid_up_runs_the_pinned_image_and_returns_once_it_is_alive(docker):
-    docker.becomes_healthy()
+def test_grobid_up_runs_the_pinned_image_and_returns_once_it_is_alive(fake_tools):
+    fake_tools.becomes_healthy()
 
-    result = docker.just("grobid-up")
+    result = fake_tools.just("grobid-up")
 
     assert result.returncode == 0, result.stderr
-    [run] = docker.calls("run")
+    [run] = fake_tools.calls("run")
     assert run.endswith(REFERENCE)
-    assert "-p 8070:8070" in run
-    assert "http://localhost:8070/api/isalive" in (docker.state / "curl").read_text()
+    assert "-p 127.0.0.1:8070:8070" in run
+    assert "http://localhost:8070/api/isalive" in (fake_tools.state / "curl").read_text()
     assert "http://localhost:8070" in result.stdout
 
 
 @needs_just
-def test_grobid_up_times_out_with_a_clear_message_when_grobid_never_answers(docker):
-    result = docker.just("grobid-up", "1")
+def test_grobid_up_times_out_with_a_clear_message_when_grobid_never_answers(fake_tools):
+    result = fake_tools.just("grobid-up", "1")
 
     assert result.returncode != 0
     assert "GROBID did not answer http://localhost:8070/api/isalive within 1 s" in result.stderr
@@ -171,35 +184,114 @@ def test_grobid_up_times_out_with_a_clear_message_when_grobid_never_answers(dock
 
 
 @needs_just
-def test_grobid_up_twice_starts_one_container(docker):
-    docker.becomes_healthy()
+def test_grobid_up_twice_starts_one_container(fake_tools):
+    fake_tools.becomes_healthy()
 
-    first, second = docker.just("grobid-up"), docker.just("grobid-up")
+    first, second = fake_tools.just("grobid-up"), fake_tools.just("grobid-up")
 
     assert (first.returncode, second.returncode) == (0, 0), second.stderr
-    assert len(docker.calls("run")) == 1
+    assert len(fake_tools.calls("run")) == 1
     assert "already running" in second.stdout
 
 
 @needs_just
-def test_grobid_down_removes_the_container_and_is_harmless_twice(docker):
-    docker.becomes_healthy()
-    docker.just("grobid-up")
+def test_grobid_down_removes_the_container_and_is_harmless_twice(fake_tools):
+    fake_tools.becomes_healthy()
+    fake_tools.just("grobid-up")
 
-    first, second = docker.just("grobid-down"), docker.just("grobid-down")
+    first, second = fake_tools.just("grobid-down"), fake_tools.just("grobid-down")
 
     assert (first.returncode, second.returncode) == (0, 0), second.stderr
     assert "GROBID stopped" in first.stdout
     assert "not running" in second.stdout
-    assert not (docker.state / "container").exists()
+    assert not (fake_tools.state / "container").exists()
 
 
 @needs_just
-def test_grobid_up_stops_with_a_clear_message_when_the_daemon_is_down(docker):
-    docker.env["FAKE_DOCKER_DOWN"] = "1"
+def test_grobid_up_stops_with_a_clear_message_when_the_daemon_is_down(fake_tools):
+    fake_tools.env["FAKE_DOCKER_DOWN"] = "1"
 
-    result = docker.just("grobid-up")
+    result = fake_tools.just("grobid-up")
 
     assert result.returncode != 0
     assert "the Docker daemon is not answering" in result.stderr
-    assert docker.calls("run") == []
+    assert fake_tools.calls("run") == []
+
+
+@needs_just
+def test_grobid_up_replaces_a_running_container_published_on_another_port(fake_tools):
+    fake_tools.has_running_container(REFERENCE, "127.0.0.1:9999")
+    fake_tools.becomes_healthy()
+
+    result = fake_tools.just("grobid-up")
+
+    assert result.returncode == 0, result.stderr
+    [run] = fake_tools.calls("run")
+    assert "-p 127.0.0.1:8070:8070" in run
+
+
+@needs_just
+def test_grobid_up_replaces_a_running_container_from_another_image(fake_tools):
+    fake_tools.has_running_container("grobid/grobid@sha256:" + "0" * 64, "127.0.0.1:8070")
+    fake_tools.becomes_healthy()
+
+    result = fake_tools.just("grobid-up")
+
+    assert result.returncode == 0, result.stderr
+    [run] = fake_tools.calls("run")
+    assert run.endswith(REFERENCE)
+
+
+@needs_just
+def test_grobid_recipes_only_ever_inspect_containers(fake_tools):
+    fake_tools.becomes_healthy()
+
+    fake_tools.just("grobid-up")
+    fake_tools.just("grobid-down")
+
+    inspects = fake_tools.calls("inspect")
+    assert inspects
+    assert all("--type container" in call for call in inspects), inspects
+
+
+@needs_just
+def test_grobid_up_rejects_a_timeout_that_is_not_a_number_without_running_it(fake_tools, tmp_path):
+    marker = tmp_path / "ran"
+
+    result = fake_tools.just("grobid-up", f"1$(touch {marker})")
+
+    assert result.returncode != 0
+    assert "the timeout must be a whole number of seconds" in result.stderr
+    assert not marker.exists()
+    assert fake_tools.calls("run") == []
+
+
+def justfile_with_required_uv(tmp_path: Path, required_version: str) -> Path:
+    """A copy of the justfile next to a pyproject.toml with another [tool.uv] required-version."""
+    (tmp_path / "pyproject.toml").write_text(f'[tool.uv]\nrequired-version = "{required_version}"\n')
+    shutil.copy(ROOT / "justfile", tmp_path / "justfile")
+    return tmp_path / "justfile"
+
+
+@needs_just
+@pytest.mark.parametrize("required_version", [">=0.10.8", ">=0.10.8,<100", "<100, >= 0.10.8"])
+def test_init_reads_the_lower_bound_among_other_uv_specifiers(fake_tools, tmp_path, required_version):
+    # The fake uv is 99.0.0; with the daemon down, init stops right after the uv check.
+    fake_tools.env["FAKE_DOCKER_DOWN"] = "1"
+    project = tmp_path / "project"
+    project.mkdir()
+
+    result = fake_tools.just("init", justfile=justfile_with_required_uv(project, required_version))
+
+    assert "the Docker daemon is not answering" in result.stderr
+
+
+@needs_just
+def test_init_names_the_required_version_it_cannot_check(fake_tools, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+
+    result = fake_tools.just("init", justfile=justfile_with_required_uv(project, "==0.10.8"))
+
+    assert result.returncode != 0
+    assert "required-version '==0.10.8' has no >= lower bound" in result.stderr

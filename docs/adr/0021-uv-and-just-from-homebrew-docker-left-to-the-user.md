@@ -1,7 +1,7 @@
 # 0021. uv and just from Homebrew, Docker left to the user
 
 - **Date:** 2026-10-17
-- **Status:** Accepted
+- **Status:** Accepted. Supersedes the "setup is `uv sync`" consequence of [0001](0001-python-3.12-with-uv.md).
 
 ## Context
 A reviewer who clones the repo had to piece the setup together from the README: install uv, run `uv sync` with the right dependency groups, and soon also run a Docker daemon for the GROBID parser. Nothing said which tool versions the repo is tested with, and everyday commands were long `uv run` lines. The setup only has to work on macOS.

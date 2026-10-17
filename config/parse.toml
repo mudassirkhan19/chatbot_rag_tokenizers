@@ -1,7 +1,7 @@
-# Parse config: the GROBID parser service that `parse` sends PDFs to.
+# Parse config: the GROBID parser service that the parse step (#14) will send PDFs to.
 #
-# The image is pinned by digest, the one value `just init`, `just grobid-up` and `parse` all
-# read (ADR 0022). The tag is only a readable label; the digest decides what runs. The digest
+# The image is pinned by digest, the one value `just init`, `just grobid-up` and the parse step
+# all read (ADR 0022). The tag is only a readable label; the digest decides what runs. The digest
 # is the multi-arch index, so Docker picks the native arm64 image on Apple silicon.
 # To move to a new GROBID release, take the index digest of its tag from the registry
 # (Docker-Content-Digest of /v2/grobid/grobid/manifests/<tag>) and change both lines.
@@ -10,4 +10,4 @@
 image = "grobid/grobid"
 tag = "0.9.1-crf"
 digest = "sha256:223957791ac2bbe48609dcc58a689b16b60baeae13a8734ef440ae6bfb38f4cd"
-port = 8070  # on localhost; the container listens on 8070
+port = 8070  # published on 127.0.0.1 only; the container listens on 8070

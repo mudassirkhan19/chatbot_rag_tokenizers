@@ -4,6 +4,8 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
+from chatbot_rag_tokenizers.config import ConfigError
+
 SOURCES = {"arxiv", "semantic-scholar", "openalex"}
 
 
@@ -88,10 +90,6 @@ class ScopeConfig:
 
     def enabled_queries(self) -> list[KeywordQuery]:
         return [query for query in self.queries if query.source not in self.disabled_sources]
-
-
-class ConfigError(ValueError):
-    pass
 
 
 def load_config(path: Path) -> ScopeConfig:

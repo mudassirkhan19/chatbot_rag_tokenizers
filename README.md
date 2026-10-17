@@ -23,7 +23,7 @@ Run `just` to list every recipe. Each pipeline recipe forwards extra arguments t
 
 ## The GROBID service
 
-`parse` sends PDFs to [GROBID](https://grobid.readthedocs.io/), run as a local Docker container:
+The parse step to come (#14) will send PDFs to [GROBID](https://grobid.readthedocs.io/), run as a local Docker container published on localhost only:
 
 ```sh
 just grobid-up     # start it and wait until http://localhost:8070/api/isalive answers
@@ -31,8 +31,8 @@ just grobid-up 300 # the same, waiting up to 300 s instead of the default 180
 just grobid-down   # stop and remove the container
 ```
 
-- **One pinned image.** `config/parse.toml` pins `grobid/grobid:0.9.1-crf` by digest, and `init`, the recipes and `parse` all read it from there. Docker always uses the digest, so a re-pushed tag changes nothing. The CRF image runs natively on Apple silicon (ADR 0022).
-- **Both recipes are safe to rerun.** `grobid-up` leaves a running container from the pinned image alone, and replaces a stopped one or one from an older pin. `grobid-down` says so when nothing is running.
+- **One pinned image.** `config/parse.toml` pins `grobid/grobid:0.9.1-crf` by digest, and `init` and the recipes read it from there, as the parse step will. Docker always uses the digest, so a re-pushed tag changes nothing. The CRF image runs natively on Apple silicon (ADR 0022).
+- **Both recipes are safe to rerun.** `grobid-up` leaves a running container from the pinned image on the configured port alone, and replaces a stopped one or one from an older pin or another port. `grobid-down` says so when nothing is running.
 - **Failures say what to do.** A missing Docker or a stopped daemon is reported as in `init`. If GROBID doesn't answer in time, `grobid-up` stops with the URL it tried and points to `docker logs chatbot-rag-tokenizers-grobid`. GROBID needs about 4 GB of memory for full-text parsing, so raise Docker's limit if the container is killed.
 
 ## Collect the corpus
