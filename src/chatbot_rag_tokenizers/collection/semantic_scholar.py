@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 
 from .editions import Edition
 from .http import RateLimitedHttp
-from .snapshot import SnapshotStore, StoredResponse
+from .snapshot import SnapshotStore
 
 GRAPH_URL = "https://api.semanticscholar.org/graph/v1/paper"
 API_URL = f"{GRAPH_URL}/search/bulk"

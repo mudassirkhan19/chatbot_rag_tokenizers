@@ -25,6 +25,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0018](0018-judge-releases-mps-cache.md) | The judge releases the MPS allocator cache after every batch | Accepted |
 | [0019](0019-openalex-stays-on.md) | OpenAlex stays on | Accepted |
 | [0020](0020-blind-agent-labels-checked-by-the-developer.md) | Audit set labels from blind agents, checked by the developer | Accepted |
+| [0021](0021-uv-and-just-from-homebrew-docker-left-to-the-user.md) | uv and just from Homebrew, Docker left to the user | Accepted |
 
 ## Template
 

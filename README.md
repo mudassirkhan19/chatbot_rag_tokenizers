@@ -2,16 +2,29 @@
 
 A grounded chatbot over research papers about tokenization for language models. See `docs/ASSIGNMENT.md` for the brief, `GLOSSARY.md` for the terms used here (Edition, Candidate, Snapshot, …) and `docs/adr/` for the design decisions.
 
+## Prerequisites
+
+Setup is supported on **macOS only**. Install these yourself; the repo installs none of them (ADR 0021):
+
+- **uv and just:** `brew install uv just`.
+- **A Docker daemon,** such as Docker Desktop, OrbStack or Colima. It must be running for `just init`.
+
+Tested with macOS 26.6, uv 0.10.8 and just 1.46.0. `pyproject.toml` sets the oldest uv the repo accepts (`[tool.uv] required-version`); `uv.lock` pins Python 3.12 and every package.
+
 ## Setup
 
 ```sh
-uv sync
+just init
 ```
+
+This checks that uv is recent enough, that Docker is installed and that its daemon answers, and says what to install or start if not. Then it installs every dependency group into `.venv` (`uv sync --all-groups --locked`) and prints what is ready. It installs nothing system-wide, and running it again changes nothing.
+
+Run `just` to list every recipe. Each pipeline recipe forwards extra arguments to the CLI, so `just collect --no-judge` is `uv run chatbot-rag-tokenizers collect --no-judge`.
 
 ## Collect the corpus
 
 ```sh
-uv run chatbot-rag-tokenizers collect
+just collect   # uv run chatbot-rag-tokenizers collect
 ```
 
 This runs the keyword queries in `config/scope.toml` against arXiv, Semantic Scholar and OpenAlex, expands one citation hop from each Seed, fetches the ACL Anthology page of each reported ACL ID, applies the rule pre-filter, fetches the full arXiv record of each arXiv Edition that passes it, runs the LLM judge, and writes `data/manifest.csv`, with one row per Edition. Downloading the PDFs is a separate step, `fetch` (below).
@@ -27,7 +40,7 @@ This runs the keyword queries in `config/scope.toml` against arXiv, Semantic Sch
 
 The command prints the counts at each stage, including, per Discovery channel and per source, the Editions nothing else found and how many of those pass the rules and the judge. Options: `--config`, `--snapshot` and `--manifest` change the paths. `--refresh` re-scores every Candidate that passes the rules, and `--no-judge` never loads the model, so Candidates without a cached verdict stay `pending`.
 
-Scoring needs torch and transformers, which are kept out of the default install:
+Scoring needs torch and transformers, which are kept out of the default install. `just init` installs them; by hand:
 
 ```sh
 uv sync --group judge
@@ -38,8 +51,8 @@ The first scoring run downloads the model weights (about 8 GB for the default mo
 ## Fetch the full texts
 
 ```sh
-uv run chatbot-rag-tokenizers fetch --limit 5   # smoke test: at most 5 downloads
-uv run chatbot-rag-tokenizers fetch             # everything; resumes where it stopped
+just fetch --limit 5   # smoke test: at most 5 downloads (uv run chatbot-rag-tokenizers fetch --limit 5)
+just fetch             # everything; resumes where it stopped
 ```
 
 This downloads the PDFs of every `included` row of `data/manifest.csv` into `data/pdfs/`, which is never committed. Run `collect` first. See ADR 0015.
@@ -73,7 +86,9 @@ ADR 0020 has the details. To compare judge models for #1, add the shortlist to `
 ## Tests
 
 ```sh
-uv run pytest
+just test        # uv run pytest; extra arguments go to pytest
+just typecheck   # uv run mypy src tests
+just lint        # uv run ruff check src tests (errors only, not style)
 ```
 
-The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model.
+The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model. `tests/test_dev_setup.py` also runs `just` to check the recipes and that `init` stops when Docker is missing; it skips without just.
