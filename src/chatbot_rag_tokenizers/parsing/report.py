@@ -19,6 +19,8 @@ class FileResult:
     status: str  # "parsed"
     sections: int
     chunks: int
+    tables: int  # table Chunks (ADR 0026)
+    captions: int  # figure caption Chunks
 
 
 def write_report(path: Path, config: ParseConfig, grobid_versions: set[str], results: list[FileResult]) -> None:
@@ -39,15 +41,20 @@ def write_report(path: Path, config: ParseConfig, grobid_versions: set[str], res
         "",
         "## Files",
         "",
-        "| Pinned id | sha256 | Status | Sections | Chunks |",
-        "|---|---|---|---:|---:|",
-        *[f"| {r.pinned_id} | `{r.sha256}` | {r.status} | {r.sections} | {r.chunks} |" for r in results],
+        "| Pinned id | sha256 | Status | Sections | Chunks | Tables | Captions |",
+        "|---|---|---|---:|---:|---:|---:|",
+        *[
+            f"| {r.pinned_id} | `{r.sha256}` | {r.status} | {r.sections} | {r.chunks} | {r.tables} | {r.captions} |"
+            for r in results
+        ],
         "",
         "## Totals",
         "",
         f"- Files: {len(results)}",
         f"- Sections: {sum(r.sections for r in results)}",
         f"- Chunks: {sum(r.chunks for r in results)}",
+        f"- Table Chunks: {sum(r.tables for r in results)}",
+        f"- Caption Chunks: {sum(r.captions for r in results)}",
     ]
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n")

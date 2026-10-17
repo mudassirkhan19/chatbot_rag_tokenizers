@@ -55,7 +55,7 @@ A headed division of a paper's body as its authors numbered it; an appendix is a
 _Avoid_: Heading, part
 
 **Chunk**:
-A contiguous run of text from one Section of one parsed file, and the unit that is retrieved and cited.
+A contiguous run of text from one Section of one parsed file, and the unit that is retrieved and cited. Its kind is text (paragraphs), table (one linearised table, or part of one) or caption (a figure caption).
 _Avoid_: Passage (that word is for an evaluation question's answer span, which may cover several Chunks or part of one), segment, split
 
 **Context header**:
@@ -67,7 +67,7 @@ What a Chunk is cited by: the pinned Edition id with its Version, the Section nu
 _Avoid_: Reference (that is a bibliography entry), source
 
 **Parse cache**:
-The local, uncommitted directory of GROBID's TEI and the Chunks for each parsed file, keyed by the file's sha256.
+The local, uncommitted directory of GROBID's TEI, the Chunks and the bibliography for each parsed file, keyed by the file's sha256.
 _Avoid_: Snapshot (that is committed), index
 
 **Parse report**:

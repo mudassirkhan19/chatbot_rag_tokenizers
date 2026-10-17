@@ -2,6 +2,7 @@
 
     <root>/<sha256>/<parser key>.tei.xml       GROBID's raw TEI, kept as it came
     <root>/<sha256>/<parser key>.chunks.jsonl  the Chunks, one JSON object per line, in order
+    <root>/<sha256>/<parser key>.bibliography.jsonl  the file's references, one per line, in order (ADR 0026)
 
 The parser key names the pinned GROBID image, so a new image never reads an old parse.
 """
@@ -11,6 +12,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from .chunker import Chunk
+from .tei import Reference
 
 
 class ParseCache:
@@ -31,6 +33,10 @@ class ParseCache:
     def put_chunks(self, sha256: str, chunks: list[Chunk]) -> None:
         lines = [json.dumps(asdict(chunk), sort_keys=True, ensure_ascii=False) + "\n" for chunk in chunks]
         _write(self._path(sha256, ".chunks.jsonl"), "".join(lines))
+
+    def put_bibliography(self, sha256: str, references: tuple[Reference, ...]) -> None:
+        lines = [json.dumps(asdict(reference), sort_keys=True, ensure_ascii=False) + "\n" for reference in references]
+        _write(self._path(sha256, ".bibliography.jsonl"), "".join(lines))
 
 
 def _write(path: Path, text: str) -> None:

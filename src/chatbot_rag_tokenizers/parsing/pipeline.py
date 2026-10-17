@@ -27,8 +27,14 @@ def parse(config: ParseConfig, files: list[InputFile], cache_dir: Path, report_p
         document = read_tei(tei)
         chunks = chunk_document(document, file.identity, config.chunking.token_budget, counter.count)
         cache.put_chunks(sha256, chunks)
+        cache.put_bibliography(sha256, document.bibliography)
         versions.add(document.grobid_version)
-        results.append(FileResult(file.identity.pinned_id, sha256, "parsed", len(document.sections), len(chunks)))
+        kinds = [chunk.kind for chunk in chunks]
+        results.append(
+            FileResult(
+                file.identity.pinned_id, sha256, "parsed", len(document.sections), len(chunks), kinds.count("table"), kinds.count("caption")
+            )
+        )
         print(f"{file.identity.pinned_id}: {len(document.sections)} Sections, {len(chunks)} Chunks")
     write_report(report_path, config, versions, results)
     print(f"parse: {len(results)} files, {sum(r.chunks for r in results)} Chunks; report in {report_path}")

@@ -82,8 +82,9 @@ This sends each PDF to the pinned GROBID service and cuts its body text into Chu
 
 - **Pinned ids from file names.** A Seed PDF named `<seed>_<pinned id>.pdf` (`bpe-dropout_1910.13267v1.pdf`) is cited as `1910.13267v1`; any other file is taken to be named by its pinned id, as `fetch` names files. Its sha256 is computed on each run.
 - **Chunks** pack whole paragraphs up to 350 tokens, counted with the pinned BERT WordPiece tokenizer in `config/tokenizers/` (`[chunking]` in `config/parse.toml`). A longer paragraph is split at its sentences. Each Chunk carries its context header (title › Section path) apart from its text, and its citation anchor: pinned id, Version, Section and pages.
-- **The parse cache** (`data/parse-cache/`, never committed) keeps GROBID's TEI and the Chunks per file sha256. A file whose TEI is cached is not sent to GROBID again.
-- **The parse report** (`data/parse-report.md`, committed) names the GROBID image and version and the chunking config, and gives a line per file and the totals.
+- **Element rules** (ADR 0026). Each table becomes a `table` Chunk, linearised row by row after its label, Section and caption, and each figure caption a `caption` Chunk, both in the Section that cites them. Equations stay inline as GROBID renders them. Appendices are kept as Sections marked `appendix`. Reference lists give no Chunks: each file's bibliography is stored as structured data in the parse cache. Acknowledgements, footnotes and front matter other than the title and abstract are dropped.
+- **The parse cache** (`data/parse-cache/`, never committed) keeps GROBID's TEI, the Chunks and the bibliography per file sha256. A file whose TEI is cached is not sent to GROBID again.
+- **The parse report** (`data/parse-report.md`, committed) names the GROBID image and version and the chunking config, and gives a line per file (with its table and caption Chunks) and the totals.
 
 ## Measure the Relevance verdict
 

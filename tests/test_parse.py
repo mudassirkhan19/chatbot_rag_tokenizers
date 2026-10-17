@@ -106,7 +106,8 @@ def config_with_budget(tmp_path: Path, token_budget: int) -> Path:
 
 
 def section_chunks(chunks: list[dict], number: str) -> list[dict]:
-    return [c for c in chunks if c["section_number"] == number]
+    """The text Chunks of one Section (tables and captions are covered in test_parse_elements.py)."""
+    return [c for c in chunks if c["section_number"] == number and c["kind"] == "text"]
 
 
 def read_chunks(tmp_path: Path, pdf: Path) -> list[dict]:
@@ -159,6 +160,13 @@ def test_the_abstract_and_each_body_section_are_sections_with_paths_rebuilt_from
         ("5 Results", "5.3 Is freezing necessary?"),
         ("6.2 Risks",),
         ("7 Conclusion",),
+        # The annex: appendix Sections number their own (ADR 0026).
+        ("A Grid search over k and τ",),
+        ("B Hyperparameters",),
+        ("C Qualitative subword correspondence",),
+        ("D Using Word Embeddings without subword information",),
+        ("E Choosing a transfer baseline",),
+        ("F Sensitivity Analysis w. r. t. training data size",),
     ]
     # No Section comes back after another one started: its Chunks are contiguous.
     assert len(sections) == len([path for i, path in enumerate(paths) if i == 0 or paths[i - 1] != path])
@@ -190,7 +198,7 @@ def test_chunks_stay_within_the_token_budget_counted_with_the_pinned_tokenizer(t
         assert 0 < chunk["token_count"] <= token_budget
     # Whole paragraphs are packed: at 350 tokens most Chunks hold more than one short paragraph's worth.
     if token_budget == 350:
-        assert len(chunks) == 29
+        assert len([c for c in chunks if c["kind"] == "text" and not c["appendix"]]) == 29
 
 
 def wechsel_sentences(section_number: str) -> list[str]:
@@ -294,9 +302,9 @@ def test_the_report_names_the_parser_and_config_and_gives_a_line_per_file_and_to
     assert "- GROBID version: 0.9.1" in report
     assert "- token_budget: `350`" in report
     assert "- tokenizer: `google-bert/bert-base-uncased`" in report
-    # One line per file in pinned-id order: 13 body Sections plus the abstract.
+    # One line per file in pinned-id order: the abstract, 13 body Sections and 6 appendix Sections.
     assert (
-        f"| 1508.07909v5 | `{sha256(fake_pdf('sennrich v5'))}` | parsed | 14 | 29 |\n"
-        f"| 2112.06598v2 | `{sha256(fake_pdf('wechsel v2'))}` | parsed | 14 | 29 |\n"
+        f"| 1508.07909v5 | `{sha256(fake_pdf('sennrich v5'))}` | parsed | 20 | 52 | 11 | 5 |\n"
+        f"| 2112.06598v2 | `{sha256(fake_pdf('wechsel v2'))}` | parsed | 20 | 52 | 11 | 5 |\n"
     ) in report
-    assert "- Files: 2\n- Sections: 28\n- Chunks: 58\n" in report
+    assert "- Files: 2\n- Sections: 40\n- Chunks: 104\n" in report
