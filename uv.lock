@@ -107,6 +107,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
+    { name = "tokenizers" },
 ]
 
 [package.dev-dependencies]
@@ -121,7 +122,10 @@ judge = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "httpx", specifier = ">=0.28.1" }]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "tokenizers", specifier = ">=0.23.3" },
+]
 
 [package.metadata.requires-dev]
 dev = [

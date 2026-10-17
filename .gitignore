@@ -25,3 +25,6 @@ tmp/
 # Local git worktrees and personal Claude Code settings (hack/worktree.sh)
 .claude/worktrees/
 .claude/settings.local.json
+
+# The parse cache: TEI and Chunks derived from papers whose licences are not ours (ADR 0027)
+data/parse-cache/

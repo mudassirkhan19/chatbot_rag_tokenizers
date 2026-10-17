@@ -1,4 +1,4 @@
-# 0027. Withdrawn arXiv preprints are excluded from the corpus
+# 0037. Withdrawn arXiv preprints are excluded from the corpus
 
 - **Date:** 2026-10-18
 - **Status:** Accepted. Amends [0015](0015-pdf-fetcher-pinned-files-and-hashes.md) and adds a stage to the Relevance verdict of [0005](0005-rule-pre-filter.md).

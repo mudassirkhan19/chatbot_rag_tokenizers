@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xml:space="preserve" xsi:schemaLocation="http://www.tei-c.org/ns/1.0 https://raw.githubusercontent.com/kermitt2/grobid/master/grobid-home/schemas/xsd/Grobid.xsd">
+	<teiHeader xml:lang="en">
+		<fileDesc>
+			<titleStmt>
+				<title level="a" type="main" coords="1,102.36,71.92,392.70,12.91">Neural Machine Translation of Rare Words with Subword Units</title>
+				</titleStmt>
+			<publicationStmt>
+				<publisher />
+				<availability status="unknown">
+					<licence />
+				</availability>
+				<date type="published" when="2016-06-10">10 Jun 2016</date>
+			</publicationStmt>
+			<sourceDesc>
+				<biblStruct status="extracted">
+					<analytic>
+						<author>
+							<persName><forename type="first">Rico</forename><surname>Sennrich</surname></persName>
+							<email>rico.sennrich@ed.ac.uk</email>
+							<affiliation key="aff0">
+								<orgName type="department">School of Informatics</orgName>
+								<orgName type="institution">University of Edinburgh</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Barry</forename><surname>Haddow</surname></persName>
+							<email>bhaddow@inf.ed.ac.uk</email>
+							<affiliation key="aff0">
+								<orgName type="department">School of Informatics</orgName>
+								<orgName type="institution">University of Edinburgh</orgName>
+							</affiliation>
+						</author>
+						<author>
+							<persName><forename type="first">Alexandra</forename><surname>Birch</surname></persName>
+							<email>a.birch@ed.ac.uk</email>
+							<affiliation key="aff0">
+								<orgName type="department">School of Informatics</orgName>
+								<orgName type="institution">University of Edinburgh</orgName>
+							</affiliation>
+						</author>
+						<title level="a" type="main" coords="1,102.36,71.92,392.70,12.91">Neural Machine Translation of Rare Words with Subword Units</title>
+					</analytic>
+					<monogr>
+						<imprint>
+							<date type="published" when="2016-06-10">10 Jun 2016</date>
+						</imprint>
+					</monogr>
+					<idno type="MD5">4FA87B60B903026DF17DE8D58C12A036</idno>
+					<idno type="arXiv">arXiv:1508.07909v5[cs.CL]</idno>
+				</biblStruct>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<appInfo>
+				<application version="0.9.1" ident="GROBID" when="2026-10-17T00:00+0000">
+					<desc>GROBID - A machine learning software for extracting information from scholarly documents</desc>
+					<label type="revision">0.9.1</label>
+					<label type="parameters">startPage=-1, endPage=-1, consolidateCitations=0, consolidateHeader=0, consolidateFunders=0, includeRawAffiliations=false, includeRawCitations=true, includeRawCopyrights=false, generateTeiIds=false, generateTeiCoordinates=[head, p, s, figure, formula, biblStruct, note, title], flavor=null, debugLabelingCollector=disabled</label>
+					<ref target="https://github.com/kermitt2/grobid" />
+				</application>
+			</appInfo>
+		</encodingDesc>
+		<profileDesc>
+			<abstract>
+<div><p coords="1,89.04,233.75,184.11,9.82;1,89.04,247.31,183.87,9.82;1,89.04,260.87,183.54,9.82;1,89.04,274.43,184.12,9.82;1,89.04,287.99,184.14,9.82;1,89.04,301.55,184.11,9.82;1,89.04,315.11,184.11,9.82;1,89.04,328.67,184.11,9.82;1,89.04,342.23,184.13,9.82;1,89.04,355.79,184.11,9.82;1,89.04,369.23,184.13,9.82;1,89.04,382.79,184.12,9.82;1,89.04,396.35,184.05,9.82;1,89.04,409.91,183.89,9.82;1,89.04,423.47,184.11,9.82;1,89.04,437.03,184.13,9.82;1,89.04,450.59,183.99,9.82;1,89.04,464.15,184.12,9.82;1,89.04,477.71,183.89,9.82;1,89.04,491.15,184.23,9.94;1,89.04,504.83,184.13,9.82;1,89.04,518.27,183.99,9.82;1,89.04,531.83,184.01,9.82;1,89.04,545.39,183.89,9.82;1,89.04,558.95,184.00,9.82;1,89.04,572.51,183.89,9.82;1,89.04,586.07,175.41,9.82"><s coords="1,89.04,233.75,184.11,9.82;1,89.04,247.31,183.87,9.82;1,89.04,260.87,183.54,9.82;1,89.04,274.43,38.85,9.82">Neural machine translation (NMT) models typically operate with a fixed vocabulary, but translation is an open-vocabulary problem.</s><s coords="1,140.64,274.43,132.52,9.82;1,89.04,287.99,184.14,9.82;1,89.04,301.55,125.49,9.82">Previous work addresses the translation of out-of-vocabulary words by backing off to a dictionary.</s><s coords="1,224.76,301.55,48.39,9.82;1,89.04,315.11,184.11,9.82;1,89.04,328.67,184.11,9.82;1,89.04,342.23,184.13,9.82;1,89.04,355.79,184.11,9.82;1,89.04,369.23,111.93,9.82">In this paper, we introduce a simpler and more effective approach, making the NMT model capable of open-vocabulary translation by encoding rare and unknown words as sequences of subword units.</s><s coords="1,204.36,369.23,68.81,9.82;1,89.04,382.79,184.12,9.82;1,89.04,396.35,184.05,9.82;1,89.04,409.91,183.89,9.82;1,89.04,423.47,184.11,9.82;1,89.04,437.03,184.13,9.82;1,89.04,450.59,183.99,9.82;1,89.04,464.15,108.09,9.82">This is based on the intuition that various word classes are translatable via smaller units than words, for instance names (via character copying or transliteration), compounds (via compositional translation), and cognates and loanwords (via phonological and morphological transformations).</s><s coords="1,205.68,464.15,67.48,9.82;1,89.04,477.71,183.89,9.82;1,89.04,491.15,184.23,9.94;1,89.04,504.83,184.13,9.82;1,89.04,518.27,183.99,9.82;1,89.04,531.83,184.01,9.82;1,89.04,545.39,183.89,9.82;1,89.04,558.95,184.00,9.82;1,89.04,572.51,183.89,9.82;1,89.04,586.07,175.41,9.82">We discuss the suitability of different word segmentation techniques, including simple character ngram models and a segmentation based on the byte pair encoding compression algorithm, and empirically show that subword models improve over a back-off dictionary baseline for the WMT 15 translation tasks English→German and English→Russian by up to 1.1 and 1.3 BLEU, respectively.</s></p></div>
+			</abstract>
+		</profileDesc>
+	</teiHeader>
+	<facsimile>
+		<surface n="1" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0" />
+		<surface n="2" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0" />
+		<surface n="3" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0" />
+		<surface n="4" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0" />
+		<surface n="5" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0" />
+		<surface n="6" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0" />
+		<surface n="7" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0" />
+		<surface n="8" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0" />
+		<surface n="9" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0" />
+		<surface n="10" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0" />
+		<surface n="11" ulx="0.0" uly="0.0" lrx="612.0" lry="792.0" />
+	</facsimile>
+	<text xml:lang="en">
+		<body>
+<div><head n="1" coords="1,72.00,611.51,82.61,10.76">Introduction</head><p coords="1,72.00,634.31,218.21,9.82;1,72.00,647.87,80.56,9.82;1,95.27,674.99,194.93,9.82;1,72.00,688.55,218.07,9.82;1,72.00,702.11,218.21,9.82;1,72.00,715.67,218.07,9.82;1,307.32,208.07,217.95,9.82;1,307.32,221.63,217.95,9.82;1,307.32,235.19,218.19,9.82;1,307.32,248.75,218.13,9.82"><s coords="1,72.00,634.31,218.21,9.82;1,72.00,647.87,218.13,9.82;1,72.00,661.43,218.25,9.82;1,72.00,674.99,27.93,9.82">Neural machine translation has recently shown impressive results <ref type="bibr" target="#b11">(Kalchbrenner and Blunsom, 2013;</ref><ref type="bibr" target="#b29">Sutskever et al., 2014;</ref><ref type="bibr" target="#b0">Bahdanau et al., 2015)</ref>.</s><s coords="1,110.64,674.99,179.56,9.82;1,72.00,688.55,94.89,9.82">However, the translation of rare words is an open problem.</s><s coords="1,179.52,688.55,110.55,9.82;1,72.00,702.11,218.21,9.82;1,72.00,715.67,218.07,9.82;1,307.32,208.07,217.95,9.82;1,307.32,221.63,217.95,9.82;1,307.32,235.19,218.19,9.82;1,307.32,248.75,218.13,9.82">The vocabulary of neural models is typically limited to 30 000-50 000 words, but translation is an open-vocabulary prob-lem, and especially for languages with productive word formation processes such as agglutination and compounding, translation models require mechanisms that go below the word level.</s></p></div>
+</body>
+		</text>
+</TEI>

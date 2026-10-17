@@ -32,10 +32,20 @@ def just(*args: str, env: dict[str, str] | None = None, justfile: Path = ROOT / 
 @needs_just
 def test_just_lists_every_recipe_with_a_description():
     listing = just("--list").stdout
-    for recipe in ["init", "grobid-up", "grobid-down", "test", "typecheck", "lint", "collect", "fetch"]:
+    for recipe in ["init", "grobid-up", "grobid-down", "test", "typecheck", "lint", "collect", "fetch", "parse"]:
         line = next((row for row in listing.splitlines() if row.strip().startswith(recipe)), None)
         assert line is not None, f"`just --list` has no {recipe!r} recipe"
         assert "#" in line, f"{recipe!r} has no one-line description"
+
+
+@needs_just
+@pytest.mark.skipif(shutil.which("uv") is None, reason="uv is not installed")
+def test_just_parse_forwards_its_arguments_to_the_cli():
+    result = just("parse", "--help")
+
+    assert result.returncode == 0, result.stderr
+    assert "usage: chatbot-rag-tokenizers parse" in result.stdout
+    assert "--files" in result.stdout
 
 
 def test_project_sets_a_minimum_uv_version():

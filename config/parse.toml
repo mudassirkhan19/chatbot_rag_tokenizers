@@ -11,3 +11,20 @@ image = "grobid/grobid"
 tag = "0.9.1-crf"
 digest = "sha256:223957791ac2bbe48609dcc58a689b16b60baeae13a8734ef440ae6bfb38f4cd"
 port = 8070  # published on 127.0.0.1 only; the container listens on 8070
+
+# How the parse step cuts each file's text into Chunks (ADR 0027).
+[chunking]
+# Most tokens of text in one Chunk, before its context header: room for the header and the
+# special tokens within the 512-token limit of the candidate embedding models.
+token_budget = 350
+# The one tokenizer that counts tokens, pinned so counts are the same on every machine: the
+# WordPiece vocabulary of BERT base uncased, which BGE, E5 and MiniLM embedders share. The file
+# is committed (Apache 2.0) and checked against its hash; the embedding stage may change it.
+tokenizer = "google-bert/bert-base-uncased"
+tokenizer_revision = "86b5e0934494bd15c9632b12f734a8a67f723594"
+tokenizer_file = "tokenizers/bert-base-uncased.tokenizer.json"  # relative to this file
+tokenizer_sha256 = "ce64fce797c24f68df90b40a3f74f579b336a493db14bd583fd520ea0d8c9a98"
+# The quality gate (ADR 0029): a file with fewer Sections (the abstract counts as one) or fewer
+# characters of Section text than this fails and gets no Chunks. It catches scanned and garbled PDFs.
+min_sections = 2
+min_body_characters = 2000
