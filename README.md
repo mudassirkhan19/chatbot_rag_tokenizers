@@ -71,6 +71,20 @@ This downloads the PDFs of every `included` row of `data/manifest.csv` into `dat
 - **Funnel status:** `full text` once every pinned file is fetched; `no_fulltext` when there is no open PDF (no source, or every source answered with an error page). The row stays either way.
 - **Errors don't stop the run.** At the end, `fetch` lists every file it couldn't get and exits non-zero. *Upstream drift* means a recorded file is gone or now has a different hash: the source changed, not the pipeline. Delete its line from the record to re-pin it. *Fetch failed* means a file never fetched before couldn't be (a network or server error, or no PDF): nothing was recorded, so rerun.
 
+## Parse the papers into Chunks
+
+```sh
+just grobid-up
+uv run chatbot-rag-tokenizers parse --files data/pdfs/seeds/*.pdf
+```
+
+This sends each PDF to the pinned GROBID service and cuts its body text into Chunks that never cross a Section (ADR 0025). For now it parses explicit files only, such as the Seed PDFs; parsing what `fetch` recorded comes later (#22).
+
+- **Pinned ids from file names.** A Seed PDF named `<seed>_<pinned id>.pdf` (`bpe-dropout_1910.13267v1.pdf`) is cited as `1910.13267v1`; any other file is taken to be named by its pinned id, as `fetch` names files. Its sha256 is computed on each run.
+- **Chunks** pack whole paragraphs up to 350 tokens, counted with the pinned BERT WordPiece tokenizer in `config/tokenizers/` (`[chunking]` in `config/parse.toml`). A longer paragraph is split at its sentences. Each Chunk carries its context header (title › Section path) apart from its text, and its citation anchor: pinned id, Version, Section and pages.
+- **The parse cache** (`data/parse-cache/`, never committed) keeps GROBID's TEI and the Chunks per file sha256. A file whose TEI is cached is not sent to GROBID again.
+- **The parse report** (`data/parse-report.md`, committed) names the GROBID image and version and the chunking config, and gives a line per file and the totals.
+
 ## Measure the Relevance verdict
 
 The Audit set (`data/audit/audit-set.csv`) is a hand-labelled, stratified sample of Candidates used to choose the judge model and threshold and to report precision and recall. See ADR 0011.

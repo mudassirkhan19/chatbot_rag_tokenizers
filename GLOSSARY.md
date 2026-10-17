@@ -57,3 +57,19 @@ _Avoid_: Heading, part
 **Chunk**:
 A contiguous run of text from one Section of one parsed file, and the unit that is retrieved and cited.
 _Avoid_: Passage (that word is for an evaluation question's answer span, which may cover several Chunks or part of one), segment, split
+
+**Context header**:
+The paper title and Section path a Chunk is embedded with ("WECHSEL: … › 5 Results › 5.3 Is freezing necessary?"), stored apart from the Chunk's text so citations quote clean text.
+_Avoid_: Prefix, breadcrumb, title (alone)
+
+**Citation anchor**:
+What a Chunk is cited by: the pinned Edition id with its Version, the Section number and title, and the page range.
+_Avoid_: Reference (that is a bibliography entry), source
+
+**Parse cache**:
+The local, uncommitted directory of GROBID's TEI and the Chunks for each parsed file, keyed by the file's sha256.
+_Avoid_: Snapshot (that is committed), index
+
+**Parse report**:
+The committed summary of a parse run: the parser and chunking config used, one line per file and the totals.
+_Avoid_: Log, manifest

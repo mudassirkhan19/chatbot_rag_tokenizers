@@ -7,6 +7,9 @@ from pathlib import Path
 from .collection import audit, audit_label, fulltext
 from .collection.config import load_config
 from .collection.pipeline import collect
+from .parsing import inputs
+from .parsing import pipeline as parsing
+from .parsing.config import load_parse_config
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -44,6 +47,25 @@ def main(argv: list[str] | None = None) -> None:
     fetch_cmd.add_argument("--manifest", type=Path, default=Path("data/manifest.csv"))
     fetch_cmd.add_argument("--pdfs", type=Path, default=Path("data/pdfs"), help="where PDFs go (default data/pdfs, gitignored)")
     fetch_cmd.add_argument("--limit", type=int, help="download at most this many files, e.g. for a smoke test")
+
+    parse_cmd = commands.add_parser(
+        "parse",
+        help="parse PDFs with the pinned GROBID service into Section-aware Chunks and write the parse report",
+        description=(
+            "Sends each PDF to GROBID unless its TEI is already in the parse cache, cuts the text into Chunks"
+            " that never cross a Section, stores them in the cache and writes the committed parse report."
+        ),
+    )
+    parse_cmd.add_argument("--config", type=Path, default=Path("config/parse.toml"))
+    parse_cmd.add_argument("--cache", type=Path, default=Path("data/parse-cache"), help="the parse cache (default data/parse-cache, gitignored)")
+    parse_cmd.add_argument("--report", type=Path, default=Path("data/parse-report.md"))
+    parse_cmd.add_argument(
+        "--files",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="PDFs to parse, each named by its pinned id, or as a Seed PDF (<seed>_<pinned id>.pdf)",
+    )
 
     audit_cmd = commands.add_parser("audit", help="build the Audit set and measure the Relevance verdict on it")
     audit_commands = audit_cmd.add_subparsers(dest="audit_command", required=True)
@@ -98,6 +120,8 @@ def main(argv: list[str] | None = None) -> None:
             fulltext.fetch(args.snapshot, args.manifest, args.pdfs, args.limit)
         except fulltext.FetchErrors as errors:
             sys.exit(f"fetch: {errors}")
+    elif args.command == "parse":
+        parsing.parse(load_parse_config(args.config), inputs.from_paths(args.files), args.cache, args.report)
     elif args.command == "audit" and args.audit_command == "export":
         audit.export(load_config(args.config), args.snapshot, args.output, args.size, args.seed, force=args.force)
     elif args.command == "audit" and args.audit_command == "report":

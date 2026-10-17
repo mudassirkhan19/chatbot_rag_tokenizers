@@ -1,14 +1,16 @@
-"""The parse config file: the pinned GROBID service (ADR 0023)."""
+"""The parse config file: the pinned GROBID service (ADR 0023) and the chunking config (ADR 0025)."""
 
 import re
 import tomllib
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any
 
 from chatbot_rag_tokenizers.config import ConfigError
 
 DEFAULT_PATH = Path("config/parse.toml")
 DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
+SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
 @dataclass(frozen=True)
@@ -27,24 +29,73 @@ class GrobidConfig:
     def url(self) -> str:
         return f"http://localhost:{self.port}"
 
+    @property
+    def parser_key(self) -> str:
+        """Names the parser in the parse cache: the tag to read, a short digest to decide."""
+        return f"grobid-{self.tag}-{self.digest.removeprefix('sha256:')[:12]}"
 
-def load_grobid_config(path: Path = DEFAULT_PATH) -> GrobidConfig:
-    raw = tomllib.loads(path.read_text())
-    if "grobid" not in raw:
-        raise ConfigError(f"{path} has no [grobid] section")
-    fields = raw["grobid"]
-    expected = {"image": str, "tag": str, "digest": str, "port": int}
+
+@dataclass(frozen=True)
+class ChunkingConfig:
+    token_budget: int  # most tokens of text per Chunk, header not included
+    tokenizer: str  # the Hugging Face repo the tokenizer file comes from
+    tokenizer_revision: str  # the commit of that repo the file was taken from
+    tokenizer_file: Path  # resolved against the config file's directory
+    tokenizer_sha256: str
+
+    def describe(self) -> dict[str, Any]:
+        """The settings that decide the Chunks, as the report shows them (the file's location doesn't count)."""
+        settings = asdict(self)
+        del settings["tokenizer_file"]
+        return settings
+
+
+@dataclass(frozen=True)
+class ParseConfig:
+    grobid: GrobidConfig
+    chunking: ChunkingConfig
+
+
+def _section(raw: dict, name: str, expected: dict[str, type], path: Path) -> dict[str, Any]:
+    if name not in raw:
+        raise ConfigError(f"{path} has no [{name}] section")
+    fields = raw[name]
     if unknown := sorted(set(fields) - set(expected)):
-        raise ConfigError(f"[grobid] in {path} has unknown fields: {', '.join(unknown)}")
-    for name, kind in expected.items():
-        if name not in fields:
-            raise ConfigError(f"[grobid] in {path} has no {name}")
+        raise ConfigError(f"[{name}] in {path} has unknown fields: {', '.join(unknown)}")
+    for field, kind in expected.items():
+        if field not in fields:
+            raise ConfigError(f"[{name}] in {path} has no {field}")
         # bool is a subclass of int, so `port = true` would otherwise pass.
-        if not isinstance(fields[name], kind) or isinstance(fields[name], bool):
-            raise ConfigError(f"GROBID {name} {fields[name]!r} is not a {kind.__name__}")
+        if not isinstance(fields[field], kind) or isinstance(fields[field], bool):
+            raise ConfigError(f"[{name}] {field} {fields[field]!r} is not a {kind.__name__}")
+    return fields
+
+
+def _grobid(raw: dict, path: Path) -> GrobidConfig:
+    fields = _section(raw, "grobid", {"image": str, "tag": str, "digest": str, "port": int}, path)
     grobid = GrobidConfig(**fields)
     if not DIGEST.fullmatch(grobid.digest):
         raise ConfigError(f"GROBID digest {grobid.digest!r} is not sha256: followed by 64 hex digits")
     if not 1 <= grobid.port <= 65535:
         raise ConfigError(f"GROBID port {grobid.port} is not between 1 and 65535")
     return grobid
+
+
+def _chunking(raw: dict, path: Path) -> ChunkingConfig:
+    expected = {name: str for name in ("tokenizer", "tokenizer_revision", "tokenizer_file", "tokenizer_sha256")}
+    fields = _section(raw, "chunking", {"token_budget": int, **expected}, path)
+    chunking = ChunkingConfig(**{**fields, "tokenizer_file": path.parent / fields["tokenizer_file"]})
+    if chunking.token_budget < 1:
+        raise ConfigError(f"[chunking] token_budget {chunking.token_budget} is not a positive number of tokens")
+    if not SHA256.fullmatch(chunking.tokenizer_sha256):
+        raise ConfigError(f"[chunking] tokenizer_sha256 {chunking.tokenizer_sha256!r} is not 64 hex digits")
+    return chunking
+
+
+def load_grobid_config(path: Path = DEFAULT_PATH) -> GrobidConfig:
+    return _grobid(tomllib.loads(path.read_text()), path)
+
+
+def load_parse_config(path: Path = DEFAULT_PATH) -> ParseConfig:
+    raw = tomllib.loads(path.read_text())
+    return ParseConfig(grobid=_grobid(raw, path), chunking=_chunking(raw, path))
