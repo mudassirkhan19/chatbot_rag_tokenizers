@@ -52,11 +52,10 @@ def _relevance(edition: Edition, outcome: RuleOutcome, verdict: JudgeVerdict | N
     if not outcome.passed:
         return {"relevance_verdict": "excluded", "relevance_stage": "rules", "relevance_reason": outcome.reason}
     if edition.withdrawn:
-        return {
-            "relevance_verdict": "excluded",
-            "relevance_stage": "withdrawn",
-            "relevance_reason": f"withdrawn: v{edition.version} is a withdrawal; arXiv comments: {edition.arxiv_comments}",
-        }
+        reason = f"withdrawn: v{edition.version} is a withdrawal"
+        if edition.arxiv_comments:
+            reason += f"; arXiv comments: {edition.arxiv_comments}"
+        return {"relevance_verdict": "excluded", "relevance_stage": "withdrawn", "relevance_reason": reason}
     if verdict is None:
         return {
             "relevance_verdict": "pending",

@@ -104,15 +104,13 @@ class Funnel:
 
 def funnel(rows: list[Row]) -> Funnel:
     rejects = Counter(row["rule_pattern"] for row in rows if row["rule_outcome"] == "reject")
-    withdrawn = sum(row["relevance_stage"] == "withdrawn" for row in rows)
-    judged = Counter(
-        row["relevance_verdict"] for row in rows if row["rule_outcome"] == "pass" and row["relevance_stage"] != "withdrawn"
-    )
+    stages = Counter(row["relevance_stage"] for row in rows)
+    judged = Counter(row["relevance_verdict"] for row in rows if row["rule_outcome"] == "pass" and row["relevance_stage"] != "withdrawn")
     status = Counter(row["funnel_status"] for row in rows if row["relevance_verdict"] == "included")
     return Funnel(
         len(rows),
         Counter(dict(sorted(rejects.items()))),
-        withdrawn,
+        stages["withdrawn"],
         judged["included"],
         judged["excluded"],
         judged["pending"],

@@ -712,25 +712,34 @@ def test_acl_editions_are_judged_on_an_abstract(fixture_snapshot, no_network, mo
     assert rows["P16-1162"]["judge_probability"] == "0.9000"
 
 
-def withdraw_subword_regularization(snapshot_dir: Path) -> None:
-    """Replace the fixture record of 1804.10959 with one whose latest Version is a withdrawal:
-    arXiv lists it with a 0kb size and serves no PDF for it."""
-    record = (FIXTURES / "arxiv-oai" / "1804.10959.xml").read_text()
-    withdrawn = record.replace(
-        "    </version>\n",
-        "    </version>\n"
+def edit_arxiv_record(snapshot_dir: Path, arxiv_id: str, *replacements: tuple[str, str]) -> None:
+    """Replace an arXiv Edition's fixture record in the Snapshot with an edited copy."""
+    record = (FIXTURES / "arxiv-oai" / f"{arxiv_id}.xml").read_text()
+    for old, new in replacements:
+        assert old in record
+        record = record.replace(old, new, 1)
+    SnapshotStore(snapshot_dir).save(arxiv_record_request(arxiv_id), record, collected_at="2026-10-18")
+
+
+def withdraw_latest_version_of_1804_10959(snapshot_dir: Path) -> None:
+    """Add a v2 to 1804.10959 that is a withdrawal: arXiv lists it with a 0kb size and serves no PDF for it."""
+    withdrawal = (
         '    <version version="v2">\n'
         "      <date>Tue, 01 May 2018 09:00:00 GMT</date>\n"
         "      <size>0kb</size>\n"
         "      <source_type>I</source_type>\n"
-        "    </version>\n",
-    ).replace("Accepted as a long paper at ACL2018", "Incorrect results")
-    assert withdrawn.count("<version ") == 2
-    SnapshotStore(snapshot_dir).save(arxiv_record_request("1804.10959"), withdrawn, collected_at="2026-10-18")
+        "    </version>\n"
+    )
+    edit_arxiv_record(
+        snapshot_dir,
+        "1804.10959",
+        ("    </version>\n", "    </version>\n" + withdrawal),
+        ("Accepted as a long paper at ACL2018", "Incorrect results"),
+    )
 
 
 def test_withdrawn_preprint_is_excluded_without_the_judge(fixture_snapshot, no_network, monkeypatch, tmp_path):
-    withdraw_subword_regularization(fixture_snapshot)
+    withdraw_latest_version_of_1804_10959(fixture_snapshot)
     fake = FakeJudge()
     monkeypatch.setattr(judge, "load_judge", lambda config: fake)
     manifest = tmp_path / "manifest.csv"
@@ -749,13 +758,11 @@ def test_withdrawn_preprint_is_excluded_without_the_judge(fixture_snapshot, no_n
 
 def test_withdrawal_replaced_by_a_new_version_is_judged(fixture_snapshot, no_network, monkeypatch, tmp_path):
     # MrT5's v2 becomes a withdrawal, but v3 replaced it.
-    record = (FIXTURES / "arxiv-oai" / "2410.20771.xml").read_text()
-    replaced = record.replace(
-        "<date>Fri, 01 Nov 2024 00:00:00 GMT</date>\n      <size>100kb</size>",
-        "<date>Fri, 01 Nov 2024 00:00:00 GMT</date>\n      <size>0kb</size>",
+    edit_arxiv_record(
+        fixture_snapshot,
+        "2410.20771",
+        ("<date>Fri, 01 Nov 2024 00:00:00 GMT</date>\n      <size>100kb</size>", "<date>Fri, 01 Nov 2024 00:00:00 GMT</date>\n      <size>0kb</size>"),
     )
-    assert replaced != record
-    SnapshotStore(fixture_snapshot).save(arxiv_record_request("2410.20771"), replaced, collected_at="2026-10-18")
     fake = FakeJudge()
     monkeypatch.setattr(judge, "load_judge", lambda config: fake)
     manifest = tmp_path / "manifest.csv"
@@ -769,7 +776,7 @@ def test_withdrawal_replaced_by_a_new_version_is_judged(fixture_snapshot, no_net
 
 
 def test_report_counts_withdrawn_preprints_apart_from_judge_exclusions(fixture_snapshot, no_network, no_model, tmp_path, capsys):
-    withdraw_subword_regularization(fixture_snapshot)
+    withdraw_latest_version_of_1804_10959(fixture_snapshot)
     report_path = tmp_path / "report.md"
 
     run_collect(fixture_snapshot, tmp_path / "manifest.csv", FIXTURES / "scope.toml", "--report", str(report_path))

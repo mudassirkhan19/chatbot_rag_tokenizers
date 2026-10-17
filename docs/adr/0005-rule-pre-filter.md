@@ -1,7 +1,7 @@
 # 0005. Stage-1 rule pre-filter for the Relevance verdict
 
 - **Date:** 2026-10-16
-- **Status:** Accepted
+- **Status:** Accepted. Amended by [0027](0027-withdrawn-preprints-are-excluded.md): a withdrawn arXiv preprint is excluded at its own stage, after the rules.
 
 ## Context
 Keyword queries return many Candidates that use "token" in a sense unrelated to tokenization: token pruning and merging, KV-cache eviction, crypto assets, and tokenizers for images or audio. The LLM judge (stage 2) is the expensive step, and a reviewer needs to see why each Candidate was rejected. The spec (#2) asks for a deterministic first stage made of a required term group plus exclusion patterns that report which pattern fired.
