@@ -35,6 +35,13 @@ def elements(tmp_path: Path, grobid: FakeGrobid) -> Path:
     return serve(tmp_path, grobid, "wechsel-elements.tei.xml")
 
 
+def small_paper_config(tmp_path: Path, token_budget: int = 350) -> Path:
+    """The repo's parse config with a quality gate that lets the small hand-made paper through."""
+    path = config_with_budget(tmp_path, token_budget)
+    path.write_text(path.read_text().replace("min_body_characters = 2000", "min_body_characters = 500"))
+    return path
+
+
 def of_kind(chunks: list[dict], kind: str) -> list[dict]:
     return [c for c in chunks if c["kind"] == kind]
 
@@ -165,7 +172,7 @@ def appendix_in_body(tmp_path: Path, grobid: FakeGrobid) -> Path:
 
 
 def test_body_sections_headed_with_an_appendix_letter_start_the_appendix(tmp_path, appendix_in_body):
-    run_parse(tmp_path, appendix_in_body)
+    run_parse(tmp_path, appendix_in_body, config=small_paper_config(tmp_path))
     chunks = read_chunks(tmp_path, appendix_in_body)
 
     sections = list(dict.fromkeys((c["section_number"], tuple(c["section_path"]), c["appendix"]) for c in chunks))
@@ -216,7 +223,7 @@ def test_the_report_counts_table_and_caption_chunks_per_file(tmp_path, grobid, e
     other.write_bytes(fake_pdf("appendix in body"))
     grobid.serve(other.read_bytes(), "appendix-in-body.tei.xml")
 
-    run_parse(tmp_path, elements, other, config=config_with_budget(tmp_path, 1000))
+    run_parse(tmp_path, elements, other, config=small_paper_config(tmp_path, 1000))
 
     report = (tmp_path / "parse-report.md").read_text()
     assert "| Pinned id | sha256 | Status | Sections | Chunks | Tables | Captions |\n|---|---|---|---:|---:|---:|---:|\n" in report
@@ -226,4 +233,4 @@ def test_the_report_counts_table_and_caption_chunks_per_file(tmp_path, grobid, e
         f"| 1508.07909v5 | `{sha256(other.read_bytes())}` | parsed | 10 | 11 | 0 | 1 |\n"
         f"| 2112.06598v2 | `{sha256(elements.read_bytes())}` | parsed | 7 | 12 | 2 | 1 |\n"
     ) in report
-    assert "- Chunks: 23\n- Table Chunks: 2\n- Caption Chunks: 2\n" in report
+    assert "- Sections: 17\n- Chunks: 23\n- Table Chunks: 2\n- Caption Chunks: 2\n" in report

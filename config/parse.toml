@@ -24,3 +24,7 @@ tokenizer = "google-bert/bert-base-uncased"
 tokenizer_revision = "86b5e0934494bd15c9632b12f734a8a67f723594"
 tokenizer_file = "tokenizers/bert-base-uncased.tokenizer.json"  # relative to this file
 tokenizer_sha256 = "ce64fce797c24f68df90b40a3f74f579b336a493db14bd583fd520ea0d8c9a98"
+# The quality gate (ADR 0027): a file with fewer Sections (the abstract counts as one) or fewer
+# characters of Section text than this fails and gets no Chunks. It catches scanned and garbled PDFs.
+min_sections = 2
+min_body_characters = 2000

@@ -70,6 +70,10 @@ _Avoid_: Reference (that is a bibliography entry), source
 The local, uncommitted directory of GROBID's TEI, the Chunks and the bibliography for each parsed file, keyed by the file's sha256.
 _Avoid_: Snapshot (that is committed), index
 
+**Quality gate**:
+The check that keeps garbled and empty parses out of the index: a file fails it when GROBID errors or times out, or when it has too few Sections or too little Section text, and a failed file gets no Chunks.
+_Avoid_: Filter (that is the rule pre-filter of `collect`), validation
+
 **Parse report**:
 The committed summary of a parse run: the parser and chunking config used, one line per file and the totals.
 _Avoid_: Log, manifest

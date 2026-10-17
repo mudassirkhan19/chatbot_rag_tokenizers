@@ -74,17 +74,30 @@ This downloads the PDFs of every `included` row of `data/manifest.csv` into `dat
 ## Parse the papers into Chunks
 
 ```sh
-just grobid-up
-uv run chatbot-rag-tokenizers parse --files data/pdfs/seeds/*.pdf
+just grobid-up                            # start the pinned GROBID service
+just parse                                # every file in the full-text record (uv run chatbot-rag-tokenizers parse)
+just parse --files data/pdfs/seeds/*.pdf  # explicit files instead, such as the Seed PDFs
 ```
 
-This sends each PDF to the pinned GROBID service and cuts its body text into Chunks that never cross a Section (ADR 0025). For now it parses explicit files only, such as the Seed PDFs; parsing what `fetch` recorded comes later (#22).
+This sends each PDF to the pinned GROBID service and cuts its text into Chunks that never cross a Section (ADRs 0025 and 0029). It writes nothing to the manifest: the `indexed` funnel status belongs to the indexing stage.
 
-- **Pinned ids from file names.** A Seed PDF named `<seed>_<pinned id>.pdf` (`bpe-dropout_1910.13267v1.pdf`) is cited as `1910.13267v1`; any other file is taken to be named by its pinned id, as `fetch` names files. Its sha256 is computed on each run.
-- **Chunks** pack whole paragraphs up to 350 tokens, counted with the pinned BERT WordPiece tokenizer in `config/tokenizers/` (`[chunking]` in `config/parse.toml`). A longer paragraph is split at its sentences. Each Chunk carries its context header (title › Section path) apart from its text, and its citation anchor: pinned id, Version, Section and pages.
-- **Element rules** (ADR 0026). Each table becomes a `table` Chunk, linearised row by row after its label, Section and caption, and each figure caption a `caption` Chunk, both in the Section that cites them. Equations stay inline as GROBID renders them. Appendices are kept as Sections marked `appendix`. Reference lists give no Chunks: each file's bibliography is stored as structured data in the parse cache. Acknowledgements, footnotes and front matter other than the title and abstract are dropped.
-- **The parse cache** (`data/parse-cache/`, never committed) keeps GROBID's TEI, the Chunks and the bibliography per file sha256. A file whose TEI is cached is not sent to GROBID again.
-- **The parse report** (`data/parse-report.md`, committed) names the GROBID image and version and the chunking config, and gives a line per file (with its table and caption Chunks) and the totals.
+- **Inputs.** By default `parse` reads the full-text record `fetch` writes (`data/snapshot/fulltext/pdfs.jsonl`, `--snapshot`) and the PDFs in `data/pdfs/` (`--pdfs`), and parses every recorded file that has a hash. Editions recorded as having no open PDF are skipped. A recorded file that is missing locally, or whose bytes don't match its recorded hash, isn't parsed: `parse` lists it at the end, suggests `just fetch`, and exits non-zero. Each file is cited by the pinned id the record gives, not by its file name: v1 of the preprint Edition `2112.06598v2` is `2112.06598v1`, and the venue Edition `10.5555/lrm.2022.7` keeps its slash although its file is `10.5555_lrm.2022.7.pdf`.
+- **Seeds-only route: `--files <pdf>...`** parses those files instead of the record, which is how the Seed PDFs are used before the full fetch. A Seed PDF named `<seed>_<pinned id>.pdf` (`bpe-dropout_1910.13267v1.pdf`) is cited as `1910.13267v1`; any other file is taken to be named by its pinned id, as `fetch` names files. Its sha256 is computed on each run.
+- **Outputs.** Chunks go to the parse cache and a summary to the parse report; nothing else changes.
+- **Chunks** pack whole paragraphs up to 350 tokens, counted with the pinned BERT WordPiece tokenizer in `config/tokenizers/` (`[chunking]` in `config/parse.toml`). A longer paragraph is split at its sentences. Chunks don't overlap. Each Chunk carries its context header (title › Section path) apart from its text, and its citation anchor: pinned id, Version, Section and pages.
+- **Element rules** (ADR 0026). Each kind of element GROBID finds follows one rule:
+  - *Reference lists* produce no Chunks; each file's bibliography is kept as structured data (title, authors, year, identifiers, the printed reference) in the parse cache.
+  - *Tables* become `table` Chunks, linearised row by row (cells joined by ` | `) after a first line with the table's label, Section and caption. A table over the budget is cut between rows, and each part repeats that first line.
+  - *Figure captions* become one small `caption` Chunk each. Tables and captions go to the Section that cites them, or else the one their page falls in.
+  - *Equations* stay inline in the paragraph text, as GROBID renders them.
+  - *Appendices* stay as Sections, marked as appendices in their Chunks, whether GROBID puts them in the annex or in the body.
+  - *Acknowledgements* and footnotes are dropped.
+  - *Front matter* beyond the title and abstract is dropped; the abstract is a Section.
+- **Quality gate.** A file fails when GROBID errors or times out on it, or when it has fewer than 2 Sections or 2,000 characters of Section text (`min_sections`, `min_body_characters` in `[chunking]`). A failed file produces no Chunks; its line in the report gives the reason, and the report counts failures by reason. The failure is recorded in the parse cache, so a rerun under the same parser and config doesn't retry it (ADR 0027).
+- **Errors.** One failed file never stops the run: the files that failed in this run are listed together at the end and the exit is non-zero. An unreachable GROBID stops the run at once with a pointer to `just grobid-up`. `--limit N` parses only the first N files in pinned-id order, for a smoke test.
+- **The parse cache** (`data/parse-cache/`, `--cache`, never committed) keeps GROBID's TEI and the bibliography per file sha256 and parser version, and the Chunks per file sha256, parser version and chunking-config hash (ADR 0028). A file whose TEI is cached is not sent to GROBID again, so a rerun only parses new files; a new GROBID digest re-parses it, and a chunking-config change only re-chunks it from the cached TEI.
+- **Reproducible.** Files are processed in sorted order and nothing in the output depends on time or the machine, so the same PDFs and config give byte-identical Chunks and report. GROBID's raw TEI is not byte-stable (ADR 0024); the Chunks are.
+- **The parse report** (`data/parse-report.md`, `--report`, committed) names the GROBID image and version and the chunking config, and gives a line per file (with its table and caption Chunks) and the totals.
 
 ## Measure the Relevance verdict
 
@@ -113,6 +126,13 @@ ADR 0020 has the details. ADR 0021 records the judge models compared on it and t
 just test        # uv run pytest; extra arguments go to pytest
 just typecheck   # uv run mypy src tests
 just lint        # uv run ruff check src tests (errors only, not style)
+```
+
+The test against the real GROBID container is opt-in. It parses `data/pdfs/seeds/wechsel_2112.06598v2.pdf` twice from an empty cache and checks that it passes and that both runs give byte-identical Chunks and report:
+
+```sh
+just grobid-up
+RUN_GROBID_TESTS=1 just test tests/test_parse_grobid.py
 ```
 
 The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model. `tests/test_dev_setup.py` also runs `just` to check the recipes, that `init` stops when Docker is missing, and, with a fake `docker` and `curl` on PATH, that `init` pulls GROBID by digest and that `grobid-up` and `grobid-down` behave; it skips without just.

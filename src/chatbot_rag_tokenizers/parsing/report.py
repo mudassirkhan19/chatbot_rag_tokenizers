@@ -4,10 +4,12 @@ It names the parser and the chunking config, gives one line per file and the tot
 depends on the time or the machine, so the same inputs give the same report.
 """
 
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
 from .config import ParseConfig
+from .quality import Failure
 
 
 @dataclass(frozen=True)
@@ -16,15 +18,20 @@ class FileResult:
 
     pinned_id: str
     sha256: str
-    status: str  # "parsed"
     sections: int
     chunks: int
-    tables: int  # table Chunks (ADR 0026)
-    captions: int  # figure caption Chunks
+    failure: Failure | None = None  # why the file failed the quality gate; None when it was parsed
+    tables: int = 0  # table Chunks (ADR 0026)
+    captions: int = 0  # figure caption Chunks
+
+    @property
+    def status(self) -> str:
+        return f"failed: {self.failure}" if self.failure else "parsed"
 
 
 def write_report(path: Path, config: ParseConfig, grobid_versions: set[str], results: list[FileResult]) -> None:
     grobid = config.grobid
+    failures = [r.failure for r in results if r.failure]
     lines = [
         "# Parse report",
         "",
@@ -38,6 +45,12 @@ def write_report(path: Path, config: ParseConfig, grobid_versions: set[str], res
         "## Chunking config",
         "",
         *[f"- {name}: `{value}`" for name, value in config.chunking.describe().items()],
+        "",
+        "## Quality gate",
+        "",
+        f"A file fails when GROBID errors or times out on it, when it has fewer than {config.chunking.min_sections}"
+        f" Sections (the abstract counts as one), or when its Sections hold fewer than"
+        f" {config.chunking.min_body_characters} characters of text. A failed file gets no Chunks.",
         "",
         "## Files",
         "",
@@ -55,6 +68,12 @@ def write_report(path: Path, config: ParseConfig, grobid_versions: set[str], res
         f"- Chunks: {sum(r.chunks for r in results)}",
         f"- Table Chunks: {sum(r.tables for r in results)}",
         f"- Caption Chunks: {sum(r.captions for r in results)}",
+        f"- Parsed: {sum(1 for r in results if not r.failure)}",
+        f"- Failed: {len(failures)}",
+        "",
+        "## Failures by reason",
+        "",
+        *([f"- {reason}: {count}" for reason, count in sorted(Counter(f.reason for f in failures).items())] or ["- none"]),
     ]
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(lines) + "\n")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")  # the same bytes on every machine
