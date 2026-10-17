@@ -23,6 +23,7 @@ def main(argv: list[str] | None = None) -> None:
     collect_cmd.add_argument("--config", type=Path, default=Path("config/scope.toml"))
     collect_cmd.add_argument("--snapshot", type=Path, default=Path("data/snapshot"))
     collect_cmd.add_argument("--manifest", type=Path, default=Path("data/manifest.csv"))
+    collect_cmd.add_argument("--report", type=Path, default=Path("data/report.md"), help="the funnel and channel report")
     judging = collect_cmd.add_mutually_exclusive_group()
     judging.add_argument("--refresh", action="store_true", help="re-score every Candidate that passes the rules, ignoring cached verdicts")
     judging.add_argument(
@@ -42,6 +43,7 @@ def main(argv: list[str] | None = None) -> None:
     )
     fetch_cmd.add_argument("--snapshot", type=Path, default=Path("data/snapshot"))
     fetch_cmd.add_argument("--manifest", type=Path, default=Path("data/manifest.csv"))
+    fetch_cmd.add_argument("--report", type=Path, default=Path("data/report.md"), help="the funnel and channel report")
     fetch_cmd.add_argument("--pdfs", type=Path, default=Path("data/pdfs"), help="where PDFs go (default data/pdfs, gitignored)")
     fetch_cmd.add_argument("--limit", type=int, help="download at most this many files, e.g. for a smoke test")
 
@@ -92,10 +94,12 @@ def main(argv: list[str] | None = None) -> None:
 
     args = parser.parse_args(argv)
     if args.command == "collect":
-        collect(load_config(args.config), args.snapshot, args.manifest, refresh=args.refresh, run_judge=not args.no_judge)
+        collect(
+            load_config(args.config), args.snapshot, args.manifest, args.report, refresh=args.refresh, run_judge=not args.no_judge
+        )
     elif args.command == "fetch":
         try:
-            fulltext.fetch(args.snapshot, args.manifest, args.pdfs, args.limit)
+            fulltext.fetch(args.snapshot, args.manifest, args.report, args.pdfs, args.limit)
         except fulltext.FetchErrors as errors:
             sys.exit(f"fetch: {errors}")
     elif args.command == "audit" and args.audit_command == "export":

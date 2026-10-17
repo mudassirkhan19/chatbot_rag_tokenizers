@@ -1,26 +1,28 @@
 """The `collect` run: keyword queries and citation expansion → Snapshot → Editions → ACL Editions
-→ rule pre-filter → arXiv records → LLM judge → manifest, with the Fetcher's recorded PDFs."""
+→ rule pre-filter → arXiv records → LLM judge → manifest and funnel report, with the Fetcher's
+recorded PDFs, then the checks on the Snapshot's size and that it holds no API key."""
 
 import sys
-from collections import Counter
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from . import fulltext, judge
+from . import fulltext, judge, report
 from .acl_anthology import AclAnthologySource
 from .arxiv import ArxivSource
-from .config import ScopeConfig, is_citation_channel, is_keyword_channel
+from .config import ScopeConfig
 from .editions import Edition, combine
 from .judge import JudgeVerdict, VerdictCache, question_hash
 from .manifest import manifest_row, write_manifest
+from .openalex import API_KEY_ENV as OPENALEX_KEY_ENV
 from .openalex import OpenAlexSource
 from .rules import RuleFilter, RuleOutcome
+from .semantic_scholar import API_KEY_ENV as S2_KEY_ENV
 from .semantic_scholar import SemanticScholarSource
-from .snapshot import SnapshotStore
+from .snapshot import SnapshotStore, check_credentials, check_size
 
 SAVE_VERDICTS_EVERY = 25  # Candidates scored between saves of the verdict cache
+API_KEY_ENVS = (OPENALEX_KEY_ENV, S2_KEY_ENV)
 
 
 class KeywordSource(Protocol):
@@ -199,70 +201,6 @@ def judge_candidates(
     return verdicts
 
 
-def _report_expansion(rows: list[dict[str, str]]) -> None:
-    """What citation expansion adds beyond keyword search, in Editions and in included Editions.
-
-    A Seed's own record counts as neither: it was picked by hand, not found.
-    """
-
-    keyword, expanded, expansion_only = [], [], []
-    for row in rows:
-        channels = row["discovery_channels"].split("|")
-        found_by_keyword = any(is_keyword_channel(channel) for channel in channels)
-        if found_by_keyword:
-            keyword.append(row)
-        if any(is_citation_channel(channel) for channel in channels):
-            expanded.append(row)
-            if not found_by_keyword:
-                expansion_only.append(row)
-
-    def included(group: list[dict[str, str]]) -> int:
-        return sum(row["relevance_verdict"] == "included" for row in group)
-
-    print(f"  keyword search: {len(keyword)} Editions, {included(keyword)} included", file=sys.stderr)
-    print(
-        f"  citation expansion: {len(expanded)} Editions, {len(expansion_only)} found by no keyword query,"
-        f" {included(expansion_only)} of those included",
-        file=sys.stderr,
-    )
-
-
-def _source_of(channel: str) -> str:
-    """The source a Discovery channel searched; a Seed and its citation hops count as "seeds"."""
-    return channel.partition(":")[0] if is_keyword_channel(channel) else "seeds"
-
-
-def _report_found_by(
-    editions: list[Edition], rows: dict[str, dict[str, str]], kind: str, group: Callable[[str], str]
-) -> None:
-    """Print, per Discovery channel or source, how many Editions it found and what only it found.
-
-    The Editions no other channel or source found are its added value, so their rule passes,
-    inclusions and still-pending verdicts are counted too.
-    """
-    found: Counter[str] = Counter()
-    alone: Counter[str] = Counter()
-    passed: Counter[str] = Counter()
-    included: Counter[str] = Counter()
-    pending: Counter[str] = Counter()
-    for edition in editions:
-        groups = {group(channel) for channel in edition.discovery_channels}
-        found.update(groups)
-        if len(groups) == 1:
-            (name,) = groups
-            row = rows[edition.edition_id]
-            alone[name] += 1
-            passed[name] += row["rule_outcome"] == "pass"
-            included[name] += row["relevance_verdict"] == "included"
-            pending[name] += row["relevance_verdict"] == "pending"
-    for name in sorted(found):
-        print(
-            f"  {name}: {found[name]} Editions, {alone[name]} found by no other {kind}"
-            f" ({passed[name]} pass the rules, {included[name]} included, {pending[name]} pending)",
-            file=sys.stderr,
-        )
-
-
 @dataclass(frozen=True)
 class Assessed:
     """A Candidate with both stages of its Relevance verdict: the rule outcome and, if it passed, the judge's."""
@@ -297,30 +235,20 @@ def assess(config: ScopeConfig, snapshot_dir: Path, refresh: bool = False, run_j
 
 
 def collect(
-    config: ScopeConfig, snapshot_dir: Path, manifest_path: Path, refresh: bool = False, run_judge: bool = True
+    config: ScopeConfig,
+    snapshot_dir: Path,
+    manifest_path: Path,
+    report_path: Path,
+    refresh: bool = False,
+    run_judge: bool = True,
 ) -> None:
     assessed = assess(config, snapshot_dir, refresh, run_judge)
-    editions = [candidate.edition for candidate in assessed]
-    threshold = config.judge.threshold
-    rows = [candidate.manifest_row(threshold) for candidate in assessed]
+    # Before anything is written, so a leaked key never comes with a fresh manifest to commit.
+    check_credentials(snapshot_dir, API_KEY_ENVS)
+    rows = [candidate.manifest_row(config.judge.threshold) for candidate in assessed]
     fulltext.apply_record(rows, fulltext.FulltextRecord(snapshot_dir))
     write_manifest(manifest_path, rows)
-
-    rejected = Counter(row["rule_pattern"] for row in rows if row["rule_outcome"] == "reject")
-    print(f"discover: {len(rows)} Editions", file=sys.stderr)
-    by_id = {row["edition_id"]: row for row in rows}
-    _report_found_by(editions, by_id, "channel", lambda channel: channel)
-    print("discover: by source", file=sys.stderr)
-    _report_found_by(editions, by_id, "source", _source_of)
-    _report_expansion(rows)
-    print(f"rules: {len(rows) - rejected.total()} passed, {rejected.total()} rejected", file=sys.stderr)
-    for pattern, count in sorted(rejected.items()):
-        print(f"  {pattern}: {count}", file=sys.stderr)
-    judged = Counter(row["relevance_verdict"] for row in rows if row["rule_outcome"] == "pass")
-    print(
-        f"judge: {judged['included']} included, {judged['excluded']} excluded, {judged['pending']} pending"
-        f" (threshold {threshold:g})",
-        file=sys.stderr,
-    )
-    fulltext.report(rows)
-    print(f"manifest: wrote {manifest_path}", file=sys.stderr)
+    report.write(report_path, rows)
+    report.summarise(rows, config.judge.threshold)
+    check_size(snapshot_dir)
+    print(f"manifest: wrote {manifest_path}, report: wrote {report_path}", file=sys.stderr)

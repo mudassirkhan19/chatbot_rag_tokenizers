@@ -19,6 +19,7 @@ from a complete Snapshot works without them (`uv sync --group judge` installs th
 import hashlib
 import json
 import math
+import re
 import sys
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
@@ -31,6 +32,9 @@ from .config import JudgeConfig
 from .editions import Edition
 
 ANSWERS = ("Yes", "No")
+
+# Ollama's answer when a decision model's input is longer than its context, which it never truncates.
+_TOO_LONG = re.compile(r"has (?P<tokens>\d+) tokens; expected 1\u2013(?P<limit>\d+)")
 
 
 def prompt_hash(prompt: str) -> str:
@@ -220,14 +224,10 @@ class _Ollama:
             raise OllamaModelError(f"{config.model} in Ollama has digest {installed[config.model]}, not the pinned {digest}")
 
     def _get(self, path: str) -> dict[str, Any]:
-        response = self.client.get(path)
-        response.raise_for_status()
-        return response.json()
+        return _json(self.client.get(path))
 
     def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
-        response = self.client.post(path, json=body)
-        response.raise_for_status()
-        return response.json()
+        return _json(self.client.post(path, json=body))
 
     def _p_yes(self, edition: Edition) -> float:
         raise NotImplementedError
@@ -264,21 +264,44 @@ class OllamaDecisionJudge(_Ollama):
     def _p_yes(self, edition: Edition) -> float:
         question = self.config.decision
         assert question is not None, "the config requires [judge.decision] for this backend"
-        response = self._post(
-            "/v1/systemone",
-            {
-                "model": self.config.model,
-                "state": question.state.format(title=edition.title, abstract=edition.abstract),
-                "questions": {
-                    "in_scope": {
-                        "type": "noul",
-                        "instructions": question.instructions,
-                        "criteria": {"true": question.true, "false": question.false},
-                    }
+        abstract = edition.abstract
+        while True:
+            response = self.client.post(
+                "/v1/systemone",
+                json={
+                    "model": self.config.model,
+                    "state": question.state.format(title=edition.title, abstract=abstract),
+                    "questions": {
+                        "in_scope": {
+                            "type": "noul",
+                            "instructions": question.instructions,
+                            "criteria": {"true": question.true, "false": question.false},
+                        }
+                    },
                 },
-            },
-        )
-        return float(response["answers"]["in_scope"]["noul"])
+            )
+            too_long = _TOO_LONG.search(response.text) if response.status_code == 400 else None
+            if too_long is None:
+                return float(_json(response)["answers"]["in_scope"]["noul"])
+            abstract = _shorten(abstract, int(too_long["tokens"]), int(too_long["limit"]))
+            print(f"judge: {edition.edition_id} is too long for the model; abstract cut to {len(abstract)} characters", file=sys.stderr)
+
+
+def _json(response: httpx.Response) -> dict[str, Any]:
+    response.raise_for_status()
+    return response.json()
+
+
+def _shorten(abstract: str, tokens: int, limit: int) -> str:
+    """``abstract`` cut at a word boundary, by the share of the input that is over ``limit``, with a
+    tenth to spare. Only an input the model refused is ever cut, so every verdict on one that fit
+    stays the same.
+    """
+    keep = int(len(abstract) * limit / tokens * 0.9)
+    cut = abstract[:keep].rsplit(" ", 1)[0]
+    if not cut or cut == abstract:
+        raise OllamaModelError(f"the title and prompt alone are longer than the model's {limit}-token context")
+    return cut
 
 
 def load_judge(config: JudgeConfig) -> Judge:

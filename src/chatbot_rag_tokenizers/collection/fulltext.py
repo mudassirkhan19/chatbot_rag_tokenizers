@@ -13,7 +13,6 @@ import hashlib
 import json
 import re
 import sys
-from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -21,6 +20,7 @@ from urllib.parse import urlsplit
 
 import httpx
 
+from . import report
 from .http import RateLimitedHttp
 from .manifest import COLUMNS, write_manifest
 
@@ -185,15 +185,6 @@ def apply_record(rows: list[dict[str, str]], record: FulltextRecord) -> None:
             row["funnel_status"] = "relevant"
 
 
-def report(rows: list[dict[str, str]]) -> None:
-    status = Counter(row["funnel_status"] for row in rows if row["relevance_verdict"] == "included")
-    print(
-        f"fulltext: {status['full text']} with full text, {status['no_fulltext']} with no open PDF,"
-        f" {status['relevant']} still to fetch",
-        file=sys.stderr,
-    )
-
-
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -292,7 +283,7 @@ class _LimitReached(Exception):
     """Raised to stop a run once ``--limit`` files have been downloaded."""
 
 
-def fetch(snapshot_dir: Path, manifest_path: Path, pdf_dir: Path, limit: int | None = None) -> None:
+def fetch(snapshot_dir: Path, manifest_path: Path, report_path: Path, pdf_dir: Path, limit: int | None = None) -> None:
     """Download the pinned PDFs of every included Edition in the manifest, record their hashes and
     update the manifest.
 
@@ -337,7 +328,8 @@ def fetch(snapshot_dir: Path, manifest_path: Path, pdf_dir: Path, limit: int | N
     finally:
         apply_record(rows, record)
         write_manifest(manifest_path, rows)
+        report.write(report_path, rows)
     print(f"fetch: {downloads} files downloaded into {pdf_dir}", file=sys.stderr)
-    report(rows)
+    report.summarise_fulltext(rows)
     if errors:
         raise FetchErrors(errors)

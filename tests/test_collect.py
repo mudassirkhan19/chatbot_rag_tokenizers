@@ -11,19 +11,22 @@ import httpx
 import pytest
 
 from chatbot_rag_tokenizers.cli import main
-from chatbot_rag_tokenizers.collection import judge
+from chatbot_rag_tokenizers.collection import judge, snapshot
 from chatbot_rag_tokenizers.collection.openalex import OpenAlexError
 from chatbot_rag_tokenizers.collection.snapshot import SnapshotStore
 from conftest import FIXTURES, acl_request, s2_seed_request
 
 
 def run_collect(snapshot: Path, manifest: Path, config: Path = FIXTURES / "scope.toml", *flags: str) -> None:
+    """Run `collect`, writing its report next to the manifest unless ``flags`` name another path."""
+    report = [] if "--report" in flags else ["--report", str(manifest.with_name("report.md"))]
     main(
         [
             "collect",
             "--config", str(config),
             "--snapshot", str(snapshot),
             "--manifest", str(manifest),
+            *report,
             *flags,
         ]
     )
@@ -707,3 +710,65 @@ def test_acl_editions_are_judged_on_an_abstract(fixture_snapshot, no_network, mo
     rows = read_manifest(manifest)
     assert rows["P16-1162"]["relevance_verdict"] == "included"
     assert rows["P16-1162"]["judge_probability"] == "0.9000"
+
+
+def test_collect_writes_the_funnel_and_channel_report(fixture_snapshot, no_network, tmp_path):
+    report_path = tmp_path / "report.md"
+    run_collect(fixture_snapshot, tmp_path / "manifest.csv", FIXTURES / "scope.toml", "--report", str(report_path))
+    report = report_path.read_text()
+
+    # Six Candidates fail the rules and the judge excludes one more (see the tests above). Of the
+    # twelve included, the Findings volume has no open PDF and nothing is fetched yet.
+    assert "| Discovered | 19 |" in report
+    assert "| Rejected by the rules | 6 |" in report
+    assert "| Rejected by the judge | 1 |" in report
+    assert "| Pending a judge verdict | 0 |" in report
+    assert "| Included | 12 |" in report
+    assert "| With full text | 0 |" in report
+    assert "| No open PDF | 1 |" in report
+    assert "| Still to fetch | 11 |" in report
+    assert "judge `example/judge-model@0123456789abcdef0123456789abcdef01234567` at threshold 0.5" in report
+    # Per source: Editions found, how many of them are included, and what only that source found.
+    # The Seed found ten, nine of them included; arXiv found nine, five included.
+    assert "| seeds | 10 | 9 | 4 | 3 | 3 | 0 |" in report
+    assert "| arxiv | 9 | 5 | 4 | 0 | 0 | 0 |" in report
+    assert "| openalex:keyword-phrases | 5 | 4 | 2 | 1 | 1 | 0 |" in report
+    assert "| missing-required-term | 2 |" in report
+    assert "| Citation expansion | 8 | 7 | 4 | 3 |" in report
+
+
+def test_the_report_is_the_same_on_every_rerun(fixture_snapshot, no_network, tmp_path):
+    first, second = tmp_path / "first.md", tmp_path / "second.md"
+    run_collect(fixture_snapshot, tmp_path / "manifest.csv", FIXTURES / "scope.toml", "--report", str(first))
+    run_collect(fixture_snapshot, tmp_path / "manifest.csv", FIXTURES / "scope.toml", "--report", str(second))
+
+    assert first.read_bytes() == second.read_bytes()
+
+
+def test_collect_warns_when_the_snapshot_is_larger_than_the_limit(fixture_snapshot, no_network, tmp_path, monkeypatch, capsys):
+    run_collect(fixture_snapshot, tmp_path / "manifest.csv")
+    assert "warning" not in capsys.readouterr().err
+
+    # The fixture Snapshot is a few kB; a 1 kB limit stands in for the real one of about 50 MB.
+    monkeypatch.setattr(snapshot, "SIZE_WARNING_BYTES", 1000)
+    run_collect(fixture_snapshot, tmp_path / "manifest.csv")
+    assert "snapshot: warning: the Snapshot is 0.0 MB, more than about 0.001 MB" in capsys.readouterr().err
+
+
+def test_collect_refuses_a_snapshot_that_contains_an_api_key(fixture_snapshot, no_network, tmp_path, monkeypatch):
+    run_collect(fixture_snapshot, tmp_path / "manifest.csv")  # a key that appears nowhere is fine
+    monkeypatch.setenv("OPENALEX_API_KEY", "secret-openalex-key-123")
+    run_collect(fixture_snapshot, tmp_path / "manifest.csv")
+
+    leaked = {"source": "openalex", "url": "https://api.openalex.org/works", "params": {"page": "leak"}}
+    SnapshotStore(fixture_snapshot).save(leaked, '{"echo": "api_key=secret-openalex-key-123"}', collected_at="2026-10-17")
+    before = (tmp_path / "manifest.csv").read_bytes()
+    (tmp_path / "manifest.csv").write_bytes(b"stale")
+    with pytest.raises(SystemExit) as refused:
+        run_collect(fixture_snapshot, tmp_path / "manifest.csv")
+    assert before and (tmp_path / "manifest.csv").read_bytes() == b"stale"  # nothing was written
+
+    message = str(refused.value)
+    assert "OPENALEX_API_KEY" in message
+    assert "responses/openalex/" in message
+    assert "secret-openalex-key-123" not in message

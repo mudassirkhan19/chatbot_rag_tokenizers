@@ -1,7 +1,7 @@
 # 0003. Commit the Snapshot of raw source responses
 
 - **Date:** 2026-10-16
-- **Status:** Accepted. Supersedes the "downloaded data stays out of git" part of [0002](0002-no-pdfs-or-secrets-in-git.md).
+- **Status:** Accepted. Supersedes the "downloaded data stays out of git" part of [0002](0002-no-pdfs-or-secrets-in-git.md). The size warning and a credential check are in [0026](0026-funnel-report-and-snapshot-checks.md).
 
 ## Context
 ADR 0002 kept all downloaded data out of git and relied on rerunning the collection pipeline to rebuild the corpus. But source APIs change their answers over time: new papers arrive, arXiv adds Versions, and Semantic Scholar re-ranks its answers. A reviewer who reruns the pipeline months later would get a different manifest and couldn't check our counts. The spec (#2) asks for a rerun that reproduces the manifest byte for byte, with no API keys and no network access for metadata.

@@ -75,12 +75,25 @@ def web(monkeypatch: pytest.MonkeyPatch) -> FakeWeb:
 def collected(fixture_snapshot: Path, no_network, tmp_path: Path) -> Path:
     """The manifest `collect` writes from the fixture Snapshot."""
     manifest = tmp_path / "manifest.csv"
-    main(["collect", "--config", str(FIXTURES / "scope.toml"), "--snapshot", str(fixture_snapshot), "--manifest", str(manifest)])
+    run_collect(fixture_snapshot, manifest, manifest.with_name("report.md"))
     return manifest
 
 
+def run_collect(snapshot: Path, manifest: Path, report: Path) -> None:
+    main(
+        [
+            "collect",
+            "--config", str(FIXTURES / "scope.toml"),
+            "--snapshot", str(snapshot),
+            "--manifest", str(manifest),
+            "--report", str(report),
+        ]
+    )
+
+
 def run_fetch(snapshot: Path, manifest: Path, pdfs: Path, *flags: str) -> None:
-    main(["fetch", "--snapshot", str(snapshot), "--manifest", str(manifest), "--pdfs", str(pdfs), *flags])
+    report = manifest.with_name("report.md")
+    main(["fetch", "--snapshot", str(snapshot), "--manifest", str(manifest), "--report", str(report), "--pdfs", str(pdfs), *flags])
 
 
 def read_manifest(path: Path) -> dict[str, dict[str, str]]:
@@ -147,13 +160,17 @@ def test_only_pinned_files_of_included_editions_are_requested(fixture_snapshot, 
     )
 
 
-def test_collect_rebuilds_the_fetched_manifest_byte_for_byte(fixture_snapshot, collected, web, no_network, tmp_path):
+def test_collect_rebuilds_the_fetched_manifest_and_report_byte_for_byte(fixture_snapshot, collected, web, no_network, tmp_path):
     run_fetch(fixture_snapshot, collected, tmp_path / "pdfs")
+    report = collected.with_name("report.md").read_text()
+    assert "| With full text | 11 |" in report
+    assert "| Still to fetch | 0 |" in report
 
     # The hashes live in the Snapshot, so a rerun needs neither the PDFs nor the network.
-    rebuilt = tmp_path / "rebuilt.csv"
-    main(["collect", "--config", str(FIXTURES / "scope.toml"), "--snapshot", str(fixture_snapshot), "--manifest", str(rebuilt)])
+    rebuilt, rebuilt_report = tmp_path / "rebuilt.csv", tmp_path / "rebuilt-report.md"
+    run_collect(fixture_snapshot, rebuilt, rebuilt_report)
     assert rebuilt.read_bytes() == collected.read_bytes()
+    assert rebuilt_report.read_text() == report
     assert read_manifest(rebuilt)["P18-1007"]["funnel_status"] == "full text"
 
 

@@ -31,9 +31,10 @@ class StubOllama:
     """Ollama 0.40.5 with one installed model, answering chats with the given top logprobs and
     decisions with the given probability."""
 
-    def __init__(self, top_logprobs: list[dict] | None = None, noul: float = 0.0) -> None:
+    def __init__(self, top_logprobs: list[dict] | None = None, noul: float = 0.0, max_tokens: int | None = None) -> None:
         self.top_logprobs = top_logprobs or []
         self.noul = noul
+        self.max_tokens = max_tokens  # a decision model's context, counting one token per word
         self.requests: list[dict] = []
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
@@ -45,6 +46,11 @@ class StubOllama:
         if request.url.path == "/api/chat":
             return httpx.Response(200, json={"message": {"content": "Yes"}, "logprobs": [{"top_logprobs": self.top_logprobs}]})
         assert request.url.path == "/v1/systemone"
+        tokens = len(self.requests[-1]["state"].split())
+        if self.max_tokens is not None and tokens > self.max_tokens:
+            # Ollama 0.40.5's answer when a decision model's input is longer than its context.
+            error = f"prompt 0 has {tokens} tokens; expected 1\u2013{self.max_tokens} (input is never truncated)"
+            return httpx.Response(400, json={"error": error})
         return httpx.Response(200, json={"answers": {"in_scope": {"type": "noul", "noul": self.noul}}})
 
 
@@ -87,6 +93,24 @@ def test_a_decision_model_answers_one_true_or_false_question_about_the_state():
             }
         },
     }
+
+
+def test_an_abstract_too_long_for_a_decision_model_is_cut_at_a_word_boundary_until_it_fits():
+    server = StubOllama(noul=0.6, max_tokens=50)
+    judge = OllamaDecisionJudge(config(backend="ollama-decision"), client(server))
+    words = [f"word{i}" for i in range(200)]
+    long = Edition("2401.00002", "", "Byte Pair Encoding", " ".join(words), [], "")
+
+    assert judge.score([long, EDITION]) == [0.6, 0.6]
+
+    *tries, answered, short = [request["state"] for request in server.requests]
+    assert tries and all(len(state.split()) > 50 for state in tries)
+    assert len(answered.split()) <= 50
+    title, _, abstract = answered.partition("\n\nAbstract: ")
+    assert title == "Title: Byte Pair Encoding"
+    assert words[: len(abstract.split())] == abstract.split()
+    # An Edition that fits is sent whole, as before.
+    assert short == "Title: Byte Pair Encoding\n\nAbstract: We study BPE."
 
 
 @pytest.mark.parametrize("judge_class", [OllamaJudge, OllamaDecisionJudge])
