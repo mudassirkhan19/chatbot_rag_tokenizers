@@ -1,4 +1,4 @@
-"""The justfile is the setup entry point (ADRs 0021 and 0022). These run `just` itself, so they skip without it.
+"""The justfile is the setup entry point (ADRs 0022 and 0023). These run `just` itself, so they skip without it.
 
 The GROBID tests put a fake docker, curl and uv on PATH, so they need neither Docker nor the network.
 """

@@ -1,7 +1,7 @@
 # 0001. Python 3.12, managed with uv
 
 - **Date:** 2026-10-15
-- **Status:** Accepted. Setup partly superseded by [0021](0021-uv-and-just-from-homebrew-docker-left-to-the-user.md): reviewers run `just init`, not `uv sync`.
+- **Status:** Accepted. Setup partly superseded by [0022](0022-uv-and-just-from-homebrew-docker-left-to-the-user.md): reviewers run `just init`, not `uv sync`.
 
 ## Context
 The project is a Python RAG pipeline that will depend on the ML stack (PyTorch, sentence-transformers, possibly FAISS) plus PDF parsing libraries. The local system Python is 3.14. Reviewers must be able to reproduce the environment from the README in a few commands.

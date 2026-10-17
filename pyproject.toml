@@ -30,7 +30,7 @@ judge = [
 ]
 
 [tool.uv]
-# The oldest uv the repo is tested with; `just init` and uv itself refuse older ones (ADR 0021).
+# The oldest uv the repo is tested with; `just init` and uv itself refuse older ones (ADR 0022).
 required-version = ">=0.10.8"
 
 [tool.pytest.ini_options]

@@ -1,11 +1,14 @@
 """Offline runs of `audit export` and `audit report`: building the Audit set and measuring the Relevance verdict on it."""
 
 from collections import Counter
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from chatbot_rag_tokenizers.cli import main
+from chatbot_rag_tokenizers.collection.config import load_config
+from chatbot_rag_tokenizers.collection.judge import question_hash
 from conftest import FIXTURES, read_rows
 
 # The fixture Snapshot's Editions by stratum, as the fixture verdicts and threshold 0.5 place them.
@@ -157,3 +160,55 @@ def test_report_without_the_judge_names_models_missing_verdicts(no_model, tmp_pa
     # The other models are unaffected, and the default thresholds include the configured one.
     assert "| 0.5 | 0.750 | 0.375 | 0.500 |" in report
     assert "| 0.9 |" in report
+
+
+def test_report_compares_the_models_at_their_best_threshold(no_model, tmp_path):
+    report = run_report(tmp_path / "report.md", "--thresholds", "0.5,0.65", "--no-judge")
+    comparison = report.split("## Model comparison")[1].split("##")[0]
+
+    # Each model at its best threshold (worked in the test above), with its run time.
+    assert "| model | threshold | precision | recall | F1 | s per Candidate | full run (min) |" in comparison
+    assert "| example/model-a@aaaaaaaa | 0.65 | 1.000 | 0.375 | 0.545 | 1.00 | 0.5 |" in comparison
+    assert "| example/model-b@bbbbbbbb | 0.5 | 1.000 | 0.500 | 0.667 | 3.00 | 1.5 |" in comparison
+    # It comes before the per-model sections.
+    assert report.index("## Model comparison") < report.index("## Rules and judge:")
+
+
+def test_report_comparison_marks_a_model_without_verdicts(no_model, tmp_path):
+    text = (FIXTURES / "scope.toml").read_text()
+    config = tmp_path / "scope.toml"
+    config.write_text(text + '\n[[audit.models]]\nmodel = "example/model-c"\nrevision = "cccccccccccccccccccccccccccccccccccccccc"\n')
+
+    report = run_report(tmp_path / "report.md", "--no-judge", config=config)
+
+    comparison = report.split("## Model comparison")[1].split("##")[0]
+    assert "| example/model-c@cccccccc | no verdicts | | | | | |" in comparison
+
+
+def test_a_decision_model_is_measured_on_verdicts_for_its_question(no_model, tmp_path):
+    question = '[judge.decision]\nstate = "{title}\\n{abstract}"\ninstructions = "In scope?"\ntrue = "Yes"\nfalse = "No"\n'
+    model_d = '[[audit.models]]\nmodel = "example/model-d"\nrevision = "dddd@0.40.5"\nbackend = "ollama-decision"\n'
+    config = tmp_path / "scope.toml"
+    config.write_text((FIXTURES / "scope.toml").read_text() + "\n" + model_d + question)
+    # Model D includes e2, i1, i2 and i3 at 0.5: all relevant, 20 of the 40.
+    judge_config = replace(load_config(config).judge, model="example/model-d", revision="dddd@0.40.5", backend="ollama-decision")
+    p_yes = {"e1": 0.1, "e2": 0.9, "i1": 0.9, "i2": 0.9, "i3": 0.9, "i4": 0.1}
+    verdicts = tmp_path / "verdicts.jsonl"
+    verdicts.write_text(
+        (FIXTURES / "audit" / "verdicts.jsonl").read_text()
+        + "".join(
+            f'{{"edition_id":"{edition_id}","model":"example/model-d","p_yes":{p},'
+            f'"prompt_hash":"{question_hash(judge_config)}","revision":"dddd@0.40.5","seconds":1.0}}\n'
+            for edition_id, p in p_yes.items()
+        )
+    )
+
+    report = run_report(tmp_path / "report.md", "--thresholds", "0.5", "--no-judge", "--verdicts", str(verdicts), config=config)
+    assert "| example/model-d@dddd@0.40.5 | 0.5 | 1.000 | 0.500 | 0.667 | 1.00 | 0.5 |" in report
+    # The chat models are still measured on verdicts for the prompt.
+    assert "| example/model-a@aaaaaaaa | 0.5 | 0.750 | 0.375 | 0.500 |" in report
+
+    # Editing the question leaves model D without verdicts.
+    config.write_text(config.read_text().replace("In scope?", "Relevant?"))
+    report = run_report(tmp_path / "report.md", "--no-judge", "--verdicts", str(verdicts), config=config)
+    assert "| example/model-d@dddd@0.40.5 | no verdicts | | | | | |" in report

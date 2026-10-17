@@ -342,13 +342,18 @@ pattern = '\b(image|visual|video|audio|speech|vq|motion|molecular|protein) token
 
 [judge]
 # Stage 2 of the Relevance verdict: P("Yes") from a local open-weight model, given the title and
-# abstract of each Candidate that passes the rules. The model is the default from the issue #1
-# shortlist until that benchmark decides; revision pins the Hugging Face commit.
-model = "Qwen/Qwen3-4B-Instruct-2507"
-revision = "cdbee75f17c01a7cc42f958dc650907174af0554"
-# Applied when the manifest is built, so changing it never re-scores. To be tuned on the Audit set (#9).
-threshold = 0.5
-# Changing the prompt changes its hash, which invalidates every cached verdict.
+# abstract of each Candidate that passes the rules. Chosen on the Audit set in issue #1 (ADR 0021):
+# Together AI's Tev1 4B decision model, served by Ollama and asked [judge.decision]. An Ollama model
+# is pinned as <digest>@<Ollama version>: the digest `ollama list` shows for it, and the server
+# version, since upgrading Ollama changes the scores.
+backend = "ollama-decision"
+model = "tev1:4b"
+revision = "4d24c6f6d61a48d9b72902f4805c5f1da53010736b834b0372377fb4bb7e53d3@0.40.5"
+# Applied when the manifest is built, so changing it never re-scores. The best F1 on the Audit set
+# (ADR 0021).
+threshold = 0.8
+# The prompt for chat models (backends transformers and ollama), which `audit report` compares.
+# Changing the prompt changes its hash, which invalidates every cached chat-model verdict.
 prompt = """You are screening research papers for a literature corpus about tokenization for language models.
 
 Title: {title}
@@ -359,9 +364,20 @@ Does this paper make a substantive contribution or finding about tokenization? I
 
 Answer with Yes or No."""
 
+# The scope question for a decision model (backend "ollama-decision"), which takes the text to judge
+# and one true/false question instead of a prompt. The same scope as the prompt above; changing any
+# part changes the hash that decision models' cached verdicts are kept under.
+[judge.decision]
+state = """Title: {title}
+
+Abstract: {abstract}"""
+instructions = "Does this paper make a substantive contribution or finding about tokenization? In scope: subword algorithms (BPE, WordPiece, Unigram, SentencePiece); byte-level, character-level and tokenizer-free models; effects of tokenization on multilingual fairness, arithmetic, code, reasoning, vocabulary size or scaling; vocabulary adaptation and transfer. Out of scope: tokenizers for images, audio or other non-text modalities, unless text tokenization is a central contribution; and uses of \"token\" unrelated to tokenization, such as token pruning or merging, KV caches or crypto tokens."
+true = "The paper makes a substantive contribution or finding about tokenization for language models."
+false = "The paper does not: tokenization is absent, only used as preprocessing, or about non-text modalities or unrelated senses of token."
+
 # Judge models that `audit report` compares on the Audit set, with the [judge] prompt. Without
-# any, it measures the [judge] model alone. The issue #1 shortlist, each pinned. The judge runs in
-# float32, so on a 32 GB M1 Max the 7–8B models first shortlisted do not fit; these are ≤4B.
+# any, it measures the [judge] model alone. The issue #1 shortlist, each pinned. transformers runs
+# in float32, so on a 32 GB M1 Max the 7–8B models first shortlisted do not fit; these are ≤4B.
 [[audit.models]]
 model = "Qwen/Qwen3-4B-Instruct-2507"
 revision = "cdbee75f17c01a7cc42f958dc650907174af0554"
@@ -373,3 +389,19 @@ revision = "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e"
 [[audit.models]]
 model = "ibm-granite/granite-4.0-micro"
 revision = "56111ae135df9c53a78c99028e7bc24035a9e979"
+
+[[audit.models]]
+backend = "ollama"
+model = "gemma4:e2b-mlx"
+revision = "e98b54fe1913178321e1d9cd007d12a465de77a8f8eae37af69d2501ca03c6b5@0.40.5"
+
+# Decision models answer [judge.decision] through Ollama's /v1/systemone instead of the prompt.
+[[audit.models]]
+backend = "ollama-decision"
+model = "tev1:4b"
+revision = "4d24c6f6d61a48d9b72902f4805c5f1da53010736b834b0372377fb4bb7e53d3@0.40.5"
+
+[[audit.models]]
+backend = "ollama-decision"
+model = "tev1:0.8b"
+revision = "b661d56508169d2b6c4cab5a047409f50bd9694a215bc232469d44291f4bdbf1@0.40.5"

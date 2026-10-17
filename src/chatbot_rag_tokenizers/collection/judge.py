@@ -1,13 +1,16 @@
 """Stage 2 of the Relevance verdict: a local open-weight LLM judge and its verdict cache.
 
 The judge reads a Candidate's title and abstract and answers whether the paper makes a
-substantive contribution or finding about tokenization. Its verdict is P("Yes"): a softmax over
-the next-token logits for "Yes" and "No" only, taken right after the chat template's assistant
-prefix. No threshold is applied here; the manifest builder applies it, so tuning the threshold
-never means re-scoring.
+substantive contribution or finding about tokenization. Its verdict is P("Yes"). A chat model
+(backends transformers and ollama) gives a softmax over the next-token logits for "Yes" and "No"
+only, taken right after the chat template's assistant prefix. A decision model (ollama-decision)
+gives the probability it puts on the [judge.decision] true/false question being true. No
+threshold is applied here; the manifest builder applies it, so tuning the threshold never means
+re-scoring.
 
 Verdicts are cached in the Snapshot together with the model id, its pinned revision and a hash
-of the prompt. A cached verdict counts only while all three still match the config.
+of what the model was asked: the prompt, or a decision model's question. A cached verdict counts
+only while all three still match the config.
 
 torch and transformers are imported only when a Candidate actually needs scoring, so a rerun
 from a complete Snapshot works without them (`uv sync --group judge` installs them).
@@ -15,11 +18,14 @@ from a complete Snapshot works without them (`uv sync --group judge` installs th
 
 import hashlib
 import json
+import math
 import sys
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Protocol, cast
+
+import httpx
 
 from .config import JudgeConfig
 from .editions import Edition
@@ -31,6 +37,18 @@ def prompt_hash(prompt: str) -> str:
     return hashlib.sha256(prompt.encode()).hexdigest()
 
 
+def question_hash(config: JudgeConfig) -> str:
+    """The hash of what the model is asked: the prompt, or for a decision model its question.
+
+    It covers the config's text, not the request shape built from it: a code change to how either
+    is sent needs a new prompt or question to re-score.
+    """
+    if config.backend == "ollama-decision":
+        assert config.decision is not None
+        return prompt_hash(json.dumps(asdict(config.decision), sort_keys=True))
+    return prompt_hash(config.prompt)
+
+
 @dataclass(frozen=True)
 class JudgeVerdict:
     edition_id: str
@@ -40,7 +58,7 @@ class JudgeVerdict:
     p_yes: float
 
     def matches(self, config: JudgeConfig) -> bool:
-        return (self.model, self.revision, self.prompt_hash) == (config.model, config.revision, prompt_hash(config.prompt))
+        return (self.model, self.revision, self.prompt_hash) == (config.model, config.revision, question_hash(config))
 
 
 class VerdictCache:
@@ -98,6 +116,18 @@ def answer_token_ids(tokenizer: Any) -> tuple[int, int]:
     return ids[0], ids[1]
 
 
+def p_yes_from_logprobs(top_logprobs: Sequence[dict[str, Any]]) -> float:
+    """P("Yes"): the softmax over the logprobs of "Yes" and "No" among the top next tokens.
+
+    An answer missing from the list is at most as likely as the last token listed, so it takes
+    that logprob. With both missing the score is 0.5, though the model would answer neither.
+    """
+    logprobs = {entry["token"]: entry["logprob"] for entry in top_logprobs}
+    floor = min(logprobs.values())
+    yes, no = (logprobs.get(answer, floor) for answer in ANSWERS)
+    return 1 / (1 + math.exp(no - yes))
+
+
 class TransformersJudge:
     """Runs the configured model locally with transformers, on MPS or CUDA when available.
 
@@ -153,7 +183,112 @@ class TransformersJudge:
         return scores
 
 
+OLLAMA_URL = "http://localhost:11434"
+
+
+class OllamaModelError(ValueError):
+    pass
+
+
+def split_pin(revision: str) -> tuple[str, str]:
+    """An Ollama pin ``<digest>@<Ollama version>`` as (digest, version); version is "" for any other revision."""
+    digest, _, version = revision.partition("@")
+    return digest, version
+
+
+class _Ollama:
+    """A model served by a local Ollama, pinned as ``<digest>@<Ollama version>``.
+
+    The digest pins the weights and the version pins the runtime that runs them: upgrading Ollama
+    moved some P("Yes") scores by 0.16 (ADR 0021). The judge refuses to start unless both match.
+    """
+
+    def __init__(self, config: JudgeConfig, client: httpx.Client | None = None) -> None:
+        self.config = config
+        self.client = client or httpx.Client(base_url=OLLAMA_URL, timeout=120.0)
+        digest, version = split_pin(config.revision)
+        if not version:
+            raise OllamaModelError(f"pin {config.model} as <digest>@<Ollama version>, not {config.revision!r}")
+        print(f"judge: using {config.model}@{digest[:12]} from Ollama {version}", file=sys.stderr)
+        running = self._get("/api/version")["version"]
+        if running != version:
+            raise OllamaModelError(f"Ollama {running} is running, not the pinned {version}")
+        installed = {model["name"]: model["digest"] for model in self._get("/api/tags")["models"]}
+        if config.model not in installed:
+            raise OllamaModelError(f"{config.model} is not installed in Ollama; run `ollama pull {config.model}`")
+        if installed[config.model] != digest:
+            raise OllamaModelError(f"{config.model} in Ollama has digest {installed[config.model]}, not the pinned {digest}")
+
+    def _get(self, path: str) -> dict[str, Any]:
+        response = self.client.get(path)
+        response.raise_for_status()
+        return response.json()
+
+    def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
+        response = self.client.post(path, json=body)
+        response.raise_for_status()
+        return response.json()
+
+    def _p_yes(self, edition: Edition) -> float:
+        raise NotImplementedError
+
+    def score(self, editions: Sequence[Edition]) -> list[float]:
+        return [self._p_yes(edition) for edition in editions]
+
+
+class OllamaJudge(_Ollama):
+    """A chat model: the first answer token's logprobs, one prompt at a time, with thinking off so
+    the answer comes first."""
+
+    def _p_yes(self, edition: Edition) -> float:
+        content = self.config.prompt.format(title=edition.title, abstract=edition.abstract)
+        response = self._post(
+            "/api/chat",
+            {
+                "model": self.config.model,
+                "messages": [{"role": "user", "content": content}],
+                "think": False,
+                "stream": False,
+                "logprobs": True,
+                "top_logprobs": 20,
+                "options": {"num_predict": 1, "temperature": 0, "seed": 0},
+            },
+        )
+        return p_yes_from_logprobs(response["logprobs"][0]["top_logprobs"])
+
+
+class OllamaDecisionJudge(_Ollama):
+    """A decision model such as Tev1, through Ollama's `/v1/systemone`: P("Yes") is the probability
+    it gives that the `[judge.decision]` true/false question is true of the Candidate."""
+
+    def _p_yes(self, edition: Edition) -> float:
+        question = self.config.decision
+        assert question is not None, "the config requires [judge.decision] for this backend"
+        response = self._post(
+            "/v1/systemone",
+            {
+                "model": self.config.model,
+                "state": question.state.format(title=edition.title, abstract=edition.abstract),
+                "questions": {
+                    "in_scope": {
+                        "type": "noul",
+                        "instructions": question.instructions,
+                        "criteria": {"true": question.true, "false": question.false},
+                    }
+                },
+            },
+        )
+        return float(response["answers"]["in_scope"]["noul"])
+
+
 def load_judge(config: JudgeConfig) -> Judge:
+    if config.backend in ("ollama", "ollama-decision"):
+        try:
+            return (OllamaJudge if config.backend == "ollama" else OllamaDecisionJudge)(config)
+        except httpx.ConnectError as error:
+            raise SystemExit(f"judge: no Ollama server at {OLLAMA_URL} ({error}); start it with `ollama serve`") from error
+        except OllamaModelError as error:
+            raise SystemExit(f"judge: {error}") from error
     try:
         return TransformersJudge(config)
     except ImportError as error:

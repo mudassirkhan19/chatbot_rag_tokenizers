@@ -1,4 +1,4 @@
-"""Print the GROBID settings from config/parse.toml as shell assignments, for the justfile to eval (ADR 0022).
+"""Print the GROBID settings from config/parse.toml as shell assignments, for the justfile to eval (ADR 0023).
 
 Usage: python -m chatbot_rag_tokenizers.parsing.grobid_env [path/to/parse.toml]
 """

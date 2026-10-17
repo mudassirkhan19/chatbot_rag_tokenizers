@@ -1,4 +1,4 @@
-# 0021. uv and just from Homebrew, Docker left to the user
+# 0022. uv and just from Homebrew, Docker left to the user
 
 - **Date:** 2026-10-17
 - **Status:** Accepted. Supersedes the "setup is `uv sync`" consequence of [0001](0001-python-3.12-with-uv.md).
@@ -8,7 +8,7 @@ A reviewer who clones the repo had to piece the setup together from the README: 
 
 ## Decision
 - **Prerequisites are installed by the reader**, as the README lists them: macOS, `brew install uv just`, and a Docker daemon of their choice (Docker Desktop, OrbStack or Colima). The repo installs none of these.
-- **Pins live where the tools already read them.** `[tool.uv] required-version` in `pyproject.toml` sets the oldest uv the repo accepts, and uv itself refuses older ones. `uv.lock` pins Python 3.12 (ADR 0001) and every package. The GROBID image is pinned by digest in `config/parse.toml` (ADR 0022). just only runs recipes, so its version is not pinned; the README gives the tested one.
+- **Pins live where the tools already read them.** `[tool.uv] required-version` in `pyproject.toml` sets the oldest uv the repo accepts, and uv itself refuses older ones. `uv.lock` pins Python 3.12 (ADR 0001) and every package. The GROBID image is pinned by digest in `config/parse.toml` (ADR 0023). just only runs recipes, so its version is not pinned; the README gives the tested one.
 - **`just init`** checks, in order, that uv is installed and meets `required-version`, that Docker is installed, and that its daemon answers. Each failure has its own message saying what to install or start, and exits non-zero. It then runs `uv sync --all-groups --locked`, which never rewrites `uv.lock`, so a second run changes nothing. It ends with a short summary. It installs nothing outside `.venv` (and, with #16, Docker's image store).
 - **The `justfile` is a thin wrapper.** `test`, `typecheck` and `lint` wrap pytest, mypy and ruff; `collect` and `fetch` call the CLI and forward extra arguments, so the CLI stays the real interface. `just` alone lists the recipes with one-line descriptions.
 - **ruff checks errors only** (`E4`, `E7`, `E9`, `F`), not style, so `just lint` passes on the existing code without a mass reformat.

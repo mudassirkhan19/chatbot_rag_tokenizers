@@ -1,4 +1,4 @@
-# 0022. GROBID's CRF image, pinned by digest in config/parse.toml
+# 0023. GROBID's CRF image, pinned by digest in config/parse.toml
 
 - **Date:** 2026-10-17
 - **Status:** Accepted

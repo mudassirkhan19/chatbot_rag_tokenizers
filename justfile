@@ -1,4 +1,4 @@
-# Setup and everyday commands. Run `just` to list them. See ADR 0021 and, for GROBID, ADR 0022.
+# Setup and everyday commands. Run `just` to list them. See ADR 0022 and, for GROBID, ADR 0023.
 
 set positional-arguments := true
 

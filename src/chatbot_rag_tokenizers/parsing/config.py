@@ -1,4 +1,4 @@
-"""The parse config file: the pinned GROBID service (ADR 0022)."""
+"""The parse config file: the pinned GROBID service (ADR 0023)."""
 
 import re
 import tomllib

@@ -1,7 +1,7 @@
 # 0007. Stage-2 local LLM judge and verdict cache
 
 - **Date:** 2026-10-16
-- **Status:** Accepted. The judge releases the MPS allocator cache after every batch ([0018](0018-judge-releases-mps-cache.md)).
+- **Status:** Accepted. The judge releases the MPS allocator cache after every batch ([0018](0018-judge-releases-mps-cache.md)). The model, now Tev1 4B served by Ollama, and the threshold, now 0.8, were chosen in [0021](0021-tev1-decision-model-judge.md).
 
 ## Context
 The rule pre-filter ([0005](0005-rule-pre-filter.md)) passes about 980 of the first 3,285 Candidates. Many are still off-topic, and the rules can't decide the hard cases: mixed-modality papers, or papers that use a tokenizer without studying one. The spec (#2) asks for a second stage that judges each Candidate's title and abstract against the scope question, and a reviewer must be able to rerun collection without the model, a GPU or an API key.
