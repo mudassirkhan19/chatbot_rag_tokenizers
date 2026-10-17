@@ -55,8 +55,10 @@ class ParseCache:
         return self._chunking_path(sha256, ".failure.json")
 
     def put_chunks(self, sha256: str, chunks: list[Chunk]) -> None:
+        """Record a file's Chunks and drop any old failure record, which would otherwise be read first."""
         lines = [json.dumps(asdict(chunk), sort_keys=True, ensure_ascii=False) + "\n" for chunk in chunks]
         _write(self._chunks_path(sha256), "".join(lines))
+        self._failure_path(sha256).unlink(missing_ok=True)
 
     def failure(self, sha256: str) -> RecordedFailure | None:
         """The recorded Failure of a file, or None when none is recorded."""

@@ -142,6 +142,23 @@ def test_an_unreachable_grobid_stops_the_run_straight_away_and_points_to_grobid_
     assert chunk_files(tmp_path, wechsel) and chunk_files(tmp_path, other)
 
 
+def test_a_retried_failure_that_parses_stays_parsed_on_the_next_run(tmp_path, wechsel, grobid):
+    broken = seed_pdf(tmp_path, grobid, "broken_2401.00003v1.pdf", "wechsel_2112.06598v2.tei.xml")
+    grobid.fail(broken.read_bytes(), 500, "[BAD_INPUT_DATA] PDF to XML conversion failed with error code: 1")
+    with pytest.raises(SystemExit):
+        run_parse(tmp_path, wechsel, broken)
+    del grobid.errors[sha256(broken.read_bytes())]
+    run_parse(tmp_path, wechsel, broken, options=("--retry-failed",))
+    assert len(grobid.requests) == 3
+
+    # The success replaced the failure record, so a plain rerun reads the cache and exits cleanly.
+    run_parse(tmp_path, wechsel, broken)
+
+    assert len(grobid.requests) == 3
+    assert f"| 2401.00003v1 | `{sha256(broken.read_bytes())}` | parsed |" in report(tmp_path)
+    assert not list((tmp_path / "cache").glob("*/*.failure.json"))
+
+
 def test_limit_caps_the_number_of_files_parsed_taking_them_in_order(tmp_path, wechsel, grobid):
     first = seed_pdf(tmp_path, grobid, "sennrich-bpe_1508.07909v5.pdf", "wechsel_2112.06598v2.tei.xml")
     last = seed_pdf(tmp_path, grobid, "later_2401.00005v1.pdf", "wechsel_2112.06598v2.tei.xml")
