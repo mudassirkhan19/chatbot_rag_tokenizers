@@ -1,6 +1,5 @@
 """The `audit label` page's HTTP interface: listing the Audit set and saving a developer's label."""
 
-import csv
 import json
 import shutil
 import threading
@@ -13,7 +12,7 @@ import pytest
 from chatbot_rag_tokenizers.cli import main
 from chatbot_rag_tokenizers.collection import audit_label
 from chatbot_rag_tokenizers.collection.config import load_config
-from conftest import FIXTURES
+from conftest import FIXTURES, read_rows
 
 
 @pytest.fixture
@@ -24,7 +23,7 @@ def audit_set(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def page(audit_set: Path) -> Iterator[str]:
+def base_url(audit_set: Path) -> Iterator[str]:
     server = audit_label.make_server(load_config(FIXTURES / "scope.toml"), audit_set, port=0)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -38,21 +37,16 @@ def get(url: str) -> bytes:
         return response.read()
 
 
-def save(page: str, **payload: object) -> None:
+def save(base_url: str, **payload: object) -> None:
     request = urllib.request.Request(
-        f"{page}/save", json.dumps(payload).encode(), {"Content-Type": "application/json"}, method="POST"
+        f"{base_url}/save", json.dumps(payload).encode(), {"Content-Type": "application/json"}, method="POST"
     )
     urllib.request.urlopen(request).read()
 
 
-def read_rows(path: Path) -> list[dict[str, str]]:
-    with path.open(newline="") as f:
-        return list(csv.DictReader(f))
-
-
-def test_page_lists_each_row_with_its_draft_label_and_the_judge(page):
-    assert b"<title>" in get(page)
-    listing = json.loads(get(f"{page}/rows"))
+def test_page_lists_each_row_with_its_draft_label_and_the_judge(base_url):
+    assert b"<title>" in get(base_url)
+    listing = json.loads(get(f"{base_url}/rows"))
 
     assert listing["judge"] == {"model": "example/judge-model", "threshold": 0.5}
     rows = listing["rows"]
@@ -64,10 +58,10 @@ def test_page_lists_each_row_with_its_draft_label_and_the_judge(page):
     assert (r2["labelled_by"], r2["review_note"]) == ("draft", "")
 
 
-def test_saving_a_label_rewrites_only_that_row_and_marks_it_the_developers(page, audit_set, tmp_path):
+def test_saving_a_label_rewrites_only_that_row_and_marks_it_the_developers(base_url, audit_set, tmp_path, no_model):
     before = read_rows(audit_set)
 
-    save(page, index=5, label="no", reason="about tokenizer fairness metrics only as a side note")
+    save(base_url, index=5, label="no", reason="about tokenizer fairness metrics only as a side note")
 
     after = read_rows(audit_set)
     assert after[5]["label"] == "no"
@@ -92,8 +86,8 @@ def test_saving_a_label_rewrites_only_that_row_and_marks_it_the_developers(page,
     assert "(4 labels changed from the draft, 0 unlabelled)" in (tmp_path / "report.md").read_text()
 
 
-def test_saving_rejects_a_label_other_than_yes_no_or_empty(page, audit_set):
+def test_saving_rejects_a_label_other_than_yes_no_or_empty(base_url, audit_set):
     before = audit_set.read_bytes()
     with pytest.raises(urllib.error.HTTPError, match="400"):
-        save(page, index=0, label="maybe", reason="")
+        save(base_url, index=0, label="maybe", reason="")
     assert audit_set.read_bytes() == before

@@ -1,7 +1,7 @@
 # 0011. Audit set sampling and relevance metrics
 
 - **Date:** 2026-10-16
-- **Status:** Accepted
+- **Status:** Accepted. Labels come from blind agents, with the hard cases checked by the developer ([0020](0020-blind-agent-labels-checked-by-the-developer.md)).
 
 ## Context
 The Relevance verdict has two stages: the rules ([0005](0005-rule-pre-filter.md)) and the LLM judge ([0007](0007-local-llm-judge.md)). Issue #1 must choose the judge model and threshold with evidence, and the spec (#2) asks for precision and recall reported against a hand-labelled Audit set of about 150–200 Candidates. Most Candidates are rule rejects, so a uniform sample would label few of the hard cases near the judge's boundary.
@@ -9,15 +9,7 @@ The Relevance verdict has two stages: the rules ([0005](0005-rule-pre-filter.md)
 ## Decision
 - **Stratified sample.** `audit export` runs collection from the Snapshot without loading the model. It splits the Candidates into strata (`rules-rejected`, `judge-excluded`, `judge-included`, and `pending` for rule passes not yet scored) and deals the sample out evenly, one Candidate per stratum in turn, until it reaches `--size` (default 180). A stratum smaller than its share is taken in full. Each stratum is sampled with a fixed seed (`--seed`, default 0), so the export is reproducible.
 - **Weights.** Each row records `stratum_size`, the number of Candidates in its stratum at export. The report weights each labelled row by `stratum_size / labelled rows in that stratum`, so precision and recall estimate the whole population, not the sample's even shares. Without weights, the oversampled judge strata would inflate the rules' apparent precision and hide most of the rule rejects' false negatives.
-- **Draft labels from the pipeline.** The draft label is the pipeline's verdict (`yes` if included, `no` if excluded, empty while pending) and the draft reason is its `relevance_reason`. The export copies the draft into `label` and `reason`, and keeps `draft_label` and `draft_reason` unchanged. The report counts how many labels were changed.
-- **Labels from blind agents, hard cases checked by the developer.** The first plan was for the developer to correct all 180 drafts by hand. After the first dozen rows, the developer asked for agents to label instead (2026-10-17). Three agents each labelled a third of the rows. They saw only the title, abstract and link, not the stratum, the judge's probability or any other read, so they could not anchor on the system's own answer. They looked up missing abstracts where they could. Each label came with a confidence and a one-line reason, and the developer's own earlier labels were kept. The developer then checked every row where:
-  - the agent was unsure
-  - the agent overturned the pipeline without an earlier independent read by Claude agreeing
-  - Claude's earlier read was borderline
-  - the agent disagreed with the developer
-
-  This was 37 of 180. The developer checked all of them and 11 more rows, and changed two labels. The risk moves from anchoring on the judge to sharing the agents' blind spots. The developer's check of the hard cases is what limits it.
-- **Provenance in the file, checked on a page.** Two columns record who set each label: `labelled_by` (`draft`, `agent` or `developer`) and `review_note` (why a row was flagged). A reviewer can see which labels a person checked without trusting this ADR. `audit label` serves a local page that shows one Candidate at a time, with the judge's probability in plain words. Every save from the page marks that row `developer`. The agents' prompts and the merge script were one-off session tooling and are not in the repository.
+- **Draft labels from the pipeline.** The draft label is the pipeline's verdict (`yes` if included, `no` if excluded, empty while pending) and the draft reason is its `relevance_reason`. The export copies the draft into `label` and `reason` for the developer to correct, and keeps `draft_label` and `draft_reason` unchanged. The report counts how many labels were changed. The developer chose this over drafting by an independent agent; the risk is anchoring on the system's own answer, so every row must be checked against its abstract.
 - **One file, committed.** The Audit set is `data/audit/audit-set.csv`. The export refuses to overwrite it without `--force`, because it holds corrected labels.
 - **What the report measures.** `audit report` re-applies the current rules to each row's title and abstract, so a rule change shows up without a new export. It reports:
   - the rule stage alone (rule pass = relevant), whose recall is the ceiling for the whole pipeline

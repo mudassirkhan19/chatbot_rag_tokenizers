@@ -74,10 +74,13 @@ def make_server(config: ScopeConfig, audit_set: Path, port: int = 8765) -> Threa
                 self._send(page, "text/html; charset=utf-8")
 
         def do_POST(self) -> None:
+            if self.path != "/save":
+                self._send(b'{"ok":false}', "application/json", HTTPStatus.NOT_FOUND)
+                return
             payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             index, label, reason = payload.get("index"), payload.get("label"), payload.get("reason", "")
             _, rows = audit_file.read()
-            if self.path != "/save" or label not in ("yes", "no", "") or not isinstance(index, int) or not 0 <= index < len(rows):
+            if label not in ("yes", "no", "") or not isinstance(index, int) or not 0 <= index < len(rows):
                 self._send(b'{"ok":false}', "application/json", HTTPStatus.BAD_REQUEST)
                 return
             audit_file.save_label(index, label, str(reason).strip())

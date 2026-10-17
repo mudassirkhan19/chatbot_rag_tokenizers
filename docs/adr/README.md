@@ -15,7 +15,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0008](0008-semantic-scholar-keyword-discovery.md) | Semantic Scholar keyword discovery and combining Editions across sources | Retry limits superseded by 0016 |
 | [0009](0009-seeds-and-citation-expansion.md) | Scope boundary, keyword query set, Seeds and citation expansion | Accepted |
 | [0010](0010-arxiv-records-for-rule-passes-only.md) | Fetch arXiv records only for Editions that pass the rules | Accepted |
-| [0011](0011-audit-set-and-relevance-metrics.md) | Audit set sampling and relevance metrics | Accepted |
+| [0011](0011-audit-set-and-relevance-metrics.md) | Audit set sampling and relevance metrics | Accepted, labelling amended by 0020 |
 | [0012](0012-acl-anthology-venue-editions.md) | ACL Anthology venue Editions from per-paper pages | Accepted, narrowed by 0017 |
 | [0013](0013-working-worktrees.md) | Fully working worktrees for parallel work | Accepted |
 | [0014](0014-openalex-discovery-channel.md) | OpenAlex as a separate, switchable Discovery channel | Accepted, verdict in 0019 |
@@ -24,6 +24,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0017](0017-acl-volume-ids-count-as-no-paper.md) | ACL volume IDs count as no paper | Accepted |
 | [0018](0018-judge-releases-mps-cache.md) | The judge releases the MPS allocator cache after every batch | Accepted |
 | [0019](0019-openalex-stays-on.md) | OpenAlex stays on | Accepted |
+| [0020](0020-blind-agent-labels-checked-by-the-developer.md) | Audit set labels from blind agents, checked by the developer | Accepted |
 
 ## Template
 

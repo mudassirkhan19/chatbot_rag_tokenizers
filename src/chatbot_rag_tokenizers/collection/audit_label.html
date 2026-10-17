@@ -210,7 +210,8 @@ $("reason").addEventListener("keydown", (e) => {
   if (e.key === "Escape") $("reason").blur();
 });
 document.addEventListener("keydown", (e) => {
-  if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.metaKey || e.ctrlKey) return;
+  // Buttons handle their own Enter; typing in a field must not trigger shortcuts.
+  if (["TEXTAREA", "INPUT", "SELECT", "BUTTON"].includes(e.target.tagName) || e.metaKey || e.ctrlKey) return;
   const k = e.key.toLowerCase();
   if (k === "y") setLabel("yes");
   else if (k === "n") setLabel("no");

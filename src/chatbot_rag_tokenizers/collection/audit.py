@@ -4,8 +4,8 @@
 judge rejects, judge accepts and, before the judge has run, rule passes still pending), capped
 by the stratum's size. Each row records the size of the stratum it was drawn from, so the report
 can weight it back to the whole population. Its draft label and reason are the pipeline's own
-verdict, copied into `label` and `reason` for the developer to correct; the draft columns are
-kept so the report can count the corrections.
+verdict, copied into `label` and `reason` as a starting point; the draft columns are kept so the
+report can count the changes, and `labelled_by` records who set each label (ADR 0020).
 
 `report` measures precision, recall and F1 on the labelled rows for the rule stage alone and
 for rules plus each configured judge model, across thresholds. Each row is weighted by its

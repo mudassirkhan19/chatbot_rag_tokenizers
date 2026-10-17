@@ -65,9 +65,10 @@ uv run chatbot-rag-tokenizers audit report   # precision, recall and F1 by thres
 
 The committed Audit set has 180 Candidates from the first full run:
 - Three agents labelled them blind, from title, abstract and link only.
-- The developer checked 48 rows: all 37 flagged ones, plus 11 more.
+- The developer checked all 37 rows the agents' labels flagged as hard.
+- Together with 11 rows checked by hand before the agents ran, the developer checked 48 rows in all (`labelled_by = developer`).
 
-ADR 0011 has the details. To compare judge models for #1, add the shortlist to `[[audit.models]]` in `config/scope.toml` and rerun `audit report`.
+ADR 0020 has the details. To compare judge models for #1, add the shortlist to `[[audit.models]]` in `config/scope.toml` and rerun `audit report`.
 
 ## Tests
 

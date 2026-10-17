@@ -1,14 +1,12 @@
 """Offline runs of `audit export` and `audit report`: building the Audit set and measuring the Relevance verdict on it."""
 
-import csv
 from collections import Counter
 from pathlib import Path
 
 import pytest
 
 from chatbot_rag_tokenizers.cli import main
-from chatbot_rag_tokenizers.collection import judge
-from conftest import FIXTURES
+from conftest import FIXTURES, read_rows
 
 # The fixture Snapshot's Editions by stratum, as the fixture verdicts and threshold 0.5 place them.
 RULE_REJECTS = {"2210.09461v3", "2301.00001", "2402.00001v1", "2403.00002v2", "W4400000103", "hep-th/9901001v1"}
@@ -29,16 +27,6 @@ JUDGE_ACCEPTS = {
 }
 
 
-@pytest.fixture
-def no_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Fail the test if anything tries to load the judge model."""
-
-    def refuse(config):
-        raise AssertionError("the judge model was loaded")
-
-    monkeypatch.setattr(judge, "load_judge", refuse)
-
-
 def run_export(snapshot: Path, output: Path, *flags: str) -> None:
     main(
         [
@@ -49,11 +37,6 @@ def run_export(snapshot: Path, output: Path, *flags: str) -> None:
             *flags,
         ]
     )
-
-
-def read_rows(path: Path) -> list[dict[str, str]]:
-    with path.open(newline="") as f:
-        return list(csv.DictReader(f))
 
 
 def test_export_samples_every_stratum_with_draft_labels(fixture_snapshot, no_network, no_model, tmp_path):

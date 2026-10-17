@@ -1,9 +1,11 @@
+import csv
 import shutil
 import socket
 from pathlib import Path
 
 import pytest
 
+from chatbot_rag_tokenizers.collection import judge
 from chatbot_rag_tokenizers.collection.snapshot import SnapshotStore
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -144,3 +146,18 @@ def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(socket.socket, "connect", refuse)
     monkeypatch.setattr(socket, "create_connection", refuse)
     monkeypatch.setattr(socket, "getaddrinfo", refuse)
+
+
+@pytest.fixture
+def no_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fail the test if anything tries to load the judge model."""
+
+    def refuse(config):
+        raise AssertionError("the judge model was loaded")
+
+    monkeypatch.setattr(judge, "load_judge", refuse)
+
+
+def read_rows(path: Path) -> list[dict[str, str]]:
+    with path.open(newline="") as f:
+        return list(csv.DictReader(f))

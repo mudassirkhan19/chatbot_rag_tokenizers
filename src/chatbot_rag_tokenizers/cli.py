@@ -88,7 +88,7 @@ def main(argv: list[str] | None = None) -> None:
     )
     label_cmd.add_argument("--config", type=Path, default=Path("config/scope.toml"))
     label_cmd.add_argument("--audit-set", type=Path, default=Path("data/audit/audit-set.csv"))
-    label_cmd.add_argument("--port", type=int, default=8765)
+    label_cmd.add_argument("--port", type=int, default=8765, help="port on localhost (default 8765)")
 
     args = parser.parse_args(argv)
     if args.command == "collect":
