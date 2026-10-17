@@ -93,6 +93,7 @@ def expansion(rows: list[Row]) -> Expansion:
 class Funnel:
     discovered: int
     rule_rejects: Counter[str]  # by the pattern that fired
+    withdrawn: int
     judge_included: int
     judge_excluded: int
     pending: int
@@ -103,11 +104,15 @@ class Funnel:
 
 def funnel(rows: list[Row]) -> Funnel:
     rejects = Counter(row["rule_pattern"] for row in rows if row["rule_outcome"] == "reject")
-    judged = Counter(row["relevance_verdict"] for row in rows if row["rule_outcome"] == "pass")
+    withdrawn = sum(row["relevance_stage"] == "withdrawn" for row in rows)
+    judged = Counter(
+        row["relevance_verdict"] for row in rows if row["rule_outcome"] == "pass" and row["relevance_stage"] != "withdrawn"
+    )
     status = Counter(row["funnel_status"] for row in rows if row["relevance_verdict"] == "included")
     return Funnel(
         len(rows),
         Counter(dict(sorted(rejects.items()))),
+        withdrawn,
         judged["included"],
         judged["excluded"],
         judged["pending"],
@@ -158,6 +163,7 @@ def summarise(rows: list[Row], threshold: float) -> None:
     print(f"rules: {counts.discovered - rejected} passed, {rejected} rejected", file=sys.stderr)
     for pattern, count in counts.rule_rejects.items():
         print(f"  {pattern}: {count}", file=sys.stderr)
+    print(f"withdrawn: {counts.withdrawn} excluded, the latest arXiv Version is a withdrawal", file=sys.stderr)
     print(
         f"judge: {counts.judge_included} included, {counts.judge_excluded} excluded, {counts.pending} pending"
         f" (threshold {threshold:g})",
@@ -192,6 +198,7 @@ def render(rows: list[Row]) -> str:
         "| --- | ---: |",
         f"| Discovered | {counts.discovered} |",
         f"| Rejected by the rules | {counts.rule_rejects.total()} |",
+        f"| Withdrawn from arXiv | {counts.withdrawn} |",
         f"| Rejected by the judge | {counts.judge_excluded} |",
         f"| Pending a judge verdict | {counts.pending} |",
         f"| Included | {counts.judge_included} |",

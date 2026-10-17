@@ -1,7 +1,7 @@
 # 0015. PDF Fetcher: pinned files, hashes in the Snapshot, open-access fallback
 
 - **Date:** 2026-10-16
-- **Status:** Accepted
+- **Status:** Accepted. Amended by [0027](0027-withdrawn-preprints-are-excluded.md): a withdrawn preprint is excluded, so it is never fetched.
 
 ## Context
 Issue #10 asks for the full-text PDFs of included Editions, each pinned to an exact Version: the latest arXiv Version, plus v1 when a preprint has several, plus the ACL Anthology Edition when there is one. The dedup stage needs those real version and venue duplicates. The sha256 of each file goes in the manifest, and a re-download is checked against it. A missing file or a hash mismatch must say whether the source changed (upstream drift) or the pipeline failed. Rows move to funnel status "full text", or `no_fulltext` when there is no open PDF. PDFs are never committed ([0002](0002-no-pdfs-or-secrets-in-git.md)).

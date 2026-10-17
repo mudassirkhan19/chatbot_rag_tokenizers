@@ -31,6 +31,7 @@ class Edition:
     oa_pdf_urls: list[str] = field(default_factory=list)  # venue Editions only: open-access PDFs, best first
     licence: str = "unknown"
     versions: list[tuple[str, str]] = field(default_factory=list)  # arXiv only: ("v1", ISO time), oldest first
+    withdrawn: bool = False  # arXiv only: the latest Version is a withdrawal, from the full record
     discovery_channels: set[str] = field(default_factory=set)
 
     @property

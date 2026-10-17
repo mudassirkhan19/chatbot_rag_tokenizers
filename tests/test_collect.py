@@ -14,7 +14,7 @@ from chatbot_rag_tokenizers.cli import main
 from chatbot_rag_tokenizers.collection import judge, snapshot
 from chatbot_rag_tokenizers.collection.openalex import OpenAlexError
 from chatbot_rag_tokenizers.collection.snapshot import SnapshotStore
-from conftest import FIXTURES, acl_request, s2_seed_request
+from conftest import FIXTURES, acl_request, arxiv_record_request, s2_seed_request
 
 
 def run_collect(snapshot: Path, manifest: Path, config: Path = FIXTURES / "scope.toml", *flags: str) -> None:
@@ -710,6 +710,77 @@ def test_acl_editions_are_judged_on_an_abstract(fixture_snapshot, no_network, mo
     rows = read_manifest(manifest)
     assert rows["P16-1162"]["relevance_verdict"] == "included"
     assert rows["P16-1162"]["judge_probability"] == "0.9000"
+
+
+def withdraw_subword_regularization(snapshot_dir: Path) -> None:
+    """Replace the fixture record of 1804.10959 with one whose latest Version is a withdrawal:
+    arXiv lists it with a 0kb size and serves no PDF for it."""
+    record = (FIXTURES / "arxiv-oai" / "1804.10959.xml").read_text()
+    withdrawn = record.replace(
+        "    </version>\n",
+        "    </version>\n"
+        '    <version version="v2">\n'
+        "      <date>Tue, 01 May 2018 09:00:00 GMT</date>\n"
+        "      <size>0kb</size>\n"
+        "      <source_type>I</source_type>\n"
+        "    </version>\n",
+    ).replace("Accepted as a long paper at ACL2018", "Incorrect results")
+    assert withdrawn.count("<version ") == 2
+    SnapshotStore(snapshot_dir).save(arxiv_record_request("1804.10959"), withdrawn, collected_at="2026-10-18")
+
+
+def test_withdrawn_preprint_is_excluded_without_the_judge(fixture_snapshot, no_network, monkeypatch, tmp_path):
+    withdraw_subword_regularization(fixture_snapshot)
+    fake = FakeJudge()
+    monkeypatch.setattr(judge, "load_judge", lambda config: fake)
+    manifest = tmp_path / "manifest.csv"
+
+    run_collect(fixture_snapshot, manifest, FIXTURES / "scope.toml", "--refresh")
+
+    assert "1804.10959v2" not in fake.scored
+    row = read_manifest(manifest)["1804.10959v2"]
+    assert row["rule_outcome"] == "pass"
+    assert row["relevance_verdict"] == "excluded"
+    assert row["relevance_stage"] == "withdrawn"
+    assert row["relevance_reason"] == "withdrawn: v2 is a withdrawal; arXiv comments: Incorrect results"
+    assert row["judge_probability"] == ""
+    assert row["funnel_status"] == "discovered"
+
+
+def test_withdrawal_replaced_by_a_new_version_is_judged(fixture_snapshot, no_network, monkeypatch, tmp_path):
+    # MrT5's v2 becomes a withdrawal, but v3 replaced it.
+    record = (FIXTURES / "arxiv-oai" / "2410.20771.xml").read_text()
+    replaced = record.replace(
+        "<date>Fri, 01 Nov 2024 00:00:00 GMT</date>\n      <size>100kb</size>",
+        "<date>Fri, 01 Nov 2024 00:00:00 GMT</date>\n      <size>0kb</size>",
+    )
+    assert replaced != record
+    SnapshotStore(fixture_snapshot).save(arxiv_record_request("2410.20771"), replaced, collected_at="2026-10-18")
+    fake = FakeJudge()
+    monkeypatch.setattr(judge, "load_judge", lambda config: fake)
+    manifest = tmp_path / "manifest.csv"
+
+    run_collect(fixture_snapshot, manifest, FIXTURES / "scope.toml", "--refresh")
+
+    assert "2410.20771v3" in fake.scored
+    row = read_manifest(manifest)["2410.20771v3"]
+    assert row["relevance_stage"] == "judge"
+    assert row["relevance_verdict"] == "included"
+
+
+def test_report_counts_withdrawn_preprints_apart_from_judge_exclusions(fixture_snapshot, no_network, no_model, tmp_path, capsys):
+    withdraw_subword_regularization(fixture_snapshot)
+    report_path = tmp_path / "report.md"
+
+    run_collect(fixture_snapshot, tmp_path / "manifest.csv", FIXTURES / "scope.toml", "--report", str(report_path))
+
+    # One of the twelve included Editions in the fixture is now withdrawn.
+    report = report_path.read_text()
+    assert "| Rejected by the judge | 1 |" in report
+    assert "| Withdrawn from arXiv | 1 |" in report
+    assert "| Included | 11 |" in report
+    assert "| Still to fetch | 10 |" in report
+    assert "withdrawn: 1 excluded, the latest arXiv Version is a withdrawal" in capsys.readouterr().err
 
 
 def test_collect_writes_the_funnel_and_channel_report(fixture_snapshot, no_network, tmp_path):

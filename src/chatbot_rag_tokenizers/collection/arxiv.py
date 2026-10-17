@@ -25,6 +25,7 @@ OAI_URL = "https://oaipmh.arxiv.org/oai"
 MIN_INTERVAL_SECONDS = 3.0
 MAX_RESULTS_PER_QUERY = 30_000  # the API refuses to page past this
 EMPTY_PAGE_RETRIES = 3
+WITHDRAWAL_SIZE = "0kb"  # arXiv lists a withdrawal Version with no content, and serves no PDF for it
 
 NS = {
     "atom": "http://www.w3.org/2005/Atom",
@@ -71,6 +72,7 @@ class ArxivRecord:
     versions: list[tuple[str, str]]  # ("v1", "2020-04-07T21:21:06Z")
     comments: str
     licence: str  # "unknown" when the record has none
+    withdrawn: bool = False  # the latest Version is a withdrawal
 
     @property
     def latest_version(self) -> str:
@@ -85,13 +87,15 @@ def _parse_record(body: str) -> ArxivRecord:
     raw = root.find(".//raw:arXivRaw", NS)
     if raw is None:
         raise ArxivError("arXiv OAI-PMH response has no arXivRaw record")
-    versions = []
+    versions, withdrawals = [], set()
     for version in raw.findall("raw:version", NS):
         try:
             submitted = parsedate_to_datetime(_text(version, "raw:date")).astimezone(UTC)
         except (TypeError, ValueError) as error:
             raise ArxivError(f"arXiv record {_text(raw, 'raw:id')} has an unreadable Version date") from error
         versions.append((version.get("version", ""), submitted.strftime("%Y-%m-%dT%H:%M:%SZ")))
+        if _text(version, "raw:size") == WITHDRAWAL_SIZE:
+            withdrawals.add(version.get("version", ""))
     # arXiv lists Versions oldest first, but sort numerically so v10 can never precede v9.
     versions.sort(key=lambda v: int(v[0].lstrip("v")))
     if not versions:
@@ -100,6 +104,8 @@ def _parse_record(body: str) -> ArxivRecord:
         versions=versions,
         comments=_text(raw, "raw:comments"),
         licence=_text(raw, "raw:license") or "unknown",
+        # A withdrawal followed by a new Version is no longer withdrawn.
+        withdrawn=versions[-1][0] in withdrawals,
     )
 
 

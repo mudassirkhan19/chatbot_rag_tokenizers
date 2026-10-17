@@ -47,10 +47,16 @@ def judge_includes(p_yes: float, threshold: float) -> bool:
     return float(f"{p_yes:.4f}") >= threshold
 
 
-def _relevance(outcome: RuleOutcome, verdict: JudgeVerdict | None, threshold: float) -> dict[str, str]:
+def _relevance(edition: Edition, outcome: RuleOutcome, verdict: JudgeVerdict | None, threshold: float) -> dict[str, str]:
     """The Relevance verdict columns. The threshold is applied here, so changing it never re-scores."""
     if not outcome.passed:
         return {"relevance_verdict": "excluded", "relevance_stage": "rules", "relevance_reason": outcome.reason}
+    if edition.withdrawn:
+        return {
+            "relevance_verdict": "excluded",
+            "relevance_stage": "withdrawn",
+            "relevance_reason": f"withdrawn: v{edition.version} is a withdrawal; arXiv comments: {edition.arxiv_comments}",
+        }
     if verdict is None:
         return {
             "relevance_verdict": "pending",
@@ -73,7 +79,7 @@ def _relevance(outcome: RuleOutcome, verdict: JudgeVerdict | None, threshold: fl
 def manifest_row(
     edition: Edition, outcome: RuleOutcome, verdict: JudgeVerdict | None, threshold: float
 ) -> dict[str, str]:
-    relevance = _relevance(outcome, verdict, threshold)
+    relevance = _relevance(edition, outcome, verdict, threshold)
     return {
         "edition_id": edition.edition_id,
         "edition_kind": edition.edition_kind,

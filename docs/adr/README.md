@@ -19,7 +19,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0012](0012-acl-anthology-venue-editions.md) | ACL Anthology venue Editions from per-paper pages | Accepted, narrowed by 0017 |
 | [0013](0013-working-worktrees.md) | Fully working worktrees for parallel work | Accepted |
 | [0014](0014-openalex-discovery-channel.md) | OpenAlex as a separate, switchable Discovery channel | Accepted, verdict in 0019 |
-| [0015](0015-pdf-fetcher-pinned-files-and-hashes.md) | PDF Fetcher: pinned files, hashes in the Snapshot, open-access fallback | Accepted |
+| [0015](0015-pdf-fetcher-pinned-files-and-hashes.md) | PDF Fetcher: pinned files, hashes in the Snapshot, open-access fallback | Accepted, amended by 0027 |
 | [0016](0016-semantic-scholar-waits-out-long-throttles.md) | Semantic Scholar waits out long throttles | Accepted |
 | [0017](0017-acl-volume-ids-count-as-no-paper.md) | ACL volume IDs count as no paper | Accepted |
 | [0018](0018-judge-releases-mps-cache.md) | The judge releases the MPS allocator cache after every batch | Accepted |
@@ -30,6 +30,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0023](0023-grobid-crf-image-pinned-by-digest.md) | GROBID's CRF image, pinned by digest in config/parse.toml | Accepted |
 | [0025](0025-judge-cuts-only-refused-inputs.md) | The decision judge cuts an abstract only when the model refuses it | Accepted |
 | [0026](0026-funnel-report-and-snapshot-checks.md) | The funnel report is written from the manifest, and collect checks the Snapshot | Accepted |
+| [0027](0027-withdrawn-preprints-are-excluded.md) | Withdrawn arXiv preprints are excluded from the corpus | Accepted |
 
 ## Template
 

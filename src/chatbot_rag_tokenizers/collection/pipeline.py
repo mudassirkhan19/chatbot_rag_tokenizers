@@ -112,6 +112,7 @@ def add_arxiv_records(editions: list[Edition], arxiv: ArxivSource) -> None:
         edition.versions = record.versions
         edition.arxiv_comments = record.comments
         edition.licence = record.licence
+        edition.withdrawn = record.withdrawn
         if done % 100 == 0:
             print(f"  arxiv: {done}/{len(preprints)} records", file=sys.stderr)
     print(f"arxiv: {len(preprints)} records", file=sys.stderr)
@@ -227,7 +228,9 @@ def assess(config: ScopeConfig, snapshot_dir: Path, refresh: bool = False, run_j
     passed = [edition for edition, outcome in zip(editions, outcomes, strict=True) if outcome.passed]
     # Only rule passes get their arXiv record; a reject keeps the id its source reported.
     add_arxiv_records(passed, arxiv)
-    verdicts = judge_candidates(config, passed, VerdictCache(snapshot_dir), refresh, run_judge)
+    # A withdrawn preprint is excluded on its record alone, so the judge never scores it.
+    to_judge = [edition for edition in passed if not edition.withdrawn]
+    verdicts = judge_candidates(config, to_judge, VerdictCache(snapshot_dir), refresh, run_judge)
     return [
         Assessed(edition, outcome, verdicts.get(edition.edition_id))
         for edition, outcome in zip(editions, outcomes, strict=True)
