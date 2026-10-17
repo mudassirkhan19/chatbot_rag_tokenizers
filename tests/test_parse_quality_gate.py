@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from chatbot_rag_tokenizers.cli import main
-from parse_support import run_parse, seed_pdf, sha256
+from parse_support import REPO_CONFIG, run_parse, seed_pdf, sha256
 
 
 def chunk_files(tmp_path: Path, pdf: Path) -> list[Path]:
@@ -160,3 +160,16 @@ def test_limit_caps_the_number_of_files_parsed_taking_them_in_order(tmp_path, we
     assert chunk_files(tmp_path, first) and chunk_files(tmp_path, wechsel)
     assert chunk_files(tmp_path, last) == []
     assert "- Files: 2\n" in report(tmp_path)
+
+
+def test_a_limited_run_leaves_the_committed_report_alone_unless_a_report_is_named(tmp_path, wechsel, grobid, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)  # where the default report path, data/parse-report.md, would point
+    committed = tmp_path / "data" / "parse-report.md"
+    committed.parent.mkdir()
+    committed.write_text("# Parse report\n\nThe full run.\n")
+
+    main(["parse", "--config", str(REPO_CONFIG), "--cache", str(tmp_path / "cache"), "--limit", "1", "--files", str(wechsel)])
+
+    assert chunk_files(tmp_path, wechsel)
+    assert committed.read_text() == "# Parse report\n\nThe full run.\n"
+    assert "no report written: --limit was given without --report" in capsys.readouterr().out

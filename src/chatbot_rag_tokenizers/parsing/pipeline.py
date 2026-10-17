@@ -36,12 +36,13 @@ def parse(
     config: ParseConfig,
     files: list[InputFile],
     cache_dir: Path,
-    report_path: Path,
+    report_path: Path | None,
     limit: int | None = None,
     retry_failed: bool = False,
 ) -> None:
     """Parse each file in pinned-id order, the first ``limit`` of them when it is given.
 
+    The report is written to ``report_path``; with None, no report is written (a smoke run under ``--limit``).
     A file whose failure is recorded is not tried again unless ``retry_failed`` is set; then it is parsed
     like a new file, from its cached TEI when there is one, else by GROBID.
 
@@ -84,8 +85,12 @@ def parse(
         kinds = [chunk.kind for chunk in chunks]
         results.append(FileResult(pinned_id, sha256, sections, len(chunks), tables=kinds.count("table"), captions=kinds.count("caption")))
         print(f"{pinned_id}: {sections} Sections, {len(chunks)} Chunks")
-    write_report(report_path, config, versions, results)
-    print(f"parse: {len(results)} files, {sum(r.chunks for r in results)} Chunks; report in {report_path}")
+    summary = f"parse: {len(results)} files, {sum(r.chunks for r in results)} Chunks"
+    if report_path is None:
+        print(f"{summary}; no report written: --limit was given without --report")
+    else:
+        write_report(report_path, config, versions, results)
+        print(f"{summary}; report in {report_path}")
     if new_failures or earlier_failures:
         raise ParseErrors(new_failures, earlier_failures)
 

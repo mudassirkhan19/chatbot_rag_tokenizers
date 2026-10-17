@@ -59,10 +59,18 @@ def main(argv: list[str] | None = None) -> None:
     )
     parse_cmd.add_argument("--config", type=Path, default=Path("config/parse.toml"))
     parse_cmd.add_argument("--cache", type=Path, default=Path("data/parse-cache"), help="the parse cache (default data/parse-cache, gitignored)")
-    parse_cmd.add_argument("--report", type=Path, default=Path("data/parse-report.md"))
+    parse_cmd.add_argument(
+        "--report",
+        type=Path,
+        help="where the parse report goes (default data/parse-report.md; with --limit, none is written unless this is given)",
+    )
     parse_cmd.add_argument("--snapshot", type=Path, default=Path("data/snapshot"))
     parse_cmd.add_argument("--pdfs", type=Path, default=Path("data/pdfs"), help="where `fetch` put the PDFs (default data/pdfs)")
-    parse_cmd.add_argument("--limit", type=int, help="parse at most this many files, the first in pinned-id order, e.g. for a smoke test")
+    parse_cmd.add_argument(
+        "--limit",
+        type=int,
+        help="parse at most this many files, the first in pinned-id order, e.g. for a smoke test; writes no report unless --report is given",
+    )
     parse_cmd.add_argument(
         "--retry-failed",
         action="store_true",
@@ -133,9 +141,11 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(f"fetch: {errors}")
     elif args.command == "parse":
         files, problems = (inputs.from_paths(args.files), []) if args.files else inputs.from_record(args.snapshot, args.pdfs)
+        # A smoke run must not quietly replace the committed report of the full run (ADR 0027).
+        report = args.report or (None if args.limit is not None else Path("data/parse-report.md"))
         messages = []
         try:
-            parsing.parse(load_parse_config(args.config), files, args.cache, args.report, args.limit, args.retry_failed)
+            parsing.parse(load_parse_config(args.config), files, args.cache, report, args.limit, args.retry_failed)
         except parsing.ParseErrors as errors:
             messages.append(f"parse: {errors}")
         except GrobidUnreachable as error:
