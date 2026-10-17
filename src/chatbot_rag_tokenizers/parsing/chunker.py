@@ -31,14 +31,16 @@ ChunkKind = Literal["text", "table", "caption"]
 class ParsedFile:
     """The file a document was parsed from, and how Chunks cite it."""
 
-    pinned_id: str  # the Edition id pinned to a Version, e.g. "2112.06598v2" (ADR 0015)
-    version: str  # the arXiv Version, e.g. "v2"; "" for a venue Edition
+    edition_id: str  # the pinned Edition the file belongs to, e.g. "2112.06598v2" for its v1 and v2 files
+    pinned_id: str  # the Edition id pinned to the Version this file holds, e.g. "2112.06598v1" (ADR 0015)
+    version: str  # the arXiv Version, e.g. "v1"; "" for a venue Edition
     sha256: str
 
 
 @dataclass(frozen=True)
 class Chunk:
     chunk_id: str  # the file hash's first 16 hex digits and the Chunk's place in the file
+    edition_id: str
     pinned_id: str
     version: str
     file_sha256: str
@@ -79,6 +81,7 @@ def chunk_document(document: Document, file: ParsedFile, token_budget: int, coun
             chunks.append(
                 Chunk(
                     chunk_id=f"{file.sha256[:16]}-{len(chunks):04d}",
+                    edition_id=file.edition_id,
                     pinned_id=file.pinned_id,
                     version=file.version,
                     file_sha256=file.sha256,

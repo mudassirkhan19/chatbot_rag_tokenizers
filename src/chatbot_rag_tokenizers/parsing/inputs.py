@@ -23,16 +23,27 @@ class InputFile:
 def from_paths(paths: list[Path]) -> list[InputFile]:
     """Files passed by hand (`--files`): the pinned id comes from the name, the hash from the bytes.
 
-    A Seed name drops its prefix; any other name is taken as the file name `fetch` gives a pinned id.
+    A Seed name drops its prefix; any other name is taken as the file name `fetch` gives a pinned id. With no
+    record to name the Edition, it is taken the way `fetch` pins one: an arXiv Version's Edition is the latest
+    Version of the same arXiv id among the files given, and any other file is its own Edition.
     """
-    files = []
+    named = []
     for path in paths:
         pdf = path.read_bytes()
         seed = SEED_NAME.fullmatch(path.stem)
         pinned_id = seed["pinned_id"] if seed else path.stem
-        version = VERSION.fullmatch(pinned_id)
-        identity = ParsedFile(pinned_id, version["version"] if version else "", hashlib.sha256(pdf).hexdigest())
-        files.append(InputFile(path, identity, pdf))
+        versioned = VERSION.fullmatch(pinned_id)
+        named.append((path, pdf, pinned_id, versioned["version"] if versioned else ""))
+    latest: dict[str, str] = {}
+    for _, _, pinned_id, version in named:
+        arxiv_id = pinned_id.removesuffix(version)
+        if version and int(version[1:]) > int(latest.get(arxiv_id, "v0")[1:]):
+            latest[arxiv_id] = version
+    files = []
+    for path, pdf, pinned_id, version in named:
+        arxiv_id = pinned_id.removesuffix(version)
+        edition_id = arxiv_id + latest[arxiv_id] if version else pinned_id
+        files.append(InputFile(path, ParsedFile(edition_id, pinned_id, version, hashlib.sha256(pdf).hexdigest()), pdf))
     return files
 
 
@@ -56,6 +67,6 @@ def from_record(snapshot_dir: Path, pdf_dir: Path) -> tuple[list[InputFile], lis
             problems.append(f"{path} has sha256 {digest}, but the record pins {entry.sha256}")
             continue
         pinned_id, version = pinned_id_of_file(entry.edition_id, entry.file)
-        files.append(InputFile(path, ParsedFile(pinned_id, version, entry.sha256), pdf))
+        files.append(InputFile(path, ParsedFile(entry.edition_id, pinned_id, version, entry.sha256), pdf))
     return files, problems
 

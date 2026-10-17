@@ -175,6 +175,28 @@ def test_pinned_ids_come_from_file_names(tmp_path, grobid, name, pinned_id, vers
     assert {(c["pinned_id"], c["version"]) for c in read_chunks(tmp_path, pdf)} == {(pinned_id, version)}
 
 
+def test_files_given_by_hand_take_the_latest_version_given_as_their_edition(tmp_path, grobid):
+    # Without the full-text record, the Edition is worked out the way `fetch` pins one: the latest Version
+    # of an arXiv id among the files given. A venue Edition, or a Version given alone, is its own Edition.
+    names = ["bpe-dropout_1910.13267v1.pdf", "bpe-dropout_1910.13267v2.pdf", "sentencepiece_1808.06226v1.pdf", "P16-1162.pdf"]
+    pdfs = []
+    for name in names:
+        pdf = tmp_path / name
+        pdf.write_bytes(fake_pdf(name))
+        grobid.serve(pdf.read_bytes(), "wechsel_2112.06598v2.tei.xml")
+        pdfs.append(pdf)
+
+    run_parse(tmp_path, *pdfs)
+
+    editions = [{(c["edition_id"], c["pinned_id"]) for c in read_chunks(tmp_path, pdf)} for pdf in pdfs]
+    assert editions == [
+        {("1910.13267v2", "1910.13267v1")},
+        {("1910.13267v2", "1910.13267v2")},
+        {("1808.06226v1", "1808.06226v1")},
+        {("P16-1162", "P16-1162")},
+    ]
+
+
 def test_a_rerun_reuses_the_cached_parse_without_calling_grobid(tmp_path, wechsel, grobid):
     run_parse(tmp_path, wechsel)
     first = read_chunks(tmp_path, wechsel)

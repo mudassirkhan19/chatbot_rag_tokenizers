@@ -68,10 +68,14 @@ class Corpus:
 
     def anchors(self, pdf: bytes) -> set[tuple[str, str, str]]:
         """The (pinned id, Version, sha256) the cached Chunks of a file cite."""
+        return {anchor[1:] for anchor in self.editions_and_anchors(pdf)}
+
+    def editions_and_anchors(self, pdf: bytes) -> set[tuple[str, str, str, str]]:
+        """The (Edition id, pinned id, Version, sha256) the cached Chunks of a file carry."""
         [path] = (self.root / "cache" / sha256(pdf)).glob("*.chunks.jsonl")
         chunks = [json.loads(line) for line in path.read_text().splitlines()]
         assert chunks
-        return {(c["pinned_id"], c["version"], c["file_sha256"]) for c in chunks}
+        return {(c["edition_id"], c["pinned_id"], c["version"], c["file_sha256"]) for c in chunks}
 
 
 @pytest.fixture
@@ -87,10 +91,11 @@ def test_every_recorded_file_is_parsed_and_cited_by_the_pinned_id_the_record_giv
 
     corpus.parse()
 
-    assert corpus.anchors(v1) == {("2112.06598v1", "v1", sha256(v1))}
-    assert corpus.anchors(v2) == {("2112.06598v2", "v2", sha256(v2))}
-    assert corpus.anchors(old_style) == {("hep-th/9901001v1", "v1", sha256(old_style))}
-    assert corpus.anchors(venue) == {("10.5555/lrm.2022.7", "", sha256(venue))}
+    # Each Chunk carries the Edition the record pins as well as the Version its file holds.
+    assert corpus.editions_and_anchors(v1) == {("2112.06598v2", "2112.06598v1", "v1", sha256(v1))}
+    assert corpus.editions_and_anchors(v2) == {("2112.06598v2", "2112.06598v2", "v2", sha256(v2))}
+    assert corpus.editions_and_anchors(old_style) == {("hep-th/9901001v2", "hep-th/9901001v1", "v1", sha256(old_style))}
+    assert corpus.editions_and_anchors(venue) == {("10.5555/lrm.2022.7", "10.5555/lrm.2022.7", "", sha256(venue))}
 
 
 def test_an_edition_recorded_as_having_no_open_pdf_is_skipped(corpus, grobid):

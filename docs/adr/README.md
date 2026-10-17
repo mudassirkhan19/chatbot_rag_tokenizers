@@ -34,6 +34,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0027](0027-parse-quality-gate-and-per-file-errors.md) | Parse quality gate, permanent failures and per-file errors | Accepted |
 | [0028](0028-parse-cache-keys-and-determinism-checks.md) | Parse cache keys and determinism checks | Accepted |
 | [0029](0029-parse-reads-the-full-text-record.md) | Parse reads the full-text record: pinned ids from the record, local problems outside the report | Accepted |
+| [0030](0030-chunks-carry-their-edition-id.md) | Chunks carry their Edition id | Accepted |
 
 ## Template
 
