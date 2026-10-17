@@ -17,9 +17,23 @@ Tested with macOS 26.6, uv 0.10.8 and just 1.46.0. `pyproject.toml` sets the old
 just init
 ```
 
-This checks that uv is recent enough, that Docker is installed and that its daemon answers, and says what to install or start if not. Then it installs every dependency group into `.venv` (`uv sync --all-groups --locked`) and prints what is ready. It installs nothing system-wide, and running it again changes nothing.
+This checks that uv is recent enough, that Docker is installed and that its daemon answers, and says what to install or start if not. Then it installs every dependency group into `.venv` (`uv sync --all-groups --locked`), pulls the pinned GROBID image unless Docker already has it, and prints what is ready. It installs nothing system-wide outside Docker's image store, and running it again changes nothing.
 
 Run `just` to list every recipe. Each pipeline recipe forwards extra arguments to the CLI, so `just collect --no-judge` is `uv run chatbot-rag-tokenizers collect --no-judge`.
+
+## The GROBID service
+
+`parse` sends PDFs to [GROBID](https://grobid.readthedocs.io/), run as a local Docker container:
+
+```sh
+just grobid-up     # start it and wait until http://localhost:8070/api/isalive answers
+just grobid-up 300 # the same, waiting up to 300 s instead of the default 180
+just grobid-down   # stop and remove the container
+```
+
+- **One pinned image.** `config/parse.toml` pins `grobid/grobid:0.9.1-crf` by digest, and `init`, the recipes and `parse` all read it from there. Docker always uses the digest, so a re-pushed tag changes nothing. The CRF image runs natively on Apple silicon (ADR 0022).
+- **Both recipes are safe to rerun.** `grobid-up` leaves a running container from the pinned image alone, and replaces a stopped one or one from an older pin. `grobid-down` says so when nothing is running.
+- **Failures say what to do.** A missing Docker or a stopped daemon is reported as in `init`. If GROBID doesn't answer in time, `grobid-up` stops with the URL it tried and points to `docker logs chatbot-rag-tokenizers-grobid`. GROBID needs about 4 GB of memory for full-text parsing, so raise Docker's limit if the container is killed.
 
 ## Collect the corpus
 
@@ -91,4 +105,4 @@ just typecheck   # uv run mypy src tests
 just lint        # uv run ruff check src tests (errors only, not style)
 ```
 
-The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model. `tests/test_dev_setup.py` also runs `just` to check the recipes and that `init` stops when Docker is missing; it skips without just.
+The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model. `tests/test_dev_setup.py` also runs `just` to check the recipes, that `init` stops when Docker is missing, and, with a fake `docker` and `curl` on PATH, that `init` pulls GROBID by digest and that `grobid-up` and `grobid-down` behave; it skips without just.

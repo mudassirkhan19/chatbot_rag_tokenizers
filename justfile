@@ -1,6 +1,9 @@
-# Setup and everyday commands. Run `just` to list them. See ADR 0021.
+# Setup and everyday commands. Run `just` to list them. See ADR 0021 and, for GROBID, ADR 0022.
 
 set positional-arguments := true
+
+# The GROBID container's name; its image and port come from config/parse.toml.
+grobid_container := "chatbot-rag-tokenizers-grobid"
 
 # List the recipes
 default:
@@ -20,18 +23,82 @@ init:
         fail "uv $uv_version is older than the required $required. Upgrade it with: brew upgrade uv"
     fi
 
-    command -v docker >/dev/null 2>&1 || fail "Docker is not installed. Install a Docker daemon such as Docker Desktop, OrbStack or Colima (see Prerequisites in the README)."
-    docker info >/dev/null 2>&1 || fail "the Docker daemon is not answering. Start Docker Desktop, OrbStack or Colima, then rerun just init."
+    "{{just_executable()}}" --justfile "{{justfile()}}" _require-docker init
 
     uv sync --all-groups --locked
 
-    # The pinned GROBID image is pulled here (#16).
+    grobid=$(uv run --no-sync python -m chatbot_rag_tokenizers.parsing.config) || fail "could not read the GROBID pin in config/parse.toml"
+    eval "$grobid"
+    if docker image inspect "$GROBID_REFERENCE" >/dev/null 2>&1; then
+        echo "GROBID $GROBID_TAG is already pulled."
+    else
+        echo "Pulling GROBID $GROBID_TAG ($GROBID_REFERENCE)"
+        docker pull "$GROBID_REFERENCE" || fail "could not pull $GROBID_REFERENCE. Check the network, then rerun just init."
+    fi
 
     echo
     echo "Ready:"
     echo "  uv $uv_version (required >=$required)"
     echo "  $(uv run --no-sync python --version) with every dependency group in .venv"
     echo "  Docker daemon $(docker info --format '{{{{.ServerVersion}}')"
+    echo "  GROBID $GROBID_TAG, pinned by digest (start it with: just grobid-up)"
+
+# Start the pinned GROBID service and wait until it answers (safe to rerun)
+grobid-up timeout="180":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    fail() { printf 'just grobid-up: %s\n' "$1" >&2; exit 1; }
+    [[ "{{timeout}}" =~ ^[0-9]+$ ]] || fail "the timeout must be a whole number of seconds, not '{{timeout}}'"
+    "{{just_executable()}}" --justfile "{{justfile()}}" _require-docker grobid-up
+    grobid=$(uv run --frozen --quiet python -m chatbot_rag_tokenizers.parsing.config) || fail "could not read the GROBID pin in config/parse.toml"
+    eval "$grobid"
+    name={{grobid_container}}
+    url="http://localhost:$GROBID_PORT"
+
+    running=$(docker inspect --format '{{{{.State.Running}}' "$name" 2>/dev/null || true)
+    image=$(docker inspect --format '{{{{.Config.Image}}' "$name" 2>/dev/null || true)
+    if [ "$running" = true ] && [ "$image" = "$GROBID_REFERENCE" ]; then
+        echo "GROBID $GROBID_TAG is already running."
+    else
+        # A stopped container, or one from an older pin, is replaced.
+        docker rm -f "$name" >/dev/null 2>&1 || true
+        echo "Starting GROBID $GROBID_TAG ($GROBID_REFERENCE) on port $GROBID_PORT"
+        docker run -d --name "$name" --init --ulimit core=0 -p "$GROBID_PORT:8070" "$GROBID_REFERENCE" >/dev/null \
+            || fail "docker could not start GROBID. Is port $GROBID_PORT already in use? Free it, or change port in config/parse.toml."
+    fi
+
+    deadline=$((SECONDS + {{timeout}}))
+    until [ "$(curl -fsS --max-time 2 "$url/api/isalive" 2>/dev/null)" = true ]; do
+        if [ "$(docker inspect --format '{{{{.State.Running}}' "$name" 2>/dev/null || true)" != true ]; then
+            fail "the GROBID container stopped while starting. See: docker logs $name"
+        fi
+        if [ "$SECONDS" -ge "$deadline" ]; then
+            fail "GROBID did not answer $url/api/isalive within {{timeout}} s. It may still be loading: rerun just grobid-up, or see: docker logs $name"
+        fi
+        sleep 1
+    done
+    echo "GROBID $GROBID_TAG is up at $url"
+
+# Stop the GROBID service (safe to rerun)
+grobid-down:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    "{{just_executable()}}" --justfile "{{justfile()}}" _require-docker grobid-down
+    if docker inspect {{grobid_container}} >/dev/null 2>&1; then
+        docker rm -f {{grobid_container}} >/dev/null
+        echo "GROBID stopped."
+    else
+        echo "GROBID is not running."
+    fi
+
+# Check that Docker is installed and its daemon answers; the argument names the calling recipe
+[private]
+_require-docker recipe:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    fail() { printf 'just %s: %s\n' "{{recipe}}" "$1" >&2; exit 1; }
+    command -v docker >/dev/null 2>&1 || fail "Docker is not installed. Install a Docker daemon such as Docker Desktop, OrbStack or Colima (see Prerequisites in the README)."
+    docker info >/dev/null 2>&1 || fail "the Docker daemon is not answering. Start Docker Desktop, OrbStack or Colima, then rerun just {{recipe}}."
 
 # Run the test suite; extra arguments go to pytest
 test *args:
