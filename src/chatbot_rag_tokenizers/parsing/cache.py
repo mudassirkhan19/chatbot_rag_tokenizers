@@ -16,7 +16,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from .chunker import Chunk
-from .quality import Failure
+from .quality import Failure, Reason
 from .tei import Reference
 
 
@@ -64,7 +64,7 @@ class ParseCache:
         if not path.exists():
             return None
         record = json.loads(path.read_text(encoding="utf-8"))
-        return RecordedFailure(Failure(record["reason"], record["detail"]), record["sections"])
+        return RecordedFailure(Failure(Reason(record["reason"]), record["detail"]), record["sections"])
 
     def put_failure(self, sha256: str, failure: Failure, sections: int) -> None:
         """Record a file's Failure, so no later run with the same key retries it, and drop any old Chunks."""

@@ -28,6 +28,7 @@ ARXIV_PDF_URL = "https://export.arxiv.org/pdf/{}"  # arXiv asks harvesters to us
 ARXIV_MIN_INTERVAL_SECONDS = 3.0  # arXiv's terms of use: one request every three seconds
 OTHER_MIN_INTERVAL_SECONDS = 1.0  # the ACL Anthology and open-access hosts publish no limit
 GONE_STATUS = {404, 410}
+VERSION_SUFFIX = re.compile(r"v\d+$")  # an arXiv Version at the end of a pinned id
 RETRY_LATER_STATUS = {408, 429}  # the host is busy, not refusing
 
 
@@ -139,6 +140,22 @@ class FulltextRecord:
 def file_name(pinned_id: str) -> str:
     """A file name for a pinned id: old-style arXiv ids and DOIs contain slashes."""
     return re.sub(r"[^A-Za-z0-9._-]", "_", pinned_id) + ".pdf"
+
+
+def pinned_id_of_file(edition_id: str, file: str) -> tuple[str, str]:
+    """The pinned id and Version a recorded file holds: the inverse of `file_name` as `pinned_files` uses it.
+
+    A preprint Edition (an arXiv id pinned to its latest Version) holds files named for its Versions, so
+    "hep-th_9901001v1.pdf" of Edition "hep-th/9901001v2" holds "hep-th/9901001v1", Version "v1". Any other
+    file is the Edition itself, a venue Edition with no Version: "10.5555/lrm.2022.7".
+    """
+    arxiv_id = VERSION_SUFFIX.sub("", edition_id)
+    if arxiv_id != edition_id:
+        stem = file.removesuffix(".pdf")
+        version = stem.removeprefix(file_name(arxiv_id).removesuffix(".pdf"))
+        if VERSION_SUFFIX.fullmatch(version) and file_name(arxiv_id + version) == file:
+            return arxiv_id + version, version
+    return edition_id, ""
 
 
 def pinned_files(row: dict[str, str]) -> list[PinnedFile]:

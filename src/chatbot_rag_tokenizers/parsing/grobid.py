@@ -3,7 +3,7 @@
 import httpx
 
 from .config import GrobidConfig
-from .quality import GROBID_ERROR, GROBID_TIMEOUT, Failure
+from .quality import Failure, Reason
 
 # Full-text processing with coordinates on and consolidation off. Consolidation would call external
 # metadata services, making the network part of parsing and its output depend on them.
@@ -54,14 +54,14 @@ class GrobidClient:
         except httpx.ConnectError as error:
             raise GrobidUnreachable(self.service_url) from error
         except httpx.TimeoutException as error:
-            raise GrobidFailed(Failure(GROBID_TIMEOUT, f"no answer within {TIMEOUT_SECONDS:g} s")) from error
+            raise GrobidFailed(Failure(Reason.GROBID_TIMEOUT, f"no answer within {TIMEOUT_SECONDS:g} s")) from error
         except httpx.TransportError as error:
-            raise GrobidFailed(Failure(GROBID_ERROR, f"{type(error).__name__}: {error}")) from error
+            raise GrobidFailed(Failure(Reason.GROBID_ERROR, f"{type(error).__name__}: {error}")) from error
         if response.status_code != 200 or not response.text.strip():
             # GROBID answers 500 with a short message for a PDF it can't read, and 204 when it finds no text.
             message = " ".join(response.text.split())[:200]
             detail = f"HTTP {response.status_code}: {message}" if message else f"HTTP {response.status_code}"
-            raise GrobidFailed(Failure(GROBID_ERROR, detail))
+            raise GrobidFailed(Failure(Reason.GROBID_ERROR, detail))
         return response.text
 
 

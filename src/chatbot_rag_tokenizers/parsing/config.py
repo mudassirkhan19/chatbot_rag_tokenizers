@@ -66,9 +66,10 @@ class ParseConfig:
     chunking: ChunkingConfig
 
 
-def _section(raw: dict, name: str, expected: dict[str, type], path: Path) -> dict[str, Any]:
+def _table(raw: dict, name: str, expected: dict[str, type], path: Path) -> dict[str, Any]:
+    """The fields of one TOML table, such as [grobid], checked against the names and types expected."""
     if name not in raw:
-        raise ConfigError(f"{path} has no [{name}] section")
+        raise ConfigError(f"{path} has no [{name}] table")
     fields = raw[name]
     if unknown := sorted(set(fields) - set(expected)):
         raise ConfigError(f"[{name}] in {path} has unknown fields: {', '.join(unknown)}")
@@ -82,7 +83,7 @@ def _section(raw: dict, name: str, expected: dict[str, type], path: Path) -> dic
 
 
 def _grobid(raw: dict, path: Path) -> GrobidConfig:
-    fields = _section(raw, "grobid", {"image": str, "tag": str, "digest": str, "port": int}, path)
+    fields = _table(raw, "grobid", {"image": str, "tag": str, "digest": str, "port": int}, path)
     grobid = GrobidConfig(**fields)
     if not DIGEST.fullmatch(grobid.digest):
         raise ConfigError(f"GROBID digest {grobid.digest!r} is not sha256: followed by 64 hex digits")
@@ -94,7 +95,7 @@ def _grobid(raw: dict, path: Path) -> GrobidConfig:
 def _chunking(raw: dict, path: Path) -> ChunkingConfig:
     expected = {name: str for name in ("tokenizer", "tokenizer_revision", "tokenizer_file", "tokenizer_sha256")}
     counts = {name: int for name in ("token_budget", "min_sections", "min_body_characters")}
-    fields = _section(raw, "chunking", {**counts, **expected}, path)
+    fields = _table(raw, "chunking", {**counts, **expected}, path)
     chunking = ChunkingConfig(**{**fields, "tokenizer_file": path.parent / fields["tokenizer_file"]})
     if chunking.token_budget < 1:
         raise ConfigError(f"[chunking] token_budget {chunking.token_budget} is not a positive number of tokens")

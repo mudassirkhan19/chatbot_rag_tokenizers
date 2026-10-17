@@ -8,7 +8,7 @@ from .chunker import chunk_document
 from .config import ParseConfig
 from .grobid import GrobidClient, GrobidFailed
 from .inputs import InputFile
-from .quality import GROBID_ERROR, Failure, gate
+from .quality import Failure, Reason, gate
 from .report import FileResult, write_report
 from .tei import UnreadableTei, read_tei
 from .tokens import TokenCounter
@@ -19,8 +19,7 @@ class ParseErrors(RuntimeError):
 
     def __init__(self, failed: list[FileResult]) -> None:
         self.failed = failed
-        count = "1 file" if len(failed) == 1 else f"{len(failed)} files"
-        lines = [f"{count} failed. They have no Chunks; the parse report gives each one's reason."]
+        lines = [f"{_files(len(failed))} failed. They have no Chunks; the parse report gives each one's reason."]
         lines += [f"  {result.pinned_id}: {result.failure}" for result in failed]
         super().__init__("\n".join(lines))
 
@@ -48,7 +47,7 @@ def parse(config: ParseConfig, files: list[InputFile], cache_dir: Path, report_p
         except GrobidFailed as error:
             failure, sections = error.failure, 0
         except UnreadableTei as error:
-            failure, sections = Failure(GROBID_ERROR, f"unreadable TEI: {error}"), 0
+            failure, sections = Failure(Reason.GROBID_ERROR, f"unreadable TEI: {error}"), 0
         else:
             versions.add(document.grobid_version)
             failure, sections = gate(document, config.chunking), len(document.sections)
@@ -67,10 +66,13 @@ def parse(config: ParseConfig, files: list[InputFile], cache_dir: Path, report_p
     write_report(report_path, config, versions, results)
     print(f"parse: {len(results)} files, {sum(r.chunks for r in results)} Chunks; report in {report_path}")
     if earlier := sum(1 for result in results if result.failure) - len(new_failures):
-        count = "1 file" if earlier == 1 else f"{earlier} files"
-        print(f"parse: {count} failed on an earlier run and were not retried; the parse report gives their reasons", file=sys.stderr)
+        print(f"parse: {_files(earlier)} failed on an earlier run and were not retried; the parse report gives their reasons", file=sys.stderr)
     if new_failures:
         raise ParseErrors(new_failures)
+
+
+def _files(count: int) -> str:
+    return "1 file" if count == 1 else f"{count} files"
 
 
 def _tei(cache: ParseCache, client: GrobidClient, file: InputFile) -> str:

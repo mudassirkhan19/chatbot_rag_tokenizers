@@ -15,6 +15,7 @@ would take more than half the budget together; then only the first line, if it a
 
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
+from typing import Literal
 
 from .tei import Caption, Document, Paragraph, Section, Sentence, Table
 
@@ -22,6 +23,8 @@ HEADER_SEPARATOR = " › "
 PARAGRAPH_BREAK = "\n\n"
 ROW_BREAK = "\n"
 CELL_SEPARATOR = " | "
+
+ChunkKind = Literal["text", "table", "caption"]
 
 
 @dataclass(frozen=True)
@@ -43,7 +46,7 @@ class Chunk:
     section_title: str
     section_path: tuple[str, ...]
     appendix: bool
-    kind: str  # "text", "table" or "caption"
+    kind: ChunkKind
     page_start: int | None  # the citation anchor's page range; None when GROBID gave no coordinates
     page_end: int | None
     header: str  # "title › Section path", kept out of the text so citations quote clean text
@@ -63,7 +66,7 @@ class _Piece:
 def chunk_document(document: Document, file: ParsedFile, token_budget: int, count_tokens: Callable[[str], int]) -> list[Chunk]:
     chunks: list[Chunk] = []
     for section in document.sections:
-        texts: list[tuple[str, str, set[int]]] = [
+        texts: list[tuple[ChunkKind, str, set[int]]] = [
             ("text", text, pages)
             for text, pages in _pack(_pieces(section.paragraphs, token_budget, count_tokens), token_budget, count_tokens)
         ]
