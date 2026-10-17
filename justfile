@@ -6,7 +6,7 @@ set positional-arguments := true
 grobid_container := "chatbot-rag-tokenizers-grobid"
 
 # The start of every bash recipe, after it sets $recipe: strict mode and the shared helpers.
-# load_grobid uses `uv run --no-sync` so reading the pin never syncs or creates .venv:
+# load_grobid and load_judge use `uv run --no-sync` so reading a pin never syncs or creates .venv:
 # init has just synced every group, and the GROBID recipes need init to have run.
 _bash_prelude := '''
     set -euo pipefail
@@ -21,13 +21,25 @@ _bash_prelude := '''
             || fail "could not read the GROBID pin in config/parse.toml. Run just init first."
         eval "$settings"
     }
+    load_judge() {
+        local settings
+        settings=$(uv run --no-sync python -m chatbot_rag_tokenizers.collection.judge_env) \
+            || fail "could not read the judge pin in config/scope.toml"
+        eval "$settings"
+    }
+    # The digest Ollama has for model $1, or nothing (also when Ollama doesn't answer). /api/tags lists each model as one object whose
+    # name and digest come before its nested "details", so splitting on "{" keeps them together.
+    ollama_digest() {
+        curl -fsS --max-time 5 "$OLLAMA_URL/api/tags" | tr '{' '\n' \
+            | grep -F "\"name\":\"$1\"" | sed -n 's/.*"digest":"\([0-9a-f]*\)".*/\1/p' | head -n1 || true
+    }
 '''
 
 # List the recipes
 default:
     @just --list --unsorted
 
-# Check uv and Docker, then install every dependency group (safe to rerun)
+# Check uv, Docker and Ollama, install every dependency group and pull the pinned images and judge model (safe to rerun)
 init:
     #!/usr/bin/env bash
     recipe=init
@@ -56,12 +68,36 @@ init:
         docker pull "$GROBID_REFERENCE" || fail "could not pull $GROBID_REFERENCE. Check the network, then rerun just init."
     fi
 
+    # The judge's runtime and weights are both pinned (ADR 0021): a different Ollama version or
+    # model digest changes the scores, so init stops rather than fixing either behind your back.
+    load_judge
+    judge_summary="the judge does not run on Ollama"
+    if [ -n "$OLLAMA_MODEL" ]; then
+        install="Install Ollama $OLLAMA_VERSION from https://github.com/ollama/ollama/releases/tag/v$OLLAMA_VERSION"
+        command -v ollama >/dev/null 2>&1 || fail "Ollama is not installed. $install (see Prerequisites in the README)."
+        running=$(curl -fsS --max-time 5 "$OLLAMA_URL/api/version" 2>/dev/null | sed -n 's/.*"version":"\([^"]*\)".*/\1/p') || true
+        [ -n "$running" ] || fail "Ollama is not answering at $OLLAMA_URL. Start the Ollama app or run: ollama serve"
+        [ "$running" = "$OLLAMA_VERSION" ] || fail "Ollama $running is running, but the judge is pinned to $OLLAMA_VERSION. $install"
+        installed=$(ollama_digest "$OLLAMA_MODEL")
+        if [ -z "$installed" ]; then
+            echo "Pulling the judge model $OLLAMA_MODEL"
+            ollama pull "$OLLAMA_MODEL" || fail "could not pull $OLLAMA_MODEL. Check the network, then rerun just init."
+            installed=$(ollama_digest "$OLLAMA_MODEL")
+        else
+            echo "The judge model $OLLAMA_MODEL is already pulled."
+        fi
+        [ "$installed" = "$OLLAMA_DIGEST" ] \
+            || fail "$OLLAMA_MODEL in Ollama has digest ${installed:0:12}, not the pinned ${OLLAMA_DIGEST:0:12} in config/scope.toml. Remove it with: ollama rm $OLLAMA_MODEL, then rerun just init (the registry may no longer serve the pinned weights)."
+        judge_summary="Ollama $running with the judge model $OLLAMA_MODEL, pinned by digest"
+    fi
+
     echo
     echo "Ready:"
     echo "  uv $uv_version (required $spec)"
     echo "  $(uv run --no-sync python --version) with every dependency group in .venv"
     echo "  Docker daemon $(docker info --format '{{{{.ServerVersion}}')"
     echo "  GROBID $GROBID_TAG, pinned by digest (start it with: just grobid-up)"
+    echo "  $judge_summary"
 
 # Start the pinned GROBID service on localhost and wait until it answers (safe to rerun)
 grobid-up timeout="180":

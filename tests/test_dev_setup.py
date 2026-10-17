@@ -1,6 +1,7 @@
 """The justfile is the setup entry point (ADRs 0022 and 0023). These run `just` itself, so they skip without it.
 
-The GROBID tests put a fake docker, curl and uv on PATH, so they need neither Docker nor the network.
+The other tests put a fake docker, ollama, curl and uv on PATH, so they need neither Docker, Ollama nor
+the network.
 """
 
 import os
@@ -85,9 +86,29 @@ case "$1" in
 esac
 exit 0
 """
+# curl answers GROBID's health check and Ollama's /api/version and /api/tags. Ollama is up and at
+# the pinned version unless FAKE_OLLAMA_DOWN or FAKE_OLLAMA_VERSION says otherwise.
 FAKE_CURL = r"""#!/bin/bash
-echo "$*" >> "$FAKE_STATE/curl"
-if [ -f "$FAKE_STATE/healthy" ] && [ -f "$FAKE_STATE/container" ]; then echo true; else exit 7; fi
+state="$FAKE_STATE"
+echo "$*" >> "$state/curl"
+case "$*" in
+  *11434/api/version*)
+    [ -n "${FAKE_OLLAMA_DOWN:-}" ] && exit 7
+    echo "{\"version\":\"${FAKE_OLLAMA_VERSION:-0.40.5}\"}" ;;
+  *11434/api/tags*)
+    [ -n "${FAKE_OLLAMA_DOWN:-}" ] && exit 7
+    printf '{"models":['
+    [ -f "$state/models" ] && sed 's/^\([^ ]*\) \(.*\)$/{"name":"\1","digest":"\2","details":{"format":"gguf"}},/' "$state/models" | tr -d '\n' | sed 's/,$//'
+    echo ']}' ;;
+  *)
+    if [ -f "$state/healthy" ] && [ -f "$state/container" ]; then echo true; else exit 7; fi ;;
+esac
+"""
+# ollama only pulls: it installs the model at FAKE_OLLAMA_PULLED_DIGEST, or the pinned digest.
+FAKE_OLLAMA = r"""#!/bin/bash
+echo "$*" >> "$FAKE_STATE/ollama"
+[ "$1" = pull ] && echo "$2 ${FAKE_OLLAMA_PULLED_DIGEST:-$PINNED_DIGEST}" >> "$FAKE_STATE/models"
+exit 0
 """
 # uv answers --version and sync itself, so no test changes .venv, and hands run to the real uv.
 FAKE_UV = r"""#!/bin/bash
@@ -98,22 +119,25 @@ case "$1" in
 esac
 """
 REFERENCE = "grobid/grobid@sha256:223957791ac2bbe48609dcc58a689b16b60baeae13a8734ef440ae6bfb38f4cd"
+JUDGE_MODEL = "tev1:4b"
+JUDGE_DIGEST = "4d24c6f6d61a48d9b72902f4805c5f1da53010736b834b0372377fb4bb7e53d3"
 
 
-class FakeDockerCurlAndUv:
-    """Puts a fake docker, curl and uv first on PATH and runs `just` with them."""
+class FakeTools:
+    """Puts a fake docker, ollama, curl and uv first on PATH and runs `just` with them."""
 
     def __init__(self, root: Path):
         self.state = root / "state"
         self.state.mkdir()
         bin_dir = root / "bin"
         bin_dir.mkdir()
-        for name, script in [("docker", FAKE_DOCKER), ("curl", FAKE_CURL), ("uv", FAKE_UV)]:
+        for name, script in [("docker", FAKE_DOCKER), ("ollama", FAKE_OLLAMA), ("curl", FAKE_CURL), ("uv", FAKE_UV)]:
             (bin_dir / name).write_text(script)
             (bin_dir / name).chmod(0o755)
         real_uv = shutil.which("uv")
         assert real_uv is not None
-        self.env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "FAKE_STATE": str(self.state), "REAL_UV": real_uv}
+        self.env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "FAKE_STATE": str(self.state), "REAL_UV": real_uv,
+                    "PINNED_DIGEST": JUDGE_DIGEST}
 
     def just(self, *args: str, justfile: Path = ROOT / "justfile") -> subprocess.CompletedProcess[str]:
         return just(*args, env=self.env, justfile=justfile)
@@ -122,6 +146,13 @@ class FakeDockerCurlAndUv:
         path = self.state / "calls"
         rows = path.read_text().splitlines() if path.exists() else []
         return [row for row in rows if row.split(" ", 1)[0] == command]
+
+    def ollama_calls(self) -> list[str]:
+        path = self.state / "ollama"
+        return path.read_text().splitlines() if path.exists() else []
+
+    def has_judge_model(self, digest: str = JUDGE_DIGEST) -> None:
+        (self.state / "models").write_text(f"{JUDGE_MODEL} {digest}\n")
 
     def has_image(self) -> None:
         (self.state / "images").write_text(REFERENCE + "\n")
@@ -139,7 +170,7 @@ class FakeDockerCurlAndUv:
 def fake_tools(tmp_path):
     if shutil.which("uv") is None:
         pytest.skip("uv is not installed")
-    return FakeDockerCurlAndUv(tmp_path)
+    return FakeTools(tmp_path)
 
 
 @needs_just
@@ -158,6 +189,80 @@ def test_init_skips_the_pull_when_the_image_is_present(fake_tools):
 
     assert result.returncode == 0, result.stderr
     assert fake_tools.calls("pull") == []
+
+
+@needs_just
+def test_init_stops_with_a_clear_message_when_ollama_is_missing(fake_tools):
+    bin_dir = fake_tools.state.parent / "bin"
+    (bin_dir / "ollama").unlink()
+    # Only the fakes and the system shell tools, so a real ollama is never found.
+    fake_tools.env["PATH"] = f"{bin_dir}:/usr/bin:/bin"
+
+    result = fake_tools.just("init")
+
+    assert result.returncode != 0
+    assert "Ollama is not installed" in result.stderr
+    assert "0.40.5" in result.stderr
+
+
+@needs_just
+def test_init_stops_with_a_clear_message_when_ollama_is_not_answering(fake_tools):
+    fake_tools.env["FAKE_OLLAMA_DOWN"] = "1"
+
+    result = fake_tools.just("init")
+
+    assert result.returncode != 0
+    assert "Ollama is not answering at http://localhost:11434" in result.stderr
+
+
+@needs_just
+def test_init_stops_when_ollama_runs_another_version_than_the_judge_pin(fake_tools):
+    fake_tools.env["FAKE_OLLAMA_VERSION"] = "0.41.0"
+
+    result = fake_tools.just("init")
+
+    assert result.returncode != 0
+    assert "Ollama 0.41.0 is running, but the judge is pinned to 0.40.5" in result.stderr
+
+
+@needs_just
+def test_init_pulls_the_judge_model_when_ollama_lacks_it(fake_tools):
+    result = fake_tools.just("init")
+
+    assert result.returncode == 0, result.stderr
+    assert fake_tools.ollama_calls() == [f"pull {JUDGE_MODEL}"]
+    assert f"{JUDGE_MODEL}" in result.stdout
+
+
+@needs_just
+def test_init_skips_the_pull_when_the_judge_model_is_present(fake_tools):
+    fake_tools.has_judge_model()
+
+    result = fake_tools.just("init")
+
+    assert result.returncode == 0, result.stderr
+    assert fake_tools.ollama_calls() == []
+
+
+@needs_just
+def test_init_stops_when_the_judge_model_has_another_digest(fake_tools):
+    fake_tools.has_judge_model("0" * 64)
+
+    result = fake_tools.just("init")
+
+    assert result.returncode != 0
+    assert f"{JUDGE_MODEL} in Ollama has digest 000000000000" in result.stderr
+    assert fake_tools.ollama_calls() == []
+
+
+@needs_just
+def test_init_stops_when_the_pulled_judge_model_has_another_digest(fake_tools):
+    fake_tools.env["FAKE_OLLAMA_PULLED_DIGEST"] = "1" * 64
+
+    result = fake_tools.just("init")
+
+    assert result.returncode != 0
+    assert f"{JUDGE_MODEL} in Ollama has digest 111111111111" in result.stderr
 
 
 @needs_just

@@ -8,8 +8,9 @@ Setup is supported on **macOS only**. Install these yourself; the repo installs 
 
 - **uv and just:** `brew install uv just`.
 - **A Docker daemon,** such as Docker Desktop, OrbStack or Colima. It must be running for `just init`.
+- **[Ollama](https://ollama.com) 0.40.5 exactly,** from its [release page](https://github.com/ollama/ollama/releases/tag/v0.40.5), for the relevance judge. Another version changes the judge's scores, so the judge refuses to run on it (ADR 0021). It must be running for `just init`.
 
-Tested with macOS 26.6, uv 0.10.8 and just 1.46.0. `pyproject.toml` sets the oldest uv the repo accepts (`[tool.uv] required-version`); `uv.lock` pins Python 3.12 and every package.
+Tested with macOS 26.6, uv 0.10.8, just 1.46.0, Docker 29.2.1 and Ollama 0.40.5. `pyproject.toml` sets the oldest uv the repo accepts (`[tool.uv] required-version`); `uv.lock` pins Python 3.12 and every package.
 
 ## Setup
 
@@ -17,7 +18,7 @@ Tested with macOS 26.6, uv 0.10.8 and just 1.46.0. `pyproject.toml` sets the old
 just init
 ```
 
-This checks that uv is recent enough, that Docker is installed and that its daemon answers, and says what to install or start if not. Then it installs every dependency group into `.venv` (`uv sync --all-groups --locked`), pulls the pinned GROBID image unless Docker already has it, and prints what is ready. It installs nothing system-wide outside Docker's image store, and running it again changes nothing.
+This checks that uv is recent enough, that Docker is installed and that its daemon answers, and says what to install or start if not. Then it installs every dependency group into `.venv` (`uv sync --all-groups --locked`) and pulls the pinned GROBID image unless Docker already has it. Last, it checks that Ollama answers at the version the judge is pinned to, pulls the judge model (`tev1:4b`) unless Ollama already has it, and checks its digest against the pin in `config/scope.toml`. It prints what is ready. It installs nothing system-wide outside Docker's image store and Ollama's model store, and running it again changes nothing.
 
 Run `just` to list every recipe. Each pipeline recipe forwards extra arguments to the CLI, so `just collect --no-judge` is `uv run chatbot-rag-tokenizers collect --no-judge`.
 
@@ -54,13 +55,7 @@ This runs the keyword queries in `config/scope.toml` against arXiv, Semantic Sch
 
 The command prints the counts at each stage, including, per Discovery channel and per source, the Editions nothing else found and how many of those pass the rules and the judge. Options: `--config`, `--snapshot` and `--manifest` change the paths. `--refresh` re-scores every Candidate that passes the rules, and `--no-judge` never loads the model, so Candidates without a cached verdict stay `pending`.
 
-Scoring with the default judge needs Ollama at the pinned version (0.40.5) and the model:
-
-```sh
-ollama pull tev1:4b
-```
-
-Scoring the full set takes about 1.5 h on an M1 Max. A transformers model in `[[audit.models]]` also needs torch and transformers, which `just init` installs (by hand: `uv sync --group judge`), and downloads its weights from Hugging Face. Until the full judge run is committed (#11), most Candidates have no cached verdict, so run `collect --no-judge` to rebuild the manifest without the model.
+Scoring with the default judge needs Ollama running at the pinned version (0.40.5) with the model at its pinned digest; `just init` checks both and pulls the model (by hand: `ollama pull tev1:4b`). Scoring the full set takes about 1.5 h on an M1 Max. A transformers model in `[[audit.models]]` also needs torch and transformers, which `just init` installs (by hand: `uv sync --group judge`), and downloads its weights from Hugging Face. Until the full judge run is committed (#11), most Candidates have no cached verdict, so run `collect --no-judge` to rebuild the manifest without the model.
 
 ## Fetch the full texts
 

@@ -26,7 +26,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0019](0019-openalex-stays-on.md) | OpenAlex stays on | Accepted |
 | [0020](0020-blind-agent-labels-checked-by-the-developer.md) | Audit set labels from blind agents, checked by the developer | Accepted |
 | [0021](0021-tev1-decision-model-judge.md) | Tev1 4B as the judge, served by Ollama and pinned with its runtime | Accepted |
-| [0022](0022-uv-and-just-from-homebrew-docker-left-to-the-user.md) | uv and just from Homebrew, Docker left to the user | Accepted |
+| [0022](0022-uv-and-just-from-homebrew-docker-left-to-the-user.md) | uv and just from Homebrew, Docker and Ollama left to the user | Accepted |
 | [0023](0023-grobid-crf-image-pinned-by-digest.md) | GROBID's CRF image, pinned by digest in config/parse.toml | Accepted |
 
 ## Template
