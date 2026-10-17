@@ -8,64 +8,10 @@ real output for Sennrich et al. v5 (arXiv 1508.07909v5, CC BY 4.0 in the manifes
 
 from pathlib import Path
 
-import httpx
 import pytest
 
-import test_parse
 from chatbot_rag_tokenizers.cli import main
-from test_parse import FakeGrobid, fake_pdf, run_parse, sha256
-
-wechsel = test_parse.wechsel  # the WECHSEL Seed PDF, served by the fake GROBID below
-
-
-class FailingGrobid(FakeGrobid):
-    """The fake GROBID service, which can also fail on chosen files the ways the real one does."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.errors: dict[str, httpx.Response] = {}
-        self.timeouts: set[str] = set()
-        self.down = False  # True: nothing listens on GROBID's port
-
-    def fail(self, pdf: bytes, status: int, body: str) -> None:
-        self.errors[sha256(pdf)] = httpx.Response(status, text=body)
-
-    def time_out(self, pdf: bytes) -> None:
-        self.timeouts.add(sha256(pdf))
-
-    def handle(self, request: httpx.Request) -> httpx.Response:
-        response = super().handle(request)
-        if self.down:
-            raise httpx.ConnectError("[Errno 61] Connection refused", request=request)
-        uploaded = _uploaded_hash(request)
-        if uploaded in self.timeouts:
-            raise httpx.ReadTimeout("timed out", request=request)
-        if uploaded in self.errors:
-            error = self.errors[uploaded]
-            return httpx.Response(error.status_code, text=error.text, request=request)
-        return response
-
-
-def _uploaded_hash(request: httpx.Request) -> str:
-    """The sha256 of the fake PDF in a request's multipart body."""
-    start = request.content.find(b"%PDF-")
-    end = request.content.find(b"%%EOF\n", start) + len(b"%%EOF\n")
-    return sha256(request.content[start:end])
-
-
-@pytest.fixture
-def grobid(monkeypatch: pytest.MonkeyPatch, no_network) -> FailingGrobid:
-    fake = FailingGrobid()
-    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", lambda self, request: fake.handle(request))
-    return fake
-
-
-def seed_pdf(tmp_path: Path, grobid: FakeGrobid, name: str, tei_fixture: str) -> Path:
-    pdf = tmp_path / "pdfs" / name
-    pdf.parent.mkdir(exist_ok=True)
-    pdf.write_bytes(fake_pdf(name))
-    grobid.serve(pdf.read_bytes(), tei_fixture)
-    return pdf
+from parse_support import run_parse, seed_pdf, sha256
 
 
 def chunk_files(tmp_path: Path, pdf: Path) -> list[Path]:

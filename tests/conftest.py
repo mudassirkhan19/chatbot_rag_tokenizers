@@ -3,10 +3,12 @@ import shutil
 import socket
 from pathlib import Path
 
+import httpx
 import pytest
 
 from chatbot_rag_tokenizers.collection import judge
 from chatbot_rag_tokenizers.collection.snapshot import SnapshotStore
+from parse_support import FakeGrobid, fake_pdf
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -161,3 +163,21 @@ def no_model(monkeypatch: pytest.MonkeyPatch) -> None:
 def read_rows(path: Path) -> list[dict[str, str]]:
     with path.open(newline="") as f:
         return list(csv.DictReader(f))
+
+
+@pytest.fixture
+def grobid(monkeypatch: pytest.MonkeyPatch, no_network) -> FakeGrobid:
+    """The fake GROBID service in place of the real one, for the offline `parse` tests."""
+    fake = FakeGrobid()
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", lambda self, request: fake.handle(request))
+    return fake
+
+
+@pytest.fixture
+def wechsel(tmp_path: Path, grobid: FakeGrobid) -> Path:
+    """A Seed PDF named as in data/pdfs/seeds, whose TEI the fake service knows."""
+    pdf = tmp_path / "pdfs" / "wechsel_2112.06598v2.pdf"
+    pdf.parent.mkdir(exist_ok=True)
+    pdf.write_bytes(fake_pdf("wechsel v2"))
+    grobid.serve(pdf.read_bytes(), "wechsel_2112.06598v2.tei.xml")
+    return pdf

@@ -1,4 +1,3 @@
-# ruff: noqa: F811  (pytest fixtures imported from test_parse are named again as test arguments)
 """Cache invalidation and determinism of `parse` (#21, ADR 0028), run offline against the fake GROBID service.
 
 Cached TEI is keyed by file hash and parser version, Chunks by those and the chunking-config hash: a
@@ -9,8 +8,7 @@ import json
 from pathlib import Path
 
 from chatbot_rag_tokenizers.cli import main
-from test_parse import REPO_CONFIG, config_with_budget, fake_pdf, run_parse, sha256
-from test_parse import grobid, wechsel  # noqa: F401  (fixtures; the tests' arguments use them)
+from parse_support import REPO_CONFIG, config_with_budget, fake_pdf, run_parse, sha256
 
 REPO_DIGEST = "sha256:223957791ac2bbe48609dcc58a689b16b60baeae13a8734ef440ae6bfb38f4cd"
 

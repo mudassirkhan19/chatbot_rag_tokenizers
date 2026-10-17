@@ -5,115 +5,17 @@ manifest), with only its request timestamp fixed. No PDF is committed: the "PDFs
 bytes, and the fake service maps their sha256 to the fixture.
 """
 
-import hashlib
-import json
 import xml.etree.ElementTree as ET
-from email.parser import BytesParser
-from email.policy import HTTP
-from pathlib import Path
 
-import httpx
 import pytest
 from tokenizers import Tokenizer
 
-from chatbot_rag_tokenizers.cli import main
-from conftest import FIXTURES
-
-ROOT = Path(__file__).parents[1]
-REPO_CONFIG = ROOT / "config" / "parse.toml"
-TEI = FIXTURES / "tei"
-GROBID_URL = "http://localhost:8070/api/processFulltextDocument"
-WECHSEL_TITLE = "WECHSEL: Effective initialization of subword embeddings for cross-lingual transfer of monolingual language models"
-
-
-def fake_pdf(name: str) -> bytes:
-    return f"%PDF-1.5\n% {name}\n%%EOF\n".encode()
-
-
-def sha256(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
-
-
-class FakeGrobid:
-    """Stands in for the GROBID service: the sha256 of the uploaded PDF picks the TEI it answers with.
-
-    Every request's URL and form fields are recorded.
-    """
-
-    def __init__(self) -> None:
-        self.tei_by_hash: dict[str, str] = {}
-        self.requests: list[tuple[str, list[tuple[str, str]]]] = []
-
-    def serve(self, pdf: bytes, tei_fixture: str) -> None:
-        self.tei_by_hash[sha256(pdf)] = (TEI / tei_fixture).read_text()
-
-    def handle(self, request: httpx.Request) -> httpx.Response:
-        request.read()
-        head = f"Content-Type: {request.headers['content-type']}\r\n\r\n".encode()
-        form = BytesParser(policy=HTTP).parsebytes(head + request.content)
-        fields: list[tuple[str, str]] = []
-        upload = b""
-        for part in form.iter_parts():
-            name = str(part.get_param("name", header="content-disposition"))
-            payload = part.get_payload(decode=True)
-            assert isinstance(payload, bytes)
-            if name == "input":
-                upload = payload
-            else:
-                fields.append((name, payload.decode()))
-        self.requests.append((str(request.url), fields))
-        if str(request.url) != GROBID_URL or sha256(upload) not in self.tei_by_hash:
-            return httpx.Response(500, text="unexpected request", request=request)
-        return httpx.Response(200, text=self.tei_by_hash[sha256(upload)], request=request)
-
-
-@pytest.fixture
-def grobid(monkeypatch: pytest.MonkeyPatch, no_network) -> FakeGrobid:
-    fake = FakeGrobid()
-    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", lambda self, request: fake.handle(request))
-    return fake
-
-
-@pytest.fixture
-def wechsel(tmp_path: Path, grobid: FakeGrobid) -> Path:
-    """A Seed PDF named as in data/pdfs/seeds, whose TEI the fake service knows."""
-    pdf = tmp_path / "pdfs" / "wechsel_2112.06598v2.pdf"
-    pdf.parent.mkdir()
-    pdf.write_bytes(fake_pdf("wechsel v2"))
-    grobid.serve(pdf.read_bytes(), "wechsel_2112.06598v2.tei.xml")
-    return pdf
-
-
-def run_parse(tmp_path: Path, *files: Path, config: Path = REPO_CONFIG) -> None:
-    main(
-        [
-            "parse",
-            "--config", str(config),
-            "--cache", str(tmp_path / "cache"),
-            "--report", str(tmp_path / "parse-report.md"),
-            "--files", *map(str, files),
-        ]
-    )  # fmt: skip
-
-
-def config_with_budget(tmp_path: Path, token_budget: int) -> Path:
-    """The repo's parse config with another token budget, written beside the test's other files."""
-    text = REPO_CONFIG.read_text().replace("token_budget = 350", f"token_budget = {token_budget}")
-    text = text.replace('tokenizer_file = "', f'tokenizer_file = "{REPO_CONFIG.parent}/')
-    path = tmp_path / f"parse-{token_budget}.toml"
-    path.write_text(text)
-    return path
+from parse_support import GROBID_URL, REPO_CONFIG, TEI, WECHSEL_TITLE, config_with_budget, fake_pdf, read_chunks, run_parse, sha256
 
 
 def section_chunks(chunks: list[dict], number: str) -> list[dict]:
     """The text Chunks of one Section (tables and captions are covered in test_parse_elements.py)."""
     return [c for c in chunks if c["section_number"] == number and c["kind"] == "text"]
-
-
-def read_chunks(tmp_path: Path, pdf: Path) -> list[dict]:
-    """The Chunks the parse cache holds for one file."""
-    [path] = (tmp_path / "cache" / sha256(pdf.read_bytes())).glob("*.chunks.jsonl")
-    return [json.loads(line) for line in path.read_text().splitlines()]
 
 
 def test_a_seed_file_gets_its_pinned_id_from_its_name_and_its_hash_on_the_spot(tmp_path, wechsel):

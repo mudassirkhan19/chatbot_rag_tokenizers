@@ -9,17 +9,9 @@ appendices and acknowledgements in the body, as GROBID gives them for some Seeds
 import json
 from pathlib import Path
 
-import httpx
 import pytest
 
-from test_parse import WECHSEL_TITLE, FakeGrobid, config_with_budget, fake_pdf, read_chunks, run_parse, sha256
-
-
-@pytest.fixture
-def grobid(monkeypatch: pytest.MonkeyPatch, no_network) -> FakeGrobid:
-    fake = FakeGrobid()
-    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", lambda self, request: fake.handle(request))
-    return fake
+from parse_support import WECHSEL_TITLE, FakeGrobid, config_with_budget, fake_pdf, read_chunks, run_parse, sha256
 
 
 def serve(tmp_path: Path, grobid: FakeGrobid, fixture: str) -> Path:

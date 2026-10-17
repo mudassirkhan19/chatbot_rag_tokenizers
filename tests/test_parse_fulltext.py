@@ -7,11 +7,10 @@ that the fake GROBID service maps to committed TEI fixtures.
 import json
 from pathlib import Path
 
-import httpx
 import pytest
 
 from chatbot_rag_tokenizers.cli import main
-from test_parse import REPO_CONFIG, FakeGrobid, fake_pdf, sha256
+from parse_support import REPO_CONFIG, FakeGrobid, fake_pdf, sha256
 
 
 def record_line(edition_id: str, file: str, pdf: bytes | None) -> dict:
@@ -73,13 +72,6 @@ class Corpus:
         chunks = [json.loads(line) for line in path.read_text().splitlines()]
         assert chunks
         return {(c["pinned_id"], c["version"], c["file_sha256"]) for c in chunks}
-
-
-@pytest.fixture
-def grobid(monkeypatch: pytest.MonkeyPatch, no_network) -> FakeGrobid:
-    fake = FakeGrobid()
-    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", lambda self, request: fake.handle(request))
-    return fake
 
 
 @pytest.fixture
