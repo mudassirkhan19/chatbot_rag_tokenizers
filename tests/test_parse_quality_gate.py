@@ -85,13 +85,17 @@ def test_a_failure_is_permanent_for_the_file_parser_and_config(tmp_path, wechsel
 
     # A rerun asks GROBID for nothing, even though it would now answer, and reports the same outcome.
     del grobid.errors[sha256(broken.read_bytes())]
-    run_parse(tmp_path, wechsel, broken, near_empty)
+    with pytest.raises(SystemExit) as raised:
+        run_parse(tmp_path, wechsel, broken, near_empty)
 
     assert len(grobid.requests) == 3
     assert chunk_files(tmp_path, broken) == []
     assert report(tmp_path) == first_report
-    # Recorded failures are not new errors, so the rerun succeeds, but it says they are there.
-    assert "2 files failed on an earlier run and were not retried; the parse report gives their reasons" in capsys.readouterr().err
+    # Recorded failures still count: they are listed at the end and the exit is non-zero.
+    message = str(raised.value.code)
+    assert message.startswith("parse: 2 files failed, on an earlier run.")
+    assert "2401.00001v1: too little body text (1594 characters, minimum 2000)" in message
+    assert "2401.00003v1: GROBID error (HTTP 500: [BAD_INPUT_DATA]" in message
 
 
 def test_an_unreachable_grobid_stops_the_run_straight_away_and_points_to_grobid_up(tmp_path, wechsel, grobid):

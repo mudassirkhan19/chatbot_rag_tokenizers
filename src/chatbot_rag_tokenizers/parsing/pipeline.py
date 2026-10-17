@@ -15,31 +15,39 @@ from .tokens import TokenCounter
 
 
 class ParseErrors(RuntimeError):
-    """Every file this run failed, worded for the person running it."""
+    """Every file that failed, this run or an earlier one, worded for the person running it."""
 
-    def __init__(self, failed: list[FileResult]) -> None:
-        self.failed = failed
-        lines = [f"{_files(len(failed))} failed. They have no Chunks; the parse report gives each one's reason."]
-        lines += [f"  {result.pinned_id}: {result.failure}" for result in failed]
+    def __init__(self, new: list[FileResult], earlier: list[FileResult]) -> None:
+        self.new, self.earlier = new, earlier
+        lines = []
+        if new:
+            lines.append(f"{_files(len(new))} failed. They have no Chunks; the parse report gives each one's reason.")
+            lines += [f"  {result.pinned_id}: {result.failure}" for result in new]
+        if earlier:
+            lines.append(f"{_files(len(earlier))} failed, on an earlier run. They were not retried and have no Chunks.")
+            lines += [f"  {result.pinned_id}: {result.failure}" for result in earlier]
         super().__init__("\n".join(lines))
 
 
 def parse(config: ParseConfig, files: list[InputFile], cache_dir: Path, report_path: Path, limit: int | None = None) -> None:
     """Parse each file in pinned-id order, the first ``limit`` of them when it is given.
 
-    A file that fails the quality gate gets no Chunks and doesn't stop the run: this run's failures are
-    raised together as ParseErrors once the report is written. An unreachable GROBID stops the run at once.
+    A file that fails the quality gate gets no Chunks and doesn't stop the run: every failure, this run's
+    and those recorded by an earlier run, is raised together as ParseErrors once the report is written.
+    An unreachable GROBID stops the run at once.
     """
     cache = ParseCache(cache_dir, config.grobid.parser_key, config.chunking.key)
     client = GrobidClient(config.grobid)
     counter = TokenCounter(config.chunking)
     results: list[FileResult] = []
     new_failures: list[FileResult] = []
+    earlier_failures: list[FileResult] = []
     versions: set[str] = set()
     for file in sorted(files, key=lambda f: (f.identity.pinned_id, f.identity.sha256))[:limit]:
         pinned_id, sha256 = file.identity.pinned_id, file.identity.sha256
         if recorded := cache.failure(sha256):
-            results.append(FileResult(pinned_id, sha256, recorded.sections, 0, recorded.failure))
+            earlier_failures.append(FileResult(pinned_id, sha256, recorded.sections, 0, recorded.failure))
+            results.append(earlier_failures[-1])
             continue
         failure: Failure | None
         try:
@@ -65,10 +73,8 @@ def parse(config: ParseConfig, files: list[InputFile], cache_dir: Path, report_p
         print(f"{pinned_id}: {sections} Sections, {len(chunks)} Chunks")
     write_report(report_path, config, versions, results)
     print(f"parse: {len(results)} files, {sum(r.chunks for r in results)} Chunks; report in {report_path}")
-    if earlier := sum(1 for result in results if result.failure) - len(new_failures):
-        print(f"parse: {_files(earlier)} failed on an earlier run and were not retried; the parse report gives their reasons", file=sys.stderr)
-    if new_failures:
-        raise ParseErrors(new_failures)
+    if new_failures or earlier_failures:
+        raise ParseErrors(new_failures, earlier_failures)
 
 
 def _files(count: int) -> str:
