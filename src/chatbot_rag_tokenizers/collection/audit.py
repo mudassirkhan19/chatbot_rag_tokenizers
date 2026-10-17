@@ -23,13 +23,13 @@ import sys
 import time
 from collections import Counter
 from collections.abc import Iterable
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 from . import judge
 from .config import AuditModel, JudgeConfig, ScopeConfig
 from .editions import Edition
-from .judge import prompt_hash
+from .judge import question_hash, split_pin
 from .manifest import judge_includes
 from .pipeline import SAVE_VERDICTS_EVERY, Assessed, assess
 from .rules import RuleFilter
@@ -147,8 +147,8 @@ class AuditVerdicts:
                     verdict = AuditVerdict(**json.loads(line))
                     self._verdicts[verdict.key] = verdict
 
-    def get(self, edition_id: str, model: AuditModel, prompt: str) -> AuditVerdict | None:
-        return self._verdicts.get((edition_id, model.model, model.revision, prompt_hash(prompt)))
+    def get(self, edition_id: str, judge_config: JudgeConfig) -> AuditVerdict | None:
+        return self._verdicts.get((edition_id, judge_config.model, judge_config.revision, question_hash(judge_config)))
 
     def put(self, verdict: AuditVerdict) -> None:
         self._verdicts[verdict.key] = verdict
@@ -187,18 +187,24 @@ def read_audit_set(path: Path, config: ScopeConfig) -> tuple[list[Labelled], lis
     return result, rows
 
 
+def judge_config(config: ScopeConfig, model: AuditModel) -> JudgeConfig:
+    """The [judge] settings, prompt and decision question with ``model`` in place of the judge's own."""
+    return replace(config.judge, model=model.model, revision=model.revision, backend=model.backend)
+
+
 def score_missing(config: ScopeConfig, model: AuditModel, editions: list[Edition], verdicts: AuditVerdicts) -> None:
     """Score the Editions that have no verdict from ``model``, timing each one."""
-    missing = [e for e in editions if verdicts.get(e.edition_id, model, config.judge.prompt) is None]
+    model_config = judge_config(config, model)
+    missing = [e for e in editions if verdicts.get(e.edition_id, model_config) is None]
     if not missing:
         return
-    scorer = judge.load_judge(JudgeConfig(model.model, model.revision, config.judge.threshold, config.judge.prompt))
-    current_prompt = prompt_hash(config.judge.prompt)
+    scorer = judge.load_judge(model_config)
+    current_question = question_hash(model_config)
     for done, edition in enumerate(missing, 1):
         start = time.perf_counter()
         [p_yes] = scorer.score([edition])
         seconds = round(time.perf_counter() - start, 3)
-        verdicts.put(AuditVerdict(edition.edition_id, model.model, model.revision, current_prompt, p_yes, seconds))
+        verdicts.put(AuditVerdict(edition.edition_id, model.model, model.revision, current_question, p_yes, seconds))
         if done % SAVE_VERDICTS_EVERY == 0 or done == len(missing):
             verdicts.save()
             print(f"  audit: {model.model} scored {done}/{len(missing)}", file=sys.stderr)
@@ -230,27 +236,32 @@ def _model_section(
     verdicts: AuditVerdicts,
     thresholds: list[float],
     rule_pass_population: int,
-) -> list[str]:
+) -> tuple[list[str], str]:
+    """The model's section of the report, and its row in the comparison: its best threshold and run time."""
     lines = [f"## Rules and judge: {model.model}@{model.revision}", ""]
+    digest, runtime = split_pin(model.revision)
+    name = f"{model.model}@{digest[:8]}" + (f"@{runtime}" if runtime else "")
     passes = [row for row in rows if row.passes_rules]
-    found = {row.edition.edition_id: verdicts.get(row.edition.edition_id, model, config.judge.prompt) for row in passes}
+    model_config = judge_config(config, model)
+    found = {row.edition.edition_id: verdicts.get(row.edition.edition_id, model_config) for row in passes}
     missing = sum(verdict is None for verdict in found.values())
     if missing:
         return lines + [
             f"No verdicts for {missing} of the {len(passes)} rule passes. Run `audit report` without --no-judge to score them.",
             "",
-        ]
+        ], f"| {name} | no verdicts | | | | | |"
     scored = [verdict for verdict in found.values() if verdict is not None]
     per_candidate = sum(verdict.seconds for verdict in scored) / len(scored) if scored else 0.0
+    minutes = per_candidate * rule_pass_population / 60
     lines += [
         f"Scoring took {per_candidate:.2f} s per Candidate over {len(scored)} rule passes:"
-        f" about {per_candidate * rule_pass_population / 60:.1f} min for the {rule_pass_population} rule passes"
+        f" about {minutes:.1f} min for the {rule_pass_population} rule passes"
         " in the population, plus loading the model.",
         "",
         "| threshold | precision | recall | F1 |",
         "|---|---|---|---|",
     ]
-    best: tuple[float, float] | None = None
+    best: tuple[float, float, float | None, float | None] | None = None
     for threshold in thresholds:
 
         def included(row: Labelled) -> bool:
@@ -260,11 +271,14 @@ def _model_section(
         precision, recall, f1 = metrics((row, included(row)) for row in rows)
         lines.append(f"| {threshold:g} | {_cell(precision)} | {_cell(recall)} | {_cell(f1)} |")
         if f1 is not None and (best is None or f1 > best[0]):
-            best = (f1, threshold)
+            best = (f1, threshold, precision, recall)
     lines.append("")
-    if best is not None:
-        lines += [f"Best F1 {best[0]:.3f} at threshold {best[1]:g}.", ""]
-    return lines
+    if best is None:
+        return lines, f"| {name} | n/a | | | | {per_candidate:.2f} | {minutes:.1f} |"
+    f1, threshold, precision, recall = best
+    lines += [f"Best F1 {f1:.3f} at threshold {threshold:g}.", ""]
+    row = f"| {name} | {threshold:g} | {_cell(precision)} | {_cell(recall)} | {f1:.3f} | {per_candidate:.2f} | {minutes:.1f} |"
+    return lines, row
 
 
 def report(
@@ -321,8 +335,20 @@ def report(
         f"| {_cell(precision)} | {_cell(recall)} | {_cell(f1)} |",
         "",
     ]
-    for model in config.audit_models:
-        lines += _model_section(config, model, rows, verdicts, thresholds, rule_pass_population)
+    sections = [_model_section(config, model, rows, verdicts, thresholds, rule_pass_population) for model in config.audit_models]
+    if sections:
+        lines += [
+            "## Model comparison",
+            "",
+            "Each model at the threshold with its best F1, and its run time over every rule pass in the population.",
+            "",
+            "| model | threshold | precision | recall | F1 | s per Candidate | full run (min) |",
+            "|---|---|---|---|---|---|---|",
+            *(row for _, row in sections),
+            "",
+        ]
+    for section, _ in sections:
+        lines += section
     lines.append("The best threshold is chosen on this same Audit set, so its F1 is an optimistic estimate.")
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text("\n".join(lines) + "\n", encoding="utf-8")

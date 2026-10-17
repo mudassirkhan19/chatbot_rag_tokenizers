@@ -13,7 +13,7 @@ from .acl_anthology import AclAnthologySource
 from .arxiv import ArxivSource
 from .config import ScopeConfig, is_citation_channel, is_keyword_channel
 from .editions import Edition, combine
-from .judge import JudgeVerdict, VerdictCache, prompt_hash
+from .judge import JudgeVerdict, VerdictCache, question_hash
 from .manifest import manifest_row, write_manifest
 from .openalex import OpenAlexSource
 from .rules import RuleFilter, RuleOutcome
@@ -187,11 +187,11 @@ def judge_candidates(
         return verdicts
 
     model = judge.load_judge(config.judge)
-    current_prompt = prompt_hash(config.judge.prompt)
+    current_question = question_hash(config.judge)
     for start in range(0, len(to_score), SAVE_VERDICTS_EVERY):
         batch = to_score[start : start + SAVE_VERDICTS_EVERY]
         for edition, p_yes in zip(batch, model.score(batch), strict=True):
-            verdict = JudgeVerdict(edition.edition_id, config.judge.model, config.judge.revision, current_prompt, p_yes)
+            verdict = JudgeVerdict(edition.edition_id, config.judge.model, config.judge.revision, current_question, p_yes)
             cache.put(verdict)
             verdicts[edition.edition_id] = verdict
         cache.save()

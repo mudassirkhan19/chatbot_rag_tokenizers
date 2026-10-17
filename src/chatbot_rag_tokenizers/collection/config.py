@@ -5,6 +5,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 SOURCES = {"arxiv", "semantic-scholar", "openalex"}
+# transformers: a Hugging Face model pinned to a commit. ollama: a chat model served by a local
+# Ollama; ollama-decision: an Ollama decision model asked [judge.decision]. Both Ollama backends
+# pin `<digest>@<Ollama version>`.
+JUDGE_BACKENDS = {"transformers", "ollama", "ollama-decision"}
 
 
 @dataclass(frozen=True)
@@ -59,17 +63,30 @@ class ExclusionPattern:
 
 
 @dataclass(frozen=True)
+class DecisionQuestion:
+    """The scope question as an Ollama decision model takes it: a state and one true/false question."""
+
+    state: str  # the text judged, with {title} and {abstract} placeholders
+    instructions: str  # the question
+    true: str  # what a true answer means
+    false: str  # what a false answer means
+
+
+@dataclass(frozen=True)
 class JudgeConfig:
-    model: str  # Hugging Face model id
-    revision: str  # pinned commit of the model repository
+    model: str  # Hugging Face model id, or Ollama model name
+    revision: str  # pinned commit of the model repository, or <digest>@<Ollama version> for Ollama
     threshold: float  # P("Yes") at or above this includes a Candidate
     prompt: str  # with {title} and {abstract} placeholders
+    backend: str = "transformers"  # one of JUDGE_BACKENDS
+    decision: DecisionQuestion | None = None  # the question for the ollama-decision backend
 
 
 @dataclass(frozen=True)
 class AuditModel:
-    model: str  # Hugging Face model id
-    revision: str  # pinned commit of the model repository
+    model: str  # Hugging Face model id, or Ollama model name
+    revision: str  # pinned commit of the model repository, or <digest>@<Ollama version> for Ollama
+    backend: str = "transformers"  # one of JUDGE_BACKENDS
 
 
 @dataclass(frozen=True)
@@ -122,7 +139,9 @@ def load_config(path: Path) -> ScopeConfig:
 
     if "judge" not in raw:
         raise ConfigError("missing [judge] section")
-    judge = JudgeConfig(**raw["judge"])
+    judge_settings = dict(raw["judge"])
+    decision = judge_settings.pop("decision", None)
+    judge = JudgeConfig(**judge_settings, decision=DecisionQuestion(**decision) if decision else None)
     if not 0.0 <= judge.threshold <= 1.0:
         raise ConfigError(f"judge threshold {judge.threshold} is not between 0 and 1")
     for placeholder in ("{title}", "{abstract}"):
@@ -132,7 +151,16 @@ def load_config(path: Path) -> ScopeConfig:
     # Without [[audit.models]], the Audit set measures the configured judge alone.
     audit_models = [AuditModel(**model) for model in raw.get("audit", {}).get("models", [])]
     if not audit_models:
-        audit_models = [AuditModel(judge.model, judge.revision)]
+        audit_models = [AuditModel(judge.model, judge.revision, judge.backend)]
+    for backend in {judge.backend} | {model.backend for model in audit_models}:
+        if backend not in JUDGE_BACKENDS:
+            raise ConfigError(f"unknown judge backend {backend!r}; use one of {sorted(JUDGE_BACKENDS)}")
+        if backend == "ollama-decision" and judge.decision is None:
+            raise ConfigError("the ollama-decision backend needs a [judge.decision] question")
+    if judge.decision is not None:
+        for placeholder in ("{title}", "{abstract}"):
+            if placeholder not in judge.decision.state:
+                raise ConfigError(f"[judge.decision] state has no {placeholder} placeholder")
 
     rules = raw.get("rules", {})
     sources = raw.get("sources", {})

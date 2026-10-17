@@ -23,17 +23,17 @@ This runs the keyword queries in `config/scope.toml` against arXiv, Semantic Sch
 - **ACL Anthology Editions are venue rows of their own.** Every ACL ID a source reported, directly or as an ACL DOI (`10.18653/v1/…`), becomes a venue Edition named by its ACL ID, with its venue, year, `licence` and `pdf_link` from the Anthology. When only the preprint reported it, the venue row is new and is linked to the preprint only by the `acl_id` and `doi` both rows carry. ACL pages are fetched at most once a second.
 - **arXiv Editions that pass the rules are pinned to their latest Version**, whichever channel found them. A rule-rejected one keeps the id its source reported. `versions` lists every Version with its submission time, and `arxiv_comments` and `licence` (`unknown` when arXiv has none) come from the same arXiv record.
 - **Rejected Candidates keep their row.** `relevance_stage` is `rules` and `rule_pattern` names the pattern that fired, or `judge` with the judge's probability and the threshold it was compared with.
-- **The judge is a local model.** Candidates that pass the rules are scored by the open-weight model set in `[judge]`: P("Yes") from its next-token logits for "Yes" and "No". The threshold is applied when the manifest is written, so changing it needs no re-scoring. Changing the model, its revision or the prompt invalidates the cached verdicts.
+- **The judge is a local model.** Candidates that pass the rules are scored by the open-weight model set in `[judge]`: Tev1 4B, a decision model served by [Ollama](https://ollama.com), which gives P("Yes") for the `[judge.decision]` question (ADR 0021). Chat models give P("Yes") from their next-token logits for "Yes" and "No", run with transformers or Ollama. The threshold is applied when the manifest is written, so changing it needs no re-scoring. Changing the model, its revision (for Ollama, the model digest and the Ollama version), the prompt or the decision question invalidates the cached verdicts.
 
 The command prints the counts at each stage, including, per Discovery channel and per source, the Editions nothing else found and how many of those pass the rules and the judge. Options: `--config`, `--snapshot` and `--manifest` change the paths. `--refresh` re-scores every Candidate that passes the rules, and `--no-judge` never loads the model, so Candidates without a cached verdict stay `pending`.
 
-Scoring needs torch and transformers, which are kept out of the default install:
+Scoring with the default judge needs Ollama at the pinned version (0.40.5) and the model:
 
 ```sh
-uv sync --group judge
+ollama pull tev1:4b
 ```
 
-The first scoring run downloads the model weights (about 8 GB for the default model) from Hugging Face. Until the full judge run is committed (#11), most Candidates have no cached verdict, so run `collect --no-judge` to rebuild the manifest without the model.
+Scoring the full set takes about 1.5 h on an M1 Max. A transformers model in `[[audit.models]]` also needs torch and transformers, which are kept out of the default install (`uv sync --group judge`), and downloads its weights from Hugging Face. Until the full judge run is committed (#11), most Candidates have no cached verdict, so run `collect --no-judge` to rebuild the manifest without the model.
 
 ## Fetch the full texts
 
@@ -61,14 +61,14 @@ uv run chatbot-rag-tokenizers audit report   # precision, recall and F1 by thres
 
 - **Export** draws an even share from each stratum (rule rejects, judge rejects, judge accepts, and rule passes still `pending` a verdict, which get no draft), with a fixed `--seed`. Export after the judge has scored the corpus (#11), or most rule passes will be pending. `label` and `reason` start as the pipeline's own verdict, and `draft_label` and `draft_reason` keep it. The export never overwrites an existing file unless you pass `--force`.
 - **Label** serves a page at http://localhost:8765. It shows each Candidate's abstract, the pipeline's verdict in plain words, and the current label, and saves each change straight to the file. `labelled_by` records who set each label (`draft`, `agent` or `developer`), and `review_note` says why a row was flagged for checking.
-- **Report** writes `data/audit/report.md`. It covers the rule stage alone and rules plus each model in `[[audit.models]]` (the `[judge]` model when there are none) at thresholds 0.1 to 0.9, with the scoring time per Candidate. Each row is weighted by the size of its stratum, so the figures describe all Candidates, not the sample. Missing verdicts are scored and cached in `data/audit/verdicts.jsonl` (`uv sync --group judge`); `--no-judge` reports cached verdicts only.
+- **Report** writes `data/audit/report.md`. It covers the rule stage alone and rules plus each model in `[[audit.models]]` (the `[judge]` model when there are none) at thresholds 0.1 to 0.9 (`--thresholds` sets others), with a comparison of each model at its best threshold and the scoring time per Candidate. Each row is weighted by the size of its stratum, so the figures describe all Candidates, not the sample. Missing verdicts are scored and cached in `data/audit/verdicts.jsonl` (`uv sync --group judge`); `--no-judge` reports cached verdicts only.
 
 The committed Audit set has 180 Candidates from the first full run:
 - Three agents labelled them blind, from title, abstract and link only.
 - The developer checked all 37 rows the agents' labels flagged as hard.
 - Together with 11 rows checked by hand before the agents ran, the developer checked 48 rows in all (`labelled_by = developer`).
 
-ADR 0020 has the details. To compare judge models for #1, add the shortlist to `[[audit.models]]` in `config/scope.toml` and rerun `audit report`.
+ADR 0020 has the details. ADR 0021 records the judge models compared on it and the choice of Tev1 4B. To compare another model, add it to `[[audit.models]]` in `config/scope.toml`, pinned, and rerun `audit report`.
 
 ## Tests
 
