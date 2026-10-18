@@ -27,7 +27,7 @@ _CHUNK_IDS = "chunk_ids.json"
 @dataclass(frozen=True)
 class DenseConfig:
     model: str  # the Hugging Face repo of the embedding model
-    revision: str  # the commit of that repo
+    revision: str  # the commit of that repo (a Hugging Face commit, not an arXiv Version)
     model_sha256: str  # of its weights file
     query_instruction: str  # put in front of every query, never in front of a Chunk
 

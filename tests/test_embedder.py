@@ -58,7 +58,7 @@ def test_cpu_and_mps_give_the_same_top_10(embedders, chunks):
 
     cpu, mps = retrievers["cpu"], retrievers["mps"]
     assert cpu.vectors.shape == (len(chunks), 384)
-    assert np.abs(cpu.vectors - mps.vectors).max() < 1e-5
+    assert np.abs(cpu.vectors - mps.vectors).max() < 1e-6
     for question in questions:
         assert [chunk_id for chunk_id, _ in cpu.query(question, 10)] == [chunk_id for chunk_id, _ in mps.query(question, 10)]
 

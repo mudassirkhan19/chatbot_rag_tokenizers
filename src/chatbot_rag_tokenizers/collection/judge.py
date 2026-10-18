@@ -13,7 +13,7 @@ of what the model was asked: the prompt, or a decision model's question. A cache
 only while all three still match the config.
 
 torch and transformers are imported only when a Candidate actually needs scoring, so a rerun
-from a complete Snapshot works without them (`uv sync --group judge` installs them).
+from a complete Snapshot never loads them.
 """
 
 import hashlib
@@ -316,6 +316,6 @@ def load_judge(config: JudgeConfig) -> Judge:
         return TransformersJudge(config)
     except ImportError as error:
         raise SystemExit(
-            f"judge: {error.name} is not installed. Run `uv sync --group judge` to score Candidates, "
+            f"judge: {error.name} is not installed. Run `uv sync` to score Candidates, "
             "or pass --no-judge to leave Candidates without a cached verdict pending."
         ) from error

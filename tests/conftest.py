@@ -213,8 +213,8 @@ def fake_embedder(monkeypatch: pytest.MonkeyPatch) -> list[FakeEmbedder]:
     """Every test embeds with FakeEmbedder, so none downloads or loads a model. Returns the embedders made."""
     made: list[FakeEmbedder] = []
 
-    def load(config, device=None):
-        made.append(FakeEmbedder(config.model, config.revision))
+    def load(pin, device=None):
+        made.append(FakeEmbedder(pin.model, pin.revision))
         return made[-1]
 
     monkeypatch.setattr(embedder, "load_embedder", load)

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from chatbot_rag_tokenizers.config import ConfigError, read_table
+from chatbot_rag_tokenizers.parsing.config import SHA256
 
 from .bm25 import BM25Config
 from .dense import DenseConfig
@@ -13,7 +14,6 @@ from .retriever import RetrieverConfig
 
 DEFAULT_PATH = Path("config/retrieval.toml")
 COMMIT = re.compile(r"[0-9a-f]{40}")
-SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
 @dataclass(frozen=True)

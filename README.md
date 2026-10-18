@@ -144,7 +144,7 @@ just evaluate     # score both retrievers on the Evaluation set and write the ev
   - `k1` and `b` are in `[bm25]`.
   - A Chunk that shares no word with the question isn't ranked.
 - **The dense baseline** embeds the same context header plus text with [`BAAI/bge-small-en-v1.5`](https://huggingface.co/BAAI/bge-small-en-v1.5) (ADR 0042).
-  - 384 dimensions and at most 512 tokens, with the same uncased BERT WordPiece vocabulary the chunker counts with, so a Chunk of 350 tokens plus its header fits.
+  - 384 dimensions and at most 512 tokens, with the same uncased BERT WordPiece vocabulary the chunker counts with, so a Chunk of 350 tokens plus its header fits (5 Chunks of the full corpus have headers long enough to be cut; `index` says how many).
   - `[dense]` pins the model's revision and the sha256 of its weights, as the chunking tokenizer is pinned. Both are part of the index's key, so a new pin builds a new dense index and leaves BM25 alone. The first `index` downloads the weights (about 130 MB) into the Hugging Face cache; a weights file with another hash stops it.
   - Each query gets the model card's instruction in front ("Represent this sentence for searching relevant passages: "); Chunks don't.
   - A query is scored against every Chunk by exact dot product over the normalised float32 vectors (about 220 MB for the full corpus), with no vector database.

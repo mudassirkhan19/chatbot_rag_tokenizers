@@ -15,7 +15,7 @@ Spec #31 compares BM25 ([0039](0039-retrieval-tracer-bm25-index-and-evaluate.md)
 
 **The model is `BAAI/bge-small-en-v1.5`.**
 - 384 dimensions, 33M parameters, a 512-token limit.
-- Its vocabulary is BERT base uncased's, the one the chunker counts with (the opt-in test checks that the two vocabularies are equal). A Chunk's 350 tokens plus its header fit within 512, and a longer text is cut at 512.
+- Its vocabulary is BERT base uncased's, the one the chunker counts with (the opt-in test checks that the two vocabularies are equal). A Chunk's 350 tokens plus its header nearly always fit within 512. In the full corpus, 5 of 141,360 header-plus-text inputs are longer (at most 810 tokens, from long headers), and those are cut to their first 512 tokens. The embedder prints how many inputs it cut.
 - `config/retrieval.toml` `[dense]` pins the revision (`5c38ec7c…`) and the sha256 of `model.safetensors`. The weights are checked before loading, and a mismatch stops the run.
 - It is used as the model card specifies: the last layer's [CLS] vector, normalised. Each query gets the instruction "Represent this sentence for searching relevant passages: " in front, and Chunks get nothing in front.
 - What is embedded is what BM25 indexes: the context header, a newline, then the Chunk's text.
@@ -29,7 +29,7 @@ Spec #31 compares BM25 ([0039](0039-retrieval-tracer-bm25-index-and-evaluate.md)
 
 **The cache key.** The dense key hashes the model id, revision, weights hash, query instruction, pooling, token limit and search. A new revision builds a new dense folder and leaves BM25's alone.
 
-**Cost and latency.** The eval report's timings already gave each retriever's build time and its p50/p95 query latency, and they now apply to dense too. For dense, the latency includes embedding the query.
+**Cost and latency.** The eval report's timings already gave each retriever's build time and its p50/p95 query latency, and they now apply to dense too. For dense, the latency includes embedding the query. The embedder embeds one warm-up text when it loads, so MPS's first-pass kernel compilation isn't counted in a query's latency.
 
 **Dependencies.** torch 2.14.1, transformers 5.20.0 and numpy are now project dependencies, because `index` needs them. The `judge` group that held torch and transformers ([0007](0007-local-llm-judge.md)) is removed. `hack/worktree.sh` no longer has `--judge` / `--no-judge`, since every `.venv` has torch now ([0013](0013-working-worktrees.md)).
 
@@ -45,6 +45,6 @@ Spec #31 compares BM25 ([0039](0039-retrieval-tracer-bm25-index-and-evaluate.md)
 ## Consequences
 - `index` builds both retrievers by default. The first run downloads about 130 MB of weights into the Hugging Face cache, and embedding the full corpus takes about 12 minutes on MPS. `--retriever bm25` skips it.
 - A plain `uv sync` now installs torch, about 300 MB more in `.venv`. Reproducing the corpus from the Snapshot still loads no model.
-- `evaluate` loads the model to embed queries. Its first query on MPS is not warmed up, which shows in p95, not p50.
+- `evaluate` loads the model to embed queries.
 - MPS and CPU vectors are not bit-identical, so the scores in a dense ranking can differ in the 7th decimal from machine to machine. The eval report prints ranks, not scores, so it doesn't change.
 - The embedding comparison in #31 adds embedders behind the same boundary, as other `[dense]`-like tables.
