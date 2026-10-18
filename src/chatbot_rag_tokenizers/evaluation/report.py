@@ -79,11 +79,11 @@ def write_eval_report(
         f"- Recall@{RECALL_DEPTH}: the share of a question's Passages held by a Chunk in the top {RECALL_DEPTH}, averaged over questions.",
         f"- MRR@{MRR_DEPTH}: 1 / the rank of the first Chunk holding any Passage, 0 when none is in the top {MRR_DEPTH}.",
         f"- Hit@{HIT_DEPTH}: the share of questions with a Passage held by a Chunk in the top {HIT_DEPTH}.",
-        f"- A Chunk holds a Passage when, after unicode, case, whitespace and hyphenation are normalised, at least"
-        f" {rule.threshold:.0%} of the quote's words match the Chunk's in order, in blocks of at least {MIN_BLOCK} words,"
-        f" and every number in the quote and in the matched span matches (ADR 0040). A match running into the Chunk's"
-        f" first or last word counts only the quote's words on the Chunk's side, and must cover at least"
-        f" {rule.edge_min_words} words. The Chunk may come from any Edition.",
+        f"- A Chunk holds a Passage when, after unicode, case, whitespace and hyphenation are normalised and citations"
+        f" dropped, at least {rule.threshold:.0%} of the quote's words match the Chunk's in order, in blocks of at least"
+        f" {MIN_BLOCK} words (a number may match alone) within twice the quote's length, and every number in the quote"
+        f" matches (ADR 0040). A match running into the Chunk's first or last word counts only the quote's words on the"
+        f" Chunk's side, and must cover at least {rule.edge_min_words} words. The Chunk may come from any Edition.",
         "- The ranking is scored raw: duplicates of one Work all take their slots.",
         "- Unanswerable questions are run but left out of the metrics.",
         f"- A follow-up is run three ways: {FOLLOW_UP_ALONE}, {WITH_HISTORY} (its prior turns, then the follow-up, joined by"

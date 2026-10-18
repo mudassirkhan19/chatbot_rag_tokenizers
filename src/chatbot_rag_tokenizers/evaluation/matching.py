@@ -42,9 +42,6 @@ class MatchingRule:
     threshold: float  # the share of the quote's words that must be in matching blocks
     edge_min_words: int  # the words a match running into a Chunk's edge must cover
 
-    def describe(self) -> dict[str, object]:
-        return {"threshold": self.threshold, "edge_min_words": self.edge_min_words, "min_block_words": MIN_BLOCK}
-
 
 def words(text: str) -> tuple[str, ...]:
     text = unicodedata.normalize("NFKC", text).casefold()
@@ -82,7 +79,7 @@ class Alignment:
     matched: int  # the quote's words in matching blocks
     counted: int  # the quote's words the share is taken over: all of them, or those on the Chunk's side of an edge
     at_edge: bool  # the blocks run into the Chunk's first or last word, and the quote goes on past it
-    numbers_match: bool  # every number in the counted words and in the Chunk's matched span is in a block
+    numbers_match: bool  # every number among the quote's counted words is in a block
 
     def meets(self, rule: MatchingRule) -> bool:
         return (

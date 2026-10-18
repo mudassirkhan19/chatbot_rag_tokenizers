@@ -148,7 +148,7 @@ just evaluate     # score BM25 on the Evaluation set and write the eval report
   - each Passage has the pinned `edition_id` of the file it quotes (such as `2112.06598v2`), its `section` as the context header gives it (`5 Results › 5.3 Is freezing necessary?`) and a verbatim `quote`;
   - a follow-up also has its prior turns (`history`) and a hand-written standalone `rewrite`.
 - **`eval-check`** reads the same corpus as `index`, the Evaluation set, the matching rule in `config/evaluation.toml` (`--eval-config`) and the manifest (`--manifest`, which links the Editions of a Work). It fails:
-  - a Passage whose quote, normalised, isn't in its named Edition and Section;
+  - a Passage whose quote, normalised, isn't in its named Edition and Section (the `edition_id` must be the pinned id of a parsed file, so a quote from an Edition with no parsed PDF fails);
   - a quote over 300 characters;
   - a follow-up without a history or a rewrite, or another question with either;
   - an answerable question without a Passage, or an unanswerable one with a Passage;
