@@ -125,7 +125,7 @@ just index      # build BM25 over the parsed Chunks (uv run chatbot-rag-tokenize
 just evaluate   # score it on the Evaluation set and write the eval report
 ```
 
-`index` builds the retrievers, and `evaluate` scores them on the hand-checked Evaluation set (ADR 0039). Today there is one retriever, BM25, and the corpus is the 34 parsed Seeds.
+`index` builds the retrievers, and `evaluate` scores them on the hand-checked Evaluation set (ADR 0039). Today there is one retriever, BM25, and the corpus is every file the committed parse report lists as parsed: 2,710 files of the full-corpus run.
 
 - **`index` inputs.**
   - The parse report (`data/parse-report.md`, `--parse-report`) decides which files make up the corpus: every file it lists as parsed.
@@ -157,7 +157,7 @@ just evaluate   # score it on the Evaluation set and write the eval report
   - A Chunk holds a Passage when the normalised quote is in its normalised text, whichever Edition the Chunk comes from. This is a stand-in until the real Passage matcher.
 - **Reproducible.** Two runs on the same index give the same report apart from the timings section.
 
-The committed Evaluation set is a first tracer of 3 questions on CC BY Seeds: a single-paper lookup, a multi-paper question and a follow-up. The full set of 36 questions comes with spec #31.
+The committed Evaluation set is a first tracer of 3 questions on CC BY Seeds: a single-paper lookup, a multi-paper question and a follow-up. The full set of 36 questions comes with spec #31. The committed eval report is still the run over the 34 Seeds from before the full-corpus parse; #37 and #38 redo it on the full corpus.
 
 ## Measure the Relevance verdict
 
