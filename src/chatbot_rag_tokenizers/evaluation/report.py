@@ -14,6 +14,7 @@ from pathlib import Path
 from ..retrieval.corpus import Corpus
 from ..retrieval.retriever import RetrieverConfig
 from .evalset import QUESTION_TYPES, Question
+from .matching import MIN_BLOCK, MatchingRule
 from .harness import (
     AS_ASKED,
     FOLLOW_UP_ALONE,
@@ -46,6 +47,7 @@ def write_eval_report(
     questions: Sequence[Question],
     corpus: Corpus,
     runs: Sequence[RetrieverRun],
+    rule: MatchingRule,
 ) -> None:
     counts = ", ".join(f"{sum(1 for q in questions if q.type == kind)} {kind}" for kind in QUESTION_TYPES)
     lines = [
@@ -77,8 +79,11 @@ def write_eval_report(
         f"- Recall@{RECALL_DEPTH}: the share of a question's Passages held by a Chunk in the top {RECALL_DEPTH}, averaged over questions.",
         f"- MRR@{MRR_DEPTH}: 1 / the rank of the first Chunk holding any Passage, 0 when none is in the top {MRR_DEPTH}.",
         f"- Hit@{HIT_DEPTH}: the share of questions with a Passage held by a Chunk in the top {HIT_DEPTH}.",
-        "- A Chunk holds a Passage when the quote is in its text, after unicode (NFKC), case and whitespace are normalised;"
-        " this is a stand-in for the real Passage matcher. The Chunk may come from any Edition.",
+        f"- A Chunk holds a Passage when, after unicode, case, whitespace and hyphenation are normalised, at least"
+        f" {rule.threshold:.0%} of the quote's words match the Chunk's in order, in blocks of at least {MIN_BLOCK} words,"
+        f" and every number in the quote and in the matched span matches (ADR 0040). A match running into the Chunk's"
+        f" first or last word counts only the quote's words on the Chunk's side, and must cover at least"
+        f" {rule.edge_min_words} words. The Chunk may come from any Edition.",
         "- The ranking is scored raw: duplicates of one Work all take their slots.",
         "- Unanswerable questions are run but left out of the metrics.",
         f"- A follow-up is run three ways: {FOLLOW_UP_ALONE}, {WITH_HISTORY} (its prior turns, then the follow-up, joined by"

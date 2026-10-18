@@ -1,0 +1,8 @@
+# Evaluation config: the Passage matching rule `eval-check` and `evaluate` share (ADR 0040).
+#
+# A Chunk holds a Passage when the quote's words line up with the Chunk's, in order, in matching blocks of at
+# least two words covering at least `threshold` of the quote, and every number in the quote and in the matched
+# span is matched. Both texts are normalised first: unicode, case, whitespace and hyphenation.
+[matching]
+threshold = 0.6  # the share of the quote's words that must match; calibrated in ADR 0040
+edge_min_words = 6  # the words a match running into a Chunk's first or last word must cover

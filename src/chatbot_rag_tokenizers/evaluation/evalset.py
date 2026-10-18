@@ -5,6 +5,9 @@
 
 A follow-up also has "history", the prior turns in order, and "rewrite", a hand-written standalone question.
 An unanswerable question has no Passages. A Passage's Section is its path as the context header gives it.
+
+Loading checks only that each line can be read as a question: JSON, known fields and types, unique ids.
+Whether the questions are well formed, and their quotes right, is `eval-check`'s job (ADR 0040).
 """
 
 import json
@@ -71,8 +74,4 @@ def _question(record: object, where: str) -> Question:
         )
     except (KeyError, TypeError) as error:
         raise EvaluationSetError(f"{where}: missing or malformed field {error}") from error
-    if question.answerable != bool(question.passages):
-        raise EvaluationSetError(f"{where}: {question.id} is {question.type} but has {len(question.passages)} Passages")
-    if (question.type == "follow-up") != bool(question.history and question.rewrite):
-        raise EvaluationSetError(f"{where}: {question.id}: a follow-up, and only a follow-up, has a history and a rewrite")
     return question
