@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 from ..retrieval.retriever import Retriever
 from .evalset import Question
-from .matching import holds
+from .matching import MatchingRule, holds
 
 RECALL_DEPTH = HIT_DEPTH = 5
 MRR_DEPTH = 10
@@ -57,14 +57,14 @@ def queries(question: Question) -> list[tuple[str, str]]:
     ]
 
 
-def score(questions: Sequence[Question], retriever: Retriever, chunk_texts: Mapping[str, str]) -> list[Scored]:
+def score(questions: Sequence[Question], retriever: Retriever, chunk_texts: Mapping[str, str], rule: MatchingRule) -> list[Scored]:
     scored = []
     for question in questions:
         for query_kind, text in queries(question):
             started = time.perf_counter()
             ranking = retriever.query(text, MRR_DEPTH)
             seconds = time.perf_counter() - started
-            held = [[holds(chunk_texts[chunk_id], passage.quote) for passage in question.passages] for chunk_id, _ in ranking]
+            held = [[holds(chunk_texts[chunk_id], passage.quote, rule) for passage in question.passages] for chunk_id, _ in ranking]
             first_hit = next((rank for rank, row in enumerate(held, start=1) if any(row)), None)
             found = sum(1 for column in zip(*held[:RECALL_DEPTH]) if any(column))
             scored.append(Scored(question, query_kind, first_hit, found, seconds))

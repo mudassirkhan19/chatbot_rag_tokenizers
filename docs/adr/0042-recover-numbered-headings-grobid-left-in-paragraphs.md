@@ -1,4 +1,4 @@
-# 0041. Recover numbered headings GROBID left in paragraphs
+# 0042. Recover numbered headings GROBID left in paragraphs
 
 - **Date:** 2026-10-18
 - **Status:** Accepted

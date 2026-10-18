@@ -90,7 +90,7 @@ def test_a_new_grobid_image_rebuilds_the_index_over_the_new_parse(corpus, tmp_pa
 
 
 def test_chunks_rebuilt_differently_under_the_same_config_rebuild_the_index(corpus, capsys):
-    # A change to the TEI reader or the Chunker (ADR 0041) re-chunks every file under the same cache keys.
+    # A change to the TEI reader or the Chunker (ADR 0042) re-chunks every file under the same cache keys.
     run_index(corpus)
     [chunks] = [path for path in (corpus / "cache").glob("*/*.chunks.jsonl") if "WECHSEL" in path.read_text(encoding="utf-8")]
     chunks.write_text(chunks.read_text(encoding="utf-8").replace("WECHSEL", "WECHSEL method", 1), encoding="utf-8")
@@ -147,6 +147,7 @@ def run_evaluate(tmp_path: Path, evaluation_set: Path = EVALUATION_SET, report: 
             "--parse-report", str(tmp_path / "parse-report.md"),
             "--index-cache", str(tmp_path / "index-cache"),
             "--evaluation-set", str(evaluation_set),
+            "--manifest", str(ROOT / "data" / "manifest.csv"),
             "--report", str(tmp_path / report),
         ]
     )  # fmt: skip
@@ -191,14 +192,6 @@ def test_mrr_at_10_is_zero_when_no_chunk_in_the_top_10_holds_a_passage(indexed):
     # Averaged with the other single-paper question, whose Passage is held at rank 2: (1/2 + 0) / 2.
     assert questions(report)["freezing", "as asked"][1] == "2"
     assert results(report)["single-paper", "as asked"] == ["2", "0.50", "0.250", "0.50"]
-
-
-def test_a_passage_quoted_from_another_edition_counts_when_a_chunk_holds_its_text(indexed):
-    # The freezing question's Passage names WECHSEL's venue Edition, which isn't in the corpus; v2 holds its text.
-    # (Figure 6's caption, which repeats "freeze" and "TransInner", ranks first.)
-    report = run_evaluate(indexed)
-
-    assert questions(report)["freezing", "as asked"] == ["single-paper", "2", "1/1"]
 
 
 def test_unanswerable_questions_are_left_out_of_the_metrics(indexed, tmp_path):

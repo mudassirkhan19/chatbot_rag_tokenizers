@@ -1,7 +1,7 @@
 # 0028. Element rules: tables, captions, references, appendices and the Chunk kinds
 
 - **Date:** 2026-10-18
-- **Status:** Accepted. Amended by [0041](0041-recover-numbered-headings-grobid-left-in-paragraphs.md): a numbered heading GROBID left in a body paragraph is recovered as a Section before these rules run.
+- **Status:** Accepted. Amended by [0042](0042-recover-numbered-headings-grobid-left-in-paragraphs.md): a numbered heading GROBID left in a body paragraph is recovered as a Section before these rules run.
 
 ## Context
 The parse tracer ([0027](0027-parse-tracer-paragraph-packing-pinned-tokenizer-and-parse-cache.md)) turned only body paragraphs into Chunks. Issue #19 (part of #14) asks for a rule for each kind of element GROBID finds. Numbers that appear only in tables and findings stated only in captions must be retrievable. Bibliographies, which mention every keyword, and acknowledgements must stay out of search. The bibliography is still worth keeping for the duplicate stage. The assignment also asks us to explain what happens to tables, equations, figure captions and reference lists.

@@ -1,4 +1,4 @@
-"""Numbered headings GROBID left inside a paragraph (#41, ADR 0041).
+"""Numbered headings GROBID left inside a paragraph (#41, ADR 0042).
 
 GROBID sometimes doesn't recognise a heading and leaves it in a paragraph: at the start
 (``<s>2 Related Work Our work ...``), as a paragraph of its own, or at the end of a sentence

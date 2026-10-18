@@ -7,7 +7,7 @@
 The chunking key hashes the chunking config and the retriever key hashes the retriever's settings, so a
 change to either builds a new index beside the old one. The record names the corpus's files and a hash of their
 Chunks too, so an index built before the parse report gained or lost files, or before the Chunks were rebuilt
-differently (a TEI reader or Chunker change, ADR 0041), is rebuilt. The record is written last: an interrupted
+differently (a TEI reader or Chunker change, ADR 0042), is rebuilt. The record is written last: an interrupted
 build leaves no record, and the next run builds again.
 """
 
