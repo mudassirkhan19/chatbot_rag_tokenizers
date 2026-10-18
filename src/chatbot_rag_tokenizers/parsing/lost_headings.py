@@ -64,8 +64,7 @@ class Typography:
     per point of box by the boxes' height."""
 
     def __init__(self, divs: list[ET.Element]) -> None:
-        lines = [box.height for div in divs for p in div.iter(f"{TEI}p") for box in _boxes(p)]
-        self.body_line = statistics.median(lines) if lines else 0.0
+        self.body_line = _median([box.height for div in divs for p in div.iter(f"{TEI}p") for box in _boxes(p)])
         heads = [head for div in divs if (head := div.find(f"{TEI}head")) is not None]
         self._heads: list[tuple[float, float, float]] = []  # (height, total box width, glyph width of the text)
         for head in heads:
@@ -91,7 +90,7 @@ def split_lost_headings(div: ET.Element, last_number: str, typography: Typograph
     if head is not None and NUMBER.fullmatch(number := (head.get("n") or "").strip()):
         last_number = number.rstrip(".")
     lines = [box.height for p in div.iter(f"{TEI}p") for box in _boxes(p)]
-    finder = _Finder(max(typography.body_line, statistics.median(lines) if lines else 0.0), typography)
+    finder = _Finder(max(typography.body_line, _median(lines)), typography)
     parts = [ET.Element(div.tag, div.attrib)]
     for child in div:
         rest: ET.Element | None = child
@@ -109,7 +108,7 @@ def split_lost_headings(div: ET.Element, last_number: str, typography: Typograph
 
 @dataclass(frozen=True)
 class _Finder:
-    body: float  # height of the body lines, in points
+    body_line: float  # height of the body lines, in points: the document's or the div's, whichever is taller
     typography: Typography
 
     def find(self, p: ET.Element, last_number: str) -> tuple[ET.Element | None, ET.Element, ET.Element | None] | None:
@@ -118,16 +117,18 @@ class _Finder:
         for index, sentence in enumerate(sentences):
             if index == 0 and (found := self._at_start(sentence, last_number)) and _stands_out(p, found[0]):
                 heading, count = found
-                rest = _cut(sentence, heading, lambda text: _without_first_words(text, count), first=True)
-                return None, heading, _paragraph(p, [rest, *sentences[1:]], heading)
+                cut = _cut(sentence, lambda text: _without_first_words(text, count), at_start=True)
+                return None, heading, _paragraph(p, [cut, *sentences[1:]], heading)
             if (found := self._at_end(sentence, last_number)) and _stands_out(p, found[0]):
                 heading, count = found
-                rest = _cut(sentence, heading, lambda text: _without_last_words(text, count), first=False)
-                return _paragraph(p, [*sentences[:index], rest], heading), heading, _paragraph(p, sentences[index + 1 :], heading)
+                cut = _cut(sentence, lambda text: _without_last_words(text, count), at_start=False)
+                before = _paragraph(p, [*sentences[:index], cut], heading)
+                return before, heading, _paragraph(p, sentences[index + 1 :], heading)
         return None
 
     def _at_start(self, sentence: ET.Element, last_number: str) -> tuple[ET.Element, int] | None:
-        """The heading that opens the sentence, and its number of words: as many first words as fill its first tall boxes."""
+        """The heading that opens the sentence, and its number of words: as many first words as fill its first
+        tall boxes."""
         leading = sentence.text or ""  # only the text before the sentence's first element can be the heading
         match = HEADING_START.match(leading)
         if not match or not _follows(match["number"], last_number):
@@ -136,7 +137,8 @@ class _Finder:
         target = self._target(tall)
         words = leading.split()
         # A heading holds no Section number: "4.4 Experts 4.4.1 Architecture" is two headings.
-        end = next((i for i, word in enumerate(words[1:MOST_WORDS], 1) if SUBSECTION.fullmatch(word)), min(len(words), MOST_WORDS))
+        numbers = (i for i, word in enumerate(words[1:MOST_WORDS], 1) if SUBSECTION.fullmatch(word))
+        end = next(numbers, min(len(words), MOST_WORDS))
         if target is None or end < 2:
             return None
         count = min(range(2, end + 1), key=lambda k: abs(_glyph_width(" ".join(words[:k])) - target))
@@ -171,7 +173,7 @@ class _Finder:
         """The boxes up to the first one no taller than a body line, or not in the first one's type."""
         tall: list[_Box] = []
         for box in boxes:
-            if box.height <= self.body * TALLER or (tall and abs(box.height - tall[0].height) >= SAME_TYPE):
+            if box.height <= self.body_line * TALLER or (tall and abs(box.height - tall[0].height) >= SAME_TYPE):
                 break
             tall.append(box)
         return tall
@@ -184,49 +186,55 @@ class _Finder:
 
 def _stands_out(p: ET.Element, heading: ET.Element) -> bool:
     """Whether the heading is taller than the rest of its paragraph's lines, if it has any."""
-    rest = [box.height for box in _boxes(p) if box.raw not in set((heading.get("coords") or "").split(";"))]
+    boxes = _raw_boxes(heading)
+    rest = [box.height for box in _boxes(p) if box.raw not in boxes]
     return not rest or statistics.median(rest) * TALLER < statistics.median(box.height for box in _boxes(heading))
 
 
 def _fits(text: str, target: float) -> bool:
+    """Whether the text's glyph width is within the tolerance of the width the boxes print."""
     return abs(_glyph_width(text) - target) <= WIDTH_TOLERANCE * target
 
 
 def _head(number: str, title: list[str], boxes: list[_Box]) -> ET.Element:
+    """A TEI head for the recovered heading, on the boxes it was printed in."""
     head = ET.Element(f"{TEI}head", {"n": number, "coords": ";".join(box.raw for box in boxes)})
     head.text = " ".join(title)
     return head
 
 
-def _cut(sentence: ET.Element, heading: ET.Element, keep: Callable[[str], str], first: bool) -> ET.Element:
-    """A copy of the sentence without the heading: ``keep`` cuts the text it starts or ends with."""
-    rest = copy.deepcopy(sentence)
-    children = list(rest)
-    if first or not children:
-        rest.text = keep(rest.text or "")
+def _cut(sentence: ET.Element, keep: Callable[[str], str], at_start: bool) -> ET.Element:
+    """A copy of the sentence with the text it starts or ends with (before its first or after its last
+    element) passed through ``keep``."""
+    cut = copy.deepcopy(sentence)
+    children = list(cut)
+    if at_start or not children:
+        cut.text = keep(cut.text or "")
     else:
         children[-1].tail = keep(children[-1].tail or "")
-    return rest
+    return cut
 
 
 def _paragraph(p: ET.Element, sentences: list[ET.Element], heading: ET.Element) -> ET.Element | None:
     """A paragraph like p holding these sentences, without the heading's boxes; None when they hold no text."""
-    rest = ET.Element(p.tag, p.attrib)
-    rest.extend(sentence for sentence in sentences if "".join(sentence.itertext()).strip())
-    boxes = set((heading.get("coords") or "").split(";"))
-    for element in (rest, *rest):
+    paragraph = ET.Element(p.tag, p.attrib)
+    paragraph.extend(sentence for sentence in sentences if "".join(sentence.itertext()).strip())
+    boxes = _raw_boxes(heading)
+    for element in (paragraph, *paragraph):
         if coords := element.get("coords"):
             element.set("coords", ";".join(box for box in coords.split(";") if box.strip() and box not in boxes))
-    return rest if len(rest) else None
+    return paragraph if len(paragraph) else None
 
 
 def _without_first_words(text: str, count: int) -> str:
+    """The text without its first ``count`` words, which the caller has counted in it."""
     match = re.match(r"\s*" + r"\S+\s+" * (count - 1) + r"\S+\s*", text)
     assert match is not None
     return text[match.end() :]
 
 
 def _without_last_words(text: str, count: int) -> str:
+    """The text without its last ``count`` words, which the caller has counted in it."""
     match = re.search(r"\S+" + r"\s+\S+" * (count - 1) + r"\s*$", text)
     assert match is not None
     return text[: match.start()]
@@ -252,6 +260,7 @@ def _follows(number: str, last_number: str) -> bool:
 
 
 def _boxes(element: ET.Element) -> list[_Box]:
+    """The element's coords boxes, "page,x,y,width,height" joined by ";"."""
     boxes = []
     for raw in (element.get("coords") or "").split(";"):
         fields = raw.split(",")
@@ -260,5 +269,14 @@ def _boxes(element: ET.Element) -> list[_Box]:
     return boxes
 
 
+def _raw_boxes(element: ET.Element) -> set[str]:
+    return {box.raw for box in _boxes(element)}
+
+
+def _median(values: list[float]) -> float:
+    return statistics.median(values) if values else 0.0
+
+
 def _glyph_width(text: str) -> float:
+    """The text's printed width in widths of an "n", spaces left out (the boxes leave out the gaps between words)."""
     return sum(GLYPH_WIDTHS.get(character, 0.7) for character in text if not character.isspace())

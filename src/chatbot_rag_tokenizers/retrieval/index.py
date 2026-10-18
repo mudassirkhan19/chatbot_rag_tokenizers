@@ -5,8 +5,9 @@
     <root>/<chunking key>/<retriever key>/...          the retriever's own files, e.g. bm25.json
 
 The chunking key hashes the chunking config and the retriever key hashes the retriever's settings, so a
-change to either builds a new index beside the old one. The record names the corpus's files too, so an index
-built before the parse report gained or lost files is rebuilt. The record is written last: an interrupted
+change to either builds a new index beside the old one. The record names the corpus's files and a hash of their
+Chunks too, so an index built before the parse report gained or lost files, or before the Chunks were rebuilt
+differently (a TEI reader or Chunker change, ADR 0041), is rebuilt. The record is written last: an interrupted
 build leaves no record, and the next run builds again.
 """
 

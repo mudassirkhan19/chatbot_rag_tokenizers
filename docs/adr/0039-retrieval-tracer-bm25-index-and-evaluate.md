@@ -1,7 +1,7 @@
 # 0039. Retrieval tracer: BM25, the index cache and the evaluate harness
 
 - **Date:** 2026-10-18
-- **Status:** Accepted
+- **Status:** Accepted. Amended by [0041](0041-recover-numbered-headings-grobid-left-in-paragraphs.md): the index record's corpus fingerprint also hashes the Chunks, so Chunks rebuilt differently under the same config rebuild the index.
 
 ## Context
 Spec #31 needs a number for every retrieval choice that follows: duplicate handling, the embedding comparison and the chatbot. Its tracer, #33, asks for the thinnest path from an Evaluation set to a committed eval report:

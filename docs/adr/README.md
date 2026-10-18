@@ -43,7 +43,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0036](0036-a-dropped-grobid-connection-stops-the-run.md) | A reset or dropped GROBID connection stops the run, like a refused one | Accepted |
 | [0037](0037-withdrawn-preprints-are-excluded.md) | Withdrawn arXiv preprints are excluded from the corpus | Accepted |
 | [0038](0038-parse-only-the-files-of-included-editions.md) | Parse only the files of included Editions | Accepted |
-| [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) | Retrieval tracer: BM25, the index cache and the evaluate harness | Accepted |
+| [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) | Retrieval tracer: BM25, the index cache and the evaluate harness | Accepted, amended by 0041 |
 | [0040](0040-the-corpus-keeps-only-papers.md) | The corpus keeps only papers | Accepted |
 | [0041](0041-recover-numbered-headings-grobid-left-in-paragraphs.md) | Recover numbered headings GROBID left in paragraphs | Accepted |
 

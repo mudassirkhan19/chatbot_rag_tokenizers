@@ -5,7 +5,9 @@ an earlier run parsed that are no longer in the corpus, such as withdrawn prepri
 """
 
 import hashlib
-from dataclasses import dataclass
+import json
+from dataclasses import asdict, dataclass
+from functools import cached_property
 from pathlib import Path
 
 from ..parsing.cache import ParseCache
@@ -29,10 +31,15 @@ class Corpus:
     def chunking_key(self) -> str:
         return self.chunking.key
 
-    @property
+    @cached_property
     def fingerprint(self) -> str:
-        """Names the parser and the set of files, so an index built over another parse is never taken for this one."""
-        return hashlib.sha256("\n".join([self.parser_key, *sorted(self.files)]).encode()).hexdigest()
+        """Names the parser, the set of files and their Chunks, so an index built over another parse is never taken
+        for this one. The Chunks count because a change to the TEI reader or the Chunker rebuilds them under the
+        same cache keys (ADR 0030)."""
+        digest = hashlib.sha256("\n".join([self.parser_key, *sorted(self.files)]).encode())
+        for chunk in self.chunks:
+            digest.update(json.dumps(asdict(chunk), sort_keys=True, ensure_ascii=False).encode())
+        return digest.hexdigest()
 
 
 def load_corpus(config: ParseConfig, cache_root: Path, report_path: Path) -> Corpus:
