@@ -82,6 +82,7 @@ def _parse_work(work: dict) -> Edition:
     openalex_id = work["id"].rsplit("/", 1)[-1]
     doi = _bare_doi(work.get("doi"))
     arxiv_id = _arxiv_id(work)
+    primary = work.get("primary_location") or {}
     common = dict(
         title=_clean(work.get("title")),
         abstract=_abstract(work.get("abstract_inverted_index")),
@@ -90,6 +91,9 @@ def _parse_work(work: dict) -> Edition:
         arxiv_id=arxiv_id,
         doi=doi,
         openalex_id=openalex_id,
+        openalex_type=work.get("type") or "",
+        openalex_raw_type=_clean(primary.get("raw_type")),
+        openalex_raw_source_name=_clean(primary.get("raw_source_name")),
     )
     if arxiv_id:
         # Like a Semantic Scholar record, an OpenAlex work merges a Work's Editions. One with an
@@ -100,7 +104,7 @@ def _parse_work(work: dict) -> Edition:
             source_link=f"https://arxiv.org/abs/{arxiv_id}",
             **common,
         )
-    source = (work.get("primary_location") or {}).get("source") or {}
+    source = primary.get("source") or {}
     return Edition(
         edition_id=doi or openalex_id,
         edition_kind="venue",

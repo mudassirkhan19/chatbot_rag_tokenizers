@@ -9,11 +9,12 @@ Written by `collect` and `fetch` from the manifest: judge `tev1:4b@4d24c6f6d61a4
 | Discovered | 26388 |
 | Rejected by the rules | 19185 |
 | Withdrawn from arXiv | 15 |
-| Rejected by the judge | 4394 |
+| Not a paper | 152 |
+| Rejected by the judge | 4330 |
 | Pending a judge verdict | 0 |
-| Included | 2794 |
-| With full text | 2086 |
-| No open PDF | 706 |
+| Included | 2706 |
+| With full text | 2068 |
+| No open PDF | 636 |
 | Still to fetch | 2 |
 
 ## Rule rejections by pattern
@@ -32,22 +33,22 @@ A Seed and its citation hops count as the source `seeds`.
 
 | Source | Editions | Included | Found by no other | of those: pass the rules | included | pending |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| arxiv | 5640 | 1422 | 3594 | 1614 | 258 | 0 |
-| openalex | 1590 | 928 | 495 | 412 | 257 | 0 |
-| seeds | 17285 | 1843 | 14995 | 1322 | 430 | 0 |
-| semantic-scholar | 6648 | 1517 | 4169 | 1310 | 192 | 0 |
+| arxiv | 5640 | 1417 | 3594 | 1614 | 256 | 0 |
+| openalex | 1590 | 846 | 495 | 412 | 177 | 0 |
+| seeds | 17285 | 1842 | 14995 | 1322 | 430 | 0 |
+| semantic-scholar | 6648 | 1511 | 4169 | 1310 | 191 | 0 |
 
 ## By Discovery channel
 
 | Channel | Editions | Included | Found by no other | of those: pass the rules | included | pending |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| arxiv:arxiv-byte-level-abstracts | 1066 | 421 | 484 | 483 | 52 | 0 |
-| arxiv:arxiv-byte-level-titles | 201 | 139 | 7 | 7 | 1 | 0 |
-| arxiv:arxiv-subword-abstracts | 1028 | 701 | 90 | 90 | 17 | 0 |
+| arxiv:arxiv-byte-level-abstracts | 1066 | 420 | 484 | 483 | 52 | 0 |
+| arxiv:arxiv-byte-level-titles | 201 | 138 | 7 | 7 | 1 | 0 |
+| arxiv:arxiv-subword-abstracts | 1028 | 698 | 90 | 90 | 17 | 0 |
 | arxiv:arxiv-subword-titles | 218 | 187 | 2 | 2 | 0 | 0 |
-| arxiv:arxiv-tokenizer-titles | 3383 | 639 | 2400 | 423 | 110 | 0 |
-| arxiv:arxiv-vocabulary-titles | 735 | 182 | 488 | 487 | 20 | 0 |
-| openalex:openalex-subword-phrases | 1590 | 928 | 495 | 412 | 257 | 0 |
+| arxiv:arxiv-tokenizer-titles | 3383 | 638 | 2400 | 423 | 110 | 0 |
+| arxiv:arxiv-vocabulary-titles | 735 | 181 | 488 | 487 | 20 | 0 |
+| openalex:openalex-subword-phrases | 1590 | 846 | 495 | 412 | 177 | 0 |
 | seed-citations:bpe-dropout | 425 | 211 | 77 | 4 | 0 | 0 |
 | seed-citations:bpe-suboptimal | 383 | 228 | 67 | 8 | 3 | 0 |
 | seed-citations:byt5 | 881 | 279 | 400 | 40 | 8 | 0 |
@@ -59,7 +60,7 @@ A Seed and its citation hops count as the source `seeds`.
 | seed-citations:languages-cost | 276 | 148 | 61 | 2 | 1 | 0 |
 | seed-citations:more-than-compression | 126 | 84 | 28 | 7 | 0 | 0 |
 | seed-citations:open-vocabulary-survey | 265 | 118 | 87 | 17 | 3 | 0 |
-| seed-citations:sennrich-bpe | 10584 | 1314 | 7224 | 481 | 111 | 0 |
+| seed-citations:sennrich-bpe | 10584 | 1313 | 7224 | 481 | 111 | 0 |
 | seed-citations:sentencepiece | 4923 | 692 | 2684 | 166 | 36 | 0 |
 | seed-citations:subword-regularization | 1660 | 590 | 383 | 26 | 9 | 0 |
 | seed-citations:tokenization-counts | 144 | 50 | 70 | 4 | 1 | 0 |
@@ -113,13 +114,13 @@ A Seed and its citation hops count as the source `seeds`.
 | semantic-scholar:s2-byte-level-models | 332 | 127 | 97 | 61 | 17 | 0 |
 | semantic-scholar:s2-code | 516 | 34 | 415 | 37 | 5 | 0 |
 | semantic-scholar:s2-multilingual-fairness | 200 | 99 | 105 | 69 | 13 | 0 |
-| semantic-scholar:s2-nmt-subwords | 480 | 260 | 54 | 32 | 10 | 0 |
+| semantic-scholar:s2-nmt-subwords | 480 | 258 | 54 | 32 | 10 | 0 |
 | semantic-scholar:s2-reasoning | 1208 | 65 | 923 | 72 | 15 | 0 |
 | semantic-scholar:s2-spelling-and-characters | 579 | 80 | 460 | 112 | 18 | 0 |
 | semantic-scholar:s2-subword-methods | 723 | 327 | 307 | 119 | 25 | 0 |
-| semantic-scholar:s2-subword-phrases | 1281 | 742 | 54 | 34 | 12 | 0 |
+| semantic-scholar:s2-subword-phrases | 1281 | 739 | 54 | 34 | 11 | 0 |
 | semantic-scholar:s2-token-artifacts | 83 | 24 | 47 | 8 | 3 | 0 |
-| semantic-scholar:s2-vocabulary-adaptation | 934 | 147 | 759 | 470 | 27 | 0 |
+| semantic-scholar:s2-vocabulary-adaptation | 934 | 146 | 759 | 470 | 27 | 0 |
 | semantic-scholar:s2-vocabulary-size | 609 | 200 | 364 | 233 | 31 | 0 |
 
 ## What citation expansion adds
@@ -128,5 +129,5 @@ A Seed's own record counts as neither: it was picked by hand, not found.
 
 | Found by | Editions | Included | Found by no keyword query | of those: included |
 | --- | ---: | ---: | ---: | ---: |
-| Keyword search | 11393 | 2364 | | |
-| Citation expansion | 17284 | 1842 | 14995 | 430 |
+| Keyword search | 11393 | 2276 | | |
+| Citation expansion | 17284 | 1841 | 14995 | 430 |

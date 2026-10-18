@@ -1,7 +1,7 @@
 # 0017. ACL volume IDs count as no paper
 
 - **Date:** 2026-10-17
-- **Status:** Accepted. Narrows the "not the paper page stops the run" rule of [0012](0012-acl-anthology-venue-editions.md).
+- **Status:** Accepted. Narrows the "not the paper page stops the run" rule of [0012](0012-acl-anthology-venue-editions.md). Amended by [0040](0040-the-corpus-keeps-only-papers.md): proceedings front matter is excluded at the `not a paper` stage.
 
 ## Context
 [0012](0012-acl-anthology-venue-editions.md) stores a 404 from the Anthology as an empty body, because it is a permanent answer about the ID. Any other page that isn't the paper page for the ID stops the run. On the first full run, which reported 4,784 ACL IDs, the run stopped after about 2,200 pages on `2021.autosimtrans-1`. Semantic Scholar has records for whole proceedings volumes and gives them the volume's ACL ID. The Anthology answers `https://aclanthology.org/2021.autosimtrans-1/` with a redirect to `/volumes/2021.autosimtrans-1/`, a volume page with no `citation_title`.

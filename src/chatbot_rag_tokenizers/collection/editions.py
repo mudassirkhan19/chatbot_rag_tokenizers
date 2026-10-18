@@ -28,6 +28,11 @@ class Edition:
     acl_id: str = ""
     s2_id: str = ""  # Semantic Scholar paperId
     openalex_id: str = ""  # OpenAlex work id, e.g. "W2885185669"
+    # What the OpenAlex work for ``openalex_id`` records about the kind of document it is: its
+    # `type` ("article", "dissertation" …) and its primary location's `raw_type` and `raw_source_name`.
+    openalex_type: str = ""
+    openalex_raw_type: str = ""
+    openalex_raw_source_name: str = ""
     oa_pdf_urls: list[str] = field(default_factory=list)  # venue Editions only: open-access PDFs, best first
     licence: str = "unknown"
     versions: list[tuple[str, str]] = field(default_factory=list)  # arXiv only: ("v1", ISO time), oldest first
@@ -75,10 +80,15 @@ def combine(kept: Edition, new: Edition) -> Edition:
 
     The newer pinned Version wins (a source without Versions never displaces one that has
     them), otherwise the Candidate found first does. The other only fills in what the winner
-    lacks: external identifiers and, for a venue Edition, its venue and open-access PDFs. Its
-    other descriptive fields describe the same Edition less well.
+    lacks: external identifiers, with what OpenAlex records about the work it names, and, for a
+    venue Edition, its venue and open-access PDFs. Its other descriptive fields describe the same
+    Edition less well.
     """
     base, other = (new, kept) if new.version > kept.version else (kept, new)
+    if not base.openalex_id:
+        base.openalex_type = other.openalex_type
+        base.openalex_raw_type = other.openalex_raw_type
+        base.openalex_raw_source_name = other.openalex_raw_source_name
     filled = ["arxiv_id", "doi", "acl_id", "s2_id", "openalex_id"]
     if base.edition_kind == "venue":
         filled += ["venue", "oa_pdf_urls"]

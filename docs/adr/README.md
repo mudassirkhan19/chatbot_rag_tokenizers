@@ -9,7 +9,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0002](0002-no-pdfs-or-secrets-in-git.md) | Keep PDFs, downloaded data and secrets out of git | Partly superseded by 0003; amended by 0033 |
 | [0003](0003-commit-the-snapshot.md) | Commit the Snapshot of raw source responses | Accepted, size and credential checks in 0026 |
 | [0004](0004-arxiv-keyword-queries.md) | arXiv keyword queries: paging, rate limit and query style | Partly superseded by 0006 |
-| [0005](0005-rule-pre-filter.md) | Stage-1 rule pre-filter for the Relevance verdict | Accepted, amended by 0037 |
+| [0005](0005-rule-pre-filter.md) | Stage-1 rule pre-filter for the Relevance verdict | Accepted, amended by 0037 and 0040 |
 | [0006](0006-arxiv-records-via-oai-pmh.md) | arXiv Version history, comments and licence from OAI-PMH | Partly superseded by 0010 |
 | [0007](0007-local-llm-judge.md) | Stage-2 local LLM judge and verdict cache | Accepted, amended by 0018 and 0021 |
 | [0008](0008-semantic-scholar-keyword-discovery.md) | Semantic Scholar keyword discovery and combining Editions across sources | Retry limits superseded by 0016 |
@@ -21,7 +21,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0014](0014-openalex-discovery-channel.md) | OpenAlex as a separate, switchable Discovery channel | Accepted, verdict in 0019 |
 | [0015](0015-pdf-fetcher-pinned-files-and-hashes.md) | PDF Fetcher: pinned files, hashes in the Snapshot, open-access fallback | Accepted, amended by 0037 |
 | [0016](0016-semantic-scholar-waits-out-long-throttles.md) | Semantic Scholar waits out long throttles | Accepted |
-| [0017](0017-acl-volume-ids-count-as-no-paper.md) | ACL volume IDs count as no paper | Accepted |
+| [0017](0017-acl-volume-ids-count-as-no-paper.md) | ACL volume IDs count as no paper | Accepted, amended by 0040 |
 | [0018](0018-judge-releases-mps-cache.md) | The judge releases the MPS allocator cache after every batch | Accepted |
 | [0019](0019-openalex-stays-on.md) | OpenAlex stays on | Accepted |
 | [0020](0020-blind-agent-labels-checked-by-the-developer.md) | Audit set labels from blind agents, checked by the developer | Accepted |
@@ -44,6 +44,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0037](0037-withdrawn-preprints-are-excluded.md) | Withdrawn arXiv preprints are excluded from the corpus | Accepted |
 | [0038](0038-parse-only-the-files-of-included-editions.md) | Parse only the files of included Editions | Accepted |
 | [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) | Retrieval tracer: BM25, the index cache and the evaluate harness | Accepted |
+| [0040](0040-the-corpus-keeps-only-papers.md) | The corpus keeps only papers | Accepted |
 
 ## Template
 
