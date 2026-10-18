@@ -1,0 +1,73 @@
+"""The corpus a retriever is built over: the Chunks of every file the parse report lists as parsed (ADR 0039).
+
+The parse report, not the parse cache, decides which files count: the cache also keeps the Chunks of files
+an earlier run parsed that are no longer in the corpus, such as withdrawn preprints (ADR 0038).
+"""
+
+import hashlib
+from dataclasses import dataclass
+from pathlib import Path
+
+from ..parsing.cache import ParseCache
+from ..parsing.chunker import Chunk
+from ..parsing.config import ParseConfig
+from ..parsing.report import UnreadableReport, read_report
+
+
+class CorpusError(RuntimeError):
+    """The Chunks can't be read as the parse config and report describe them, worded for the person running it."""
+
+
+@dataclass(frozen=True)
+class Corpus:
+    chunking_key: str
+    files: tuple[str, ...]  # the sha256 of each parsed file, in the report's order
+    chunks: tuple[Chunk, ...]  # every file's Chunks, file by file, each file's in order
+
+    @property
+    def fingerprint(self) -> str:
+        """Names the set of files, so an index built over other files is never taken for this one."""
+        return hashlib.sha256("\n".join(sorted(self.files)).encode()).hexdigest()
+
+
+def load_corpus(config: ParseConfig, cache_root: Path, report_path: Path) -> Corpus:
+    rerun = "Run `just parse` (with the same --files, if the report came from a --files run), then try again."
+    if not report_path.exists():
+        raise CorpusError(f"there is no parse report at {report_path}, so there are no Chunks to index. {rerun}")
+    try:
+        run = read_report(report_path)
+    except UnreadableReport as error:
+        raise CorpusError(str(error)) from error
+    chunking = {name: str(value) for name, value in config.chunking.describe().items()}
+    if run.image != config.grobid.reference or run.chunking != chunking:
+        raise CorpusError(f"the parse report {report_path} was written with another GROBID image or chunking config than {_config_name(config)}. {rerun}")
+    if not run.parsed:
+        raise CorpusError(f"the parse report {report_path} lists no parsed file, so there are no Chunks to index. {rerun}")
+    cache = ParseCache(cache_root, config.grobid.parser_key, config.chunking.key)
+    chunks: list[Chunk] = []
+    missing, other_config = [], []
+    for pinned_id, sha256 in run.parsed:
+        if (found := cache.chunks(sha256)) is not None:
+            chunks += found
+        elif keys := cache.chunking_keys(sha256):
+            other_config.append(f"{pinned_id} (Chunks only under {', '.join(keys)})")
+        else:
+            missing.append(pinned_id)
+    if missing and len(missing) == len(run.parsed):
+        raise CorpusError(f"the parse cache {cache_root} holds no Chunks for the files in {report_path}: it is empty or another cache. {rerun}")
+    if other_config:
+        raise CorpusError(
+            f"the parse cache {cache_root} was built with another chunking config than {config.chunking.key} for"
+            f" {_count(len(other_config))}: {', '.join(other_config)}. {rerun}"
+        )
+    if missing:
+        raise CorpusError(f"the parse cache {cache_root} has no Chunks for {_count(len(missing))} in {report_path}: {', '.join(missing)}. {rerun}")
+    return Corpus(config.chunking.key, tuple(sha256 for _, sha256 in run.parsed), tuple(chunks))
+
+
+def _config_name(config: ParseConfig) -> str:
+    return f"{config.grobid.parser_key} with {config.chunking.key}"
+
+
+def _count(files: int) -> str:
+    return "1 file" if files == 1 else f"{files} files"

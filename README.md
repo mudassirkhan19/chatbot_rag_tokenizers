@@ -118,6 +118,47 @@ This sends each PDF to the pinned GROBID service and cuts its text into Chunks t
 - **The parse report** (`data/parse-report.md`, `--report`, committed) names the GROBID image and version and the chunking config, and gives a line per file (with its table and caption Chunks, and its text Chunks that are mostly numbers, most of them the cells of a table GROBID missed: ADR 0035) and the totals.
 - **Seeds only, for now.** The committed report is the run on the 34 Seed PDFs (`just parse --files data/pdfs/seeds/*.pdf`): 889 Sections and 2,055 Chunks (1,640 text, 234 table, 181 caption), no failures. The full-corpus parse waits on the final judge run (#1, #11) and on `fetch`, which pins and downloads the corpus's PDFs and writes the full-text record `parse` reads by default.
 
+## Index and evaluate retrieval
+
+```sh
+just index      # build BM25 over the parsed Chunks (uv run chatbot-rag-tokenizers index)
+just evaluate   # score it on the Evaluation set and write the eval report
+```
+
+`index` builds the retrievers, and `evaluate` scores them on the hand-checked Evaluation set (ADR 0039). Today there is one retriever, BM25, and the corpus is the 34 parsed Seeds.
+
+- **`index` inputs.**
+  - The parse report (`data/parse-report.md`, `--parse-report`) decides which files make up the corpus: every file it lists as parsed.
+  - Their Chunks come from the parse cache (`--cache`), under the chunking config in `config/parse.toml` (`--parse-config`).
+  - Each retriever's settings are in `config/retrieval.toml` (`--config`). `--retriever bm25` builds only the retrievers named; the default is all of them.
+  - `index` stops with a pointer to `just parse` when the report is missing, when the report was written with another GROBID image or chunking config, when the cache holds no Chunks for the report's files, or when it holds them only under another chunking config.
+- **`index` outputs.** Each index goes to the index cache (`data/index-cache/<chunking key>/<retriever key>/`, `--index-cache`, never committed) with a record of:
+  - its settings;
+  - the corpus it was built over;
+  - its Chunk count and build time.
+
+  A rerun with nothing changed says "up to date" and writes nothing. A change to the chunking config or to a retriever's settings builds a new folder beside the old one. A parse report that gains or loses files rebuilds the index.
+- **BM25** indexes each Chunk's context header plus its text, so a question naming a paper matches its title.
+  - Tokens are lower-cased runs of letters and digits. Numbers are kept, and there is no stemming and no stop-word list, so "SentencePiece" stays a distinctive term.
+  - `k1` and `b` are in `[bm25]`.
+  - A Chunk that shares no word with the question isn't ranked.
+- **`evaluate` inputs.**
+  - The Evaluation set (`data/eval/evaluation-set.jsonl`, `--evaluation-set`) has one JSON question per line: its `id`, its `type` (`single-paper`, `multi-paper`, `follow-up` or `unanswerable`), the `question` and its `passages`. Each Passage has a pinned `edition_id`, a `section` and a verbatim `quote`.
+  - A follow-up also has its prior turns (`history`) and a hand-written standalone `rewrite`.
+  - `evaluate` reads the same corpus as `index`, and stops with a pointer to `just index` when an index isn't built.
+- **`evaluate` output.** The eval report (`data/eval/eval-report.md`, `--report`, committed) gives:
+  - the Evaluation set's sha256, the chunking config and each retriever's settings;
+  - a results table per retriever and question type: Recall@5 (per Passage, averaged over questions), MRR@10 (0 when no Chunk in the top 10 holds a Passage) and Hit@5, all on the raw ranking;
+  - one line per question: its type, the rank of its first hit and the Passages found in the top 5;
+  - timings, last.
+- **Scoring rules.**
+  - Each follow-up is scored three ways, in separate rows: alone, after its history, and as its reference rewrite.
+  - Unanswerable questions are left out of the metrics.
+  - A Chunk holds a Passage when the normalised quote is in its normalised text, whichever Edition the Chunk comes from. This is a stand-in until the real Passage matcher.
+- **Reproducible.** Two runs on the same index give the same report apart from the timings section.
+
+The committed Evaluation set is a first tracer of 3 questions on CC BY Seeds: a single-paper lookup, a multi-paper question and a follow-up. The full set of 36 questions comes with spec #31.
+
 ## Measure the Relevance verdict
 
 The Audit set (`data/audit/audit-set.csv`) is a hand-labelled, stratified sample of Candidates used to choose the judge model and threshold and to report precision and recall. See ADR 0011.
@@ -154,4 +195,4 @@ just grobid-up
 RUN_GROBID_TESTS=1 just test tests/test_parse_grobid.py
 ```
 
-The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model. `tests/test_dev_setup.py` also runs `just` to check the recipes, that `init` stops when Docker is missing, and, with a fake `docker` and `curl` on PATH, that `init` pulls GROBID by digest and that `grobid-up` and `grobid-down` behave; it skips without just.
+`tests/test_retrieval.py` runs `index` and `evaluate` on Chunks parsed from the CC BY TEI fixtures through the fake GROBID service, with a fixture Evaluation set that has a question of each type (`tests/fixtures/eval/`). The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model. `tests/test_dev_setup.py` also runs `just` to check the recipes, that `init` stops when Docker is missing, and, with a fake `docker` and `curl` on PATH, that `init` pulls GROBID by digest and that `grobid-up` and `grobid-down` behave; it skips without just.
