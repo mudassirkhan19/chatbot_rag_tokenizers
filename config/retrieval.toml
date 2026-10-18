@@ -1,0 +1,11 @@
+# Retrieval config: the retrievers `index` builds and `evaluate` scores (ADR 0039).
+#
+# Each retriever's settings, with the chunking config hash, name its folder in the index cache, so a
+# change here makes `index` build that retriever again and leaves the old index where it was.
+
+# BM25 over each Chunk's context header plus its text. Tokens are lower-cased runs of letters and
+# digits ("SentencePiece" -> "sentencepiece", "50k" -> "50k", "BPE-dropout" -> "bpe", "dropout"),
+# numbers kept ("0.1" -> "0.1"), with no stemming and no stop words, so exact terms stay distinctive.
+[bm25]
+k1 = 1.2  # how fast a term's weight saturates with its count in a Chunk
+b = 0.75  # how much a long Chunk's counts are discounted
