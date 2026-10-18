@@ -101,6 +101,9 @@ def _shape(question: Question) -> list[str]:
         problems.append("a follow-up needs a history and a rewrite")
     if question.type != "follow-up" and (question.history or question.rewrite):
         problems.append("only a follow-up has a history or a rewrite")
+    # No agent-drafted question is scored before a person has checked it (spec #31, story 15).
+    if not question.checked_by.strip():
+        problems.append("nobody has checked this question (checked_by is empty)")
     return problems
 
 

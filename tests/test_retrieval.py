@@ -376,8 +376,9 @@ def test_the_crowding_totals_count_every_answerable_question_as_a_user_would_ask
 
 
 def write_question(tmp_path: Path, record: dict) -> Path:
+    """Write the question as the developer had checked it."""
     path = tmp_path / f"{record['id']}.jsonl"
-    path.write_text(json.dumps(record, ensure_ascii=False) + "\n", encoding="utf-8")
+    path.write_text(json.dumps({**record, "checked_by": "developer"}, ensure_ascii=False) + "\n", encoding="utf-8")
     return path
 
 
