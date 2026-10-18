@@ -87,3 +87,7 @@ _Avoid_: Audit set (that measures the relevance verdict), test set, gold set
 **Passage**:
 A verbatim quote from one Section of one Edition that answers an evaluation question. Any Chunk holding the quote answers it, whichever Edition of the Work that Chunk comes from.
 _Avoid_: Chunk (the retrieved unit, which may hold several Passages or part of one), answer, span
+
+**Work groups**:
+The hand-checked assignment of Editions to Works, with each Work's Survey flag, that the top-5 duplicate rate is measured against.
+_Avoid_: Clusters, dedup output (the duplicate stage's own grouping is what the Work groups test)

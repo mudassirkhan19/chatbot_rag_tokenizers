@@ -5,11 +5,11 @@ them by an identifier: an arXiv preprint records its DOI and ACL Anthology id, s
 Editions that share no identifier stay apart, so this can miss a duplicate; it never joins two Works.
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 
 
 class Works:
-    def __init__(self, manifest: Iterable[dict[str, str]]) -> None:
+    def __init__(self, manifest: Iterable[Mapping[str, str]]) -> None:
         self._parent: dict[str, str] = {}
         for row in manifest:
             names = [f"edition:{row['edition_id']}"]

@@ -83,7 +83,7 @@ def parse(
         cache.put_chunks(sha256, chunks)
         cache.put_bibliography(sha256, document.bibliography)
         kinds = [chunk.kind for chunk in chunks]
-        numeric = sum(1 for chunk in chunks if chunk.kind == "text" and is_mostly_numeric(chunk.text))
+        numeric = sum(1 for chunk in chunks if is_mostly_numeric(chunk))
         results.append(
             FileResult(pinned_id, sha256, sections, len(chunks), tables=kinds.count("table"), captions=kinds.count("caption"), numeric=numeric)
         )

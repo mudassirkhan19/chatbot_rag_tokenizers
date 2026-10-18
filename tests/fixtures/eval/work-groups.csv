@@ -1,0 +1,5 @@
+edition_id,work_id,survey,title,authors,year,venue
+1508.07909v5,sennrich-2016-bpe,no,Neural Machine Translation of Rare Words with Subword Units,Rico Sennrich; Barry Haddow; Alexandra Birch,2015,
+2022.naacl-main.293,minixhofer-2022-wechsel,no,WECHSEL: Effective initialization of subword embeddings for cross-lingual transfer of monolingual language models,Benjamin Minixhofer; Fabian Paischer; Navid Rekabsaz,2022,Nations of the Americas Chapter of the Association for Computational Linguistics
+2112.06598v2,minixhofer-2022-wechsel,no,WECHSEL: Effective initialization of subword embeddings for cross-lingual transfer of monolingual language models,Benjamin Minixhofer; Fabian Paischer; Navid Rekabsaz,2021,
+P16-1162,sennrich-2016-bpe,no,Neural Machine Translation of Rare Words with Subword Units,Rico Sennrich; Barry Haddow; Alexandra Birch,2016,Annual Meeting of the Association for Computational Linguistics

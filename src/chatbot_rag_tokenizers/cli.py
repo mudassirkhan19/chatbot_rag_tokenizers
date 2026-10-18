@@ -13,6 +13,7 @@ from .evaluation.check import check, describe
 from .evaluation.config import load_matching_rule
 from .evaluation.evalset import EvaluationSetError, load_evaluation_set
 from .evaluation.matching import MatchingRule
+from .evaluation.work_groups import WorkGroupsError
 from .evaluation.works import Works
 from .parsing import inputs
 from .parsing import pipeline as parsing
@@ -121,12 +122,26 @@ def main(argv: list[str] | None = None) -> None:
         help="score the retrievers on the Evaluation set and write the eval report",
         description=(
             "Runs every question of the Evaluation set through each retriever `index` built, scores the raw rankings"
-            " against the questions' Passages (Recall@5, MRR@10, Hit@5) and writes the committed eval report."
+            " against the questions' Passages (Recall@5, MRR@10, Hit@5), measures what crowds the top 5 (duplicates"
+            " of one Work and Survey restatement, against the Work groups, and mostly-numeric Chunks) and writes the"
+            " committed eval report."
         ),
     )
     _add_corpus_arguments(evaluate_cmd)
     _add_evaluation_set_arguments(evaluate_cmd)
     evaluate_cmd.add_argument("--report", type=Path, default=Path("data/eval/eval-report.md"), help="the eval report (committed)")
+    evaluate_cmd.add_argument(
+        "--work-groups",
+        type=Path,
+        default=Path("data/eval/work-groups.csv"),
+        help="the hand-assigned Work and Survey flag of each Edition, for the duplicate rate (committed)",
+    )
+    evaluate_cmd.add_argument(
+        "--export-ungrouped",
+        type=Path,
+        metavar="CSV",
+        help="also write every Edition in a top 5 with no Work group, with its title, authors, year and venue, for grouping",
+    )
 
     eval_check_cmd = commands.add_parser(
         "eval-check",
@@ -223,8 +238,18 @@ def main(argv: list[str] | None = None) -> None:
         corpus, retrievers = _corpus_and_retrievers(args)
         rule = _matching_rule(args)
         try:
-            evaluation.evaluate(corpus, retrievers, args.index_cache, args.evaluation_set, args.report, rule, _works(args))
-        except (EvaluationSetError, index.IndexMissing) as error:
+            evaluation.evaluate(
+                corpus,
+                retrievers,
+                args.index_cache,
+                args.evaluation_set,
+                args.report,
+                rule,
+                fulltext.read_manifest(args.manifest),
+                args.work_groups,
+                args.export_ungrouped,
+            )
+        except (EvaluationSetError, WorkGroupsError, index.IndexMissing) as error:
             sys.exit(f"evaluate: {error}")
     elif args.command == "eval-check":
         rule = _matching_rule(args)

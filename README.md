@@ -161,13 +161,23 @@ just evaluate     # score both retrievers on the Evaluation set and write the ev
   - a multi-paper question whose Passages all come from one Work (Editions sharing an arXiv id, DOI or ACL id).
 
   It prints each question's lexical overlap with its Passages (the share of the question's words in their quotes; a follow-up's rewrite too). It also prints, for each Passage, how many Chunks hold it and in which pinned Editions; a Passage held by dozens of Chunks shows that the rule is too loose for it. Then it lists every failure and exits non-zero, or says it passed.
-- **`evaluate` inputs.** The Evaluation set and the same corpus as `index`.
+- **`evaluate` inputs.** The Evaluation set, the same corpus as `index`, and the Work groups.
   - It runs `eval-check`'s checks first and refuses a set that fails them.
   - It stops with a pointer to `just index` when an index isn't built.
+- **The Work groups** (`data/eval/work-groups.csv`, `--work-groups`, committed) are the ground truth for the duplicate rate (ADR 0044): the developer assigns each Edition a Work by hand, so the duplicate stage is never scored by its own grouping.
+  - Its columns are `edition_id,work_id,survey,title,authors,year,venue`. Editions with the same `work_id` are one Work; `survey` is `yes` for a Survey's Editions and `no` otherwise. Title, authors, year and venue are for the person grouping and aren't read.
+  - A row with a blank `work_id` has no Work group yet. A Work whose Editions are partly Surveys, an Edition listed twice, or a `survey` other than `yes` or `no` stops `evaluate`.
+  - It is committed with only its header until #38 fills it.
+- **The export.** `just evaluate --export-ungrouped ungrouped.csv` also writes every Edition in any retriever's top 5, for any query of an answerable question, that has no Work group, with its title, authors, year and venue from the manifest and `work_id` and `survey` left blank. Fill those two in and add the rows to the Work groups file. Without the flag, `evaluate` still prints the Editions with no Work group.
 - **`evaluate` output.** The eval report (`data/eval/eval-report.md`, `--report`, committed) gives:
   - the Evaluation set's sha256, the chunking config and each retriever's settings;
   - a results table per retriever and question type: Recall@5 (per Passage, averaged over questions), MRR@10 (0 when no Chunk in the top 10 holds a Passage) and Hit@5, all on the raw ranking;
-  - one line per question: its type, the rank of its first hit and the Passages found in the top 5;
+  - what crowds the top 5, per retriever, over each answerable question as a user would ask it (a follow-up alone), each as a share of top-5 slots and a share of questions with at least one such slot:
+    - **duplicate**: a Chunk from a Work already ranked higher (another Edition, Version or Chunk of it);
+    - **restatement**: a Chunk from a Survey, never counted as a duplicate;
+    - **mostly numeric**: a text Chunk with more than 35% of its words numbers, as the parse report counts them, with how many of these slots hold a Passage;
+  - duplicates and restatement only over the questions whose top 5 Editions all have a Work group, and the list of Editions that have none;
+  - one line per question: its type, the rank of its first hit, the Passages found in the top 5, and its duplicate, restatement and mostly-numeric slots (`ungrouped` when an Edition in its top 5 has no Work group);
   - timings, last: each retriever's index build time and device, and its query latency (p50 and p95) and device.
 - **Scoring rules.**
   - Each follow-up is scored three ways, in separate rows: alone, after its history, and as its reference rewrite.
@@ -219,4 +229,4 @@ The test of the real embedder is opt-in too. It downloads the pinned bge-small o
 RUN_EMBEDDER_TESTS=1 just test tests/test_embedder.py
 ```
 
-`tests/test_retrieval.py` runs `index` and `evaluate` on Chunks parsed from the CC BY TEI fixtures through the fake GROBID service, with a fixture Evaluation set that has a question of each type (`tests/fixtures/eval/`). `tests/test_eval_check.py` runs `eval-check` on the same papers plus a v1 of the BPE paper edited by hand (a reworded sentence, a changed number, a re-dated citation), and checks that `evaluate` refuses a set that fails it. The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model: the dense retriever embeds with a hashed bag of words in their place. `tests/test_dev_setup.py` also runs `just` to check the recipes, that `init` stops when Docker is missing, and, with a fake `docker` and `curl` on PATH, that `init` pulls GROBID by digest and that `grobid-up` and `grobid-down` behave; it skips without just.
+`tests/test_retrieval.py` runs `index` and `evaluate` on Chunks parsed from the CC BY TEI fixtures through the fake GROBID service, with a fixture Evaluation set that has a question of each type and fixture Work groups that join each paper with its venue Edition (`tests/fixtures/eval/`). `tests/test_eval_check.py` runs `eval-check` on the same papers plus a v1 of the BPE paper edited by hand (a reworded sentence, a changed number, a re-dated citation), and checks that `evaluate` refuses a set that fails it. The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model: the dense retriever embeds with a hashed bag of words in their place. `tests/test_dev_setup.py` also runs `just` to check the recipes, that `init` stops when Docker is missing, and, with a fake `docker` and `curl` on PATH, that `init` pulls GROBID by digest and that `grobid-up` and `grobid-down` behave; it skips without just.
