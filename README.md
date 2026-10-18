@@ -121,11 +121,12 @@ This sends each PDF to the pinned GROBID service and cuts its text into Chunks t
 ## Index and evaluate retrieval
 
 ```sh
-just index      # build BM25 over the parsed Chunks (uv run chatbot-rag-tokenizers index)
-just evaluate   # score it on the Evaluation set and write the eval report
+just index        # build BM25 over the parsed Chunks (uv run chatbot-rag-tokenizers index)
+just eval-check   # check the Evaluation set's questions and quotes against the parsed text
+just evaluate     # score BM25 on the Evaluation set and write the eval report
 ```
 
-`index` builds the retrievers, and `evaluate` scores them on the hand-checked Evaluation set (ADR 0039). Today there is one retriever, BM25, and the corpus is every file the committed parse report lists as parsed: 2,710 files of the full-corpus run.
+`index` builds the retrievers, `eval-check` checks the hand-checked Evaluation set, and `evaluate` scores the retrievers on it (ADR 0039, ADR 0040). Today there is one retriever, BM25, and the corpus is every file the committed parse report lists as parsed: 2,710 files of the full-corpus run.
 
 - **`index` inputs.**
   - The parse report (`data/parse-report.md`, `--parse-report`) decides which files make up the corpus: every file it lists as parsed.
@@ -142,10 +143,21 @@ just evaluate   # score it on the Evaluation set and write the eval report
   - Tokens are lower-cased runs of letters and digits. Numbers are kept, a decimal such as "0.1" as one token, and there is no stemming and no stop-word list, so "SentencePiece" stays a distinctive term.
   - `k1` and `b` are in `[bm25]`.
   - A Chunk that shares no word with the question isn't ranked.
-- **`evaluate` inputs.**
-  - The Evaluation set (`data/eval/evaluation-set.jsonl`, `--evaluation-set`) has one JSON question per line: its `id`, its `type` (`single-paper`, `multi-paper`, `follow-up` or `unanswerable`), the `question` and its `passages`. Each Passage has a pinned `edition_id`, a `section` and a verbatim `quote`.
-  - A follow-up also has its prior turns (`history`) and a hand-written standalone `rewrite`.
-  - `evaluate` reads the same corpus as `index`, and stops with a pointer to `just index` when an index isn't built.
+- **The Evaluation set** (`data/eval/evaluation-set.jsonl`, `--evaluation-set`) has one JSON question per line:
+  - its `id`, its `type` (`single-paper`, `multi-paper`, `follow-up` or `unanswerable`), the `question` and its `passages`;
+  - each Passage has the pinned `edition_id` of the file it quotes (such as `2112.06598v2`), its `section` as the context header gives it (`5 Results › 5.3 Is freezing necessary?`) and a verbatim `quote`;
+  - a follow-up also has its prior turns (`history`) and a hand-written standalone `rewrite`.
+- **`eval-check`** reads the same corpus as `index`, the Evaluation set, the matching rule in `config/evaluation.toml` (`--eval-config`) and the manifest (`--manifest`, which links the Editions of a Work). It fails:
+  - a Passage whose quote, normalised, isn't in its named Edition and Section;
+  - a quote over 300 characters;
+  - a follow-up without a history or a rewrite, or another question with either;
+  - an answerable question without a Passage, or an unanswerable one with a Passage;
+  - a multi-paper question whose Passages all come from one Work (Editions sharing an arXiv id, DOI or ACL id).
+
+  It prints each question's lexical overlap with its Passages (the share of the question's words in their quotes; a follow-up's rewrite too). It also prints, for each Passage, how many Chunks hold it and in which pinned Editions; a Passage held by dozens of Chunks shows that the rule is too loose for it. Then it lists every failure and exits non-zero, or says it passed.
+- **`evaluate` inputs.** The Evaluation set and the same corpus as `index`.
+  - It runs `eval-check`'s checks first and refuses a set that fails them.
+  - It stops with a pointer to `just index` when an index isn't built.
 - **`evaluate` output.** The eval report (`data/eval/eval-report.md`, `--report`, committed) gives:
   - the Evaluation set's sha256, the chunking config and each retriever's settings;
   - a results table per retriever and question type: Recall@5 (per Passage, averaged over questions), MRR@10 (0 when no Chunk in the top 10 holds a Passage) and Hit@5, all on the raw ranking;
@@ -154,7 +166,7 @@ just evaluate   # score it on the Evaluation set and write the eval report
 - **Scoring rules.**
   - Each follow-up is scored three ways, in separate rows: alone, after its history, and as its reference rewrite.
   - Unanswerable questions are left out of the metrics.
-  - A Chunk holds a Passage when the normalised quote is in its normalised text, whichever Edition the Chunk comes from. This is a stand-in until the real Passage matcher.
+  - A Chunk holds a Passage when at least 65% of the quote's words match the Chunk's in order, and every number in the quote matches (ADR 0040), whichever Edition the Chunk comes from. Before matching, unicode, case, whitespace and hyphenation are normalised and citations are dropped. The 65% was calibrated on three CC BY Seeds with several Versions; `hack/calibrate_matcher.py` reruns the sweep from `data/eval/calibration.jsonl`.
 - **Reproducible.** Two runs on the same index give the same report apart from the timings section.
 
 The committed Evaluation set is a first tracer of 3 questions on CC BY Seeds: a single-paper lookup, a multi-paper question and a follow-up. The full set of 36 questions comes with spec #31. The committed eval report is still the run over the 34 Seeds from before the full-corpus parse; #37 and #38 redo it on the full corpus.
@@ -195,4 +207,4 @@ just grobid-up
 RUN_GROBID_TESTS=1 just test tests/test_parse_grobid.py
 ```
 
-`tests/test_retrieval.py` runs `index` and `evaluate` on Chunks parsed from the CC BY TEI fixtures through the fake GROBID service, with a fixture Evaluation set that has a question of each type (`tests/fixtures/eval/`). The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model. `tests/test_dev_setup.py` also runs `just` to check the recipes, that `init` stops when Docker is missing, and, with a fake `docker` and `curl` on PATH, that `init` pulls GROBID by digest and that `grobid-up` and `grobid-down` behave; it skips without just.
+`tests/test_retrieval.py` runs `index` and `evaluate` on Chunks parsed from the CC BY TEI fixtures through the fake GROBID service, with a fixture Evaluation set that has a question of each type (`tests/fixtures/eval/`). `tests/test_eval_check.py` runs `eval-check` on the same papers plus a v1 of the BPE paper edited by hand (a reworded sentence, a changed number, a re-dated citation), and checks that `evaluate` refuses a set that fails it. The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model. `tests/test_dev_setup.py` also runs `just` to check the recipes, that `init` stops when Docker is missing, and, with a fake `docker` and `curl` on PATH, that `init` pulls GROBID by digest and that `grobid-up` and `grobid-down` behave; it skips without just.

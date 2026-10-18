@@ -180,6 +180,10 @@ parse *args:
 index *args:
     uv run chatbot-rag-tokenizers index "$@"
 
+# Check the Evaluation set's questions and Passage quotes against the parsed text; extra arguments go to the CLI
+eval-check *args:
+    uv run chatbot-rag-tokenizers eval-check "$@"
+
 # Score the retrievers on the Evaluation set and write the eval report; extra arguments go to the CLI
 evaluate *args:
     uv run chatbot-rag-tokenizers evaluate "$@"

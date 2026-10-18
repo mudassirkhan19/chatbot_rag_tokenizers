@@ -90,6 +90,49 @@ def test_a_quote_whose_number_changed_is_not_held_by_its_v1_chunk(corpus, capsys
     assert held(capsys.readouterr().out, "changed-number") == {"1508.07909v5": 1}
 
 
+SUBWORDS = "4.1 Subword statistics"
+
+
+def test_a_quote_whose_citation_was_redated_is_held_by_its_v1_chunk(corpus, capsys):
+    # v1 cites (Tiedemann, 2008): a citation's year or number is not a finding.
+    cited = passage("At the other end of the spectrum, the character level is suboptimal for alignment (Tiedemann, 2009).", SUBWORDS)
+    run_eval_check(corpus, write_set(corpus, question("redated", cited)))
+
+    assert held(capsys.readouterr().out, "redated") == {"1508.07909v1": 1, "1508.07909v5": 1}
+
+
+def test_a_v1_chunk_with_list_numbers_the_quote_lacks_still_holds_it(corpus, capsys):
+    # v1 numbers the techniques: "including (1) frequency-based compound splitting".
+    listed = passage(
+        "We report statistics for several word segmentation techniques that have proven useful in previous SMT research,"
+        " including frequency-based compound splitting",
+        SUBWORDS,
+    )
+    run_eval_check(corpus, write_set(corpus, question("list-numbers", listed)))
+
+    assert held(capsys.readouterr().out, "list-numbers") == {"1508.07909v1": 1, "1508.07909v5": 1}
+
+
+def test_a_number_left_alone_by_rewording_around_it_still_matches(corpus, capsys):
+    # v1 says "rare (about 0.05% in the test set)": the number matches on its own, between reworded words.
+    alone = passage(
+        "Joint BPE can produce segments that are unknown because they only occur in the English training text, but these"
+        " are rare (0.05% of test tokens).",
+        SUBWORDS,
+    )
+    run_eval_check(corpus, write_set(corpus, question("lone-number", alone)))
+
+    assert held(capsys.readouterr().out, "lone-number") == {"1508.07909v1": 1, "1508.07909v5": 1}
+
+
+def test_word_pairs_scattered_across_a_chunk_do_not_hold_a_quote(corpus, capsys):
+    # Each pair is in Section 4.1's first Chunk, in this order, but sentences apart.
+    scattered = passage("Our main objective is the parallel data and translation results on the test set.", SUBWORDS)
+    failures(corpus, question("scattered", scattered))
+
+    assert held(capsys.readouterr().out, "scattered") == {}
+
+
 def test_a_quote_spanning_two_chunks_is_held_by_both(corpus, capsys):
     # The first sentence ends one Chunk and the second starts the next, in both Versions; v1 rewords the second.
     spanning = passage(
