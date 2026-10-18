@@ -10,7 +10,7 @@ description: Create or clean up a git worktree of this repo with hack/worktree.s
 ## Start
 
 1. Pick a short kebab-case name, e.g. `issue-12-dedup`. The branch takes the same name unless you pass `--branch`.
-2. Run `hack/worktree.sh create <name>` from any checkout of the repo. The base is your current branch; pass `--base <ref>` for another. `--judge` installs torch and transformers when the main checkout lacks them.
+2. Run `hack/worktree.sh create <name>` from any checkout of the repo. The base is your current branch; pass `--base <ref>` for another.
 3. Done when it prints `Ready: <path>`. If it fails, it has already removed the worktree and the branch it made: fix the cause and rerun.
 4. Work in that path: in Claude Code, call `EnterWorktree` with `path: <path>`; otherwise `cd` there. Run every command (`uv run …`, `git …`) from inside it.
 

@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..retrieval.corpus import Corpus
+from ..retrieval.index import Index
 from ..retrieval.retriever import RetrieverConfig
 from .evalset import QUESTION_TYPES, Question
 from .matching import MIN_BLOCK, MatchingRule
@@ -36,7 +37,7 @@ ALL_ANSWERABLE = f"{AS_ASKED}, follow-ups alone"  # the all-answerable row: see 
 @dataclass(frozen=True)
 class RetrieverRun:
     config: RetrieverConfig
-    build_seconds: float
+    index: Index  # what was queried, with its build time and device
     scored: list[Scored]
 
 
@@ -157,6 +158,6 @@ def _timings(run: RetrieverRun) -> str:
     milliseconds = sorted(s.seconds * 1000 for s in run.scored)
     p95 = statistics.quantiles(milliseconds, n=20, method="inclusive")[-1] if len(milliseconds) > 1 else milliseconds[0]
     return (
-        f"- {run.config.name}: index built in {run.build_seconds:.2f} s; {len(milliseconds)} queries,"
-        f" latency p50 {statistics.median(milliseconds):.2f} ms, p95 {p95:.2f} ms"
+        f"- {run.config.name}: index built on {run.index.build_device} in {run.index.build_seconds:.2f} s; {len(milliseconds)}"
+        f" queries on {run.index.retriever.device}, latency p50 {statistics.median(milliseconds):.2f} ms, p95 {p95:.2f} ms"
     )
