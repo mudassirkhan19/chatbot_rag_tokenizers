@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from .collection import audit, audit_label, fulltext
+from .config import ConfigError
 from .collection.config import load_config
 from .collection.pipeline import collect
 from .evaluation import pipeline as evaluation
@@ -123,7 +124,7 @@ def main(argv: list[str] | None = None) -> None:
     evaluate_cmd.add_argument("--evaluation-set", type=Path, default=Path("data/eval/evaluation-set.jsonl"))
     evaluate_cmd.add_argument("--report", type=Path, default=Path("data/eval/eval-report.md"), help="the eval report (committed)")
 
-    audit_cmd = commands.add_parser("audit",help="build the Audit set and measure the Relevance verdict on it")
+    audit_cmd = commands.add_parser("audit", help="build the Audit set and measure the Relevance verdict on it")
     audit_commands = audit_cmd.add_subparsers(dest="audit_command", required=True)
     export_cmd = audit_commands.add_parser(
         "export",
@@ -205,9 +206,7 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "evaluate":
         corpus, retrievers = _corpus_and_retrievers(args)
         try:
-            evaluation.evaluate(
-                load_parse_config(args.parse_config).chunking, corpus, retrievers, args.index_cache, args.evaluation_set, args.report
-            )
+            evaluation.evaluate(corpus, retrievers, args.index_cache, args.evaluation_set, args.report)
         except (EvaluationSetError, index.IndexMissing) as error:
             sys.exit(f"evaluate: {error}")
     elif args.command == "audit" and args.audit_command == "export":
@@ -233,7 +232,10 @@ def _add_corpus_arguments(command: argparse.ArgumentParser) -> None:
 
 
 def _corpus_and_retrievers(args: argparse.Namespace) -> tuple[Corpus, list[RetrieverConfig]]:
-    configured = load_retrieval_config(args.config).retrievers
+    try:
+        configured = load_retrieval_config(args.config).retrievers
+    except ConfigError as error:
+        sys.exit(f"{args.command}: {error}")
     names = args.retriever or list(configured)
     if unknown := [name for name in names if name not in configured]:
         sys.exit(f"{args.command}: unknown retriever {', '.join(unknown)}; {args.config} configures {', '.join(configured)}")

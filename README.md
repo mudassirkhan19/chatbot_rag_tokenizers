@@ -139,7 +139,7 @@ just evaluate   # score it on the Evaluation set and write the eval report
 
   A rerun with nothing changed says "up to date" and writes nothing. A change to the chunking config or to a retriever's settings builds a new folder beside the old one. A parse report that gains or loses files rebuilds the index.
 - **BM25** indexes each Chunk's context header plus its text, so a question naming a paper matches its title.
-  - Tokens are lower-cased runs of letters and digits. Numbers are kept, and there is no stemming and no stop-word list, so "SentencePiece" stays a distinctive term.
+  - Tokens are lower-cased runs of letters and digits. Numbers are kept, a decimal such as "0.1" as one token, and there is no stemming and no stop-word list, so "SentencePiece" stays a distinctive term.
   - `k1` and `b` are in `[bm25]`.
   - A Chunk that shares no word with the question isn't ranked.
 - **`evaluate` inputs.**

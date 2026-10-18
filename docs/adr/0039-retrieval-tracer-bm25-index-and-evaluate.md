@@ -22,11 +22,11 @@ The choices below are the ones the spec leaves open, or the ones later slices bu
 - The chunking key is the parse cache's own key. The retriever key is the retriever's name plus a 12-hex hash of its settings, e.g. `bm25-4e42ab0ca936`. A change to either builds a new folder and leaves the old one.
 - `index.json` records:
   - the settings;
-  - a fingerprint of the corpus (a hash of the sorted file hashes);
+  - a fingerprint of the corpus (a hash of the GROBID parser key and the sorted file hashes);
   - the file and Chunk counts;
   - the build time.
 
-  It is written last. If the fingerprint differs, because the report gained or lost files under the same config, the index is rebuilt. An interrupted build leaves no record, so the next run builds it again. Otherwise a rerun says "up to date" and writes nothing.
+  It is written last. If the fingerprint differs, the index is rebuilt: the report gained or lost files under the same config, or a new GROBID image parsed the same files again. The parser isn't in the folder name, because the parse cache keeps only one parse per image and an index over an old one couldn't be reused anyway. An interrupted build leaves no record, so the next run builds it again. Otherwise a rerun says "up to date" and writes nothing.
 - `evaluate` never builds an index. It stops and says to run `just index`, so building cost stays in one place and is recorded once.
 
 **The retriever interface.**
@@ -36,7 +36,7 @@ The choices below are the ones the spec leaves open, or the ones later slices bu
 - `config/retrieval.toml` lists the retrievers. The dense baseline will be added there.
 
 **BM25**
-- Tokens are runs of letters and digits, lower-cased (`[^\W_]+`). There is no stemming and there are no stop words. "50k" stays one token; "31.78" becomes two.
+- Tokens are runs of letters and digits, lower-cased, with a decimal or thousands-separated number kept whole (`\d+(?:[.,]\d+)+|[^\W_]+`). There is no stemming and there are no stop words. "50k", "0.1" and "1,000" are one token each; "59 500" is two, as the text spaces it.
 - The idf is Lucene's, ln(1 + (N − df + 0.5)/(df + 0.5)), so it is never negative. k1 = 1.2 and b = 0.75 are the common defaults, and they live in the config.
 - Each distinct query term counts once. A Chunk that shares no term with the query is not ranked. Ties keep corpus order, and terms are summed in query order, so rankings are the same on every run.
 - It is about 80 lines of plain Python, stored as JSON postings. The index of the 2,055 Seed Chunks builds in 0.1 s, and a query takes about 3 ms. At ~160k Chunks the JSON will be large, but there is still no need for a dependency.

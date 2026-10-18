@@ -1,6 +1,6 @@
 """BM25 over each Chunk's context header plus its text (ADR 0039).
 
-Tokens are lower-cased runs of letters and digits, numbers kept, with no stemming and no stop words.
+Tokens are lower-cased runs of letters and digits, numbers kept (a decimal whole), with no stemming and no stop words.
 A term's weight is the Lucene form of BM25's idf, ln(1 + (N - df + 0.5) / (df + 0.5)), so it is never
 negative, times its saturated count, tf (k1 + 1) / (tf + k1 (1 - b + b dl / avgdl)). Each distinct query
 term counts once. A Chunk that shares no term with the query isn't ranked, and ties keep corpus order.
@@ -16,13 +16,15 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from ..parsing.cache import write_atomically
+from ..files import write_atomically
 from ..parsing.chunker import Chunk
 from .retriever import indexed_text
 
 # Names how BM25 cuts text into tokens. It is part of the BM25 key, so change it with the tokenisation.
-TOKENS = "lower-cased letter and digit runs, no stemming, no stop words"
-_TOKEN = re.compile(r"[^\W_]+")
+TOKENS = "lower-cased letter and digit runs, decimals whole, no stemming, no stop words"
+# A number with a decimal point or thousands comma ("0.1", "1,000") is one token; any other run of letters
+# and digits is one too ("50k", "gpt2"); everything else separates tokens.
+_TOKEN = re.compile(r"\d+(?:[.,]\d+)+|[^\W_]+")
 _FILE = "bm25.json"
 
 

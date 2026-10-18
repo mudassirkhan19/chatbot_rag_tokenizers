@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from chatbot_rag_tokenizers.cli import main
+from chatbot_rag_tokenizers.parsing.config import load_parse_config
 from parse_support import REPO_CONFIG, FakeGrobid, config_with_budget, run_parse, seed_pdf
 
 ROOT = Path(__file__).parents[1]
@@ -71,6 +72,21 @@ def test_a_chunking_config_change_builds_a_new_index_and_leaves_the_old_one(corp
     assert {path: after[path] for path in before} == before
     new = {path.parent.parent.name for path in after} - {path.parent.parent.name for path in before}
     assert len(new) == 1 and new.pop().startswith("chunking-")
+
+
+def test_a_new_grobid_image_rebuilds_the_index_over_the_new_parse(corpus, tmp_path, capsys):
+    run_index(corpus)
+    other = tmp_path / "parse-new-grobid.toml"
+    other.write_text(
+        config_with_budget(tmp_path, 350).read_text().replace(load_parse_config(REPO_CONFIG).grobid.digest, "sha256:" + "0" * 64)
+    )
+    run_parse(tmp_path, *sorted((tmp_path / "pdfs").iterdir()), config=other)
+    capsys.readouterr()
+
+    run_index(corpus, parse_config=other)
+
+    out = capsys.readouterr().out
+    assert "built bm25" in out and "up to date" not in out
 
 
 def test_index_says_when_the_parse_cache_is_empty(corpus, capsys):

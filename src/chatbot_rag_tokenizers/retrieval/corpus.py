@@ -10,7 +10,7 @@ from pathlib import Path
 
 from ..parsing.cache import ParseCache
 from ..parsing.chunker import Chunk
-from ..parsing.config import ParseConfig
+from ..parsing.config import ChunkingConfig, ParseConfig
 from ..parsing.report import UnreadableReport, read_report
 
 
@@ -20,14 +20,19 @@ class CorpusError(RuntimeError):
 
 @dataclass(frozen=True)
 class Corpus:
-    chunking_key: str
+    parser_key: str  # the GROBID image the files were parsed with
+    chunking: ChunkingConfig
     files: tuple[str, ...]  # the sha256 of each parsed file, in the report's order
     chunks: tuple[Chunk, ...]  # every file's Chunks, file by file, each file's in order
 
     @property
+    def chunking_key(self) -> str:
+        return self.chunking.key
+
+    @property
     def fingerprint(self) -> str:
-        """Names the set of files, so an index built over other files is never taken for this one."""
-        return hashlib.sha256("\n".join(sorted(self.files)).encode()).hexdigest()
+        """Names the parser and the set of files, so an index built over another parse is never taken for this one."""
+        return hashlib.sha256("\n".join([self.parser_key, *sorted(self.files)]).encode()).hexdigest()
 
 
 def load_corpus(config: ParseConfig, cache_root: Path, report_path: Path) -> Corpus:
@@ -62,7 +67,7 @@ def load_corpus(config: ParseConfig, cache_root: Path, report_path: Path) -> Cor
         )
     if missing:
         raise CorpusError(f"the parse cache {cache_root} has no Chunks for {_count(len(missing))} in {report_path}: {', '.join(missing)}. {rerun}")
-    return Corpus(config.chunking.key, tuple(sha256 for _, sha256 in run.parsed), tuple(chunks))
+    return Corpus(config.grobid.parser_key, config.chunking, tuple(sha256 for _, sha256 in run.parsed), tuple(chunks))
 
 
 def _config_name(config: ParseConfig) -> str:

@@ -1,4 +1,4 @@
-"""The harness: runs every question through a retriever and scores the raw ranking against its Passages (ADR 0039).
+"""The harness (ADR 0039): runs every question through a retriever and scores the raw ranking against its Passages.
 
 - Recall@5: the share of a question's Passages held by a Chunk in the top 5, averaged over questions.
 - MRR@10: 1 / the rank of the first Chunk holding any Passage, 0 when none is in the top 10.
@@ -19,8 +19,12 @@ from .matching import holds
 RECALL_DEPTH = HIT_DEPTH = 5
 MRR_DEPTH = 10
 
+# How a question is put to the retriever: as asked, or, for a follow-up, in each of three ways.
 AS_ASKED = "as asked"
-FOLLOW_UP_QUERIES = ("follow-up alone", "history + follow-up", "reference rewrite")
+FOLLOW_UP_ALONE = "follow-up alone"
+WITH_HISTORY = "history + follow-up"
+REWRITE = "reference rewrite"
+FOLLOW_UP_QUERIES = (FOLLOW_UP_ALONE, WITH_HISTORY, REWRITE)
 
 
 @dataclass(frozen=True)
@@ -28,7 +32,7 @@ class Scored:
     """One query of one question, scored."""
 
     question: Question
-    query: str  # AS_ASKED, or one of FOLLOW_UP_QUERIES
+    query_kind: str  # AS_ASKED, or one of FOLLOW_UP_QUERIES
     first_hit: int | None  # the rank of the first Chunk holding any Passage, None when none is in the top 10
     found: int  # the Passages held by a Chunk in the top 5
     seconds: float  # how long the retriever took to answer
@@ -46,22 +50,30 @@ def queries(question: Question) -> list[tuple[str, str]]:
     """Each query a question is run as, named."""
     if question.type != "follow-up":
         return [(AS_ASKED, question.question)]
-    alone, history, rewrite = FOLLOW_UP_QUERIES
-    return [(alone, question.question), (history, " ".join([*question.history, question.question])), (rewrite, question.rewrite)]
+    return [
+        (FOLLOW_UP_ALONE, question.question),
+        (WITH_HISTORY, " ".join([*question.history, question.question])),
+        (REWRITE, question.rewrite),
+    ]
 
 
 def score(questions: Sequence[Question], retriever: Retriever, chunk_texts: Mapping[str, str]) -> list[Scored]:
     scored = []
     for question in questions:
-        for query, text in queries(question):
+        for query_kind, text in queries(question):
             started = time.perf_counter()
             ranking = retriever.query(text, MRR_DEPTH)
             seconds = time.perf_counter() - started
             held = [[holds(chunk_texts[chunk_id], passage.quote) for passage in question.passages] for chunk_id, _ in ranking]
             first_hit = next((rank for rank, row in enumerate(held, start=1) if any(row)), None)
             found = sum(1 for column in zip(*held[:RECALL_DEPTH]) if any(column))
-            scored.append(Scored(question, query, first_hit, found, seconds))
+            scored.append(Scored(question, query_kind, first_hit, found, seconds))
     return scored
+
+
+def all_answerable(scored: Sequence[Scored]) -> list[Scored]:
+    """Every answerable question once, as a user would type it: a follow-up alone, without its history."""
+    return [s for s in scored if s.question.answerable and s.query_kind in (AS_ASKED, FOLLOW_UP_ALONE)]
 
 
 def metrics(scored: Sequence[Scored]) -> Metrics | None:

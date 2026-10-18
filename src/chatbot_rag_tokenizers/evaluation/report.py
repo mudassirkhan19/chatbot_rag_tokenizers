@@ -1,4 +1,4 @@
-"""The eval report writer: the committed Markdown record of an `evaluate` run, in the style of the parse report.
+"""The eval report writer (ADR 0039): the committed Markdown record of an `evaluate` run, in the style of the parse report.
 
 It names what was scored (the Evaluation set, the chunking config and corpus, each retriever's settings),
 then gives a results table per retriever and question type and a line per question. Everything above the
@@ -11,14 +11,25 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..parsing.config import ChunkingConfig
 from ..retrieval.corpus import Corpus
 from ..retrieval.retriever import RetrieverConfig
 from .evalset import QUESTION_TYPES, Question
-from .harness import AS_ASKED, FOLLOW_UP_QUERIES, HIT_DEPTH, MRR_DEPTH, RECALL_DEPTH, Scored, metrics
+from .harness import (
+    AS_ASKED,
+    FOLLOW_UP_ALONE,
+    FOLLOW_UP_QUERIES,
+    HIT_DEPTH,
+    MRR_DEPTH,
+    RECALL_DEPTH,
+    REWRITE,
+    WITH_HISTORY,
+    Scored,
+    all_answerable,
+    metrics,
+)
 
 NONE = "—"
-ALL_ANSWERABLE = f"{AS_ASKED}, follow-ups alone"
+ALL_ANSWERABLE = f"{AS_ASKED}, follow-ups alone"  # the all-answerable row: see harness.all_answerable
 
 
 @dataclass(frozen=True)
@@ -33,7 +44,6 @@ def write_eval_report(
     evaluation_set: Path,
     evaluation_set_sha256: str,
     questions: Sequence[Question],
-    chunking: ChunkingConfig,
     corpus: Corpus,
     runs: Sequence[RetrieverRun],
 ) -> None:
@@ -52,8 +62,9 @@ def write_eval_report(
         "",
         "## Chunks",
         "",
-        f"- Chunking config: `{chunking.key}`",
-        *[f"  - {name}: `{value}`" for name, value in chunking.describe().items()],
+        f"- Parser: `{corpus.parser_key}`",
+        f"- Chunking config: `{corpus.chunking_key}`",
+        *[f"  - {name}: `{value}`" for name, value in corpus.chunking.describe().items()],
         f"- Files: {len(corpus.files)}",
         f"- Chunks: {len(corpus.chunks)}",
         "",
@@ -70,8 +81,8 @@ def write_eval_report(
         " this is a stand-in for the real Passage matcher. The Chunk may come from any Edition.",
         "- The ranking is scored raw: duplicates of one Work all take their slots.",
         "- Unanswerable questions are run but left out of the metrics.",
-        f"- A follow-up is run three ways: {', '.join(FOLLOW_UP_QUERIES[:2])} (its prior turns, then the follow-up, joined by"
-        f" spaces) and {FOLLOW_UP_QUERIES[2]}. The *all answerable* row takes each follow-up alone, as a user would ask it.",
+        f"- A follow-up is run three ways: {FOLLOW_UP_ALONE}, {WITH_HISTORY} (its prior turns, then the follow-up, joined by"
+        f" spaces) and {REWRITE}. The *all answerable* row takes each follow-up alone, as a user would ask it.",
         "",
         "## Results",
         "",
@@ -97,14 +108,14 @@ def _retriever(config: RetrieverConfig) -> list[str]:
 
 
 def _results(run: RetrieverRun) -> list[str]:
-    def chosen(kind: str | None, query: str) -> list[Scored]:
-        return [s for s in run.scored if s.question.answerable and (kind is None or s.question.type == kind) and s.query == query]
+    def chosen(kind: str, query: str) -> list[Scored]:
+        return [s for s in run.scored if s.question.type == kind and s.query_kind == query]
 
     rows = [
         ("single-paper", AS_ASKED, chosen("single-paper", AS_ASKED)),
         ("multi-paper", AS_ASKED, chosen("multi-paper", AS_ASKED)),
         *[("follow-up", query, chosen("follow-up", query)) for query in FOLLOW_UP_QUERIES],
-        ("all answerable", ALL_ANSWERABLE, chosen(None, AS_ASKED) + chosen(None, FOLLOW_UP_QUERIES[0])),
+        ("all answerable", ALL_ANSWERABLE, all_answerable(run.scored)),
     ]
     unanswerable = sum(1 for s in run.scored if not s.question.answerable)
     lines = [
@@ -133,7 +144,7 @@ def _questions(run: RetrieverRun) -> list[str]:
             hit, found = str(s.first_hit or "none"), f"{s.found}/{len(s.question.passages)}"
         else:
             hit, found = "left out", NONE
-        lines.append(f"| {s.question.id} | {s.question.type} | {s.query} | {hit} | {found} |")
+        lines.append(f"| {s.question.id} | {s.question.type} | {s.query_kind} | {hit} | {found} |")
     return [*lines, ""]
 
 

@@ -10,6 +10,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 
 ## Chunks
 
+- Parser: `grobid-0.9.1-crf-223957791ac2`
 - Chunking config: `chunking-215005ae4889`
   - token_budget: `350`
   - tokenizer: `google-bert/bert-base-uncased`
@@ -22,10 +23,10 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 
 ## Retrievers
 
-- bm25: `bm25-4e42ab0ca936`
+- bm25: `bm25-abfdc4a74910`
   - k1: `1.2`
   - b: `0.75`
-  - tokens: `lower-cased letter and digit runs, no stemming, no stop words`
+  - tokens: `lower-cased letter and digit runs, decimals whole, no stemming, no stop words`
 
 ## Metrics
 
@@ -69,4 +70,4 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 
 These depend on the machine and change from run to run.
 
-- bm25: index built in 0.12 s; 5 queries, latency p50 2.59 ms, p95 3.66 ms
+- bm25: index built in 0.20 s; 5 queries, latency p50 2.79 ms, p95 4.14 ms

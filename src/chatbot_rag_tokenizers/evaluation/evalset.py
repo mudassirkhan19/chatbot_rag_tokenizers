@@ -45,14 +45,20 @@ def load_evaluation_set(path: Path) -> list[Question]:
     questions = []
     for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         if line.strip():
-            questions.append(_question(json.loads(line), f"{path}:{number}"))
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError as error:
+                raise EvaluationSetError(f"{path}:{number}: not valid JSON: {error}") from error
+            questions.append(_question(record, f"{path}:{number}"))
     ids = [question.id for question in questions]
     if duplicates := sorted({id for id in ids if ids.count(id) > 1}):
         raise EvaluationSetError(f"{path}: question ids are used more than once: {', '.join(duplicates)}")
     return questions
 
 
-def _question(record: dict, where: str) -> Question:
+def _question(record: object, where: str) -> Question:
+    if not isinstance(record, dict):
+        raise EvaluationSetError(f"{where}: not a JSON object")
     expected = {"id", "type", "question", "passages", "history", "rewrite"}
     if unknown := sorted(set(record) - expected):
         raise EvaluationSetError(f"{where}: unknown fields {', '.join(unknown)}")

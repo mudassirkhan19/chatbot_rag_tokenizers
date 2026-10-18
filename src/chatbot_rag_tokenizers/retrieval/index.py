@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ..parsing.cache import write_atomically
+from ..files import write_atomically
 from .corpus import Corpus
 from .retriever import Retriever, RetrieverConfig
 
