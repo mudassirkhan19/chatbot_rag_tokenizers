@@ -16,6 +16,7 @@ from .judge import JudgeVerdict, VerdictCache, question_hash
 from .manifest import manifest_row, write_manifest
 from .openalex import API_KEY_ENV as OPENALEX_KEY_ENV
 from .openalex import OpenAlexSource
+from .papers import not_a_paper
 from .rules import RuleFilter, RuleOutcome
 from .semantic_scholar import API_KEY_ENV as S2_KEY_ENV
 from .semantic_scholar import SemanticScholarSource
@@ -228,8 +229,9 @@ def assess(config: ScopeConfig, snapshot_dir: Path, refresh: bool = False, run_j
     passed = [edition for edition, outcome in zip(editions, outcomes, strict=True) if outcome.passed]
     # Only rule passes get their arXiv record; a reject keeps the id its source reported.
     add_arxiv_records(passed, arxiv)
-    # A withdrawn preprint is excluded on its record alone, so the judge never scores it.
-    to_judge = [edition for edition in passed if not edition.withdrawn]
+    # A withdrawn preprint is excluded on its record alone, and an Edition that is not a paper on
+    # its source metadata, so the judge never scores either.
+    to_judge = [edition for edition in passed if not edition.withdrawn and not not_a_paper(edition)]
     verdicts = judge_candidates(config, to_judge, VerdictCache(snapshot_dir), refresh, run_judge)
     return [
         Assessed(edition, outcome, verdicts.get(edition.edition_id))

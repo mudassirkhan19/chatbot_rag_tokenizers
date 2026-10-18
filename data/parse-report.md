@@ -71,12 +71,6 @@ Numeric counts the text Chunks in which more than 35% of their words are numbers
 | 10.30871/jaic.v9i6.11283 | `931e5e636138d7111406ef10437bfbadda5c3c6add55aa964685cff328611123` | parsed | 12 | 30 | 1 | 11 | 0 |
 | 10.30871/jaic.v9i6.11293 | `2bc0d34e06d3007ffe66132df23ca619f12caf9bb75056ab6f4184a21959e7f9` | parsed | 15 | 47 | 0 | 3 | 0 |
 | 10.32473/flairs.39.1.141784 | `8589aff3144b18426326b2fc68d63f561c3b1f913701bb8469616c68eb57c52e` | parsed | 19 | 28 | 4 | 2 | 0 |
-| 10.32614/cran.package.morphemepiece | `860ef2c9b85fa1f838b0acc06baeb95bc5e2ac2acf50b0c30b9377a9a7c50d0c` | parsed | 20 | 21 | 0 | 2 | 0 |
-| 10.32614/cran.package.rtiktoken | `bd2ecda7ce31ff3b26e1fb1615a59217ce9f2aa60f4bb3e778accfd511fc7056` | failed: too little body text (1908 characters, minimum 2000) | 4 | 0 | 0 | 0 | 0 |
-| 10.32614/cran.package.sentencepiece | `073e4ecc54c7d7b36506ad64f70a5616946ea2264d4d8505231b46377e3ecb53` | parsed | 13 | 18 | 0 | 2 | 2 |
-| 10.32614/cran.package.tok | `5e9cae1206eebf6a92a17b309a61a8fe9f0a695f21d899b3dcf3ece43a32940d` | parsed | 28 | 45 | 0 | 4 | 2 |
-| 10.32614/cran.package.tokenizers.bpe | `d768b9ba4acb65dd0c952222b577d8c5178eae9bb483c5e8615bc983493208e0` | parsed | 2 | 8 | 0 | 5 | 0 |
-| 10.32614/cran.package.wordpiece | `562b204576d483a5ee259f04a859746e10f7da3e7168f5c4874a0417d6460065` | parsed | 16 | 18 | 0 | 2 | 0 |
 | 10.33545/27076571.2026.v7.i2a.367 | `1b5bb875612b9df01d3af7e58aabcf8d27355b56086b2a18edfd07358a639ee4` | parsed | 10 | 20 | 2 | 2 | 0 |
 | 10.3389/fcomp.2026.1836418 | `3decb317af0a822e019752abda7952628b3db443f02395b28f020e7508c4c07d` | parsed | 86 | 127 | 0 | 14 | 0 |
 | 10.35546/kntu2078-4481.2024.1.25 | `4e95df415cb79875c819be8a33a452bdf97e066364632ac209602f86290079ca` | parsed | 6 | 49 | 0 | 0 | 0 |
@@ -92,7 +86,6 @@ Numeric counts the text Chunks in which more than 35% of their words are numbers
 | 10.5121/ijci.2024.130204 | `403fb2b7e77203b534fc70bf0dee0fdf3e7be0f3b6375caa9efa7782da5c177b` | parsed | 16 | 33 | 3 | 1 | 0 |
 | 10.5121/ijgca.2026.17203 | `4d6bfa54f42339a3cfe24fc73cb81cb56ceeee521c123836af183cc2dd953c00` | parsed | 17 | 24 | 2 | 6 | 0 |
 | 10.52783/jisem.v10i37s.6506 | `6172ddbd7d7d893b3d0f4b1b0ab5f3cac2b47c5d1a73d743b2dfbaca5ae103e9` | parsed | 12 | 22 | 2 | 1 | 0 |
-| 10.5282/edoc.37591 | `b7067db5615dbbbb4017d3e75d8bdcd604e29464886e9c609ad28d9e79401992` | parsed | 244 | 542 | 3 | 43 | 41 |
 | 10.54254/2755-2721/2026.37609 | `1a85a13a3d892b971266966a639b34c4bf2e453a0ddc18d6868fd2a751349cee` | parsed | 30 | 45 | 6 | 4 | 0 |
 | 10.70153/ijcmi/2026.18101 | `b5662f72cd8b0bd591ddaeba629740616dd8da246f5227dd740db464df1c2916` | parsed | 27 | 35 | 2 | 6 | 0 |
 | 10.7469/JKSQM.2020.48.3.421 | `5a42c607bc720e93c651d2d33bd88a39dabf28f09f8fefa11e230b3e625b27b4` | parsed | 3 | 54 | 11 | 31 | 0 |
@@ -152,8 +145,6 @@ Numeric counts the text Chunks in which more than 35% of their words are numbers
 | 1610.06510v3 | `5813bf67e98d2a2a28d0e62c6f2230cae3b7ed0b8a3b7465130f5b715d834aa4` | parsed | 21 | 41 | 2 | 1 | 3 |
 | 1610.09975v1 | `c88ab2550ef2202aad9fdc5af476721ec31c4272f22aba1797e37f43a996b8d0` | parsed | 7 | 20 | 3 | 0 | 0 |
 | 1611.00472v1 | `28f39ae738269410b9e6edf5f6f6d22f3c60c0406d5f19cfb656568a90f4838b` | parsed | 15 | 29 | 4 | 3 | 0 |
-| 1611.04358v1 | `ffed31d39986f658c246b03ae1aa650d07187279eb3daf082295c32f289fc19c` | parsed | 52 | 71 | 2 | 13 | 0 |
-| 1611.04358v2 | `2504a930b102ed0cf53c7a284fe6c35d40f6ce3e67a7bb9b8c1e17d7c0ef425f` | parsed | 52 | 71 | 2 | 13 | 0 |
 | 1611.04361v1 | `1ce7deaee75e0a073c9b36aae316db758f0f823387e8a31c5d95899b2d7a0e02` | parsed | 10 | 28 | 3 | 2 | 0 |
 | 1612.03216v1 | `e35e1152675ef68ef628b08919c2975b7c3d6da0e20f37fdff2ff7055666584a` | parsed | 18 | 33 | 1 | 0 | 1 |
 | 1612.03216v2 | `ebdf26767517e299d61252234dcc9f6fb9c4ef6647ff7e1af502f6cce4a3ca80` | parsed | 17 | 36 | 1 | 1 | 2 |
@@ -856,7 +847,6 @@ Numeric counts the text Chunks in which more than 35% of their words are numbers
 | 2025.naacl-long.398 | `fb2425779b088689eb9f6f490539fd55cf63deca573701a22a47e5ce47eb3d72` | parsed | 19 | 45 | 12 | 3 | 0 |
 | 2025.naacl-srw.21 | `cb87fcb531ccadbd370f9f9e6452b3f0bdee6c835c597d180500c2b3c29d6927` | parsed | 30 | 55 | 11 | 12 | 1 |
 | 2025.winlp-main.35 | `84b6f622ebda5a22e3023b11a5ca28ebe5c29b48f9dbe424e0b82df12aea8021` | parsed | 14 | 19 | 0 | 2 | 0 |
-| 2025.wnut-1.0 | `022d468fdd437bce9e647154ccdae13937aaf8c2be4a72792d1d40d69bf65055` | parsed | 2 | 2 | 0 | 0 | 0 |
 | 2026.abjadnlp-1.2 | `cc59ea91be6988705412a8abd397998c44c9778be12409e3c8a748c86cdc5e14` | parsed | 40 | 47 | 2 | 1 | 0 |
 | 2026.abjadnlp-1.39 | `540a938cd47bec5c02149d7f2a67b17ad388857fa75741505724395956f70675` | parsed | 19 | 31 | 2 | 1 | 0 |
 | 2026.acl-demo.41 | `ba8627dbcad0150bf9228a292b4915d78396c6b0dd52bdc0549155f0caaf8e41` | parsed | 13 | 26 | 0 | 5 | 0 |
@@ -1360,7 +1350,6 @@ Numeric counts the text Chunks in which more than 35% of their words are numbers
 | 2403.01308v1 | `5f14f2677c021245763a96b953737ae7cd002ae1b4c87522cef1550f103a2988` | parsed | 31 | 39 | 3 | 0 | 0 |
 | 2403.01308v2 | `c28ed9f5a3c0ca6365a68df0f79d5981bec315005d2f6b50789ccaa132f9f1c4` | parsed | 31 | 40 | 3 | 1 | 0 |
 | 2403.01309v1 | `35d43b24ec08a4486adaa701e4683c77732541f2bf6d3e2ec43daf02a6c8f667` | parsed | 24 | 32 | 0 | 3 | 0 |
-| 2403.01580v1 | `cd0316443aea8fe12c4d082fa5080f271b7d67d0df31f8d36782e7bb7e9bccb8` | parsed | 221 | 393 | 30 | 71 | 2 |
 | 2403.01858v1 | `02bd8bd3cadd9067844cf32b0340948fb4f6217bcd3bbeefe8fabaa7755e948a` | parsed | 29 | 55 | 9 | 6 | 4 |
 | 2403.01858v3 | `1bd75bf0f164634e16d44214a4d1aebc490c53b3915d368b2ea5143922a89ff9` | parsed | 31 | 111 | 14 | 45 | 3 |
 | 2403.01985v1 | `4bacb74bc35e4143df25c7d9624083af2e0f56745bfaf1a7349f641d586157d4` | parsed | 23 | 31 | 5 | 3 | 0 |
@@ -1933,8 +1922,6 @@ Numeric counts the text Chunks in which more than 35% of their words are numbers
 | 2508.15338v2 | `ebbee02e1f54f148daf5c95bc3e7fcfc21838233e11cdb02fcda163193161ca3` | parsed | 19 | 38 | 5 | 4 | 0 |
 | 2508.15390v1 | `393640a8c75f31bdc160316f322c0ba0aaa6f1e238474b7fbad0618cdc7017ce` | parsed | 28 | 52 | 1 | 9 | 0 |
 | 2508.15390v3 | `1ecd1da2c8ac14bb24ba134cb0d689829805b9b670c042e0ba7e3bb72b97753e` | parsed | 31 | 61 | 7 | 8 | 0 |
-| 2508.15807v1 | `a6504155f4c9bbc07ad9406cd54bd39005866ed468a7d0385980982365ae1c3e` | parsed | 74 | 109 | 2 | 11 | 0 |
-| 2508.15807v2 | `03ea0799591aa8f3cf0cd0334a78f40197f832e50e9b58a4d56997fb8956a464` | parsed | 77 | 143 | 2 | 17 | 0 |
 | 2508.17771v1 | `14c04373296a2c5573540b6b504aac133ce205d5fc64a494def4a42200390e05` | parsed | 34 | 78 | 9 | 13 | 2 |
 | 2508.17771v2 | `06b5810e9a52035af8cd77b71e45f9d36b9062e2d92e243e9eff33ec06703cca` | parsed | 34 | 78 | 9 | 14 | 2 |
 | 2508.17953v1 | `ad5b69ee69321483fde6a4b07b86d9dedb4a1fbb1e85412aa1d276a54c9efd4f` | parsed | 24 | 36 | 1 | 7 | 0 |
@@ -2226,7 +2213,6 @@ Numeric counts the text Chunks in which more than 35% of their words are numbers
 | 2603.22629v1 | `c5201b6c3c0a258418fd1df31dad2d504d9bfd453cc7f975f4b9aae3fc5a78cf` | parsed | 26 | 41 | 3 | 2 | 0 |
 | 2603.22774v1 | `d19bc7382325051a107f940da8794523ca63c340a47bf9b2e81292b72fcd595d` | parsed | 28 | 61 | 0 | 7 | 2 |
 | 2603.22774v3 | `8e7b224f5e4e2c459d992c8dd8c53e38cff1cec9016d9532ceae275262bc96c6` | parsed | 29 | 64 | 0 | 12 | 2 |
-| 2603.24955v1 | `ababc8e8d6c598f783ce719b25834a2361795857ff6ce9ca55ef3b6cfaee7b4d` | parsed | 137 | 282 | 3 | 15 | 7 |
 | 2603.25222v1 | `11edeba03f0896bfccc04d38ca021f85eff0528b5ac654bb25cb2e8a73cadea7` | parsed | 26 | 65 | 24 | 2 | 9 |
 | 2603.25309v1 | `88b2bc675e22136008bdef877b3240cf02f320dc11535a69a37d69c26e5d5920` | parsed | 39 | 60 | 10 | 3 | 0 |
 | 2603.27859v1 | `145d8fcb323d1548e2171792462549166c16c69f65c548eba6dce95704190747` | parsed | 27 | 34 | 5 | 1 | 0 |
@@ -2291,8 +2277,6 @@ Numeric counts the text Chunks in which more than 35% of their words are numbers
 | 2605.02270v2 | `4250a20305a3b987144eaf50d0a8d4c80c28d8bc120e3ba4ba390b838ff2bcfd` | parsed | 21 | 53 | 8 | 3 | 0 |
 | 2605.02496v1 | `a9b81b843f9139d3d0633e734634a11d6d03a1496f7757870477ae7e14b37827` | parsed | 9 | 25 | 1 | 2 | 0 |
 | 2605.03696v1 | `bff8540b879ec2c3ba1c6143ab7bdce8c5192a5aafdfb76c048567cb55481a64` | parsed | 24 | 28 | 0 | 0 | 1 |
-| 2605.03799v1 | `b90f83fb07400cd4a8b5c680b3fd6227f0813a648f9b4a2295177f83f42ccb8f` | parsed | 171 | 252 | 0 | 6 | 0 |
-| 2605.03799v3 | `f66265fff9fd9630e09213c46320b3fbf6aacc9ff5f08589a989d5ae8961da4f` | parsed | 482 | 682 | 0 | 12 | 0 |
 | 2605.04583v1 | `f4214ef265254d562e2bf5f58404091f67a485ddc6cb2ba381c7849bdffd52ba` | parsed | 24 | 40 | 5 | 2 | 0 |
 | 2605.04583v3 | `568616042db34af5e2f90a33d06983f1a6f0086c3e1282f06fff080aab2d7c71` | parsed | 15 | 39 | 5 | 1 | 0 |
 | 2605.05096v1 | `5ea200c71ec5f2b0dcb72891584d9b3fc13808776b35a42ab59011e0cae4c5d9` | parsed | 30 | 71 | 13 | 10 | 0 |
@@ -2726,11 +2710,6 @@ Numeric counts the text Chunks in which more than 35% of their words are numbers
 | W19-6910 | `c6b75d631d9d0f06899987a8b759be4e8aaf9f10b1d1144de12f718916b82dc5` | parsed | 14 | 36 | 2 | 1 | 0 |
 | W19-8655 | `b8b97a42e0fb62df06edb0b420d548eb31b958c9200929255bfec84b9a4ea4c5` | parsed | 5 | 17 | 4 | 0 | 0 |
 | W4412206316 | `68a62be8e9149809d59aa9911b1578c9a6401c177bcc25a9290b263479447e0f` | parsed | 19 | 35 | 3 | 0 | 1 |
-| W7114942611 | `6e8db03dde772d65be77be8acfe42cc55042c510a2838ea91698609fe8a12723` | parsed | 163 | 331 | 24 | 40 | 2 |
-| W7135303167 | `5e6fbbb73f603bc5b4b960dd03a5375e93250db02e9080c9ed2ea3041c4721d5` | parsed | 140 | 280 | 11 | 8 | 10 |
-| W7135572887 | `c3a816c959087868f002988bf1a1fde5e53b117c1f1c935e2f14680a6353ac59` | parsed | 165 | 266 | 2 | 14 | 11 |
-| W7144916733 | `25f2394c87de0dbc47d42aa7947ccfa0970a58c6a17093e3cb325ce877127873` | parsed | 34 | 78 | 14 | 14 | 0 |
-| W7165988237 | `b8f5976de81e24f798902490aa7199f4c238489f4d9a16ce6aee949dd4fa5490` | parsed | 20 | 102 | 0 | 20 | 0 |
 | W7215520990 | `6e3890330fe629aef6a82210f4c14598e27ac80d67d5ccfa5b75fd26e13155fd` | parsed | 4 | 14 | 0 | 5 | 0 |
 | W7217058282 | `52937913d664502be70c8ed5e608ae5be9ee263a13c8e374fab5dac855918208` | parsed | 21 | 29 | 0 | 4 | 0 |
 | W7217633576 | `482533a357de17faf4ea1eb12d644fc434f9ab713ada4d856c6d4d6f1712aeb4` | parsed | 47 | 49 | 0 | 2 | 0 |
@@ -2741,16 +2720,15 @@ Numeric counts the text Chunks in which more than 35% of their words are numbers
 
 ## Totals
 
-- Files: 2712
-- Sections: 70191
-- Chunks: 145074
-- Table Chunks: 18133
-- Caption Chunks: 14049
-- Numeric text Chunks: 4856
-- Parsed: 2710
-- Failed: 2
+- Files: 2691
+- Sections: 68074
+- Chunks: 141360
+- Table Chunks: 18038
+- Caption Chunks: 13737
+- Numeric text Chunks: 4779
+- Parsed: 2690
+- Failed: 1
 
 ## Failures by reason
 
 - too few Sections: 1
-- too little body text: 1

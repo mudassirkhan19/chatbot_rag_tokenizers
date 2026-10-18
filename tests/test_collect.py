@@ -14,7 +14,7 @@ from chatbot_rag_tokenizers.cli import main
 from chatbot_rag_tokenizers.collection import judge, snapshot
 from chatbot_rag_tokenizers.collection.openalex import OpenAlexError
 from chatbot_rag_tokenizers.collection.snapshot import SnapshotStore
-from conftest import FIXTURES, acl_request, arxiv_record_request, s2_seed_request
+from conftest import FIXTURES, acl_request, arxiv_record_request, openalex_request, s2_seed_request
 
 
 def run_collect(snapshot: Path, manifest: Path, config: Path = FIXTURES / "scope.toml", *flags: str) -> None:
@@ -788,6 +788,66 @@ def test_report_counts_withdrawn_preprints_apart_from_judge_exclusions(fixture_s
     assert "| Included | 11 |" in report
     assert "| Still to fetch | 10 |" in report
     assert "withdrawn: 1 excluded, the latest arXiv Version is a withdrawal" in capsys.readouterr().err
+
+
+def edit_openalex_page(snapshot_dir: Path, page: str, *replacements: tuple[str, str]) -> None:
+    """Replace an OpenAlex fixture results page in the Snapshot with an edited copy."""
+    cursor = {"page-0.json": "*", "page-1.json": "FIXTURE-CURSOR-1"}[page]
+    body = (FIXTURES / "openalex" / page).read_text()
+    for old, new in replacements:
+        assert old in body
+        body = body.replace(old, new, 1)
+    SnapshotStore(snapshot_dir).save(openalex_request(cursor), body, collected_at="2026-10-18")
+
+
+def test_dissertation_is_excluded_as_not_a_paper_without_the_judge(fixture_snapshot, no_network, monkeypatch, tmp_path):
+    # OpenAlex records its Unigram paper, a venue Edition, as a dissertation.
+    edit_openalex_page(fixture_snapshot, "page-0.json", ('"type": "article"', '"type": "dissertation"'))
+    fake = FakeJudge()
+    monkeypatch.setattr(judge, "load_judge", lambda config: fake)
+    manifest = tmp_path / "manifest.csv"
+
+    run_collect(fixture_snapshot, manifest, FIXTURES / "scope.toml", "--refresh")
+
+    assert "10.5555/lrm.2022.7" not in fake.scored
+    row = read_manifest(manifest)["10.5555/lrm.2022.7"]
+    assert row["rule_outcome"] == "pass"
+    assert row["relevance_verdict"] == "excluded"
+    assert row["relevance_stage"] == "not a paper"
+    assert row["relevance_reason"] == "not a paper: OpenAlex type dissertation"
+    assert row["judge_probability"] == ""
+    assert row["funnel_status"] == "discovered"
+
+
+def test_thesis_named_in_the_arxiv_comments_is_excluded_without_the_judge(fixture_snapshot, no_network, monkeypatch, tmp_path):
+    # The comments come from the full arXiv record, fetched after the rules.
+    edit_arxiv_record(fixture_snapshot, "1804.10959", ("Accepted as a long paper at ACL2018", "PhD thesis, 120 pages"))
+    fake = FakeJudge()
+    monkeypatch.setattr(judge, "load_judge", lambda config: fake)
+    manifest = tmp_path / "manifest.csv"
+
+    run_collect(fixture_snapshot, manifest, FIXTURES / "scope.toml", "--refresh")
+
+    assert "1804.10959v1" not in fake.scored
+    row = read_manifest(manifest)["1804.10959v1"]
+    assert row["relevance_stage"] == "not a paper"
+    assert row["relevance_reason"] == "not a paper: a thesis, by its arXiv comments: PhD thesis, 120 pages"
+
+
+def test_report_counts_editions_that_are_not_papers_apart_from_judge_exclusions(
+    fixture_snapshot, no_network, no_model, tmp_path, capsys
+):
+    edit_openalex_page(fixture_snapshot, "page-0.json", ('"type": "article"', '"type": "dissertation"'))
+    report_path = tmp_path / "report.md"
+
+    run_collect(fixture_snapshot, tmp_path / "manifest.csv", FIXTURES / "scope.toml", "--report", str(report_path))
+
+    # One of the twelve included Editions in the fixture is now a dissertation.
+    report = report_path.read_text()
+    assert "| Rejected by the judge | 1 |" in report
+    assert "| Not a paper | 1 |" in report
+    assert "| Included | 11 |" in report
+    assert "not a paper: 1 excluded on their source metadata" in capsys.readouterr().err
 
 
 def test_collect_writes_the_funnel_and_channel_report(fixture_snapshot, no_network, tmp_path):

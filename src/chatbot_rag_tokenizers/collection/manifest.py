@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .editions import Edition
 from .judge import JudgeVerdict
+from .papers import not_a_paper
 from .rules import RuleOutcome
 
 COLUMNS = [
@@ -56,6 +57,8 @@ def _relevance(edition: Edition, outcome: RuleOutcome, verdict: JudgeVerdict | N
         if edition.arxiv_comments:
             reason += f"; arXiv comments: {edition.arxiv_comments}"
         return {"relevance_verdict": "excluded", "relevance_stage": "withdrawn", "relevance_reason": reason}
+    if reason := not_a_paper(edition):
+        return {"relevance_verdict": "excluded", "relevance_stage": "not a paper", "relevance_reason": reason}
     if verdict is None:
         return {
             "relevance_verdict": "pending",
