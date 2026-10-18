@@ -116,7 +116,7 @@ This sends each PDF to the pinned GROBID service and cuts its text into Chunks t
 - **The parse cache** (`data/parse-cache/`, `--cache`, never committed) keeps GROBID's TEI and the bibliography per file sha256 and parser version, and the Chunks per file sha256, parser version and chunking-config hash (ADR 0030). A file whose TEI is cached is not sent to GROBID again, so a rerun only parses new files; a new GROBID digest re-parses it, and a chunking-config change only re-chunks it from the cached TEI.
 - **Reproducible.** Files are processed in sorted order and nothing in the output depends on time or the machine, so the same PDFs and config give byte-identical Chunks and report. GROBID's raw TEI is not byte-stable (ADR 0024); the Chunks are.
 - **The parse report** (`data/parse-report.md`, `--report`, committed) names the GROBID image and version and the chunking config, and gives a line per file (with its table and caption Chunks, and its text Chunks that are mostly numbers, most of them the cells of a table GROBID missed: ADR 0035) and the totals.
-- **Seeds only, for now.** The committed report is the run on the 34 Seed PDFs (`just parse --files data/pdfs/seeds/*.pdf`): 889 Sections and 2,055 Chunks (1,640 text, 234 table, 181 caption), no failures. The full-corpus parse waits on the final judge run (#1, #11) and on `fetch`, which pins and downloads the corpus's PDFs and writes the full-text record `parse` reads by default.
+- **The committed report is the full-corpus run** (`just parse`, 1 h 33 min on an Apple-silicon laptop): all 2,712 pinned files of the 2,086 included Editions with full text, 70,191 Sections and 145,074 Chunks (112,892 text, 18,133 table, 14,049 caption). 2 files fail the quality gate: `10.32614/cran.package.rtiktoken`, a 5-page CRAN reference manual with 1,908 characters of Section text, and `2508.13058v1`, a 4-page paper written in Turkish in which GROBID finds 1 Section.
 
 ## Index and evaluate retrieval
 
@@ -125,7 +125,7 @@ just index      # build BM25 over the parsed Chunks (uv run chatbot-rag-tokenize
 just evaluate   # score it on the Evaluation set and write the eval report
 ```
 
-`index` builds the retrievers, and `evaluate` scores them on the hand-checked Evaluation set (ADR 0039). Today there is one retriever, BM25, and the corpus is the 34 parsed Seeds.
+`index` builds the retrievers, and `evaluate` scores them on the hand-checked Evaluation set (ADR 0039). Today there is one retriever, BM25, and the corpus is every file the committed parse report lists as parsed: 2,710 files of the full-corpus run.
 
 - **`index` inputs.**
   - The parse report (`data/parse-report.md`, `--parse-report`) decides which files make up the corpus: every file it lists as parsed.
@@ -157,7 +157,7 @@ just evaluate   # score it on the Evaluation set and write the eval report
   - A Chunk holds a Passage when the normalised quote is in its normalised text, whichever Edition the Chunk comes from. This is a stand-in until the real Passage matcher.
 - **Reproducible.** Two runs on the same index give the same report apart from the timings section.
 
-The committed Evaluation set is a first tracer of 3 questions on CC BY Seeds: a single-paper lookup, a multi-paper question and a follow-up. The full set of 36 questions comes with spec #31.
+The committed Evaluation set is a first tracer of 3 questions on CC BY Seeds: a single-paper lookup, a multi-paper question and a follow-up. The full set of 36 questions comes with spec #31. The committed eval report is still the run over the 34 Seeds from before the full-corpus parse; #37 and #38 redo it on the full corpus.
 
 ## Measure the Relevance verdict
 
