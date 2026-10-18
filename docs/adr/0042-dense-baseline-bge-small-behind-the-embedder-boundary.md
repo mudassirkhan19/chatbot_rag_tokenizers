@@ -43,7 +43,8 @@ Spec #31 compares BM25 ([0039](0039-retrieval-tracer-bm25-index-and-evaluate.md)
 - **research-bot**, the colleague's earlier project, used as inspiration only. It embeds whole papers with `qwen/qwen3-embedding-8b` (8,192 dimensions) through OpenRouter's hosted API, and stores them in ChromaDB with an HNSW cosine index. We embed Chunks, because a Chunk is what is cited. We run a small pinned model locally, so the index can be rebuilt offline and gives the same vectors later, and no API key is needed. We search exactly, because the corpus is small enough.
 
 ## Consequences
-- `index` builds both retrievers by default. The first run downloads about 130 MB of weights into the Hugging Face cache, and embedding the full corpus takes about 12 minutes on MPS. `--retriever bm25` skips it.
+- `index` builds both retrievers by default. The first run downloads about 130 MB of weights into the Hugging Face cache. Embedding the full corpus took 899 s on MPS (157 Chunks/s, partly while another job shared the GPU), against 10.6 s for BM25. `--retriever bm25` skips it.
+- On the full corpus with the tracer's 3 questions, a dense query takes 33 ms at p50 and 72 ms at p95 on MPS, embedding included. A BM25 query takes 267 ms at p50: its plain-Python postings ([0039](0039-retrieval-tracer-bm25-index-and-evaluate.md)) are slow at 141k Chunks, which the baseline eval report (#38) will show.
 - A plain `uv sync` now installs torch, about 300 MB more in `.venv`. Reproducing the corpus from the Snapshot still loads no model.
 - `evaluate` loads the model to embed queries.
 - MPS and CPU vectors are not bit-identical, so the scores in a dense ranking can differ in the 7th decimal from machine to machine. The eval report prints ranks, not scores, so it doesn't change.
