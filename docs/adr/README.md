@@ -32,7 +32,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0025](0025-judge-cuts-only-refused-inputs.md) | The decision judge cuts an abstract only when the model refuses it | Accepted |
 | [0026](0026-funnel-report-and-snapshot-checks.md) | The funnel report is written from the manifest, and collect checks the Snapshot | Accepted |
 | [0027](0027-parse-tracer-paragraph-packing-pinned-tokenizer-and-parse-cache.md) | Parse tracer: paragraph packing, a pinned tokenizer, the parse cache and the report | Accepted |
-| [0028](0028-element-rules-and-chunk-kinds.md) | Element rules: tables, captions, references, appendices and the Chunk kinds | Accepted |
+| [0028](0028-element-rules-and-chunk-kinds.md) | Element rules: tables, captions, references, appendices and the Chunk kinds | Accepted, amended by 0041 |
 | [0029](0029-parse-quality-gate-and-per-file-errors.md) | Parse quality gate, permanent failures and per-file errors | Accepted, amended by 0036 |
 | [0030](0030-parse-cache-keys-and-determinism-checks.md) | Parse cache keys and determinism checks | Accepted |
 | [0031](0031-parse-reads-the-full-text-record.md) | Parse reads the full-text record: pinned ids from the record, local problems outside the report | Accepted, amended by 0038 |
@@ -45,6 +45,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0038](0038-parse-only-the-files-of-included-editions.md) | Parse only the files of included Editions | Accepted |
 | [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) | Retrieval tracer: BM25, the index cache and the evaluate harness | Accepted |
 | [0040](0040-the-corpus-keeps-only-papers.md) | The corpus keeps only papers | Accepted |
+| [0041](0041-recover-numbered-headings-grobid-left-in-paragraphs.md) | Recover numbered headings GROBID left in paragraphs | Accepted |
 
 ## Template
 

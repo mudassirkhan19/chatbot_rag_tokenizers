@@ -8,6 +8,8 @@ parses and are never read.
 GROBID gives Sections as a flat list of ``div``s, so each Section's path is rebuilt from its number:
 3.1 sits under 3 when the paper has a Section 3, and directly under the title when GROBID lost that
 heading. An unnumbered head (often a run-in paragraph heading) sits under the last numbered Section.
+A numbered heading GROBID left at the start of a body paragraph is recovered as a Section of its own
+(``lost_headings``).
 
 The element rules (ADR 0028):
 - Front matter other than the title and the abstract (authors, affiliations, funders) is not read.
@@ -28,6 +30,8 @@ import re
 import xml.etree.ElementTree as ET
 from collections.abc import Iterator
 from dataclasses import dataclass, field, replace
+
+from .lost_headings import Typography, split_lost_headings
 
 NS = {"tei": "http://www.tei-c.org/ns/1.0"}
 TEI = "{http://www.tei-c.org/ns/1.0}"
@@ -136,8 +140,9 @@ def read_tei(tei: str) -> Document:
         raise UnreadableTei("no teiHeader")
     application = header.find(".//tei:appInfo/tei:application[@ident='GROBID']", NS)
     drafts = [_Draft(section) for section in _abstract(header)]
-    drafts += _SectionReader().read(
-        root.findall("tei:text/tei:body/tei:div", NS),
+    body = root.findall("tei:text/tei:body/tei:div", NS)
+    drafts += _SectionReader(Typography(body)).read(
+        body,
         root.findall("tei:text/tei:back/tei:div[@type='annex']/tei:div", NS),
     )
     text = root.find("tei:text", NS)
@@ -160,18 +165,22 @@ def _abstract(header: ET.Element) -> Iterator[Section]:
 class _SectionReader:
     """Reads the body and annex ``div``s into Sections, keeping the state the paths and rules need."""
 
-    def __init__(self) -> None:
+    def __init__(self, typography: Typography) -> None:
+        self.typography = typography  # how the body prints its lines and headings, to find the headings GROBID lost
         self.drafts: list[_Draft] = []
         self.headings: dict[str, str] = {}  # Section number -> its heading, for the paths of the Sections under it
         self.body_headings: dict[str, str] = {}  # the body's headings, kept when the appendix starts
         self.last_numbered: tuple[str, ...] = ()  # path of the last numbered Section
+        self.last_number = ""  # number of the last numbered body Section, e.g. "3.1"
         self.numbered_body = False  # the body has had a numbered Section
         self.appendix = False
         self.dropping = False  # inside the acknowledgements: headless divs after them are dropped too
 
     def read(self, body: list[ET.Element], annex: list[ET.Element]) -> list[_Draft]:
         for div in body:
-            self._div(div, in_annex=False)
+            # Appendices number with letters, so a lost numbered heading is looked for only before them.
+            for part in [div] if self.appendix else split_lost_headings(div, self.last_number, self.typography):
+                self._div(part, in_annex=False)
         if annex:
             self.dropping = False
             self._start_appendix()
@@ -212,6 +221,7 @@ class _SectionReader:
             number, title = self._appendix_number(title, in_annex)
         elif not self.appendix:
             self.numbered_body = True
+            self.last_number = number.rstrip(".")
         else:
             misplaced = bool(SUBSECTION_NUMBER.fullmatch(number)) and _parent_numbers(number)[0] in self.body_headings
         appendix = self.appendix and not misplaced
