@@ -26,6 +26,7 @@ class Corpus:
     chunking: ChunkingConfig
     parsed: tuple[tuple[str, str], ...]  # the (pinned id, sha256) of each parsed file, in the report's order
     chunks: tuple[Chunk, ...]  # every file's Chunks, file by file, each file's in order
+    from_record: bool  # the report was parsed from the full-text record, not `--files`
 
     @property
     def files(self) -> tuple[str, ...]:
@@ -79,7 +80,7 @@ def load_corpus(config: ParseConfig, cache_root: Path, report_path: Path) -> Cor
         )
     if missing:
         raise CorpusError(f"the parse cache {cache_root} has no Chunks for {_count(len(missing))} in {report_path}: {', '.join(missing)}. {rerun}")
-    return Corpus(config.grobid.parser_key, config.chunking, tuple(run.parsed), tuple(chunks))
+    return Corpus(config.grobid.parser_key, config.chunking, tuple(run.parsed), tuple(chunks), run.from_record)
 
 
 def _config_name(config: ParseConfig) -> str:

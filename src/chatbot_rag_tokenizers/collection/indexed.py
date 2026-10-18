@@ -22,8 +22,12 @@ class IndexRecord:
 
     def __init__(self, snapshot_root: Path) -> None:
         self.path = snapshot_root / "index" / "files.jsonl"
-        lines = self.path.read_text(encoding="utf-8").splitlines() if self.path.exists() else []
-        self.files = {(entry["pinned_id"], entry["sha256"]) for line in lines if line.strip() for entry in [json.loads(line)]}
+        self.files: set[tuple[str, str]] = set()
+        if self.path.exists():
+            for line in self.path.read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    entry = json.loads(line)
+                    self.files.add((entry["pinned_id"], entry["sha256"]))
 
     @property
     def hashes(self) -> set[str]:
@@ -42,12 +46,12 @@ def apply_record(rows: list[Row], record: IndexRecord) -> None:
 
     A row indexed before, whose files are no longer all in the record, goes back to "full text".
     """
-    indexed = record.hashes
+    indexed_hashes = record.hashes
     for row in rows:
         if row["relevance_verdict"] != "included" or row["funnel_status"] not in {"full text", "indexed"}:
             continue
         hashes = [entry.split(" ")[1] for entry in row["pdf_files"].split("|") if entry]
-        row["funnel_status"] = "indexed" if hashes and set(hashes) <= indexed else "full text"
+        row["funnel_status"] = "indexed" if hashes and set(hashes) <= indexed_hashes else "full text"
 
 
 def mark(snapshot_dir: Path, manifest_path: Path, report_path: Path, files: set[tuple[str, str]]) -> None:

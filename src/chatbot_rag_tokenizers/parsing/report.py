@@ -46,13 +46,17 @@ class FileResult:
         return f"failed: {self.failure}" if self.failure else "parsed"
 
 
-def write_report(path: Path, config: ParseConfig, grobid_versions: set[str], results: list[FileResult]) -> None:
+def write_report(
+    path: Path, config: ParseConfig, grobid_versions: set[str], results: list[FileResult], from_record: bool
+) -> None:
     grobid = config.grobid
     failures = [r.failure for r in results if r.failure]
     lines = [
         "# Parse report",
         "",
         "Written by `parse`. The Chunks themselves are in the local parse cache, which is not committed.",
+        "",
+        f"- Input: {_FROM_RECORD if from_record else _FROM_FILES}",
         "",
         "## Parser",
         "",
@@ -107,12 +111,15 @@ class ReportedRun:
     image: str  # the GROBID image reference, by digest
     chunking: dict[str, str]  # each setting `ChunkingConfig.describe` gives, as the report prints it
     parsed: list[tuple[str, str]]  # (pinned id, sha256) of each parsed file, in the report's order
+    from_record: bool  # parsed from the full-text record, not `--files` (ADR 0045)
 
 
 class UnreadableReport(ValueError):
     """The file isn't a parse report that `write_report` wrote."""
 
 
+_FROM_RECORD = "the full-text record, for the included Editions of the manifest"
+_FROM_FILES = "the files given with `--files`"
 _IMAGE = re.compile(r"^- Image: `([^`]+)`", re.M)
 _SETTING = re.compile(r"^- (\w+): `([^`]*)`$")
 _FILE = re.compile(r"^\| (\S+) \| `([0-9a-f]{64})` \| (parsed|failed: .*?) \|", re.M)
@@ -126,4 +133,4 @@ def read_report(path: Path) -> ReportedRun:
         raise UnreadableReport(f"{path} is not a parse report: it names no GROBID image or chunking config")
     chunking = {match[1]: match[2] for line in rest.split("\n## ", 1)[0].splitlines() if (match := _SETTING.match(line))}
     parsed = [(pinned_id, sha256) for pinned_id, sha256, status in _FILE.findall(text) if status == "parsed"]
-    return ReportedRun(image[1], chunking, parsed)
+    return ReportedRun(image[1], chunking, parsed, f"\n- Input: {_FROM_RECORD}\n" in text)

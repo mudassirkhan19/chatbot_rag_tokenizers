@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from chatbot_rag_tokenizers.cli import main
-from parse_support import FakeGrobid, FetchedCorpus
+from parse_support import FakeGrobid, FetchedCorpus, run_parse, seed_pdf
 
 RETRIEVAL_CONFIG = Path(__file__).parents[1] / "config" / "retrieval.toml"
 
@@ -68,3 +68,19 @@ def test_index_marks_exactly_the_included_editions_whose_pinned_files_are_all_in
     assert "| With full text | 3 |" in report
     assert "| Indexed | 2 |" in report
     assert "| With full text, not indexed | 1 |" in report
+
+
+def test_an_index_over_a_seed_files_run_leaves_the_marks_and_the_record_alone(corpus, grobid, capsys):
+    corpus.fetched("P16-1162", "P16-1162.pdf", "venue")
+    corpus.parse()
+    run_index(corpus)
+    record = corpus.snapshot / "index" / "files.jsonl"
+    marked, recorded = corpus.manifest.read_bytes(), record.read_bytes()
+
+    # The Seeds-only route parses other files into the same report; its corpus isn't the manifest's.
+    run_parse(corpus.root, seed_pdf(corpus.root, grobid, "bpe_1508.07909v5.pdf", "missed-table.tei.xml"))
+    run_index(corpus)
+
+    assert corpus.manifest.read_bytes() == marked
+    assert record.read_bytes() == recorded
+    assert "parse report comes from a `--files` run, so no Edition is marked indexed" in capsys.readouterr().err

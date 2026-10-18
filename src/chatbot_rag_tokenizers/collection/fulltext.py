@@ -19,10 +19,8 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from . import report
+from . import indexed, report
 from .http import RateLimitedHttp
-from .indexed import IndexRecord
-from .indexed import apply_record as apply_index_record
 from .manifest import read_manifest, write_manifest
 
 ARXIV_PDF_URL = "https://export.arxiv.org/pdf/{}"  # arXiv asks harvesters to use the export host
@@ -341,7 +339,7 @@ def fetch(snapshot_dir: Path, manifest_path: Path, report_path: Path, pdf_dir: P
         print(f"fetch: stopped at the limit of {limit} downloads", file=sys.stderr)
     finally:
         apply_record(rows, record)
-        apply_index_record(rows, IndexRecord(snapshot_dir))
+        indexed.apply_record(rows, indexed.IndexRecord(snapshot_dir))
         write_manifest(manifest_path, rows)
         report.write(report_path, rows)
     print(f"fetch: {downloads} files downloaded into {pdf_dir}", file=sys.stderr)

@@ -19,7 +19,8 @@ Three things were left to decide:
 - Each `index` run replaces the record with its corpus. This also happens when the indexes were already up to date.
 
 **`index` then marks the manifest and rewrites the funnel report** (`--snapshot`, `--manifest`, `--funnel-report`, defaulting to `data/snapshot`, `data/manifest.csv` and `data/report.md`).
-- Without a manifest at that path, as in a Seed `--files` run, `index` says so and marks nothing. It writes no record either.
+- **A Seed `--files` run marks nothing.** Its corpus isn't the manifest's, and marking from it would send nearly every indexed Edition back to `full text`. So the parse report now records its input on an `- Input:` line: the full-text record, or the files given with `--files`. `index` marks only a corpus parsed from the full-text record. Otherwise it says why it marked nothing and leaves the record, the manifest and the funnel report alone. A parse report written before this line existed counts as a `--files` run until `parse` runs again.
+- Without a manifest at that path, `index` also says so and marks nothing.
 
 **`collect` and `fetch` apply the record** after the full-text record, the way they apply the full-text record ([0015](0015-pdf-fetcher-pinned-files-and-hashes.md)). So rebuilding from the Snapshot keeps the mark, and `just collect` stays byte-identical.
 

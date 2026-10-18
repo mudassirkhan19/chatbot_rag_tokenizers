@@ -5,7 +5,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..collection.fulltext import FulltextRecord, pinned_id_of_file, read_manifest
+from ..collection.fulltext import FulltextRecord, pinned_id_of_file
+from ..collection.manifest import read_manifest
 from .chunker import ParsedFile
 
 # A Seed PDF is named "<seed>_<pinned id>.pdf", e.g. "bpe-dropout_1910.13267v1.pdf".

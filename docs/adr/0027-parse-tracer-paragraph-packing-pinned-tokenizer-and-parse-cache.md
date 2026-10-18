@@ -1,7 +1,7 @@
 # 0027. Parse tracer: paragraph packing, a pinned tokenizer, the parse cache and the report
 
 - **Date:** 2026-10-18
-- **Status:** Accepted
+- **Status:** Accepted. Amended by [0045](0045-index-marks-editions-indexed-from-a-committed-record.md): the report records its input.
 
 ## Context
 Issue #18 is the tracer bullet of the parse step (#14): `parse --files <pdf>...` sends Seed PDFs to the pinned GROBID ([0023](0023-grobid-crf-image-pinned-by-digest.md), [0024](0024-grobid-stays-the-parser-after-the-docling-spike.md)) and turns body text into Chunks that never cross a Section, each with a context header and a citation anchor. Chunks must fit the 512-token limit of the candidate embedding models with room for the header, be counted with one fixed tokenizer, and be cached locally by file hash, since the text is derived from papers whose licences aren't ours. A committed report summarises the run.
