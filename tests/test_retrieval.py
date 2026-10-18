@@ -114,6 +114,19 @@ def test_a_new_grobid_image_rebuilds_the_index_over_the_new_parse(corpus, tmp_pa
     assert "built bm25" in out and "up to date" not in out
 
 
+def test_chunks_rebuilt_differently_under_the_same_config_rebuild_the_index(corpus, capsys):
+    # A change to the TEI reader or the Chunker (ADR 0043) re-chunks every file under the same cache keys.
+    run_index(corpus)
+    [chunks] = [path for path in (corpus / "cache").glob("*/*.chunks.jsonl") if "WECHSEL" in path.read_text(encoding="utf-8")]
+    chunks.write_text(chunks.read_text(encoding="utf-8").replace("WECHSEL", "WECHSEL method", 1), encoding="utf-8")
+    capsys.readouterr()
+
+    run_index(corpus)
+
+    out = capsys.readouterr().out
+    assert "built bm25" in out and "up to date" not in out
+
+
 def test_index_says_when_the_parse_cache_is_empty(corpus, capsys):
     shutil.rmtree(corpus / "cache")
 

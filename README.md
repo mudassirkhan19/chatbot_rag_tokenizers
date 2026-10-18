@@ -116,7 +116,7 @@ This sends each PDF to the pinned GROBID service and cuts its text into Chunks t
 - **The parse cache** (`data/parse-cache/`, `--cache`, never committed) keeps GROBID's TEI and the bibliography per file sha256 and parser version, and the Chunks per file sha256, parser version and chunking-config hash (ADR 0030). A file whose TEI is cached is not sent to GROBID again, so a rerun only parses new files; a new GROBID digest re-parses it, and a chunking-config change only re-chunks it from the cached TEI.
 - **Reproducible.** Files are processed in sorted order and nothing in the output depends on time or the machine, so the same PDFs and config give byte-identical Chunks and report. GROBID's raw TEI is not byte-stable (ADR 0024); the Chunks are.
 - **The parse report** (`data/parse-report.md`, `--report`, committed) names the GROBID image and version and the chunking config, and gives a line per file (with its table and caption Chunks, and its text Chunks that are mostly numbers, most of them the cells of a table GROBID missed: ADR 0035) and the totals.
-- **The committed report is the full-corpus run** (`just parse`, 1 h 33 min on an Apple-silicon laptop, then rerun from the cached TEI in 4 min once Editions that are not papers were excluded): all 2,691 pinned files of the 2,068 included Editions with full text, 68,074 Sections and 141,360 Chunks (109,585 text, 18,038 table, 13,737 caption). 1 file fails the quality gate: `2508.13058v1`, a 4-page paper written in Turkish in which GROBID finds 1 Section.
+- **The committed report is the full-corpus run** (`just parse`, 1 h 33 min on an Apple-silicon laptop, then rerun from the cached TEI in 4 min once Editions that are not papers were excluded, and again once numbered headings GROBID left in paragraphs were recovered: ADR 0043): all 2,691 pinned files of the 2,068 included Editions with full text, 69,081 Sections and 141,512 Chunks (109,737 text, 18,038 table, 13,737 caption). 1 file fails the quality gate: `2508.13058v1`, a 4-page paper written in Turkish in which GROBID finds 1 Section.
 
 ## Index and evaluate retrieval
 
@@ -138,7 +138,7 @@ just evaluate     # score both retrievers on the Evaluation set and write the ev
   - the corpus it was built over;
   - its Chunk count, build time and device.
 
-  A rerun with nothing changed says "up to date" and writes nothing. A change to the chunking config or to a retriever's settings builds a new folder beside the old one. A parse report that gains or loses files rebuilds the index.
+  A rerun with nothing changed says "up to date" and writes nothing. A change to the chunking config or to a retriever's settings builds a new folder beside the old one. A parse report that gains or loses files rebuilds the index, and so do Chunks that a code change rebuilt differently under the same config.
 - **BM25** indexes each Chunk's context header plus its text, so a question naming a paper matches its title.
   - Tokens are lower-cased runs of letters and digits. Numbers are kept, a decimal such as "0.1" as one token, and there is no stemming and no stop-word list, so "SentencePiece" stays a distinctive term.
   - `k1` and `b` are in `[bm25]`.
