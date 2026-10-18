@@ -1,4 +1,4 @@
-"""The one interface every retriever has (ADR 0039): its config builds it from Chunks or loads it from the
+"""The one interface every retriever has (ADRs 0039 and 0042): its config builds it from Chunks or loads it from the
 index cache, and it answers a query with ranked Chunk ids and their scores."""
 
 from collections.abc import Sequence
@@ -17,6 +17,11 @@ def indexed_text(chunk: Chunk) -> str:
 
 
 class Retriever(Protocol):
+    @property
+    def device(self) -> str:
+        """Where it computes: "cpu", or "mps" for a model on Apple silicon."""
+        ...
+
     def query(self, text: str, k: int) -> list[tuple[str, float]]:
         """The ids of at most k Chunks for the text, best first, with their scores."""
         ...

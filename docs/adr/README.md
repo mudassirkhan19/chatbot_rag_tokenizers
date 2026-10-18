@@ -11,13 +11,13 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0004](0004-arxiv-keyword-queries.md) | arXiv keyword queries: paging, rate limit and query style | Partly superseded by 0006 |
 | [0005](0005-rule-pre-filter.md) | Stage-1 rule pre-filter for the Relevance verdict | Accepted, amended by 0037 and 0040 |
 | [0006](0006-arxiv-records-via-oai-pmh.md) | arXiv Version history, comments and licence from OAI-PMH | Partly superseded by 0010 |
-| [0007](0007-local-llm-judge.md) | Stage-2 local LLM judge and verdict cache | Accepted, amended by 0018 and 0021 |
+| [0007](0007-local-llm-judge.md) | Stage-2 local LLM judge and verdict cache | Accepted, amended by 0018, 0021 and 0042 |
 | [0008](0008-semantic-scholar-keyword-discovery.md) | Semantic Scholar keyword discovery and combining Editions across sources | Retry limits superseded by 0016 |
 | [0009](0009-seeds-and-citation-expansion.md) | Scope boundary, keyword query set, Seeds and citation expansion | Accepted |
 | [0010](0010-arxiv-records-for-rule-passes-only.md) | Fetch arXiv records only for Editions that pass the rules | Accepted |
 | [0011](0011-audit-set-and-relevance-metrics.md) | Audit set sampling and relevance metrics | Accepted, labelling amended by 0020 |
 | [0012](0012-acl-anthology-venue-editions.md) | ACL Anthology venue Editions from per-paper pages | Accepted, narrowed by 0017 |
-| [0013](0013-working-worktrees.md) | Fully working worktrees for parallel work | Accepted |
+| [0013](0013-working-worktrees.md) | Fully working worktrees for parallel work | Accepted, amended by 0042 |
 | [0014](0014-openalex-discovery-channel.md) | OpenAlex as a separate, switchable Discovery channel | Accepted, verdict in 0019 |
 | [0015](0015-pdf-fetcher-pinned-files-and-hashes.md) | PDF Fetcher: pinned files, hashes in the Snapshot, open-access fallback | Accepted, amended by 0037 |
 | [0016](0016-semantic-scholar-waits-out-long-throttles.md) | Semantic Scholar waits out long throttles | Accepted |
@@ -32,7 +32,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0025](0025-judge-cuts-only-refused-inputs.md) | The decision judge cuts an abstract only when the model refuses it | Accepted |
 | [0026](0026-funnel-report-and-snapshot-checks.md) | The funnel report is written from the manifest, and collect checks the Snapshot | Accepted |
 | [0027](0027-parse-tracer-paragraph-packing-pinned-tokenizer-and-parse-cache.md) | Parse tracer: paragraph packing, a pinned tokenizer, the parse cache and the report | Accepted |
-| [0028](0028-element-rules-and-chunk-kinds.md) | Element rules: tables, captions, references, appendices and the Chunk kinds | Accepted, amended by 0042 |
+| [0028](0028-element-rules-and-chunk-kinds.md) | Element rules: tables, captions, references, appendices and the Chunk kinds | Accepted, amended by 0043 |
 | [0029](0029-parse-quality-gate-and-per-file-errors.md) | Parse quality gate, permanent failures and per-file errors | Accepted, amended by 0036 |
 | [0030](0030-parse-cache-keys-and-determinism-checks.md) | Parse cache keys and determinism checks | Accepted |
 | [0031](0031-parse-reads-the-full-text-record.md) | Parse reads the full-text record: pinned ids from the record, local problems outside the report | Accepted, amended by 0038 |
@@ -43,10 +43,11 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0036](0036-a-dropped-grobid-connection-stops-the-run.md) | A reset or dropped GROBID connection stops the run, like a refused one | Accepted |
 | [0037](0037-withdrawn-preprints-are-excluded.md) | Withdrawn arXiv preprints are excluded from the corpus | Accepted |
 | [0038](0038-parse-only-the-files-of-included-editions.md) | Parse only the files of included Editions | Accepted |
-| [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) | Retrieval tracer: BM25, the index cache and the evaluate harness | Accepted, Passage matching and the loader's shape checks superseded by 0041; amended by 0042 |
+| [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) | Retrieval tracer: BM25, the index cache and the evaluate harness | Accepted, Passage matching and the loader's shape checks superseded by 0041; amended by 0043 |
 | [0040](0040-the-corpus-keeps-only-papers.md) | The corpus keeps only papers | Accepted |
 | [0041](0041-passage-matcher-eval-check-and-calibration.md) | The Passage matcher, eval-check and the v1/vN calibration | Accepted |
-| [0042](0042-recover-numbered-headings-grobid-left-in-paragraphs.md) | Recover numbered headings GROBID left in paragraphs | Accepted |
+| [0042](0042-dense-baseline-bge-small-behind-the-embedder-boundary.md) | Dense baseline: bge-small behind the embedder boundary, on MPS by default | Accepted |
+| [0043](0043-recover-numbered-headings-grobid-left-in-paragraphs.md) | Recover numbered headings GROBID left in paragraphs | Accepted |
 
 ## Template
 

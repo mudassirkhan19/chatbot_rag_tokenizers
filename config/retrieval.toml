@@ -9,3 +9,15 @@
 [bm25]
 k1 = 1.2  # how fast a term's weight saturates with its count in a Chunk
 b = 0.75  # how much a long Chunk's counts are discounted
+
+# The dense baseline (ADR 0042): BAAI/bge-small-en-v1.5 (384 dimensions, 512 tokens, the same uncased
+# BERT WordPiece vocabulary the chunker counts with) embeds each Chunk's context header plus its text once,
+# and a query is scored against every Chunk by exact dot product. The revision and the sha256 of its
+# model.safetensors are pinned, as the chunking tokenizer is, and both name the index in the index cache.
+# It runs on MPS when the machine has it, otherwise on the CPU; the two agree to within 5.1e-7 per dimension.
+[dense]
+model = "BAAI/bge-small-en-v1.5"
+revision = "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a"
+model_sha256 = "3c9f31665447c8911517620762200d2245a2518d6e7208acc78cd9db317e21ad"
+# Put in front of every query, never in front of a Chunk, as the model card asks for retrieval.
+query_instruction = "Represent this sentence for searching relevant passages: "

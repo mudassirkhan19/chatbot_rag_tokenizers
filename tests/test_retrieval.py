@@ -12,6 +12,7 @@ import pytest
 
 from chatbot_rag_tokenizers.cli import main
 from chatbot_rag_tokenizers.parsing.config import load_parse_config
+from chatbot_rag_tokenizers.retrieval.config import load_retrieval_config
 from parse_support import REPO_CONFIG, FakeGrobid, config_with_budget, run_parse, seed_pdf
 
 ROOT = Path(__file__).parents[1]
@@ -30,12 +31,12 @@ def corpus(tmp_path: Path, grobid: FakeGrobid) -> Path:
     return tmp_path
 
 
-def run_index(tmp_path: Path, parse_config: Path = REPO_CONFIG) -> None:
+def run_index(tmp_path: Path, parse_config: Path = REPO_CONFIG, retrieval_config: Path = RETRIEVAL_CONFIG) -> None:
     main(
         [
             "index",
             "--parse-config", str(parse_config),
-            "--config", str(RETRIEVAL_CONFIG),
+            "--config", str(retrieval_config),
             "--cache", str(tmp_path / "cache"),
             "--parse-report", str(tmp_path / "parse-report.md"),
             "--index-cache", str(tmp_path / "index-cache"),
@@ -48,16 +49,40 @@ def cache_files(tmp_path: Path) -> dict[Path, int]:
     return {path: path.stat().st_mtime_ns for path in sorted((tmp_path / "index-cache").rglob("*")) if path.is_file()}
 
 
-def test_index_builds_bm25_and_a_rerun_with_nothing_changed_does_not_rebuild(corpus, capsys):
+def test_index_builds_bm25_and_dense_and_a_rerun_with_nothing_changed_does_not_rebuild(corpus, capsys):
     run_index(corpus)
     built = cache_files(corpus)
-    [index_dir] = {path.parent for path in built}
-    assert index_dir.parent.name.startswith("chunking-") and index_dir.name.startswith("bm25-")
+    [chunking] = {path.parent.parent.name for path in built}
+    assert chunking.startswith("chunking-")
+    assert sorted(path.parent.name.split("-")[0] for path in built if path.name == "index.json") == ["bm25", "dense"]
 
     run_index(corpus)
 
     assert cache_files(corpus) == built
     assert "up to date" in capsys.readouterr().out
+
+
+def with_revision(tmp_path: Path, revision: str) -> Path:
+    """The repo's retrieval config with the dense model at another revision."""
+    config = RETRIEVAL_CONFIG.read_text()
+    pinned = load_retrieval_config(RETRIEVAL_CONFIG).dense.revision
+    other = tmp_path / "retrieval-other-revision.toml"
+    other.write_text(config.replace(pinned, revision))
+    return other
+
+
+def test_a_model_revision_change_rebuilds_the_dense_index_and_leaves_bm25_alone(corpus, tmp_path, capsys):
+    run_index(corpus)
+    before = cache_files(corpus)
+    capsys.readouterr()
+
+    run_index(corpus, retrieval_config=with_revision(tmp_path, "0" * 40))
+
+    out = capsys.readouterr().out
+    assert "bm25 is up to date" in out and "built dense" in out
+    after = cache_files(corpus)
+    assert {path: after[path] for path in before} == before
+    assert len({path.parent for path in after} - {path.parent for path in before}) == 1
 
 
 def test_a_chunking_config_change_builds_a_new_index_and_leaves_the_old_one(corpus, tmp_path):
@@ -90,7 +115,7 @@ def test_a_new_grobid_image_rebuilds_the_index_over_the_new_parse(corpus, tmp_pa
 
 
 def test_chunks_rebuilt_differently_under_the_same_config_rebuild_the_index(corpus, capsys):
-    # A change to the TEI reader or the Chunker (ADR 0042) re-chunks every file under the same cache keys.
+    # A change to the TEI reader or the Chunker (ADR 0043) re-chunks every file under the same cache keys.
     run_index(corpus)
     [chunks] = [path for path in (corpus / "cache").glob("*/*.chunks.jsonl") if "WECHSEL" in path.read_text(encoding="utf-8")]
     chunks.write_text(chunks.read_text(encoding="utf-8").replace("WECHSEL", "WECHSEL method", 1), encoding="utf-8")
@@ -233,3 +258,17 @@ def test_evaluate_says_when_the_index_has_not_been_built(corpus):
         run_evaluate(corpus)
 
     assert "just index" in str(stopped.value)
+
+
+def test_the_report_records_the_dense_model_pin_and_each_retrievers_device(indexed):
+    report = run_evaluate(indexed)
+
+    retrievers = report.split("## Retrievers\n", 1)[1].split("\n## ", 1)[0]
+    assert "  - model: `BAAI/bge-small-en-v1.5`" in retrievers
+    assert "  - revision: `5c38ec7c405ec4b44b94cc5a9bb96e735b38267a`" in retrievers
+    assert "  - model_sha256: `3c9f31665447c8911517620762200d2245a2518d6e7208acc78cd9db317e21ad`" in retrievers
+    timings = report.split("## Timings\n", 1)[1]
+    # The fake embedder runs on the CPU, as BM25 does.
+    for name in ("bm25", "dense"):
+        [line] = [line for line in timings.splitlines() if line.startswith(f"- {name}:")]
+        assert "index built on cpu in " in line and " queries on cpu, latency p50 " in line and ", p95 " in line

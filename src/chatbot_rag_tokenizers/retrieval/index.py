@@ -1,13 +1,13 @@
 """The index cache: a local, gitignored directory with one folder per chunking config and retriever (ADR 0039).
 
     <root>/<chunking key>/<retriever key>/index.json   the record: the retriever and its settings, the corpus
-                                                       it was built over, its Chunk count and build time
+                                                       it was built over, its Chunk count, build time and device
     <root>/<chunking key>/<retriever key>/...          the retriever's own files, e.g. bm25.json
 
 The chunking key hashes the chunking config and the retriever key hashes the retriever's settings, so a
 change to either builds a new index beside the old one. The record names the corpus's files and a hash of their
 Chunks too, so an index built before the parse report gained or lost files, or before the Chunks were rebuilt
-differently (a TEI reader or Chunker change, ADR 0042), is rebuilt. The record is written last: an interrupted
+differently (a TEI reader or Chunker change, ADR 0043), is rebuilt. The record is written last: an interrupted
 build leaves no record, and the next run builds again.
 """
 
@@ -33,6 +33,7 @@ class IndexMissing(RuntimeError):
 class Index:
     retriever: Retriever
     build_seconds: float
+    build_device: str
 
 
 def directory(root: Path, corpus: Corpus, config: RetrieverConfig) -> Path:
@@ -58,9 +59,10 @@ def build(root: Path, corpus: Corpus, configs: list[RetrieverConfig]) -> None:
             "files": len(corpus.files),
             "chunks": len(corpus.chunks),
             "build_seconds": round(seconds, 3),
+            "device": retriever.device,
         }
         write_atomically(folder / _RECORD, json.dumps(record, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
-        print(f"index: built {config.name} over {len(corpus.chunks)} Chunks from {len(corpus.files)} files in {seconds:.2f} s; in {folder}")
+        print(f"index: built {config.name} over {len(corpus.chunks)} Chunks from {len(corpus.files)} files in {seconds:.2f} s on {retriever.device}; in {folder}")
 
 
 def load(root: Path, corpus: Corpus, config: RetrieverConfig) -> Index:
@@ -68,7 +70,8 @@ def load(root: Path, corpus: Corpus, config: RetrieverConfig) -> Index:
     record = _record(folder, corpus)
     if record is None:
         raise IndexMissing(f"no {config.name} index over the parsed Chunks is in {root}. Run `just index`, then try again.")
-    return Index(config.load(folder), record["build_seconds"])
+    # A BM25 index built before records named their device was built in plain Python, on the CPU.
+    return Index(config.load(folder), record["build_seconds"], record.get("device", "cpu"))
 
 
 def _record(folder: Path, corpus: Corpus) -> dict[str, Any] | None:

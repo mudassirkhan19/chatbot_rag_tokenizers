@@ -9,7 +9,7 @@ GROBID gives Sections as a flat list of ``div``s, so each Section's path is rebu
 3.1 sits under 3 when the paper has a Section 3, and directly under the title when GROBID lost that
 heading. An unnumbered head (often a run-in paragraph heading) sits under the last numbered Section.
 A numbered heading GROBID left in a body paragraph (at its start, as the whole paragraph, or at the end of
-a sentence) is recovered as a Section of its own (``lost_headings``, ADR 0042).
+a sentence) is recovered as a Section of its own (``lost_headings``, ADR 0043).
 
 The element rules (ADR 0028):
 - Front matter other than the title and the abstract (authors, affiliations, funders) is not read.
