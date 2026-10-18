@@ -12,8 +12,8 @@ Issue #37 drafts the real Evaluation set: 36 questions in `data/eval/evaluation-
 
 ## Decision
 **Passage quotes of at most 300 characters are committed as quotation for evaluation, whatever the paper's licence.**
-- A quote is one sentence or part of one, the shortest span that answers the question. `eval-check` fails any quote over 300 characters (`MAX_QUOTE_CHARACTERS`). The 37 Passages run from 58 to 217 characters.
-- Each quote names its source: the pinned id of the Version and the Section it comes from. That is the attribution a citation gives.
+- A quote is one sentence or part of one, the shortest span that answers the question. `eval-check` fails any quote over 300 characters (`MAX_QUOTE_CHARACTERS`). At drafting, the 37 Passages ran from 58 to 217 characters.
+- Each quote names its source: the pinned Edition id (with its Version, for an arXiv Edition) and the Section it comes from. That is the attribution a citation gives.
 - A quote is there to mark where the answer is, so a retrieved Chunk can be matched against it ([0041](0041-passage-matcher-eval-check-and-calibration.md)). It doesn't stand in for the paper. This is brief quotation for scholarship, the use a citation in a paper makes. It isn't redistribution, which is what 0002 and 0033 are about. So the licence doesn't decide it, and 0033's CC BY rule stays for fixtures, which hold whole files.
 - The same rule covers `data/eval/absence-evidence.md`. It shows 160 characters of each retrieved Chunk, with its pinned id and Section.
 
@@ -28,9 +28,9 @@ Issue #37 drafts the real Evaluation set: 36 questions in `data/eval/evaluation-
   - CANINE on GLUE: HASHFORMER (2022.emnlp-main.536) reports CANINE-C on GLUE;
   - CANINE on XNLI: 2210.07111v1 evaluates CANINE-S on XNLI;
   - under-trained tokens in GPT-4: Fishing for Magikarp v1 has a section on GPT-3.5 and GPT-4.
-- The 8 kept are 6 in-topic near-misses and 2 out of topic (vitamin D intake, the 2018 FIFA World Cup). The developer confirms each one against the evidence when checking it.
+- The 8 kept are 6 in-topic near-misses and 2 out of topic (vitamin D intake, the 2018 FIFA World Cup). The developer confirms each one against the evidence when checking it, so `checked_by` on an unanswerable question also records that its absence was confirmed.
 
-**Sources, counted per question.** 19 answerable questions quote only Seeds. 9 quote a non-Seed paper: XLM-V, Fishing for Magikarp (2), SuperBPE (2), Fast WordPiece, Unpacking Tokenization, MEGABYTE and Zouhar et al.'s Rényi efficiency. Of the unanswerable questions, 5 near-misses are about Seeds and 1 is about a non-Seed (Fast WordPiece on a GPU). So 24 questions rest on Seeds, 10 on non-Seeds, and 2 on neither.
+**Sources, counted per question at drafting.** 19 answerable questions quote only Seeds. 9 quote a non-Seed paper: XLM-V, Fishing for Magikarp (2), SuperBPE (2), Fast WordPiece, Unpacking Tokenization, MEGABYTE and Zouhar et al.'s Rényi efficiency. Of the unanswerable questions, 5 near-misses are about Seeds and 1 is about a non-Seed (Fast WordPiece on a GPU). So 24 questions rest on Seeds, 10 on non-Seeds, and 2 on neither.
 
 ## Alternatives considered
 - **Committing only pointers (pinned id, Section, character offsets), with the quotes resolved from the local parse cache.** No paper text would be in git. But the set couldn't be read or reviewed without a full parse, and offsets break whenever chunking or GROBID output changes. The quote is what `eval-check` and the matcher use, so the set would depend on the parse cache it is meant to check.

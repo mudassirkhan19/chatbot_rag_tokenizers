@@ -12,7 +12,7 @@ Drafter's reading: The paper's own results are English→German and English→Ru
 
 ### bm25: What BLEU score did Sennrich et al.'s subword NMT paper report for English→French translation?
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 33.729 | 1508.07909v5 | 4 Evaluation › 4.2 Translation experiments | For English→German, we observe the best BLEU score of 25.3 with C2-50k, but the best CHRF3 score of 54.1 with BPE-J90k. For comparison to the (to our knowledge) |
 | 2 | 33.729 | P16-1162 | 4 Evaluation › 4.2 Translation experiments | For English→German, we observe the best BLEU score of 25.3 with C2-50k, but the best CHRF3 score of 54.1 with BPE-J90k. For comparison to the (to our knowledge) |
@@ -27,7 +27,7 @@ Drafter's reading: The paper's own results are English→German and English→Ru
 
 ### dense: What BLEU score did Sennrich et al.'s subword NMT paper report for English→French translation?
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.768 | 2023.icon-1.19 | 3 Experimentation › 3.4 Model Evaluation | The performance of the models was tested using the 1000 parallel test data from the LRILT task, WMT 23. The performance evaluation is done using the popular met |
 | 2 | 0.749 | W7218093374 | Abstract | In NMT, the Bilingual Evaluation Understudy (BLEU) scores and other parameters have shown that the efficiency in translating the source sentences is higher for  |
@@ -42,7 +42,7 @@ Drafter's reading: The paper's own results are English→German and English→Ru
 
 ### bm25: Sennrich BPE subword units English French BLEU
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 21.405 | 10.1109/ACCESS.2019.2941161 | C. UNK PROBLEM | Different techniques have been presented to mitigate the UNK word problem. Luong et al. [17] handled the OOV problem in a post-processing step by translating ea |
 | 2 | 19.907 | 2005.06606v1 | Abstract | This paper introduces Dynamic Programming Encoding (DPE), a new segmentation algorithm for tokenizing sentences into subword units. We view the subword segmenta |
@@ -57,7 +57,7 @@ Drafter's reading: The paper's own results are English→German and English→Ru
 
 ### dense: Sennrich BPE subword units English French BLEU
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.774 | 1610.06510v3 | 5 Results and Analysis › 5.1 Comparison of BPE with other units | Table 3: Translation accuracies for various translation units (BLEU and LeBLEU scores reported). The reported scores are:-W: word-level, M: morpheme, O: orthogr |
 | 2 | 0.774 | W17-4102 | 5 Results and Analysis › 5.1 Comparison of BPE with other units | Table 3: Translation accuracies for various translation units (BLEU and LeBLEU scores reported). The reported scores are:-W: word-level, M: morpheme, O: orthogr |
@@ -72,7 +72,7 @@ Drafter's reading: The paper's own results are English→German and English→Ru
 
 ### bm25: English→French translation results subword units newstest
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 22.631 | 1808.09943v1 | 4 Experimental Design › 4.1 Corpora | We adopt the corpora used by Lee et al (2017), with the exception of WMT15 Russian-English. 4To measure performance on an "easy" language pair, and to calibrate |
 | 2 | 22.631 | D18-1461 | 4 Experimental Design › 4.1 Corpora | We adopt the corpora used by Lee et al (2017), with the exception of WMT15 Russian-English. 4To measure performance on an "easy" language pair, and to calibrate |
@@ -87,7 +87,7 @@ Drafter's reading: The paper's own results are English→German and English→Ru
 
 ### dense: English→French translation results subword units newstest
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.785 | 1902.01313v1 | 5 Experiments and results | We use newstest2014 as our test set for French-English, and both newstest2014 and new-stest2016 (from WMT 2016 10 ) for German-8 http://www.statmt.org/moses/ 9  |
 | 2 | 0.784 | 1508.07909v5 | 4 Evaluation | We aim to answer the following empirical questions: • Can we improve the translation of rare and unseen words in neural machine translation by representing them |
@@ -108,7 +108,7 @@ Drafter's reading: The Byte Latent Transformer is trained up to 8B parameters; n
 
 ### bm25: What does the Byte Latent Transformer score on MMLU when it is scaled to 70B parameters?
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 22.818 | 2412.09871v1 | 6 Byte Modeling Improves Robustness › 6.2 Training BLT from Llama 3 | We explore a workflow where BLT models can leverage existing pre-trained tokenizer-based models for better and faster training convergence, acheived by initiali |
 | 2 | 22.553 | 2410.01930v1 | 5. Don't flatten, tokenize! › 5.1. Additional analyses › More agents | In the DQN setting, SoftMoE-1 does not appear to offer significant improvements over the baseline, potentially due to the limited gains observed 2.8 3.0 3.2 3.4 |
@@ -123,7 +123,7 @@ Drafter's reading: The Byte Latent Transformer is trained up to 8B parameters; n
 
 ### dense: What does the Byte Latent Transformer score on MMLU when it is scaled to 70B parameters?
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.766 | 2412.09871v1 | 9 Limitations and Future Work | In this work, for the purposes of architectural choices, we train models for the optimal number of steps as determined for Llama 3 (Dubey et al., 2024). However |
 | 2 | 0.762 | 2501.10322v1 | B EXPERIMENT DETAILS B.1 TRAINING SETTINGS › B.4 EVALUATION TASKS | We use a set of established downstream evaluation tasks, implemented in evaluation suites like the Eleuther AI eval harness (Gao et al., 2024). In the following |
@@ -138,7 +138,7 @@ Drafter's reading: The Byte Latent Transformer is trained up to 8B parameters; n
 
 ### bm25: Byte Latent Transformer 70B MMLU
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 17.753 | 2602.01007v1 | 6. Ablation Study 6.1. Necessity of Embedding Alignment › 6.3. Impact of Encoder Architecture › Step 1 (Embedding Alignment) protocol on Qwen-3 4B. | Performance Collapse of Attention. Table 5 shows significant differences in alignment quality. The Mamba2 encoder achieves high fidelity (70.2 MMLU), while the  |
 | 2 | 16.402 | 2605.08044v1 | B All 1B Model Results | Table 2 (B All 1B Model Results): Performance comparison of BLT and BLT-D (block sizes 4, 8, 16) at 1B parameters across five benchmarks. Benchmark \| BLT 1B BLT |
@@ -153,7 +153,7 @@ Drafter's reading: The Byte Latent Transformer is trained up to 8B parameters; n
 
 ### dense: Byte Latent Transformer 70B MMLU
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.816 | 2605.08044v1 | 2 Background and Related Work › 2.1 Byte Latent Transformer › 2.1.1 Architecture overview | BLT's architecture creates latent token representations that mix byte-and patch-level information. It consists of three components: a local encoder E, a global  |
 | 2 | 0.811 | 2412.09871v1 | 1 Introduction | We introduce the Byte Latent Transformer (BLT), a tokenizer-free architecture that learns from raw byte data and, for the first time, matches the performance of |
@@ -168,7 +168,7 @@ Drafter's reading: The Byte Latent Transformer is trained up to 8B parameters; n
 
 ### bm25: BLT byte-level model 70B parameters results
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 21.360 | 2512.15586v1 | 5 Main Results › Bolmo 7B Results. | Table 1 (Bolmo 7B Results.): Pagnoni et al. (2025)o 1B (trained off of OLMo2 1B; OLMo et al., 2024) with existing byte-level models, including H-Net (for which  |
 | 2 | 20.866 | 2605.08044v1 | B All 1B Model Results | Table 2 (B All 1B Model Results): Performance comparison of BLT and BLT-D (block sizes 4, 8, 16) at 1B parameters across five benchmarks. Benchmark \| BLT 1B BLT |
@@ -183,7 +183,7 @@ Drafter's reading: The Byte Latent Transformer is trained up to 8B parameters; n
 
 ### dense: BLT byte-level model 70B parameters results
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.857 | 2605.08044v1 | B All 1B Model Results | BPEFigure 9: Figure9Generation task results of 1B-parameter variants of BLT, BLT-D-4, BLT-D-8, and BLT-D-16. Higher is better for task performance; lower is bet |
 | 2 | 0.847 | 2605.08044v1 | 4 Pre-training and Generation Experiments › 4.3 Generation Task Results | Figure6Generation task results of 3B-parameter variants of BLT, BLT-D-4, BLT-D-8, and BLT-D-16. Higher is better for task performance; lower is better for NFEs  |
@@ -204,7 +204,7 @@ Drafter's reading: Petrov et al. predate Llama 3 and measure GPT-2, RoBERTa, Cha
 
 ### bm25: How many times more tokens does the Llama 3 tokenizer need for Shan than for English, according to Petrov et al.?
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 35.974 | 2601.13328v1 | 3 Comparing Tokenizers › 3.3 Language-Specific Tokenization Premiums | The "dev" split of the FLORES-200 corpus provides 997 sentence translation pairs between English and a given language X, for each of 200 distinct languages. As  |
 | 2 | 33.565 | 2506.10766v1 | 6.1 Multilingual Tokenizers | Tokenization remains a key challenge for multilingual models, particularly due to inefficiencies and disparities across scripts. Petrov et al. [2023] show that  |
@@ -219,7 +219,7 @@ Drafter's reading: Petrov et al. predate Llama 3 and measure GPT-2, RoBERTa, Cha
 
 ### dense: How many times more tokens does the Llama 3 tokenizer need for Shan than for English, according to Petrov et al.?
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.782 | 2407.16607v1 | 5 Attacking commercial tokenizers › 5.2 LLAMA MODELS | LLAMA The LLAMA tokenizer was introduced with LLAMA and re-used for LLAMA 2. The training data for LLAMA is known to be primarily English, though the Wikipedia  |
 | 2 | 0.781 | 2304.08177v1 | 2 CHINESE LLAMA | Directly pre-training LLaMA on Chinese corpora faces several challenges. Firstly, there are less than one thousand Chinese characters in the original LLaMA toke |
@@ -234,7 +234,7 @@ Drafter's reading: Petrov et al. predate Llama 3 and measure GPT-2, RoBERTa, Cha
 
 ### bm25: Llama 3 tokenizer Shan tokenization parity
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 22.558 | 2305.15425v1 | 5 Tokenization Length Differences Across Languages › 5.1 Parity for English-centric Models | corresponds to 9 tokens, almost double that of English: 36644 19861 2868 5203 1048 6863 60110 460 0 Vi aug uro una bu ona giorn ata ! Shan is the language with  |
 | 2 | 22.147 | 2305.15425v2 | 4 Tokenization Length Differences Across Languages › 4.1 Parity for English-centric Models › Summary. | All four English-centric tokenizers we consider are far from tokenization parity. Portuguese is closest to parity with English for the ChatGPT and GPT-4 tokeniz |
@@ -249,7 +249,7 @@ Drafter's reading: Petrov et al. predate Llama 3 and measure GPT-2, RoBERTa, Cha
 
 ### dense: Llama 3 tokenizer Shan tokenization parity
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.844 | 2503.02174v1 | 1 Introduction | Underneath most Large Language Model (LLM) pipelines lies a fundamental yet often overlooked component: the tokenizer. In a nutshell, a tokenizer maps text from |
 | 2 | 0.840 | 2304.08177v1 | 2 CHINESE LLAMA | Directly pre-training LLaMA on Chinese corpora faces several challenges. Firstly, there are less than one thousand Chinese characters in the original LLaMA toke |
@@ -264,7 +264,7 @@ Drafter's reading: Petrov et al. predate Llama 3 and measure GPT-2, RoBERTa, Cha
 
 ### bm25: Shan language token premium Llama 3
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 20.660 | 2305.15425v2 | 4 Tokenization Length Differences Across Languages › 4.1 Parity for English-centric Models | MuRIL English 1.00 Nepali 1.01 Bengali 1.01 Tamil 1.06 Marathi 1.06 Kannada 1.06 Hindi 1.16 Malayalam 1.18 Gujarati 1.19 Sanskrit 1.21 Telugu 1.21 Odia 1.21 Sin |
 | 2 | 20.046 | 2410.10665v1 | 5 Results › 5.4 Improvements in Premium Costs and Performance | Table 4 (5.4 Improvements in Premium Costs and Performance): Premium cost comparison between tokenizers used by GPT-4 and GPT-4o for selected languages Language |
@@ -279,7 +279,7 @@ Drafter's reading: Petrov et al. predate Llama 3 and measure GPT-2, RoBERTa, Cha
 
 ### dense: Shan language token premium Llama 3
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.781 | 2304.08177v3 | 2 CHINESE LLAMA AND CHINESE ALPACA › 2.2 CHINESE VOCABULARY EXTENSION | LLaMA's training set encompasses roughly 1.4T tokens, with the majority in English and a small fraction in other European languages using Latin or Cyrillic scri |
 | 2 | 0.781 | 2304.08177v1 | 2 CHINESE LLAMA | LLaMA (Touvron et al., 2023) is a decoder-only, foundational large language model based on the transformer architecture (Vaswani et al., 2017). Similar to other |
@@ -300,7 +300,7 @@ Drafter's reading: Fast WordPiece reports CPU timings only. The GPU tokenizers t
 
 ### bm25: How fast is Fast WordPiece when it runs on a GPU?
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 20.866 | 2606.17358v3 | 4 OTRO: Practical Oblivious Tokenization Path with Read-Only ORAM › 4.3 Chunked Tokenization | The compact bound size to whichever stage is the bottleneck. When the GPU is fast, prefill sets the drain, D eff =D (Llama-8B, Qwen-8B). When the tokenizer outp |
 | 2 | 20.307 | 2610.19801v1 | 5 Related Work | Fast serial and GPU tokenizers. The Hugging Face tokenizers library is the reference implementation for most open models and encodes one request on one core [12 |
@@ -315,7 +315,7 @@ Drafter's reading: Fast WordPiece reports CPU timings only. The GPU tokenizers t
 
 ### dense: How fast is Fast WordPiece when it runs on a GPU?
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.752 | 2012.15524v3 | 5 Experiments | All experiments are conducted on a Linux desktop with a six-core Intel Xeon @ 3.60GHz CPU and 64GB memory. We iterate each benchmark (after warming up) until it |
 | 2 | 0.752 | 2021.emnlp-main.160 | 5 Experiments | All experiments are conducted on a Linux desktop with a six-core Intel Xeon @ 3.60GHz CPU and 64GB memory. We iterate each benchmark (after warming up) until it |
@@ -330,7 +330,7 @@ Drafter's reading: Fast WordPiece reports CPU timings only. The GPU tokenizers t
 
 ### bm25: Fast WordPiece GPU throughput
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 18.705 | 2023.acl-demo.37 | B Batched runtimes | Model Batch size Runtime seconds Throughput sequences / sec Throughput kB / sec GPU memory MiB GPU memory MiB / sequence ByT5 16 128 5.0 4.2 696.2 833.6 80.5 96 |
 | 2 | 16.870 | 2023.acl-demo.37 | 4 Experiments › 4.4 Results | Table 4 (4.4 Results): Inference runtimes on our Runtime benchmark (see Section 4.1) on a NVIDIA A100 GPU and an Intel Xeon Platinum 8358 CPU with mixed precisi |
@@ -345,7 +345,7 @@ Drafter's reading: Fast WordPiece reports CPU timings only. The GPU tokenizers t
 
 ### dense: Fast WordPiece GPU throughput
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.809 | 2603.02597v1 | 5 Experimental results and analysis › 5.1 Latency and throughput | Table 2 (5.1 Latency and throughput): Speedup ratios of GPU-Optimized relative to CPU and CPU-based tokenizers. Values > 1 indicate GPU advantage. Seq. Len GPU- |
 | 2 | 0.794 | 2603.02597v1 | 5 Experimental results and analysis › 5.1 Latency and throughput | Table 1 (5.1 Latency and throughput): Latency comparison across tokenizers on WikiText-103 (ms). Seq. Len HF GPT2 tiktoken CPU-BPE GPU-Base GPU-Opt 256 \| 4.21 \| |
@@ -360,7 +360,7 @@ Drafter's reading: Fast WordPiece reports CPU timings only. The GPU tokenizers t
 
 ### bm25: LinMaxMatch WordPiece tokenization on GPU
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 22.238 | 2012.15524v3 | 3 Linear-Time Single-Word Tokenization › 3.3 LinMaxMatch Tokenization | Algorithm 1: LinMaxMatch Tokenization Function LINMAXMATCH( ):1 tokens, , ← MATCHLOOP( , 0) 2 if < \| \| or ∉ { , ♯ } then 3 tokens ← [<unk>] |
 | 2 | 22.238 | 2021.emnlp-main.160 | 3 Linear-Time Single-Word Tokenization › 3.3 LinMaxMatch Tokenization | Algorithm 1: LinMaxMatch Tokenization Function LINMAXMATCH( ):1 tokens, , ← MATCHLOOP( , 0) 2 if < \| \| or ∉ { , ♯ } then 3 tokens ← [<unk>] |
@@ -375,7 +375,7 @@ Drafter's reading: Fast WordPiece reports CPU timings only. The GPU tokenizers t
 
 ### dense: LinMaxMatch WordPiece tokenization on GPU
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.896 | 2012.15524v3 | 3 Linear-Time Single-Word Tokenization | In this section, we present LinMaxMatch, an ( ) algorithm for single-word WordPiece tokenization. |
 | 2 | 0.896 | 2021.emnlp-main.160 | 3 Linear-Time Single-Word Tokenization | In this section, we present LinMaxMatch, an ( ) algorithm for single-word WordPiece tokenization. |
@@ -396,7 +396,7 @@ Drafter's reading: SentencePiece times English and Japanese segmentation only. O
 
 ### bm25: How quickly does SentencePiece segment Korean text?
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 19.279 | 2302.09207v3 | 4 Evaluation: Speed | In this section, we evaluate how quickly RETVec can process and vectorize datasets compared to the other commonly used vectorizers. We considered SentencePiece  |
 | 2 | 19.232 | 2302.09207v1 | 4. Experiment: Speed | In this section, we evaluate how quickly RetVec can process datasets compared to the other commonly used tokenizers with a layer on learned embedding on top. We |
@@ -411,7 +411,7 @@ Drafter's reading: SentencePiece times English and Japanese segmentation only. O
 
 ### dense: How quickly does SentencePiece segment Korean text?
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.844 | D18-2012 | 4.2 Segmentation performance | larger performance improvements when applying it to raw Japanese data (w/o pre-tok). The segmentation speed of SentencePiece is about 380 times faster than that |
 | 2 | 0.833 | 1808.06226v1 | 4.2 Segmentation performance | Table 2 summarizes the training and segmentation performance of various configurations. We can see that the training and segmentation speed of both SentencePiec |
@@ -426,7 +426,7 @@ Drafter's reading: SentencePiece times English and Japanese segmentation only. O
 
 ### bm25: SentencePiece segmentation speed Korean
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 18.298 | 1808.06226v1 | 4.2 Segmentation performance | Table 2 summarizes the training and segmentation performance of various configurations. We can see that the training and segmentation speed of both SentencePiec |
 | 2 | 18.032 | D18-2012 | 4.2 Segmentation performance | larger performance improvements when applying it to raw Japanese data (w/o pre-tok). The segmentation speed of SentencePiece is about 380 times faster than that |
@@ -441,7 +441,7 @@ Drafter's reading: SentencePiece times English and Japanese segmentation only. O
 
 ### dense: SentencePiece segmentation speed Korean
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.882 | D18-2012 | 4.2 Segmentation performance | larger performance improvements when applying it to raw Japanese data (w/o pre-tok). The segmentation speed of SentencePiece is about 380 times faster than that |
 | 2 | 0.875 | 1808.06226v1 | 4.2 Segmentation performance | Table 2 summarizes the training and segmentation performance of various configurations. We can see that the training and segmentation speed of both SentencePiec |
@@ -456,7 +456,7 @@ Drafter's reading: SentencePiece times English and Japanese segmentation only. O
 
 ### bm25: SentencePiece sentences per second Korean
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 14.898 | 2021.acl-long.571 | 5 Experiments › 5.3 Discussion › VOLT Beats SentencePiece and WordPiece. | Table 6 demonstrates that vocabularies searched by VOLT also works on Convolutional Seq2Seq with competitive BLEU but much smaller size. In this work, we verify |
 | 2 | 14.851 | 2010.02534v1 | 5.1.2 BPE Modeling | Prior to training, we do simple preliminary experiments to decide which dataset to use for learning BPE. There are two choices: AI Hub news training data and op |
@@ -471,7 +471,7 @@ Drafter's reading: SentencePiece times English and Japanese segmentation only. O
 
 ### dense: SentencePiece sentences per second Korean
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.782 | 10.7469/JKSQM.2020.48.3.421 |  | Table 2: Results of performance metrics for SentencePiece and Mecab-Ko using kNN DT \| Mecab-Ko \| 1500 \| 2000 \| Number of Tokens in SentencePiece 3000 5000 10000 |
 | 2 | 0.775 | 10.7469/JKSQM.2020.48.3.421 |  | 지도 기반 접근 방식 과 달리, SentencePiece는 사전 토큰화된 데이터 집합이 필요하지 않으므로 여러 언어가 혼합적으로 사용된 텍스트 나 사전에 없는 단어를 포함하는 텍스트 코퍼스에 더 적합하다. SentencePiece 알고리즘과 일반적인 형태소 분석 엔진과의 중요한 차이점  |
@@ -492,7 +492,7 @@ Drafter's reading: ByT5 gives a constant learning rate of 0.001 for fine-tuning,
 
 ### bm25: Which learning rate schedule did ByT5 use for pre-training?
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 26.307 | 2308.09440v3 | 3 COMPCODER: pre-training a code LM on HPC code › Experimental setup. | All pre-training experiments were trained with the Adam optimizer, and followed a learning rate schedule with a linear warmup for the first 10% of steps and a c |
 | 2 | 24.600 | 2022.findings-emnlp.207 | 3 MANTa › 3.2 Model Training › 3.2.1 Pre-Training Details | Following T5 and ByT5, we use the Adafactor optimizer with a learning rate of 10 -2 for the encoder-decoder model, parameter scaling for the whole system and no |
@@ -507,7 +507,7 @@ Drafter's reading: ByT5 gives a constant learning rate of 0.001 for fine-tuning,
 
 ### dense: Which learning rate schedule did ByT5 use for pre-training?
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.737 | 2506.04079v1 | 2.3 PRE-TRAINING PHASES | Figure 2: Scheme of the learning rate scheduler. |
 | 2 | 0.737 | 2506.04079v2 | 2.3 PRE-TRAINING PHASES | Figure 2: Scheme of the learning rate scheduler. |
@@ -522,7 +522,7 @@ Drafter's reading: ByT5 gives a constant learning rate of 0.001 for fine-tuning,
 
 ### bm25: ByT5 pre-training learning rate schedule inverse square root
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 33.741 | W19-6620 | 3 Analysis Setup › 3.2 Architecture | For Transformer experiments, we use the learning rate scheduling settings in Vaswani et al. (2017), including the inverse square root learning rate scheduler, 4 |
 | 2 | 33.667 | 2608.18087v1 | 15. Experimental Setup for Neural Machine Translation › 15.1. Neural Machine Translation › 15.1.3. Training and Optimization | Models are trained for 100k updates using the Adam optimizer (β1 = 0.9, β2 = 0.98) with a label smoothing factor of 0.1. We utilize an inverse-square-root learn |
@@ -537,7 +537,7 @@ Drafter's reading: ByT5 gives a constant learning rate of 0.001 for fine-tuning,
 
 ### dense: ByT5 pre-training learning rate schedule inverse square root
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.796 | 2201.13242v2 | 4 Our Methodology › 4.3 Training Hyperparameters › 4.3.3 Learning Rate | Sometimes, better results can be achieved by scheduling learning rate values during the training. There is, typically, the so-called warm-up period in the begin |
 | 2 | 0.791 | 1905.10453v2 | 3 Analysis Setup › 3.2 Architecture | For Transformer experiments, we use the learning rate scheduling settings in Vaswani et al. (2017), including the inverse square root learning rate scheduler, 4 |
@@ -552,7 +552,7 @@ Drafter's reading: ByT5 gives a constant learning rate of 0.001 for fine-tuning,
 
 ### bm25: ByT5 Adafactor learning rate warmup
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 25.151 | 2201.13242v2 | 6 Experiment Details › 6.1 ByT5 Model Fine-Tuning | We used the Adafactor [104] optimizer with a constant learning rate of 0.001. The same setup was employed by the ByT5 [8] authors for fine-tuning experiments. M |
 | 2 | 23.385 | 2024.tacl-1.22 | A Hyperparameters | We train models using the AdaFactor (Shazeer and Stern, 2018) optimizer with 4000 warmup batches and a final constant learning rate of 1e-4. We batch by # of to |
@@ -567,7 +567,7 @@ Drafter's reading: ByT5 gives a constant learning rate of 0.001 for fine-tuning,
 
 ### dense: ByT5 Adafactor learning rate warmup
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.825 | 2201.13242v1 | 4 Our Methodology › 4.3 Training Hyperparameters › 4.3.3 Learning Rate | The last important parameter in (2) is the learning rate η. It controls how much the model parameters have to be updated. Low values of η ensure smooth monotoni |
 | 2 | 0.807 | 2201.13242v2 | 4 Our Methodology › 4.3 Training Hyperparameters › 4.3.3 Learning Rate | The last important parameter in (2) is the learning rate η. It controls how much the model parameters have to be updated. Low values of η ensure smooth monotoni |
@@ -588,7 +588,7 @@ Drafter's reading: No Chunk is about nutrition; the nearest is a maths word prob
 
 ### bm25: How much vitamin D should an adult take each day?
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 19.811 | 2604.22709v1 | B Generative Reward Model Prompt › Verbal CoT | Close with warmth and openness. Invite them to share their feelings or let you know how you can make things right. Ending with a lighthearted or affectionate re |
 | 2 | 19.811 | 2604.22709v2 | B Generative Reward Model Prompt › Verbal CoT | Close with warmth and openness. Invite them to share their feelings or let you know how you can make things right. Ending with a lighthearted or affectionate re |
@@ -603,7 +603,7 @@ Drafter's reading: No Chunk is about nutrition; the nearest is a maths word prob
 
 ### dense: How much vitamin D should an adult take each day?
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.614 | 2502.03275v2 | E Interpreability Examples › Example Generation of Our Latent Approach | Prompt: In a 8 fluid ounce bottle of Vitamin Water, there are 125 calories. How many calories would be contained in a 12 fluid ounce bottle? Express your answer |
 | 2 | 0.604 | 2603.15644v1 | 4 Discussion | Any antifungal 86729 51130 2142 2.47 Any chemotherapy 83359 50997 3092 3.71 Any antiepileptics 78305 48262 6578 8.40 Any glucocorticoid 67347 40508 14145 21.00  |
@@ -618,7 +618,7 @@ Drafter's reading: No Chunk is about nutrition; the nearest is a maths word prob
 
 ### bm25: vitamin D recommended daily intake adults
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 14.983 | 2608.03999v1 | I Extended Baseline Comparisons | Figure8: The listening-study interface (captures of the deployed page). Left: intake. Middle: a trial. Right: the closing screen. |
 | 2 | 12.311 | 2412.11704v1 | C Analysis and Discussion › C.2 Additional Qualitative Analysis | There are more than 400,000 reported cases in the United States. It is the leading cause of death in young and middle-aged adults. (MS). In Tamil There are more |
@@ -633,7 +633,7 @@ Drafter's reading: No Chunk is about nutrition; the nearest is a maths word prob
 
 ### dense: vitamin D recommended daily intake adults
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.636 | 2403.01858v3 | G Detailed results of various models on different benchmarks | 問題：人體的食物來源多樣，食物的營養成分包含有機物質及無機物質，而食物加工 過程有時會加入特定食品添加物，我國政府為了替民眾的食品安全把關，訂有食品安 全衛生管理法及食品安全衛生管理法施行細則，下列相關敘述何者最正確？ Question: The human body has a variety of food sou |
 | 2 | 0.624 | 2408.07065v1 | { } | { box jellyfish, estuaries, October, April, October, April } Sharks do exist, however they rarely attack humans. Most sharks are scared of humans and would swim |
@@ -648,7 +648,7 @@ Drafter's reading: No Chunk is about nutrition; the nearest is a maths word prob
 
 ### bm25: dietary supplement dosage IU per day
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 14.924 | 2406.14312v1 | 3 Results › 3.1 Tokeniser Evaluation Design and Datasets › Clinical research article classification | Table 2 (Clinical research article classification): Results of ClinicalBERT models employing BERT Tokeniser and K-Tokeniser on clinical concepts and relation ex |
 | 2 | 13.387 | 2510.15346v1 | 1 INTRODUCTION › Problem | To determine how much Terry spends on yogurt over 30 days, we can break down the problem into several steps: 1. Calculate the daily yogurt consumption in terms  |
@@ -663,7 +663,7 @@ Drafter's reading: No Chunk is about nutrition; the nearest is a maths word prob
 
 ### dense: dietary supplement dosage IU per day
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.669 | 2604.16775v1 | 6. Conclusion | Table 3 continued from previous page Outcome Definition and source field(s) ICU admission (Experiments 1-2; icu/icustays) Derived binary label: at least one lin |
 | 2 | 0.666 | 2603.15644v1 | Supplementary Material | 0.928 0.912 0.919 0.926 0.924 Low albumin 0.879 0.888 0.885 0.888 0.874 0.884 0.880 0.888 High alanine transaminase 0.859 0.870 0.879 0.882 0.858 0.866 0.874 0. |
@@ -684,7 +684,7 @@ Drafter's reading: No Chunk is about football.
 
 ### bm25: Which country won the 2018 FIFA World Cup?
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 32.945 | 2408.07065v1 | D Complete FLEURS-ASL-FS Annotations › { } | { alpine, stiff } Think of the skiing route as of a similar hiking route. { } In good conditions you will be able to cover somewhat greater distances than walki |
 | 2 | 24.938 | 2607.17689v1 | 4 Evaluation › 4.2 Machine Translation › Data | Instance Analysis It is difficult to find examples in well-established translation datasets where false friends occur in contexts that can throw Englishto-L2 tr |
@@ -699,7 +699,7 @@ Drafter's reading: No Chunk is about football.
 
 ### dense: Which country won the 2018 FIFA World Cup?
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.618 | 2408.07065v1 | D Complete FLEURS-ASL-FS Annotations › { } | { alpine, stiff } Think of the skiing route as of a similar hiking route. { } In good conditions you will be able to cover somewhat greater distances than walki |
 | 2 | 0.598 | 2408.07065v1 | 4 Experiments › 4.3 Results › Reference | Tournament top seeds South Africa started on the right note when they had a comfortable 26 -00 win against 5th seeded Zambia. T5 (YT) In South Africa, there is  |
@@ -714,7 +714,7 @@ Drafter's reading: No Chunk is about football.
 
 ### bm25: 2018 FIFA World Cup winner
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 26.761 | 2408.07065v1 | D Complete FLEURS-ASL-FS Annotations › { } | { alpine, stiff } Think of the skiing route as of a similar hiking route. { } In good conditions you will be able to cover somewhat greater distances than walki |
 | 2 | 24.640 | 2607.17689v1 | 4 Evaluation › 4.2 Machine Translation › Data | Instance Analysis It is difficult to find examples in well-established translation datasets where false friends occur in contexts that can throw Englishto-L2 tr |
@@ -729,7 +729,7 @@ Drafter's reading: No Chunk is about football.
 
 ### dense: 2018 FIFA World Cup winner
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.646 | 2408.07065v1 | D Complete FLEURS-ASL-FS Annotations › { } | { alpine, stiff } Think of the skiing route as of a similar hiking route. { } In good conditions you will be able to cover somewhat greater distances than walki |
 | 2 | 0.637 | 2408.07065v1 | D Complete FLEURS-ASL-FS Annotations | Table 10 (D Complete FLEURS-ASL-FS Annotations): Complete set of FLEURS-ASL-FS annotations.Each reference sentence is paired with a multiset of human-annotated  |
@@ -744,7 +744,7 @@ Drafter's reading: No Chunk is about football.
 
 ### bm25: football World Cup final France Croatia
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 25.894 | 2408.07065v1 | D Complete FLEURS-ASL-FS Annotations › { } | { alpine, stiff } Think of the skiing route as of a similar hiking route. { } In good conditions you will be able to cover somewhat greater distances than walki |
 | 2 | 21.728 | 2607.17689v1 | 4 Evaluation › 4.2 Machine Translation › Data | Instance Analysis It is difficult to find examples in well-established translation datasets where false friends occur in contexts that can throw Englishto-L2 tr |
@@ -759,7 +759,7 @@ Drafter's reading: No Chunk is about football.
 
 ### dense: football World Cup final France Croatia
 
-| Rank | Score | File | Section | Text |
+| Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
 | 1 | 0.652 | 2408.07065v1 | { } | For the Springboks, it ended a five-match losing streak. { Springboks } It was the final match for the All Blacks, who had already won the trophy two weeks ago. |
 | 2 | 0.651 | 2408.07065v1 | D Complete FLEURS-ASL-FS Annotations › { } | { alpine, stiff } Think of the skiing route as of a similar hiking route. { } In good conditions you will be able to cover somewhat greater distances than walki |
