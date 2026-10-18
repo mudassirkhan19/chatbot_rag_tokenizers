@@ -134,6 +134,7 @@ def run_evaluate(tmp_path: Path, evaluation_set: Path = EVALUATION_SET, report: 
             "--parse-report", str(tmp_path / "parse-report.md"),
             "--index-cache", str(tmp_path / "index-cache"),
             "--evaluation-set", str(evaluation_set),
+            "--manifest", str(ROOT / "data" / "manifest.csv"),
             "--report", str(tmp_path / report),
         ]
     )  # fmt: skip
@@ -178,14 +179,6 @@ def test_mrr_at_10_is_zero_when_no_chunk_in_the_top_10_holds_a_passage(indexed):
     # Averaged with the other single-paper question, whose Passage is held at rank 2: (1/2 + 0) / 2.
     assert questions(report)["freezing", "as asked"][1] == "2"
     assert results(report)["single-paper", "as asked"] == ["2", "0.50", "0.250", "0.50"]
-
-
-def test_a_passage_quoted_from_another_edition_counts_when_a_chunk_holds_its_text(indexed):
-    # The freezing question's Passage names WECHSEL's venue Edition, which isn't in the corpus; v2 holds its text.
-    # (Figure 6's caption, which repeats "freeze" and "TransInner", ranks first.)
-    report = run_evaluate(indexed)
-
-    assert questions(report)["freezing", "as asked"] == ["single-paper", "2", "1/1"]
 
 
 def test_unanswerable_questions_are_left_out_of_the_metrics(indexed, tmp_path):

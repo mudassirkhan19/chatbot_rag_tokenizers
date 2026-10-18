@@ -9,7 +9,11 @@ from .config import ConfigError
 from .collection.config import load_config
 from .collection.pipeline import collect
 from .evaluation import pipeline as evaluation
-from .evaluation.evalset import EvaluationSetError
+from .evaluation.check import check, describe
+from .evaluation.config import load_matching_rule
+from .evaluation.evalset import EvaluationSetError, load_evaluation_set
+from .evaluation.matching import MatchingRule
+from .evaluation.works import Works
 from .parsing import inputs
 from .parsing import pipeline as parsing
 from .parsing.config import load_parse_config
@@ -121,8 +125,20 @@ def main(argv: list[str] | None = None) -> None:
         ),
     )
     _add_corpus_arguments(evaluate_cmd)
-    evaluate_cmd.add_argument("--evaluation-set", type=Path, default=Path("data/eval/evaluation-set.jsonl"))
+    _add_evaluation_set_arguments(evaluate_cmd)
     evaluate_cmd.add_argument("--report", type=Path, default=Path("data/eval/eval-report.md"), help="the eval report (committed)")
+
+    eval_check_cmd = commands.add_parser(
+        "eval-check",
+        help="check every question and Passage of the Evaluation set against the parsed text",
+        description=(
+            "Fails a Passage whose quote isn't in its named Edition and Section, or is over 300 characters, and a"
+            " question of the wrong shape. Reports, for every Passage, the Chunks that hold it and their Editions,"
+            " and each question's lexical overlap with its Passages. Exits non-zero on any failure."
+        ),
+    )
+    _add_chunk_arguments(eval_check_cmd)
+    _add_evaluation_set_arguments(eval_check_cmd)
 
     audit_cmd = commands.add_parser("audit", help="build the Audit set and measure the Relevance verdict on it")
     audit_commands = audit_cmd.add_subparsers(dest="audit_command", required=True)
@@ -205,10 +221,21 @@ def main(argv: list[str] | None = None) -> None:
         index.build(args.index_cache, corpus, retrievers)
     elif args.command == "evaluate":
         corpus, retrievers = _corpus_and_retrievers(args)
+        rule = _matching_rule(args)
         try:
-            evaluation.evaluate(corpus, retrievers, args.index_cache, args.evaluation_set, args.report)
+            evaluation.evaluate(corpus, retrievers, args.index_cache, args.evaluation_set, args.report, rule, _works(args))
         except (EvaluationSetError, index.IndexMissing) as error:
             sys.exit(f"evaluate: {error}")
+    elif args.command == "eval-check":
+        rule = _matching_rule(args)
+        try:
+            questions = load_evaluation_set(args.evaluation_set)
+        except EvaluationSetError as error:
+            sys.exit(f"eval-check: {error}")
+        result = check(questions, _load_corpus(args), rule, _works(args))
+        print("\n".join(describe(questions, result)))
+        if result.problems:
+            sys.exit(f"eval-check: {result.failure(args.evaluation_set)}")
     elif args.command == "audit" and args.audit_command == "export":
         audit.export(load_config(args.config), args.snapshot, args.output, args.size, args.seed, force=args.force)
     elif args.command == "audit" and args.audit_command == "report":
@@ -222,13 +249,45 @@ def main(argv: list[str] | None = None) -> None:
 def _add_corpus_arguments(command: argparse.ArgumentParser) -> None:
     """The arguments `index` and `evaluate` share: where the Chunks are, and which retrievers."""
     command.add_argument("--config", type=Path, default=Path("config/retrieval.toml"), help="the retrievers' settings")
+    _add_chunk_arguments(command)
+    command.add_argument("--index-cache", type=Path, default=Path("data/index-cache"), help="the index cache (default data/index-cache, gitignored)")
+    command.add_argument("--retriever", action="append", help="a retriever in the config, e.g. bm25; repeat for several (default all)")
+
+
+def _add_chunk_arguments(command: argparse.ArgumentParser) -> None:
+    """Where the corpus's Chunks are: the parse config, cache and report."""
     command.add_argument("--parse-config", type=Path, default=Path("config/parse.toml"), help="the chunking config the Chunks were cut with")
     command.add_argument("--cache", type=Path, default=Path("data/parse-cache"), help="the parse cache (default data/parse-cache)")
     command.add_argument(
         "--parse-report", type=Path, default=Path("data/parse-report.md"), help="its parsed files make up the corpus (default data/parse-report.md)"
     )
-    command.add_argument("--index-cache", type=Path, default=Path("data/index-cache"), help="the index cache (default data/index-cache, gitignored)")
-    command.add_argument("--retriever", action="append", help="a retriever in the config, e.g. bm25; repeat for several (default all)")
+
+
+def _add_evaluation_set_arguments(command: argparse.ArgumentParser) -> None:
+    """The arguments `evaluate` and `eval-check` share: the Evaluation set and the Passage matching rule."""
+    command.add_argument("--evaluation-set", type=Path, default=Path("data/eval/evaluation-set.jsonl"))
+    command.add_argument("--eval-config", type=Path, default=Path("config/evaluation.toml"), help="the Passage matching rule")
+    command.add_argument(
+        "--manifest", type=Path, default=Path("data/manifest.csv"), help="links the Editions of a Work, for the multi-paper check"
+    )
+
+
+def _matching_rule(args: argparse.Namespace) -> MatchingRule:
+    try:
+        return load_matching_rule(args.eval_config)
+    except ConfigError as error:
+        sys.exit(f"{args.command}: {error}")
+
+
+def _works(args: argparse.Namespace) -> Works:
+    return Works(fulltext.read_manifest(args.manifest))
+
+
+def _load_corpus(args: argparse.Namespace) -> Corpus:
+    try:
+        return load_corpus(load_parse_config(args.parse_config), args.cache, args.parse_report)
+    except CorpusError as error:
+        sys.exit(f"{args.command}: {error}")
 
 
 def _corpus_and_retrievers(args: argparse.Namespace) -> tuple[Corpus, list[RetrieverConfig]]:
@@ -239,8 +298,4 @@ def _corpus_and_retrievers(args: argparse.Namespace) -> tuple[Corpus, list[Retri
     names = args.retriever or list(configured)
     if unknown := [name for name in names if name not in configured]:
         sys.exit(f"{args.command}: unknown retriever {', '.join(unknown)}; {args.config} configures {', '.join(configured)}")
-    try:
-        corpus = load_corpus(load_parse_config(args.parse_config), args.cache, args.parse_report)
-    except CorpusError as error:
-        sys.exit(f"{args.command}: {error}")
-    return corpus, [configured[name] for name in names]
+    return _load_corpus(args), [configured[name] for name in names]
