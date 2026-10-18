@@ -1,5 +1,5 @@
 """The funnel and channel report: counts at each stage and per Discovery channel and source, built
-from the manifest rows alone, so `collect` and `fetch` write the same report from the same manifest.
+from the manifest rows alone, so `collect`, `fetch` and `index` write the same report from the same manifest.
 
 `summarise` prints it to stderr as plain lines and `write` writes it as Markdown for the write-up.
 """
@@ -98,7 +98,9 @@ class Funnel:
     judge_included: int
     judge_excluded: int
     pending: int
-    fulltext: int
+    fulltext: int  # every pinned file fetched, indexed or not
+    indexed: int
+    not_indexed: list[str]  # the Editions with full text that aren't indexed, sorted
     no_fulltext: int
     to_fetch: int
 
@@ -110,7 +112,9 @@ def funnel(rows: list[Row]) -> Funnel:
     judged = Counter(
         row["relevance_verdict"] for row in rows if row["rule_outcome"] == "pass" and row["relevance_stage"] not in before_judge
     )
-    status = Counter(row["funnel_status"] for row in rows if row["relevance_verdict"] == "included")
+    included = [row for row in rows if row["relevance_verdict"] == "included"]
+    status = Counter(row["funnel_status"] for row in included)
+    not_indexed = sorted(row["edition_id"] for row in included if row["funnel_status"] == "full text")
     return Funnel(
         len(rows),
         Counter(dict(sorted(rejects.items()))),
@@ -119,7 +123,9 @@ def funnel(rows: list[Row]) -> Funnel:
         judged["included"],
         judged["excluded"],
         judged["pending"],
-        status["full text"],
+        status["full text"] + status["indexed"],
+        status["indexed"],
+        not_indexed,
         status["no_fulltext"],
         status["relevant"],
     )
@@ -134,7 +140,8 @@ def _judge(rows: list[Row]) -> str:
 def summarise_fulltext(rows: list[Row]) -> None:
     counts = funnel(rows)
     print(
-        f"fulltext: {counts.fulltext} with full text, {counts.no_fulltext} with no open PDF, {counts.to_fetch} still to fetch",
+        f"fulltext: {counts.fulltext} with full text ({counts.indexed} indexed), {counts.no_fulltext} with no open PDF,"
+        f" {counts.to_fetch} still to fetch",
         file=sys.stderr,
     )
 
@@ -187,6 +194,21 @@ def _found_table(heading: str, found: dict[str, Found]) -> list[str]:
     return lines
 
 
+def _not_indexed(editions: list[str]) -> list[str]:
+    """The Editions with full text that aren't indexed: a file failed the parse quality gate (see the parse report),
+    or `index` hasn't run since they were fetched."""
+    if not editions:
+        return []
+    return [
+        "## With full text, not indexed",
+        "",
+        "A file failed the parse quality gate (see the parse report), or `index` hasn't run since the Edition was fetched.",
+        "",
+        *(f"- `{edition}`" for edition in editions),
+        "",
+    ]
+
+
 def render(rows: list[Row]) -> str:
     """The report as Markdown."""
     counts = funnel(rows)
@@ -194,7 +216,7 @@ def render(rows: list[Row]) -> str:
     lines = [
         "# Corpus funnel and channel report",
         "",
-        f"Written by `collect` and `fetch` from the manifest: {_judge(rows)}. One row per Edition.",
+        f"Written by `collect`, `fetch` and `index` from the manifest: {_judge(rows)}. One row per Edition.",
         "",
         "## Funnel",
         "",
@@ -208,9 +230,12 @@ def render(rows: list[Row]) -> str:
         f"| Pending a judge verdict | {counts.pending} |",
         f"| Included | {counts.judge_included} |",
         f"| With full text | {counts.fulltext} |",
+        f"| Indexed | {counts.indexed} |",
+        f"| With full text, not indexed | {len(counts.not_indexed)} |",
         f"| No open PDF | {counts.no_fulltext} |",
         f"| Still to fetch | {counts.to_fetch} |",
         "",
+        *_not_indexed(counts.not_indexed),
         "## Rule rejections by pattern",
         "",
         "| Pattern | Editions |",

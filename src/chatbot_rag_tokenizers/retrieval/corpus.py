@@ -24,8 +24,13 @@ class CorpusError(RuntimeError):
 class Corpus:
     parser_key: str  # the GROBID image the files were parsed with
     chunking: ChunkingConfig
-    files: tuple[str, ...]  # the sha256 of each parsed file, in the report's order
+    parsed: tuple[tuple[str, str], ...]  # the (pinned id, sha256) of each parsed file, in the report's order
     chunks: tuple[Chunk, ...]  # every file's Chunks, file by file, each file's in order
+
+    @property
+    def files(self) -> tuple[str, ...]:
+        """The sha256 of each parsed file. Two pinned ids can hold the same bytes, and then one file's Chunks."""
+        return tuple(sha256 for _, sha256 in self.parsed)
 
     @property
     def chunking_key(self) -> str:
@@ -74,7 +79,7 @@ def load_corpus(config: ParseConfig, cache_root: Path, report_path: Path) -> Cor
         )
     if missing:
         raise CorpusError(f"the parse cache {cache_root} has no Chunks for {_count(len(missing))} in {report_path}: {', '.join(missing)}. {rerun}")
-    return Corpus(config.grobid.parser_key, config.chunking, tuple(sha256 for _, sha256 in run.parsed), tuple(chunks))
+    return Corpus(config.grobid.parser_key, config.chunking, tuple(run.parsed), tuple(chunks))
 
 
 def _config_name(config: ParseConfig) -> str:

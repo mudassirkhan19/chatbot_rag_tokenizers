@@ -4,7 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from .collection import audit, audit_label, fulltext
+from .collection import audit, audit_label, fulltext, indexed
 from .config import ConfigError
 from .collection.config import load_config
 from .collection.pipeline import collect
@@ -116,6 +116,9 @@ def main(argv: list[str] | None = None) -> None:
         ),
     )
     _add_corpus_arguments(index_cmd)
+    index_cmd.add_argument("--snapshot", type=Path, default=Path("data/snapshot"), help="where the index record of indexed files goes")
+    index_cmd.add_argument("--manifest", type=Path, default=Path("data/manifest.csv"), help="its Editions whose files are all indexed are marked indexed")
+    index_cmd.add_argument("--funnel-report", type=Path, default=Path("data/report.md"), help="the funnel and channel report, rewritten with the indexed count")
 
     evaluate_cmd = commands.add_parser(
         "evaluate",
@@ -234,6 +237,7 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "index":
         corpus, retrievers = _corpus_and_retrievers(args)
         index.build(args.index_cache, corpus, retrievers)
+        indexed.mark(args.snapshot, args.manifest, args.funnel_report, set(corpus.parsed))
     elif args.command == "evaluate":
         corpus, retrievers = _corpus_and_retrievers(args)
         rule = _matching_rule(args)

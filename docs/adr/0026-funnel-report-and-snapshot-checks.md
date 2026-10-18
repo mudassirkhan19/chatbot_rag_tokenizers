@@ -1,7 +1,7 @@
 # 0026. The funnel report is written from the manifest, and collect checks the Snapshot
 
 - **Date:** 2026-10-18
-- **Status:** Accepted. Completes the size warning that [0003](0003-commit-the-snapshot.md) left for later.
+- **Status:** Accepted. Completes the size warning that [0003](0003-commit-the-snapshot.md) left for later. Amended by [0045](0045-index-marks-editions-indexed-from-a-committed-record.md): the report counts indexed Editions.
 
 ## Context
 Issue #11 asks for the full run's funnel (discovered, rejected by the rules, rejected by the judge, included, full text) and its per-channel counts, committed, for the write-up. `collect` already printed these counts to stderr, and the first full run's report was a copy of that output saved by hand (`docs/reports/2026-10-17-first-full-run.txt`). A hand-saved copy can't be checked against a rerun.

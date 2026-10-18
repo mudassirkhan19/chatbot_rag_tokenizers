@@ -8,7 +8,6 @@ columns and funnel status without the PDFs, and a re-download is checked against
 themselves are never committed.
 """
 
-import csv
 import hashlib
 import json
 import re
@@ -22,7 +21,9 @@ import httpx
 
 from . import report
 from .http import RateLimitedHttp
-from .manifest import COLUMNS, write_manifest
+from .indexed import IndexRecord
+from .indexed import apply_record as apply_index_record
+from .manifest import read_manifest, write_manifest
 
 ARXIV_PDF_URL = "https://export.arxiv.org/pdf/{}"  # arXiv asks harvesters to use the export host
 ARXIV_MIN_INTERVAL_SECONDS = 3.0  # arXiv's terms of use: one request every three seconds
@@ -292,14 +293,6 @@ def _today() -> str:
     return datetime.now(UTC).date().isoformat()
 
 
-def read_manifest(path: Path) -> list[dict[str, str]]:
-    with path.open(newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        if reader.fieldnames != COLUMNS:
-            raise SystemExit(f"{path} has different columns from this version of the pipeline; run `collect` first")
-        return list(reader)
-
-
 class _LimitReached(Exception):
     """Raised to stop a run once ``--limit`` files have been downloaded."""
 
@@ -348,6 +341,7 @@ def fetch(snapshot_dir: Path, manifest_path: Path, report_path: Path, pdf_dir: P
         print(f"fetch: stopped at the limit of {limit} downloads", file=sys.stderr)
     finally:
         apply_record(rows, record)
+        apply_index_record(rows, IndexRecord(snapshot_dir))
         write_manifest(manifest_path, rows)
         report.write(report_path, rows)
     print(f"fetch: {downloads} files downloaded into {pdf_dir}", file=sys.stderr)

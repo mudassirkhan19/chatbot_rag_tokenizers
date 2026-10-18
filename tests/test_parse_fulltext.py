@@ -5,107 +5,16 @@ The record is a fixture written by the test, in the shape `fetch` writes; the PD
 that the fake GROBID service maps to committed TEI fixtures.
 """
 
-import csv
-import json
 from pathlib import Path
 
 import pytest
 
-from chatbot_rag_tokenizers.cli import main
-from chatbot_rag_tokenizers.collection.manifest import COLUMNS
-from parse_support import REPO_CONFIG, FakeGrobid, fake_pdf, sha256
-
-
-def record_line(edition_id: str, file: str, pdf: bytes | None) -> dict:
-    """One line of `data/snapshot/fulltext/pdfs.jsonl`; no bytes means the Edition has no open PDF."""
-    if pdf is None:
-        return {
-            "edition_id": edition_id, "file": "", "url": "https://example.org/a.pdf", "sha256": "", "size": 0,
-            "fetched_at": "2026-10-16", "unavailable": "https://example.org/a.pdf: HTTP 403",
-        }  # fmt: skip
-    return {
-        "edition_id": edition_id, "file": file, "url": f"https://example.org/{file}", "sha256": sha256(pdf),
-        "size": len(pdf), "fetched_at": "2026-10-16", "unavailable": "",
-    }  # fmt: skip
-
-
-class Corpus:
-    """A Snapshot with a full-text record, a PDFs directory and a manifest, as `fetch` leaves them.
-
-    Every Edition with a recorded file is included, unless ``excluded`` says otherwise.
-    """
-
-    def __init__(self, root: Path, grobid: FakeGrobid) -> None:
-        self.root = root
-        self.snapshot = root / "snapshot"
-        self.pdfs = root / "pdfs"
-        self.pdfs.mkdir()
-        self.manifest = root / "manifest.csv"
-        self.grobid = grobid
-        self.lines: list[dict] = []
-        self.excluded_editions: set[str] = set()
-
-    def excluded(self, edition_id: str) -> None:
-        """Give the Edition an excluded Relevance verdict in the manifest, as a withdrawn preprint gets."""
-        self.excluded_editions.add(edition_id)
-
-    def fetched(self, edition_id: str, file: str, label: str, on_disk: bytes | None = None) -> bytes:
-        """Record a fetched file; ``on_disk`` puts other bytes in the PDFs directory than the record pins."""
-        pdf = fake_pdf(label)
-        self.lines.append(record_line(edition_id, file, pdf))
-        (self.pdfs / file).write_bytes(pdf if on_disk is None else on_disk)
-        self.grobid.serve(pdf, "wechsel_2112.06598v2.tei.xml")
-        return pdf
-
-    def no_open_pdf(self, edition_id: str) -> None:
-        self.lines.append(record_line(edition_id, "", None))
-
-    def save(self) -> None:
-        path = self.snapshot / "fulltext" / "pdfs.jsonl"
-        path.parent.mkdir(parents=True)
-        path.write_text("".join(json.dumps(line, sort_keys=True) + "\n" for line in self.lines))
-        files: dict[str, list[str]] = {}
-        for line in self.lines:
-            names = files.setdefault(line["edition_id"], [])
-            if line["file"]:
-                names.append(f"{line['file']} {line['sha256']}")
-        with self.manifest.open("w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=COLUMNS, restval="", lineterminator="\n")
-            writer.writeheader()
-            for edition_id, names in sorted(files.items()):
-                verdict = "excluded" if edition_id in self.excluded_editions else "included"
-                writer.writerow({"edition_id": edition_id, "relevance_verdict": verdict, "pdf_files": "|".join(names)})
-
-    def parse(self, save: bool = True) -> None:
-        if save:
-            self.save()
-        main(
-            [
-                "parse",
-                "--config", str(REPO_CONFIG),
-                "--cache", str(self.root / "cache"),
-                "--report", str(self.root / "parse-report.md"),
-                "--snapshot", str(self.snapshot),
-                "--pdfs", str(self.pdfs),
-                "--manifest", str(self.manifest),
-            ]
-        )  # fmt: skip
-
-    def anchors(self, pdf: bytes) -> set[tuple[str, str, str]]:
-        """The (pinned id, Version, sha256) the cached Chunks of a file cite."""
-        return {anchor[1:] for anchor in self.editions_and_anchors(pdf)}
-
-    def editions_and_anchors(self, pdf: bytes) -> set[tuple[str, str, str, str]]:
-        """The (Edition id, pinned id, Version, sha256) the cached Chunks of a file carry."""
-        [path] = (self.root / "cache" / sha256(pdf)).glob("*.chunks.jsonl")
-        chunks = [json.loads(line) for line in path.read_text().splitlines()]
-        assert chunks
-        return {(c["edition_id"], c["pinned_id"], c["version"], c["file_sha256"]) for c in chunks}
+from parse_support import FakeGrobid, FetchedCorpus, fake_pdf, sha256
 
 
 @pytest.fixture
-def corpus(tmp_path: Path, grobid: FakeGrobid) -> Corpus:
-    return Corpus(tmp_path, grobid)
+def corpus(tmp_path: Path, grobid: FakeGrobid) -> FetchedCorpus:
+    return FetchedCorpus(tmp_path, grobid)
 
 
 def test_every_recorded_file_is_parsed_and_cited_by_the_pinned_id_the_record_gives(corpus):
@@ -158,7 +67,7 @@ def test_a_file_the_edition_is_no_longer_pinned_to_is_not_parsed(corpus, grobid)
     corpus.save()
     corpus.manifest.write_text(
         corpus.manifest.read_text()
-        .replace(f"2112.06598v2,,,,,,,,,,,,,,,,,,,,,,included,,,,,2112.06598v1.pdf {sha256(v1)}|2112.06598v2.pdf {sha256(old_latest)},,\n", "")
+        .replace(f"2112.06598v2,,,,,,,,,,,,,,,,,,,,,,included,,,,,2112.06598v1.pdf {sha256(v1)}|2112.06598v2.pdf {sha256(old_latest)},full text,\n", "")
         .replace("2112.06598v3.pdf", f"2112.06598v1.pdf {sha256(v1)}|2112.06598v3.pdf")
     )
 
