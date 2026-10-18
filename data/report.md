@@ -1,6 +1,6 @@
 # Corpus funnel and channel report
 
-Written by `collect` and `fetch` from the manifest: judge `tev1:4b@4d24c6f6d61a48d9b72902f4805c5f1da53010736b834b0372377fb4bb7e53d3@0.40.5` at threshold 0.8. One row per Edition.
+Written by `collect`, `fetch` and `index` from the manifest: judge `tev1:4b@4d24c6f6d61a48d9b72902f4805c5f1da53010736b834b0372377fb4bb7e53d3@0.40.5` at threshold 0.8. One row per Edition.
 
 ## Funnel
 
@@ -14,8 +14,16 @@ Written by `collect` and `fetch` from the manifest: judge `tev1:4b@4d24c6f6d61a4
 | Pending a judge verdict | 0 |
 | Included | 2706 |
 | With full text | 2068 |
+| Indexed | 2067 |
+| With full text, not indexed | 1 |
 | No open PDF | 636 |
 | Still to fetch | 2 |
+
+## With full text, not indexed
+
+A file failed the parse quality gate (see the parse report), or `index` hasn't run since the Edition was fetched.
+
+- `2508.13058v1`
 
 ## Rule rejections by pattern
 

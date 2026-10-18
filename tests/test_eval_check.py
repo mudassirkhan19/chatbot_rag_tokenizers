@@ -245,7 +245,9 @@ def test_eval_check_fails_a_multi_paper_question_whose_passages_come_from_one_wo
 
 
 def test_evaluate_refuses_a_set_that_fails_eval_check(corpus):
-    main(["index", *corpus_arguments(corpus), "--config", str(RETRIEVAL_CONFIG)])
+    # Its own manifest and funnel report, never the repo's: with no manifest there, no Edition is marked indexed.
+    outputs = ["--snapshot", str(corpus / "snapshot"), "--manifest", str(corpus / "manifest.csv"), "--funnel-report", str(corpus / "report.md")]
+    main(["index", *corpus_arguments(corpus), "--config", str(RETRIEVAL_CONFIG), *outputs])
     broken = write_set(corpus, GOOD, question("no-passages"))
 
     with pytest.raises(SystemExit) as stopped:

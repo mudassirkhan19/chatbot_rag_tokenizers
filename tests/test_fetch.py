@@ -333,3 +333,27 @@ def test_a_venue_edition_with_a_new_source_is_tried_again(fixture_snapshot, coll
     web.serve("https://repo.example.edu/tacl-999.pdf", pdf("tacl"))
     run_fetch(fixture_snapshot, collected, pdfs)
     assert read_manifest(collected)["10.1162/TACL_A_00999"]["funnel_status"] == "full text"
+
+
+def test_collect_and_fetch_keep_the_indexed_mark_from_the_index_record(fixture_snapshot, collected, web, no_network, tmp_path):
+    run_fetch(fixture_snapshot, collected, tmp_path / "pdfs")
+    # The record `index` writes: the venue Edition's one file and only v1 of a two-Version preprint are indexed.
+    (fixture_snapshot / "index").mkdir()
+    (fixture_snapshot / "index" / "files.jsonl").write_text(
+        f'{{"pinned_id":"P18-1007","sha256":"{sha256(pdf("P18-1007"))}"}}\n'
+        f'{{"pinned_id":"1508.07909v1","sha256":"{sha256(pdf("1508.07909v1"))}"}}\n'
+    )
+
+    run_collect(fixture_snapshot, collected, collected.with_name("report.md"))
+
+    rows = read_manifest(collected)
+    assert rows["P18-1007"]["funnel_status"] == "indexed"
+    assert rows["1508.07909v5"]["funnel_status"] == "full text"
+    report = collected.with_name("report.md").read_text()
+    assert "| With full text | 11 |" in report
+    assert "| Indexed | 1 |" in report
+    assert "| With full text, not indexed | 10 |" in report
+
+    run_fetch(fixture_snapshot, collected, tmp_path / "pdfs")
+
+    assert read_manifest(collected)["P18-1007"]["funnel_status"] == "indexed"

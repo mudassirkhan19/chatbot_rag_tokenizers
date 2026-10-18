@@ -123,3 +123,11 @@ def write_manifest(path: Path, rows: list[dict[str, str]]) -> None:
         writer = csv.DictWriter(f, fieldnames=COLUMNS, lineterminator="\n")
         writer.writeheader()
         writer.writerows(sorted(rows, key=lambda row: row["edition_id"]))
+
+
+def read_manifest(path: Path) -> list[dict[str, str]]:
+    with path.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        if reader.fieldnames != COLUMNS:
+            raise SystemExit(f"{path} has different columns from this version of the pipeline; run `collect` first")
+        return list(reader)

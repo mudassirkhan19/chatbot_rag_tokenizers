@@ -44,6 +44,10 @@ def run_index(tmp_path: Path, parse_config: Path = REPO_CONFIG, retrieval_config
             "--cache", str(tmp_path / "cache"),
             "--parse-report", str(tmp_path / "parse-report.md"),
             "--index-cache", str(tmp_path / "index-cache"),
+            # A Seed run has no manifest, so no Edition is marked indexed; never the repo's own manifest.
+            "--snapshot", str(tmp_path / "snapshot"),
+            "--manifest", str(tmp_path / "manifest.csv"),
+            "--funnel-report", str(tmp_path / "report.md"),
         ]
     )  # fmt: skip
 

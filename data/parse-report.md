@@ -2,6 +2,8 @@
 
 Written by `parse`. The Chunks themselves are in the local parse cache, which is not committed.
 
+- Input: the full-text record, for the included Editions of the manifest
+
 ## Parser
 
 - Image: `grobid/grobid@sha256:223957791ac2bbe48609dcc58a689b16b60baeae13a8734ef440ae6bfb38f4cd` (tag `0.9.1-crf`)

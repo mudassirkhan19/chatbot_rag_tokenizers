@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from . import fulltext, judge, report
+from . import fulltext, indexed, judge, report
 from .acl_anthology import AclAnthologySource
 from .arxiv import ArxivSource
 from .config import ScopeConfig
@@ -252,6 +252,7 @@ def collect(
     check_credentials(snapshot_dir, API_KEY_ENVS)
     rows = [candidate.manifest_row(config.judge.threshold) for candidate in assessed]
     fulltext.apply_record(rows, fulltext.FulltextRecord(snapshot_dir))
+    indexed.apply_record(rows, indexed.IndexRecord(snapshot_dir))
     write_manifest(manifest_path, rows)
     report.write(report_path, rows)
     report.summarise(rows, config.judge.threshold)

@@ -4,9 +4,10 @@ import argparse
 import sys
 from pathlib import Path
 
-from .collection import audit, audit_label, fulltext
+from .collection import audit, audit_label, fulltext, indexed
 from .config import ConfigError
 from .collection.config import load_config
+from .collection.manifest import read_manifest
 from .collection.pipeline import collect
 from .evaluation import pipeline as evaluation
 from .evaluation.check import check, describe
@@ -116,6 +117,9 @@ def main(argv: list[str] | None = None) -> None:
         ),
     )
     _add_corpus_arguments(index_cmd)
+    index_cmd.add_argument("--snapshot", type=Path, default=Path("data/snapshot"), help="where the index record of indexed files goes")
+    index_cmd.add_argument("--manifest", type=Path, default=Path("data/manifest.csv"), help="its Editions whose files are all indexed are marked indexed")
+    index_cmd.add_argument("--funnel-report", type=Path, default=Path("data/report.md"), help="the funnel and channel report, rewritten with the indexed count")
 
     evaluate_cmd = commands.add_parser(
         "evaluate",
@@ -219,7 +223,7 @@ def main(argv: list[str] | None = None) -> None:
         report = args.report or (None if args.limit is not None else Path("data/parse-report.md"))
         messages = []
         try:
-            parsing.parse(load_parse_config(args.config), files, args.cache, report, args.limit, args.retry_failed)
+            parsing.parse(load_parse_config(args.config), files, args.cache, report, not args.files, args.limit, args.retry_failed)
         except parsing.ParseErrors as errors:
             messages.append(f"parse: {errors}")
         except GrobidUnreachable as error:
@@ -234,6 +238,11 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "index":
         corpus, retrievers = _corpus_and_retrievers(args)
         index.build(args.index_cache, corpus, retrievers)
+        if corpus.from_record:
+            indexed.mark(args.snapshot, args.manifest, args.funnel_report, set(corpus.parsed))
+        else:
+            # A Seeds-only corpus isn't the manifest's: marking from it would unmark the full corpus (ADR 0045).
+            print("index: the parse report comes from a `--files` run, so no Edition is marked indexed", file=sys.stderr)
     elif args.command == "evaluate":
         corpus, retrievers = _corpus_and_retrievers(args)
         rule = _matching_rule(args)
@@ -245,7 +254,7 @@ def main(argv: list[str] | None = None) -> None:
                 args.evaluation_set,
                 args.report,
                 rule,
-                fulltext.read_manifest(args.manifest),
+                read_manifest(args.manifest),
                 args.work_groups,
                 args.export_ungrouped,
             )
@@ -305,7 +314,7 @@ def _matching_rule(args: argparse.Namespace) -> MatchingRule:
 
 
 def _works(args: argparse.Namespace) -> Works:
-    return Works(fulltext.read_manifest(args.manifest))
+    return Works(read_manifest(args.manifest))
 
 
 def _load_corpus(args: argparse.Namespace) -> Corpus:
