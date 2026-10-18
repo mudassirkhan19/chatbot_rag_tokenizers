@@ -1,17 +1,20 @@
-"""`evaluate` (ADR 0039): score each retriever's index on the Evaluation set and write the eval report."""
+"""`evaluate` (ADR 0039): score each retriever's index on the Evaluation set and write the eval report, with what
+crowds the top 5 measured against the Work groups (ADR 0044)."""
 
 import hashlib
-from collections.abc import Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 
 from ..retrieval import index
 from ..retrieval.corpus import Corpus
 from ..retrieval.retriever import RetrieverConfig
 from .check import check
+from .crowding import ungrouped
 from .evalset import EvaluationSetError, load_evaluation_set
-from .harness import all_answerable, metrics, score
+from .harness import CROWDING_DEPTH, all_answerable, metrics, score
 from .matching import MatchingRule
 from .report import RetrieverRun, write_eval_report
+from .work_groups import load_work_groups, write_export
 from .works import Works
 
 
@@ -22,10 +25,16 @@ def evaluate(
     evaluation_set: Path,
     report: Path,
     rule: MatchingRule,
-    works: Works,
+    manifest: Iterable[Mapping[str, str]],
+    work_groups: Path,
+    export: Path | None = None,
 ) -> None:
-    """Raises EvaluationSetError for a set that fails `eval-check` (ADR 0041) and index.IndexMissing when a
-    retriever isn't built."""
+    """Raises EvaluationSetError for a set that fails `eval-check` (ADR 0041), WorkGroupsError for a malformed Work
+    groups file and index.IndexMissing when a retriever isn't built. With `export`, also writes there every Edition
+    in a top 5 that has no Work group."""
+    rows = {row["edition_id"]: row for row in manifest}
+    works = Works(rows.values())
+    groups = load_work_groups(work_groups)
     questions = load_evaluation_set(evaluation_set)
     if not questions:
         raise EvaluationSetError(f"{evaluation_set} holds no questions")
@@ -33,14 +42,26 @@ def evaluate(
     if checked.problems:
         raise EvaluationSetError(f"{checked.failure(evaluation_set)}\nFix the set; `just eval-check` gives every Passage's matches too.")
     indexes = [(config, index.load(index_root, corpus, config)) for config in configs]
-    chunk_texts = {chunk.chunk_id: chunk.text for chunk in corpus.chunks}
+    chunks = {chunk.chunk_id: chunk for chunk in corpus.chunks}
     runs = []
     for config, built in indexes:
-        scored = score(questions, built.retriever, chunk_texts, rule)
+        scored = score(questions, built.retriever, chunks, rule)
         runs.append(RetrieverRun(config, built, scored))
         overall = metrics(all_answerable(scored))
         if overall:
             print(f"evaluate: {config.name}: Recall@5 {overall.recall:.2f}, MRR@10 {overall.mrr:.3f}, Hit@5 {overall.hit:.2f}")
+    missing = sorted(ungrouped((s for run in runs for s in run.scored if s.question.answerable), groups))
+    editions = "1 Edition" if len(missing) == 1 else f"{len(missing)} Editions"
+    if missing:
+        has = "has" if len(missing) == 1 else "have"
+        print(
+            f"evaluate: {editions} in the top {CROWDING_DEPTH} {has} no Work group: {', '.join(missing)}. The duplicate rate"
+            f" leaves out their questions; group them in {work_groups} (`--export-ungrouped` writes them with their titles)."
+        )
+    if export:
+        write_export(export, missing, rows)
+        print(f"evaluate: {editions} without a Work group exported to {export}")
     digest = hashlib.sha256(evaluation_set.read_bytes()).hexdigest()
-    write_eval_report(report, evaluation_set, digest, questions, corpus, runs, rule)
+    groups_digest = hashlib.sha256(work_groups.read_bytes()).hexdigest()
+    write_eval_report(report, evaluation_set, digest, questions, corpus, runs, rule, work_groups, groups_digest, groups)
     print(f"evaluate: {len(questions)} questions; report in {report}")

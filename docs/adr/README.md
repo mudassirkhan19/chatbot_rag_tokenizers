@@ -48,6 +48,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0041](0041-passage-matcher-eval-check-and-calibration.md) | The Passage matcher, eval-check and the v1/vN calibration | Accepted |
 | [0042](0042-dense-baseline-bge-small-behind-the-embedder-boundary.md) | Dense baseline: bge-small behind the embedder boundary, on MPS by default | Accepted |
 | [0043](0043-recover-numbered-headings-grobid-left-in-paragraphs.md) | Recover numbered headings GROBID left in paragraphs | Accepted |
+| [0044](0044-duplicate-rate-restatement-and-numeric-share-in-evaluate.md) | Duplicate rate, Survey restatement and the numeric-Chunk share in evaluate | Accepted |
 
 ## Template
 

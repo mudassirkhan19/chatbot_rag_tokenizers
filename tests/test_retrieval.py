@@ -5,6 +5,8 @@ fixture Evaluation set (fixtures/eval/evaluation-set.jsonl) has a question of ea
 from those two papers.
 """
 
+import csv
+import json
 import shutil
 from pathlib import Path
 
@@ -18,6 +20,8 @@ from parse_support import REPO_CONFIG, FakeGrobid, config_with_budget, run_parse
 ROOT = Path(__file__).parents[1]
 RETRIEVAL_CONFIG = ROOT / "config" / "retrieval.toml"
 EVALUATION_SET = Path(__file__).parent / "fixtures" / "eval" / "evaluation-set.jsonl"
+# Both fixture papers, each grouped with its venue Edition into one Work, neither of them a Survey.
+WORK_GROUPS = Path(__file__).parent / "fixtures" / "eval" / "work-groups.csv"
 
 
 @pytest.fixture
@@ -161,8 +165,14 @@ def test_index_says_when_the_parse_report_was_written_with_another_chunking_conf
     assert "another GROBID image or chunking config" in str(stopped.value)
 
 
-def run_evaluate(tmp_path: Path, evaluation_set: Path = EVALUATION_SET, report: str = "eval-report.md") -> str:
-    """Run `evaluate` with BM25 on the corpus in tmp_path and return the eval report."""
+def run_evaluate(
+    tmp_path: Path,
+    evaluation_set: Path = EVALUATION_SET,
+    report: str = "eval-report.md",
+    work_groups: Path = WORK_GROUPS,
+    options: tuple[str, ...] = (),
+) -> str:
+    """Run `evaluate` on the corpus in tmp_path and return the eval report."""
     main(
         [
             "evaluate",
@@ -173,7 +183,9 @@ def run_evaluate(tmp_path: Path, evaluation_set: Path = EVALUATION_SET, report: 
             "--index-cache", str(tmp_path / "index-cache"),
             "--evaluation-set", str(evaluation_set),
             "--manifest", str(ROOT / "data" / "manifest.csv"),
+            "--work-groups", str(work_groups),
             "--report", str(tmp_path / report),
+            *options,
         ]
     )  # fmt: skip
     return (tmp_path / report).read_text()
@@ -193,7 +205,27 @@ def results(report: str) -> dict[tuple[str, str], list[str]]:
 
 def questions(report: str) -> dict[tuple[str, str], list[str]]:
     """BM25's line per question: (question id, query) to [type, rank of first hit, Passages found]."""
-    return {(row[0], row[2]): [row[1], *row[3:]] for row in table(report, "### Questions: bm25")}
+    return {(row[0], row[2]): [row[1], row[3], row[4]] for row in table(report, "### Questions: bm25")}
+
+
+def slots(report: str) -> dict[tuple[str, str], list[str]]:
+    """BM25's line per question: (question id, query) to its [duplicate, restatement, mostly-numeric] top-5 slots."""
+    return {(row[0], row[2]): row[5:] for row in table(report, "### Questions: bm25")}
+
+
+def crowding(report: str) -> dict[str, list[str]]:
+    """BM25's crowding table: measure to [top-5 slots, share of slots, questions, share of questions]."""
+    return {row[0]: row[1:] for row in table(report, "### Crowding: bm25")}
+
+
+def listed(report: str, heading: str) -> list[str]:
+    """The last paragraph of a section: its list, or "None."."""
+    return report.split(f"\n{heading}\n", 1)[1].split("\n## ", 1)[0].strip().split("\n\n")[-1].splitlines()
+
+
+def as_a_user_asks(lines: dict[tuple[str, str], list[str]]) -> list[list[str]]:
+    """The lines of every answerable question as a user would ask it: the all-answerable row's queries."""
+    return [line for (_, query), line in lines.items() if query in ("as asked", "follow-up alone") and line[2] != "—"]
 
 
 @pytest.fixture
@@ -272,3 +304,139 @@ def test_the_report_records_the_dense_model_pin_and_each_retrievers_device(index
     for name in ("bm25", "dense"):
         [line] = [line for line in timings.splitlines() if line.startswith(f"- {name}:")]
         assert "index built on cpu in " in line and " queries on cpu, latency p50 " in line and ", p95 " in line
+
+
+# BM25's top 5 for vocabulary-sizes: the BPE paper, the BPE paper, WECHSEL, then two mostly-numeric BPE Chunks
+# (Section 4.1's last Chunk, mostly Table 1's cells, and Section 5.1's, the cells of Figure 2's table).
+
+
+def test_a_second_chunk_from_the_same_work_counts_as_a_duplicate_slot(indexed):
+    report = run_evaluate(indexed)
+
+    # Ranks 2, 4 and 5 hold the BPE paper again; WECHSEL at rank 3 is a Work not ranked higher.
+    assert slots(report)["vocabulary-sizes", "as asked"] == ["3", "0", "2"]
+    # metrics-miss ranks only WECHSEL's Chunks: four repeat the first.
+    assert slots(report)["metrics-miss", "as asked"] == ["4", "0", "0"]
+
+
+def with_survey(tmp_path: Path, work_id: str) -> Path:
+    """The fixture Work groups with one Work flagged as a Survey."""
+    groups = tmp_path / "work-groups-survey.csv"
+    groups.write_text(WORK_GROUPS.read_text().replace(f",{work_id},no,", f",{work_id},yes,"))
+    return groups
+
+
+def test_a_surveys_chunk_counts_as_restatement_not_as_a_duplicate(indexed, tmp_path):
+    report = run_evaluate(indexed, work_groups=with_survey(tmp_path, "sennrich-2016-bpe"))
+
+    # All four BPE Chunks restate; none of them, nor WECHSEL's, repeats a Work that isn't a Survey.
+    assert slots(report)["vocabulary-sizes", "as asked"] == ["0", "4", "2"]
+
+
+def test_the_crowding_totals_count_every_answerable_question_as_a_user_would_ask_it(indexed):
+    report = run_evaluate(indexed)
+
+    asked = as_a_user_asks(slots(report))
+    assert len(asked) == 4
+    totals = crowding(report)
+    for measure, column in (("duplicate", 0), ("restatement", 1), ("mostly numeric", 2)):
+        found = sum(int(line[column]) for line in asked)
+        crowded = sum(1 for line in asked if int(line[column]))
+        assert totals[measure] == [f"{found}/20", f"{found / 20:.2f}", f"{crowded}/4", f"{crowded / 4:.2f}"]
+    assert "- Mostly-numeric slots holding a Passage: 0 of " in report.split("### Crowding: bm25", 1)[1]
+
+
+def write_question(tmp_path: Path, record: dict) -> Path:
+    path = tmp_path / f"{record['id']}.jsonl"
+    path.write_text(json.dumps(record, ensure_ascii=False) + "\n", encoding="utf-8")
+    return path
+
+
+def test_a_mostly_numeric_chunk_is_counted_in_the_numeric_share_and_when_it_holds_a_passage(indexed, tmp_path):
+    # The quote is in Section 4.1's last Chunk, between a footnote and Table 1's cells.
+    alignment = {
+        "id": "alignment",
+        "type": "single-paper",
+        "question": "Why is the character level suboptimal at the other end of the spectrum?",
+        "passages": [
+            {
+                "edition_id": "1508.07909v5",
+                "section": "4.1 Subword statistics",
+                "quote": "At the other end of the spectrum, the character level is suboptimal for alignment",
+            }
+        ],
+    }
+
+    report = run_evaluate(indexed, write_question(tmp_path, alignment))
+
+    assert questions(report)["alignment", "as asked"] == ["single-paper", "1", "1/1"]
+    numeric = slots(report)["alignment", "as asked"][2]
+    assert int(numeric) >= 1
+    assert f"- Mostly-numeric slots holding a Passage: 1 of {numeric}\n" in report.split("### Crowding: bm25", 1)[1]
+
+
+def without_bpe(tmp_path: Path) -> Path:
+    """The fixture Work groups without the BPE paper's Work."""
+    groups = tmp_path / "work-groups-wechsel-only.csv"
+    groups.write_text("".join(line + "\n" for line in WORK_GROUPS.read_text().splitlines() if "sennrich" not in line))
+    return groups
+
+
+def test_evaluate_names_the_editions_without_a_work_group_and_leaves_their_questions_out(indexed, tmp_path, capsys):
+    report = run_evaluate(indexed, work_groups=without_bpe(tmp_path))
+
+    assert "1 Edition in the top 5 has no Work group: 1508.07909v5" in capsys.readouterr().out
+    assert listed(report, "## Editions without a Work group") == ["- 1508.07909v5"]
+    lines = slots(report)
+    assert lines["vocabulary-sizes", "as asked"] == ["ungrouped", "ungrouped", "2"]
+    assert lines["metrics-miss", "as asked"] == ["4", "0", "0"]
+    # The duplicate rate counts only the questions whose top 5 are all grouped; the numeric share counts them all.
+    grouped = [line for line in as_a_user_asks(lines) if line[0] != "ungrouped"]
+    assert 0 < len(grouped) < 4
+    totals = crowding(report)
+    assert totals["duplicate"][0] == f"{sum(int(line[0]) for line in grouped)}/{5 * len(grouped)}"
+    assert totals["duplicate"][2].endswith(f"/{len(grouped)}")
+    assert totals["mostly numeric"][2].endswith("/4")
+
+
+def read_csv(path: Path) -> list[dict[str, str]]:
+    with path.open(newline="", encoding="utf-8") as file:
+        return list(csv.DictReader(file))
+
+
+def test_the_export_lists_exactly_the_editions_in_the_top_5_without_a_work_group(indexed, tmp_path):
+    export = tmp_path / "ungrouped.csv"
+
+    run_evaluate(indexed, work_groups=without_bpe(tmp_path), options=("--export-ungrouped", str(export)))
+
+    assert read_csv(export) == [
+        {
+            "edition_id": "1508.07909v5",
+            "work_id": "",
+            "survey": "",
+            "title": "Neural Machine Translation of Rare Words with Subword Units",
+            "authors": "Rico Sennrich; Barry Haddow; Alexandra Birch",
+            "year": "2015",
+            "venue": "",
+        }
+    ]
+
+
+def test_the_export_is_empty_when_every_edition_in_the_top_5_has_a_work_group(indexed, tmp_path, capsys):
+    export = tmp_path / "ungrouped.csv"
+
+    report = run_evaluate(indexed, options=("--export-ungrouped", str(export)))
+
+    assert export.read_text().splitlines() == ["edition_id,work_id,survey,title,authors,year,venue"]
+    assert listed(report, "## Editions without a Work group") == ["None."]
+    assert "no Work group" not in capsys.readouterr().out
+
+
+def test_evaluate_stops_on_a_malformed_work_groups_file(indexed, tmp_path):
+    groups = tmp_path / "bad.csv"
+    groups.write_text(WORK_GROUPS.read_text().replace("sennrich-2016-bpe,no,", "sennrich-2016-bpe,maybe,", 1))
+
+    with pytest.raises(SystemExit) as stopped:
+        run_evaluate(indexed, work_groups=groups)
+
+    assert str(groups) in str(stopped.value) and "survey" in str(stopped.value)

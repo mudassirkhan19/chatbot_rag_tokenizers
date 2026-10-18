@@ -5,18 +5,21 @@
 - Hit@5: the share of questions with a Passage held in the top 5.
 
 Unanswerable questions are run, so they get a line and a latency, but are left out of the metrics. A
-follow-up is run three ways: alone, after its history, and as its reference rewrite.
+follow-up is run three ways: alone, after its history, and as its reference rewrite. Each query keeps its
+top 5, for measuring what crowds it (crowding.py).
 """
 
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from ..parsing.chunker import Chunk
+from ..parsing.report import is_mostly_numeric
 from ..retrieval.retriever import Retriever
 from .evalset import Question
 from .matching import MatchingRule, holds
 
-RECALL_DEPTH = HIT_DEPTH = 5
+RECALL_DEPTH = HIT_DEPTH = CROWDING_DEPTH = 5
 MRR_DEPTH = 10
 
 # How a question is put to the retriever: as asked, or, for a follow-up, in each of three ways.
@@ -28,6 +31,15 @@ FOLLOW_UP_QUERIES = (FOLLOW_UP_ALONE, WITH_HISTORY, REWRITE)
 
 
 @dataclass(frozen=True)
+class Slot:
+    """One place in the top 5, for measuring what crowds it (ADR 0044)."""
+
+    edition_id: str
+    mostly_numeric: bool  # a text Chunk that is mostly numbers, as the parse report counts them (ADR 0035)
+    holds_passage: bool
+
+
+@dataclass(frozen=True)
 class Scored:
     """One query of one question, scored."""
 
@@ -35,6 +47,7 @@ class Scored:
     query_kind: str  # AS_ASKED, or one of FOLLOW_UP_QUERIES
     first_hit: int | None  # the rank of the first Chunk holding any Passage, None when none is in the top 10
     found: int  # the Passages held by a Chunk in the top 5
+    top: tuple[Slot, ...]  # the top 5, best first; fewer when the retriever ranked fewer Chunks
     seconds: float  # how long the retriever took to answer
 
 
@@ -57,17 +70,21 @@ def queries(question: Question) -> list[tuple[str, str]]:
     ]
 
 
-def score(questions: Sequence[Question], retriever: Retriever, chunk_texts: Mapping[str, str], rule: MatchingRule) -> list[Scored]:
+def score(questions: Sequence[Question], retriever: Retriever, chunks: Mapping[str, Chunk], rule: MatchingRule) -> list[Scored]:
     scored = []
     for question in questions:
         for query_kind, text in queries(question):
             started = time.perf_counter()
-            ranking = retriever.query(text, MRR_DEPTH)
+            ranking = [chunks[chunk_id] for chunk_id, _ in retriever.query(text, MRR_DEPTH)]
             seconds = time.perf_counter() - started
-            held = [[holds(chunk_texts[chunk_id], passage.quote, rule) for passage in question.passages] for chunk_id, _ in ranking]
+            held = [[holds(chunk.text, passage.quote, rule) for passage in question.passages] for chunk in ranking]
             first_hit = next((rank for rank, row in enumerate(held, start=1) if any(row)), None)
             found = sum(1 for column in zip(*held[:RECALL_DEPTH]) if any(column))
-            scored.append(Scored(question, query_kind, first_hit, found, seconds))
+            top = tuple(
+                Slot(chunk.edition_id, chunk.kind == "text" and is_mostly_numeric(chunk.text), any(row))
+                for chunk, row in zip(ranking[:CROWDING_DEPTH], held)
+            )
+            scored.append(Scored(question, query_kind, first_hit, found, top, seconds))
     return scored
 
 

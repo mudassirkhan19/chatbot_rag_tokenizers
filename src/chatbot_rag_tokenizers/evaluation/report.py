@@ -1,23 +1,27 @@
 """The eval report writer (ADR 0039): the committed Markdown record of an `evaluate` run, in the style of the parse report.
 
 It names what was scored (the Evaluation set, the chunking config and corpus, each retriever's settings),
-then gives a results table per retriever and question type and a line per question. Everything above the
+then gives a results table per retriever and question type, what crowds the top 5 (ADR 0044) and a line per
+question. Everything above the
 timings, which come last, depends only on the inputs, so two runs on the same index give the same report
 up to that section.
 """
 
 import statistics
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
 from ..retrieval.corpus import Corpus
 from ..retrieval.index import Index
 from ..retrieval.retriever import RetrieverConfig
+from .crowding import Share, crowding, totals, ungrouped
 from .evalset import QUESTION_TYPES, Question
 from .matching import MIN_BLOCK, MatchingRule
+from .work_groups import WorkGroup
 from .harness import (
     AS_ASKED,
+    CROWDING_DEPTH,
     FOLLOW_UP_ALONE,
     FOLLOW_UP_QUERIES,
     HIT_DEPTH,
@@ -49,6 +53,9 @@ def write_eval_report(
     corpus: Corpus,
     runs: Sequence[RetrieverRun],
     rule: MatchingRule,
+    work_groups: Path,
+    work_groups_sha256: str,
+    groups: Mapping[str, WorkGroup],
 ) -> None:
     counts = ", ".join(f"{sum(1 for q in questions if q.type == kind)} {kind}" for kind in QUESTION_TYPES)
     lines = [
@@ -93,12 +100,35 @@ def write_eval_report(
         "## Results",
         "",
         *[line for run in runs for line in _results(run)],
+        "## Crowding",
+        "",
+        f"What takes the top {CROWDING_DEPTH} slots of each answerable question, as a user would ask it (the *all answerable*"
+        " row's queries), on the raw ranking (ADR 0044).",
+        "",
+        f"- Work groups: `{work_groups}` (sha256 `{work_groups_sha256}`), {len(groups)} Editions in"
+        f" {len({group.work_id for group in groups.values()})} Works, hand-checked, never computed by the system being measured.",
+        "- A duplicate slot holds a Chunk from a Work already ranked higher: another Edition or Version of it, or another"
+        " Chunk of the same file.",
+        "- A restatement slot holds a Chunk from a Survey. A Survey is always its own Work, and its Chunks are never duplicates.",
+        "- Duplicates and restatement count only the questions whose top 5 Editions all have a Work group.",
+        "- A mostly-numeric slot holds a text Chunk with more than 35% of its words numbers, as the parse report counts"
+        " them (ADR 0035). It counts every question.",
+        "",
+        *[line for run in runs for line in _crowding(run, groups)],
+        "## Editions without a Work group",
+        "",
+        f"Editions in any retriever's top {CROWDING_DEPTH} for an answerable question, in any query, with no Work group."
+        " `evaluate --export-ungrouped` writes them, with their titles, for grouping.",
+        "",
+        *_ungrouped(runs, groups),
+        "",
         "## Questions",
         "",
         f"First hit is the rank of the first Chunk holding a Passage, within the top {MRR_DEPTH}; Passages found counts"
-        f" those held in the top {RECALL_DEPTH}.",
+        f" those held in the top {RECALL_DEPTH}. The slot counts are within the top {CROWDING_DEPTH}; a question with an"
+        " Edition there that has no Work group has its duplicates and restatements marked ungrouped.",
         "",
-        *[line for run in runs for line in _questions(run)],
+        *[line for run in runs for line in _questions(run, groups)],
         "## Timings",
         "",
         "These depend on the machine and change from run to run.",
@@ -138,20 +168,58 @@ def _results(run: RetrieverRun) -> list[str]:
     return [*lines, ""]
 
 
-def _questions(run: RetrieverRun) -> list[str]:
+def _crowding(run: RetrieverRun, groups: Mapping[str, WorkGroup]) -> list[str]:
+    total = totals(all_answerable(run.scored), groups)
+
+    def row(measure: str, share: Share) -> str:
+        cells = [f"{share.slots}/{share.of_slots}", _share(share.slots, share.of_slots)]
+        cells += [f"{share.questions}/{share.of_questions}", _share(share.questions, share.of_questions)]
+        return f"| {measure} | {' | '.join(cells)} |"
+
+    return [
+        f"### Crowding: {run.config.name}",
+        "",
+        f"| Measure | Top-{CROWDING_DEPTH} slots | Share of slots | Questions | Share of questions |",
+        "|---|---:|---:|---:|---:|",
+        row("duplicate", total.duplicate),
+        row("restatement", total.restatement),
+        row("mostly numeric", total.numeric),
+        "",
+        f"- Grouped: {total.grouped} of {total.queries} questions have a Work group for every Edition in their top {CROWDING_DEPTH}.",
+        f"- Mostly-numeric slots holding a Passage: {total.numeric_holding} of {total.numeric.slots}",
+        "",
+    ]
+
+
+def _share(count: int, of: int) -> str:
+    return f"{count / of:.2f}" if of else NONE
+
+
+def _ungrouped(runs: Sequence[RetrieverRun], groups: Mapping[str, WorkGroup]) -> list[str]:
+    editions = sorted(ungrouped((s for run in runs for s in run.scored if s.question.answerable), groups))
+    return [f"- {edition_id}" for edition_id in editions] or ["None."]
+
+
+def _questions(run: RetrieverRun, groups: Mapping[str, WorkGroup]) -> list[str]:
     lines = [
         f"### Questions: {run.config.name}",
         "",
-        "| Question | Type | Query | First hit | Passages found |",
-        "|---|---|---|---:|---:|",
+        "| Question | Type | Query | First hit | Passages found | Duplicate slots | Restatement slots | Numeric slots |",
+        "|---|---|---|---:|---:|---:|---:|---:|",
     ]
     for s in run.scored:
         if s.question.answerable:
+            c = crowding(s, groups)
             hit, found = str(s.first_hit or "none"), f"{s.found}/{len(s.question.passages)}"
+            slots = [_grouped(c.duplicates), _grouped(c.restatements), str(c.numeric)]
         else:
-            hit, found = "left out", NONE
-        lines.append(f"| {s.question.id} | {s.question.type} | {s.query_kind} | {hit} | {found} |")
+            hit, found, slots = "left out", NONE, [NONE] * 3
+        lines.append(f"| {s.question.id} | {s.question.type} | {s.query_kind} | {hit} | {found} | {' | '.join(slots)} |")
     return [*lines, ""]
+
+
+def _grouped(count: int | None) -> str:
+    return "ungrouped" if count is None else str(count)
 
 
 def _timings(run: RetrieverRun) -> str:
