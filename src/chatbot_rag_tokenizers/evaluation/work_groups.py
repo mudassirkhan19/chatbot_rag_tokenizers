@@ -14,6 +14,7 @@ The grouping is given, never computed, so the duplicate stage is never scored by
 """
 
 import csv
+import hashlib
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,8 +34,14 @@ class WorkGroup:
     survey: bool
 
 
-def load_work_groups(path: Path) -> dict[str, WorkGroup]:
-    """Each grouped Edition's Work, by Edition id."""
+@dataclass(frozen=True)
+class WorkGroups:
+    path: Path
+    sha256: str  # of the file, so the eval report names exactly the grouping it was measured against
+    editions: dict[str, WorkGroup]  # each grouped Edition's Work, by Edition id
+
+
+def load_work_groups(path: Path) -> WorkGroups:
     if not path.exists():
         raise WorkGroupsError(f"there is no Work groups file at {path}; `evaluate --export-ungrouped` writes one to start from")
     with path.open(newline="", encoding="utf-8") as file:
@@ -58,7 +65,7 @@ def load_work_groups(path: Path) -> dict[str, WorkGroup]:
         surveys.setdefault(group.work_id, set()).add(group.survey)
     if mixed := sorted(work_id for work_id, flags in surveys.items() if len(flags) > 1):
         raise WorkGroupsError(f"{path}: Works with both Survey and non-Survey Editions (a Survey is its own Work): {', '.join(mixed)}")
-    return groups
+    return WorkGroups(path, hashlib.sha256(path.read_bytes()).hexdigest(), groups)
 
 
 def write_export(path: Path, edition_ids: Iterable[str], manifest: Mapping[str, Mapping[str, str]]) -> None:

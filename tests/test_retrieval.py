@@ -319,6 +319,35 @@ def test_a_second_chunk_from_the_same_work_counts_as_a_duplicate_slot(indexed):
     assert slots(report)["metrics-miss", "as asked"] == ["4", "0", "0"]
 
 
+@pytest.fixture
+def with_venue_edition(tmp_path: Path, grobid: FakeGrobid) -> Path:
+    """The fixture corpus plus the BPE paper's ACL Edition (P16-1162), parsed from the same TEI as its preprint and
+    indexed: another Edition of the same Work, with the same text."""
+    files = [
+        seed_pdf(tmp_path, grobid, "wechsel_2112.06598v2.pdf", "wechsel_2112.06598v2.tei.xml"),
+        seed_pdf(tmp_path, grobid, "bpe_1508.07909v5.pdf", "missed-table.tei.xml"),
+        seed_pdf(tmp_path, grobid, "P16-1162.pdf", "missed-table.tei.xml"),
+    ]
+    run_parse(tmp_path, *files)
+    run_index(tmp_path)
+    return tmp_path
+
+
+def test_a_chunk_from_another_edition_of_a_work_ranked_higher_counts_as_a_duplicate_slot(with_venue_edition, tmp_path):
+    # The fixture Work groups join P16-1162 with the preprint; here it is its own Work instead.
+    apart = tmp_path / "work-groups-venue-apart.csv"
+    apart.write_text(WORK_GROUPS.read_text().replace("P16-1162,sennrich-2016-bpe,", "P16-1162,sennrich-2016-bpe-acl,"))
+
+    joined = slots(run_evaluate(with_venue_edition, report="joined.md"))
+    separate = slots(run_evaluate(with_venue_edition, work_groups=apart, report="apart.md"))
+
+    # BM25's top 5: the preprint's Section 5.1 Chunk, the ACL Edition's copy of it, WECHSEL, then the preprint's and
+    # the ACL Edition's Section 4.1 Chunk. Joined, ranks 2, 4 and 5 repeat the BPE Work; apart, the ACL Edition's
+    # first Chunk at rank 2 is a new Work, and only ranks 4 and 5 repeat one.
+    assert joined["vocabulary-sizes", "as asked"] == ["3", "0", "0"]
+    assert separate["vocabulary-sizes", "as asked"] == ["2", "0", "0"]
+
+
 def with_survey(tmp_path: Path, work_id: str) -> Path:
     """The fixture Work groups with one Work flagged as a Survey."""
     groups = tmp_path / "work-groups-survey.csv"

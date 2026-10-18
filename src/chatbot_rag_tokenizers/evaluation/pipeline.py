@@ -50,18 +50,18 @@ def evaluate(
         overall = metrics(all_answerable(scored))
         if overall:
             print(f"evaluate: {config.name}: Recall@5 {overall.recall:.2f}, MRR@10 {overall.mrr:.3f}, Hit@5 {overall.hit:.2f}")
-    missing = sorted(ungrouped((s for run in runs for s in run.scored if s.question.answerable), groups))
+    missing = sorted(ungrouped((s for run in runs for s in run.scored if s.question.answerable), groups.editions))
     editions = "1 Edition" if len(missing) == 1 else f"{len(missing)} Editions"
     if missing:
         has = "has" if len(missing) == 1 else "have"
         print(
-            f"evaluate: {editions} in the top {CROWDING_DEPTH} {has} no Work group: {', '.join(missing)}. The duplicate rate"
-            f" leaves out their questions; group them in {work_groups} (`--export-ungrouped` writes them with their titles)."
+            f"evaluate: {editions} in the top {CROWDING_DEPTH} {has} no Work group: {', '.join(missing)}. Duplicates and"
+            f" restatement count only the questions whose top {CROWDING_DEPTH} are all grouped; group them in {work_groups}"
+            " (`--export-ungrouped` writes them with their titles)."
         )
     if export:
         write_export(export, missing, rows)
         print(f"evaluate: {editions} without a Work group exported to {export}")
     digest = hashlib.sha256(evaluation_set.read_bytes()).hexdigest()
-    groups_digest = hashlib.sha256(work_groups.read_bytes()).hexdigest()
-    write_eval_report(report, evaluation_set, digest, questions, corpus, runs, rule, work_groups, groups_digest, groups)
+    write_eval_report(report, evaluation_set, digest, questions, corpus, runs, rule, groups, missing)
     print(f"evaluate: {len(questions)} questions; report in {report}")

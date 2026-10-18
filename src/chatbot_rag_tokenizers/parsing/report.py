@@ -10,6 +10,7 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
+from .chunker import Chunk
 from .config import ParseConfig
 from .quality import Failure
 
@@ -21,8 +22,9 @@ NUMERIC_SHARE = 0.35
 _NUMBER = re.compile(r"\W*[-+−]?\d[\d.,]*[kKMB×x]?\W*")
 
 
-def is_mostly_numeric(text: str) -> bool:
-    words = text.split()
+def is_mostly_numeric(chunk: Chunk) -> bool:
+    """A text Chunk, never a table or caption, in which more than NUMERIC_SHARE of the words are numbers."""
+    words = chunk.text.split() if chunk.kind == "text" else []
     return bool(words) and sum(1 for word in words if _NUMBER.fullmatch(word)) > NUMERIC_SHARE * len(words)
 
 

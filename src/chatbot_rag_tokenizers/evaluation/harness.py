@@ -81,7 +81,7 @@ def score(questions: Sequence[Question], retriever: Retriever, chunks: Mapping[s
             first_hit = next((rank for rank, row in enumerate(held, start=1) if any(row)), None)
             found = sum(1 for column in zip(*held[:RECALL_DEPTH]) if any(column))
             top = tuple(
-                Slot(chunk.edition_id, chunk.kind == "text" and is_mostly_numeric(chunk.text), any(row))
+                Slot(chunk.edition_id, is_mostly_numeric(chunk), any(row))
                 for chunk, row in zip(ranking[:CROWDING_DEPTH], held)
             )
             scored.append(Scored(question, query_kind, first_hit, found, top, seconds))
