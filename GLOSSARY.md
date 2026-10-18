@@ -56,7 +56,7 @@ _Avoid_: Heading, part
 
 **Chunk**:
 A contiguous run of text from one Section of one parsed file, and the unit that is retrieved and cited. Its kind is text (paragraphs), table (one linearised table, or part of one) or caption (a figure caption).
-_Avoid_: Passage (that word is for an evaluation question's answer span, which may cover several Chunks or part of one), segment, split
+_Avoid_: Passage (an evaluation question's answer quote), segment, split
 
 **Context header**:
 The paper title and Section path a Chunk is embedded with ("WECHSEL: … › 5 Results › 5.3 Is freezing necessary?"), stored apart from the Chunk's text so citations quote clean text.
@@ -77,3 +77,13 @@ _Avoid_: Filter (that is the rule pre-filter of `collect`), validation
 **Parse report**:
 The committed summary of a parse run: the parser and chunking config used, one line per file and the totals.
 _Avoid_: Log, manifest
+
+### Evaluation
+
+**Evaluation set**:
+The hand-checked questions, with the Passages that answer them, used to measure retrieval and the chatbot.
+_Avoid_: Audit set (that measures the relevance verdict), test set, gold set
+
+**Passage**:
+A verbatim quote from one Section of one Edition that answers an evaluation question. Any Chunk holding the quote answers it, whichever Edition of the Work that Chunk comes from.
+_Avoid_: Chunk (the retrieved unit, which may hold several Passages or part of one), answer, span
