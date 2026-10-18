@@ -6,7 +6,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | # | Decision | Status |
 |---|---|---|
 | [0001](0001-python-3.12-with-uv.md) | Python 3.12, managed with uv | Accepted, setup superseded by 0022 |
-| [0002](0002-no-pdfs-or-secrets-in-git.md) | Keep PDFs, downloaded data and secrets out of git | Partly superseded by 0003; amended by 0033 |
+| [0002](0002-no-pdfs-or-secrets-in-git.md) | Keep PDFs, downloaded data and secrets out of git | Partly superseded by 0003; amended by 0033 and 0045 |
 | [0003](0003-commit-the-snapshot.md) | Commit the Snapshot of raw source responses | Accepted, size and credential checks in 0026 |
 | [0004](0004-arxiv-keyword-queries.md) | arXiv keyword queries: paging, rate limit and query style | Partly superseded by 0006 |
 | [0005](0005-rule-pre-filter.md) | Stage-1 rule pre-filter for the Relevance verdict | Accepted, amended by 0037 and 0040 |
@@ -49,6 +49,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0042](0042-dense-baseline-bge-small-behind-the-embedder-boundary.md) | Dense baseline: bge-small behind the embedder boundary, on MPS by default | Accepted |
 | [0043](0043-recover-numbered-headings-grobid-left-in-paragraphs.md) | Recover numbered headings GROBID left in paragraphs | Accepted |
 | [0044](0044-duplicate-rate-restatement-and-numeric-share-in-evaluate.md) | Duplicate rate, Survey restatement and the numeric-Chunk share in evaluate | Accepted |
+| [0045](0045-evaluation-set-quotes-checked-by-and-absence-evidence.md) | The Evaluation set: short quotes committed, a check per question, and absence evidence | Accepted |
 
 ## Template
 
