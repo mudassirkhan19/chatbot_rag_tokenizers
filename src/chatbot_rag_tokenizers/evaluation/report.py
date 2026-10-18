@@ -37,6 +37,8 @@ ALL_ANSWERABLE = f"{AS_ASKED}, follow-ups alone"  # the all-answerable row: see 
 class RetrieverRun:
     config: RetrieverConfig
     build_seconds: float
+    build_device: str
+    device: str  # where the queries ran
     scored: list[Scored]
 
 
@@ -157,6 +159,6 @@ def _timings(run: RetrieverRun) -> str:
     milliseconds = sorted(s.seconds * 1000 for s in run.scored)
     p95 = statistics.quantiles(milliseconds, n=20, method="inclusive")[-1] if len(milliseconds) > 1 else milliseconds[0]
     return (
-        f"- {run.config.name}: index built in {run.build_seconds:.2f} s; {len(milliseconds)} queries,"
-        f" latency p50 {statistics.median(milliseconds):.2f} ms, p95 {p95:.2f} ms"
+        f"- {run.config.name}: index built on {run.build_device} in {run.build_seconds:.2f} s; {len(milliseconds)} queries"
+        f" on {run.device}, latency p50 {statistics.median(milliseconds):.2f} ms, p95 {p95:.2f} ms"
     )

@@ -1,13 +1,18 @@
 import csv
+import hashlib
 import shutil
 import socket
+from collections.abc import Sequence
 from pathlib import Path
 
 import httpx
+import numpy as np
 import pytest
 
 from chatbot_rag_tokenizers.collection import judge
 from chatbot_rag_tokenizers.collection.snapshot import SnapshotStore
+from chatbot_rag_tokenizers.retrieval import embedder
+from chatbot_rag_tokenizers.retrieval.bm25 import tokenise
 from parse_support import FakeGrobid, fake_pdf
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -181,3 +186,36 @@ def wechsel(tmp_path: Path, grobid: FakeGrobid) -> Path:
     pdf.write_bytes(fake_pdf("wechsel v2"))
     grobid.serve(pdf.read_bytes(), "wechsel_2112.06598v2.tei.xml")
     return pdf
+
+
+class FakeEmbedder:
+    """A hashed bag of words in place of the embedding model: each token adds 1 to one of 64 dimensions,
+    chosen by its sha256, and the counts are normalised. Texts sharing words point the same way."""
+
+    DIMENSIONS = 64
+
+    def __init__(self, model: str, revision: str) -> None:
+        self.model = model
+        self.revision = revision
+        self.device = "cpu"
+
+    def embed(self, texts: Sequence[str]) -> np.ndarray:
+        vectors = np.zeros((len(texts), self.DIMENSIONS), dtype=np.float32)
+        for row, text in enumerate(texts):
+            for token in tokenise(text):
+                vectors[row, int(hashlib.sha256(token.encode()).hexdigest(), 16) % self.DIMENSIONS] += 1
+        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+        return vectors / np.where(norms == 0, 1, norms)
+
+
+@pytest.fixture(autouse=True)
+def fake_embedder(monkeypatch: pytest.MonkeyPatch) -> list[FakeEmbedder]:
+    """Every test embeds with FakeEmbedder, so none downloads or loads a model. Returns the embedders made."""
+    made: list[FakeEmbedder] = []
+
+    def load(config, device=None):
+        made.append(FakeEmbedder(config.model, config.revision))
+        return made[-1]
+
+    monkeypatch.setattr(embedder, "load_embedder", load)
+    return made

@@ -73,7 +73,7 @@ Options: `--config`, `--snapshot`, `--manifest` and `--report` change the paths.
 
 **What `--refresh` does and doesn't do.** `--refresh` re-scores every Candidate that passes the rules with the configured judge, ignoring cached verdicts, and replaces them in the Snapshot. It needs Ollama, like any scoring. It never re-queries a source: stored responses are always reused, so `--refresh` doesn't pick up papers published after 2026-10-16. To collect newer papers, delete a source's stored responses (`data/snapshot/responses/<source>/`) and rerun with the network. That changes the manifest, so commit the new Snapshot with it. Changing the judge's model, pin, prompt or decision question re-scores without `--refresh`, because cached verdicts only count for the judge they were made with. Changing the threshold never re-scores.
 
-Scoring with the default judge needs Ollama running at the pinned version (0.40.5) with the model at its pinned digest; `just init` checks both and pulls the model (by hand: `ollama pull tev1:4b`). Scoring the full set takes about 2.5 h on an M1 Max. Tev1 takes at most 2,048 tokens, so the few abstracts Ollama refuses as too long are cut at a word boundary until they fit. Inputs that fit are never cut (ADR 0025). A transformers model in `[[audit.models]]` also needs torch and transformers, which `just init` installs (by hand: `uv sync --group judge`), and downloads its weights from Hugging Face.
+Scoring with the default judge needs Ollama running at the pinned version (0.40.5) with the model at its pinned digest; `just init` checks both and pulls the model (by hand: `ollama pull tev1:4b`). Scoring the full set takes about 2.5 h on an M1 Max. Tev1 takes at most 2,048 tokens, so the few abstracts Ollama refuses as too long are cut at a word boundary until they fit. Inputs that fit are never cut (ADR 0025). A transformers model in `[[audit.models]]` runs with torch and transformers, which are installed with the other dependencies (ADR 0042), and downloads its weights from Hugging Face.
 
 ## Fetch the full texts
 
@@ -121,28 +121,34 @@ This sends each PDF to the pinned GROBID service and cuts its text into Chunks t
 ## Index and evaluate retrieval
 
 ```sh
-just index        # build BM25 over the parsed Chunks (uv run chatbot-rag-tokenizers index)
+just index        # build BM25 and the dense baseline over the parsed Chunks (uv run chatbot-rag-tokenizers index)
 just eval-check   # check the Evaluation set's questions and quotes against the parsed text
-just evaluate     # score BM25 on the Evaluation set and write the eval report
+just evaluate     # score both retrievers on the Evaluation set and write the eval report
 ```
 
-`index` builds the retrievers, `eval-check` checks the hand-checked Evaluation set, and `evaluate` scores the retrievers on it (ADR 0039, ADR 0041). Today there is one retriever, BM25, and the corpus is every file the committed parse report lists as parsed: 2,690 files of the full-corpus run.
+`index` builds the retrievers, `eval-check` checks the hand-checked Evaluation set, and `evaluate` scores the retrievers on it (ADRs 0039, 0041 and 0042). There are two retrievers, BM25 and the dense baseline, and the corpus is every file the committed parse report lists as parsed: 2,690 files of the full-corpus run.
 
 - **`index` inputs.**
   - The parse report (`data/parse-report.md`, `--parse-report`) decides which files make up the corpus: every file it lists as parsed.
   - Their Chunks come from the parse cache (`--cache`), under the chunking config in `config/parse.toml` (`--parse-config`).
-  - Each retriever's settings are in `config/retrieval.toml` (`--config`). `--retriever bm25` builds only the retrievers named; the default is all of them.
+  - Each retriever's settings are in `config/retrieval.toml` (`--config`). `--retriever bm25` or `--retriever dense` builds only the retrievers named; the default is all of them.
   - `index` stops with a pointer to `just parse` when the report is missing, when the report was written with another GROBID image or chunking config, when the cache holds no Chunks for the report's files, or when it holds them only under another chunking config.
 - **`index` outputs.** Each index goes to the index cache (`data/index-cache/<chunking key>/<retriever key>/`, `--index-cache`, never committed) with a record of:
   - its settings;
   - the corpus it was built over;
-  - its Chunk count and build time.
+  - its Chunk count, build time and device.
 
   A rerun with nothing changed says "up to date" and writes nothing. A change to the chunking config or to a retriever's settings builds a new folder beside the old one. A parse report that gains or loses files rebuilds the index.
 - **BM25** indexes each Chunk's context header plus its text, so a question naming a paper matches its title.
   - Tokens are lower-cased runs of letters and digits. Numbers are kept, a decimal such as "0.1" as one token, and there is no stemming and no stop-word list, so "SentencePiece" stays a distinctive term.
   - `k1` and `b` are in `[bm25]`.
   - A Chunk that shares no word with the question isn't ranked.
+- **The dense baseline** embeds the same context header plus text with [`BAAI/bge-small-en-v1.5`](https://huggingface.co/BAAI/bge-small-en-v1.5) (ADR 0042).
+  - 384 dimensions and at most 512 tokens, with the same uncased BERT WordPiece vocabulary the chunker counts with, so a Chunk of 350 tokens plus its header fits.
+  - `[dense]` pins the model's revision and the sha256 of its weights, as the chunking tokenizer is pinned. Both are part of the index's key, so a new pin builds a new dense index and leaves BM25 alone. The first `index` downloads the weights (about 130 MB) into the Hugging Face cache; a weights file with another hash stops it.
+  - Each query gets the model card's instruction in front ("Represent this sentence for searching relevant passages: "); Chunks don't.
+  - A query is scored against every Chunk by exact dot product over the normalised float32 vectors (about 220 MB for the full corpus), with no vector database.
+  - **Device.** It runs on MPS when the machine has it, otherwise on the CPU. The two agree to within 5×10⁻⁷ per dimension, and give the same top 10. The index record and the eval report's timings name the device. On an M1 Max the full corpus embeds at about 200 Chunks/s on MPS against about 50 on the CPU.
 - **The Evaluation set** (`data/eval/evaluation-set.jsonl`, `--evaluation-set`) has one JSON question per line:
   - its `id`, its `type` (`single-paper`, `multi-paper`, `follow-up` or `unanswerable`), the `question` and its `passages`;
   - each Passage has the pinned `edition_id` of the file it quotes (such as `2112.06598v2`), its `section` as the context header gives it (`5 Results › 5.3 Is freezing necessary?`) and a verbatim `quote`;
@@ -162,7 +168,7 @@ just evaluate     # score BM25 on the Evaluation set and write the eval report
   - the Evaluation set's sha256, the chunking config and each retriever's settings;
   - a results table per retriever and question type: Recall@5 (per Passage, averaged over questions), MRR@10 (0 when no Chunk in the top 10 holds a Passage) and Hit@5, all on the raw ranking;
   - one line per question: its type, the rank of its first hit and the Passages found in the top 5;
-  - timings, last.
+  - timings, last: each retriever's index build time and device, and its query latency (p50 and p95) and device.
 - **Scoring rules.**
   - Each follow-up is scored three ways, in separate rows: alone, after its history, and as its reference rewrite.
   - Unanswerable questions are left out of the metrics.
@@ -183,7 +189,7 @@ uv run chatbot-rag-tokenizers audit report   # precision, recall and F1 by thres
 
 - **Export** draws an even share from each stratum (rule rejects, judge rejects, judge accepts, and rule passes still `pending` a verdict, which get no draft), with a fixed `--seed`. Export after the judge has scored the corpus, or most rule passes will be pending. `label` and `reason` start as the pipeline's own verdict, and `draft_label` and `draft_reason` keep it. The export never overwrites an existing file unless you pass `--force`.
 - **Label** serves a page at http://localhost:8765. It shows each Candidate's abstract, the pipeline's verdict in plain words, and the current label, and saves each change straight to the file. `labelled_by` records who set each label (`draft`, `agent` or `developer`), and `review_note` says why a row was flagged for checking.
-- **Report** writes `data/audit/report.md`. It covers the rule stage alone and rules plus each model in `[[audit.models]]` (the `[judge]` model when there are none) at thresholds 0.1 to 0.9 (`--thresholds` sets others), with a comparison of each model at its best threshold and the scoring time per Candidate. Each row is weighted by the size of its stratum, so the figures describe all Candidates, not the sample. Missing verdicts are scored and cached in `data/audit/verdicts.jsonl` (`uv sync --group judge`); `--no-judge` reports cached verdicts only.
+- **Report** writes `data/audit/report.md`. It covers the rule stage alone and rules plus each model in `[[audit.models]]` (the `[judge]` model when there are none) at thresholds 0.1 to 0.9 (`--thresholds` sets others), with a comparison of each model at its best threshold and the scoring time per Candidate. Each row is weighted by the size of its stratum, so the figures describe all Candidates, not the sample. Missing verdicts are scored and cached in `data/audit/verdicts.jsonl`; `--no-judge` reports cached verdicts only.
 
 The committed Audit set has 180 Candidates from the first full run:
 - Three agents labelled them blind, from title, abstract and link only.
@@ -207,4 +213,10 @@ just grobid-up
 RUN_GROBID_TESTS=1 just test tests/test_parse_grobid.py
 ```
 
-`tests/test_retrieval.py` runs `index` and `evaluate` on Chunks parsed from the CC BY TEI fixtures through the fake GROBID service, with a fixture Evaluation set that has a question of each type (`tests/fixtures/eval/`). `tests/test_eval_check.py` runs `eval-check` on the same papers plus a v1 of the BPE paper edited by hand (a reworded sentence, a changed number, a re-dated citation), and checks that `evaluate` refuses a set that fails it. The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model. `tests/test_dev_setup.py` also runs `just` to check the recipes, that `init` stops when Docker is missing, and, with a fake `docker` and `curl` on PATH, that `init` pulls GROBID by digest and that `grobid-up` and `grobid-down` behave; it skips without just.
+The test of the real embedder is opt-in too. It downloads the pinned bge-small on its first run, embeds the fixture papers' Chunks on the CPU and on MPS, and checks that each fixture question gets the same top 10 on both, and that the model's vocabulary is the chunker's:
+
+```sh
+RUN_EMBEDDER_TESTS=1 just test tests/test_embedder.py
+```
+
+`tests/test_retrieval.py` runs `index` and `evaluate` on Chunks parsed from the CC BY TEI fixtures through the fake GROBID service, with a fixture Evaluation set that has a question of each type (`tests/fixtures/eval/`). `tests/test_eval_check.py` runs `eval-check` on the same papers plus a v1 of the BPE paper edited by hand (a reworded sentence, a changed number, a re-dated citation), and checks that `evaluate` refuses a set that fails it. The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model: the dense retriever embeds with a hashed bag of words in their place. `tests/test_dev_setup.py` also runs `just` to check the recipes, that `init` stops when Docker is missing, and, with a fake `docker` and `curl` on PATH, that `init` pulls GROBID by digest and that `grobid-up` and `grobid-down` behave; it skips without just.

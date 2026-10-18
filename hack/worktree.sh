@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # worktree.sh - create, list and clean up fully working git worktrees (see docs/adr/0013).
 #
-#   hack/worktree.sh create <name> [--base <ref>] [--branch <branch>] [--judge | --no-judge] [--no-verify]
+#   hack/worktree.sh create <name> [--base <ref>] [--branch <branch>] [--no-verify]
 #   hack/worktree.sh list
 #   hack/worktree.sh cleanup <name|path> [--force] [--delete-branch]
 #
@@ -83,13 +83,11 @@ rollback() {
 
 
 cmd_create() {
-  local name="" base="" branch="" judge=auto verify=1
+  local name="" base="" branch="" verify=1
   while [ $# -gt 0 ]; do
     case $1 in
     --base) base=${2:?--base needs a ref}; shift 2 ;;
     --branch) branch=${2:?--branch needs a name}; shift 2 ;;
-    --judge) judge=1; shift ;;
-    --no-judge) judge=0; shift ;;
     --no-verify) verify=0; shift ;;
     -h | --help) usage ;;
     -*) die "unknown option: $1" ;;
@@ -131,7 +129,7 @@ cmd_create() {
   fi
 
   copy_local_files "$wt"
-  install_env "$wt" "$judge"
+  install_env "$wt"
   [ "$verify" = 0 ] || verify_env "$wt"
 
   trap - EXIT
@@ -166,15 +164,9 @@ copy_local_files() {
 }
 
 install_env() {
-  local wt=$1 judge=$2
-  if [ "$judge" = auto ]; then
-    # Match the main checkout: install torch and transformers only if it has them.
-    if compgen -G "$MAIN_ROOT/.venv/lib/python*/site-packages/torch" >/dev/null; then judge=1; else judge=0; fi
-  fi
-  local args=(sync --locked --quiet)
-  [ "$judge" = 0 ] || args+=(--group judge)
-  (cd "$wt" && env -u VIRTUAL_ENV uv "${args[@]}")
-  if [ "$judge" = 1 ]; then ok "Installed .venv with uv (with the judge group)"; else ok "Installed .venv with uv"; fi
+  local wt=$1
+  (cd "$wt" && env -u VIRTUAL_ENV uv sync --locked --quiet)
+  ok "Installed .venv with uv"
 }
 
 verify_env() {

@@ -73,6 +73,10 @@ class BM25:
         self.postings = postings
         self.average_length = sum(lengths) / len(lengths) if lengths else 0.0
 
+    @property
+    def device(self) -> str:
+        return "cpu"  # plain Python
+
     def save(self, directory: Path) -> None:
         stored = {"chunk_ids": self.chunk_ids, "lengths": self.lengths, "postings": self.postings}
         write_atomically(directory / _FILE, json.dumps(stored, sort_keys=True, ensure_ascii=False, separators=(",", ":")) + "\n")

@@ -37,7 +37,7 @@ def evaluate(
     runs = []
     for config, built in indexes:
         scored = score(questions, built.retriever, chunk_texts, rule)
-        runs.append(RetrieverRun(config, built.build_seconds, scored))
+        runs.append(RetrieverRun(config, built.build_seconds, built.build_device, built.retriever.device, scored))
         overall = metrics(all_answerable(scored))
         if overall:
             print(f"evaluate: {config.name}: Recall@5 {overall.recall:.2f}, MRR@10 {overall.mrr:.3f}, Hit@5 {overall.hit:.2f}")
