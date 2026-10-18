@@ -1,7 +1,7 @@
 # 0031. Parse reads the full-text record: pinned ids from the record, local problems outside the report
 
 - **Date:** 2026-10-18
-- **Status:** Accepted
+- **Status:** Accepted. Amended by [0038](0038-parse-only-the-files-of-included-editions.md): only the files of included Editions are parsed.
 
 ## Context
 Issue #22 makes `parse` with no `--files` parse exactly the files whose hashes the Snapshot's full-text record holds ([0015](0015-pdf-fetcher-pinned-files-and-hashes.md)). The record keeps, per file, the Edition id, the file name and the sha256, plus lines for Editions with no open PDF. File names are pinned ids with unsafe characters replaced (`hep-th_9901001v1.pdf`, `10.5555_lrm.2022.7.pdf`), so a file name can't always be turned back into the id a Chunk must cite. A file in `data/pdfs/` may also be missing or differ from the record, for example after a partial fetch or a hand edit.

@@ -35,13 +35,14 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0028](0028-element-rules-and-chunk-kinds.md) | Element rules: tables, captions, references, appendices and the Chunk kinds | Accepted |
 | [0029](0029-parse-quality-gate-and-per-file-errors.md) | Parse quality gate, permanent failures and per-file errors | Accepted, amended by 0036 |
 | [0030](0030-parse-cache-keys-and-determinism-checks.md) | Parse cache keys and determinism checks | Accepted |
-| [0031](0031-parse-reads-the-full-text-record.md) | Parse reads the full-text record: pinned ids from the record, local problems outside the report | Accepted |
+| [0031](0031-parse-reads-the-full-text-record.md) | Parse reads the full-text record: pinned ids from the record, local problems outside the report | Accepted, amended by 0038 |
 | [0032](0032-chunks-carry-their-edition-id.md) | Chunks carry their Edition id | Accepted |
 | [0033](0033-cc-by-tei-fixtures-may-be-committed.md) | CC BY TEI fixtures may be committed; the parse cache may not | Accepted |
 | [0034](0034-parse-files-stops-on-a-path-that-is-not-a-file.md) | `parse --files` stops on a path that isn't a file | Accepted |
 | [0035](0035-missed-table-cells-stay-in-text-chunks.md) | The cells of a missed table stay in text Chunks and are counted | Accepted |
 | [0036](0036-a-dropped-grobid-connection-stops-the-run.md) | A reset or dropped GROBID connection stops the run, like a refused one | Accepted |
 | [0037](0037-withdrawn-preprints-are-excluded.md) | Withdrawn arXiv preprints are excluded from the corpus | Accepted |
+| [0038](0038-parse-only-the-files-of-included-editions.md) | Parse only the files of included Editions | Accepted |
 
 ## Template
 

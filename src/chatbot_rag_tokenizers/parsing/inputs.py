@@ -5,7 +5,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..collection.fulltext import FulltextRecord, pinned_id_of_file
+from ..collection.fulltext import FulltextRecord, pinned_id_of_file, read_manifest
 from .chunker import ParsedFile
 
 # A Seed PDF is named "<seed>_<pinned id>.pdf", e.g. "bpe-dropout_1910.13267v1.pdf".
@@ -62,16 +62,32 @@ def from_paths(paths: list[Path]) -> list[InputFile]:
     return files
 
 
-def from_record(snapshot_dir: Path, pdf_dir: Path) -> tuple[list[InputFile], list[str]]:
-    """Every file in the Snapshot's full-text record that has a hash, read from ``pdf_dir``, and what is wrong with
-    the ones that can't be parsed: a file missing locally or whose bytes don't match the recorded hash.
+def included_files(manifest_path: Path) -> dict[str, str]:
+    """The Edition id of each file the manifest's included Editions are pinned to, by file name, from ``pdf_files``."""
+    return {
+        entry.split(" ", 1)[0]: row["edition_id"]
+        for row in read_manifest(manifest_path)
+        if row["relevance_verdict"] == "included"
+        for entry in row["pdf_files"].split("|")
+        if entry
+    }
 
-    Entries recorded as having no open PDF are skipped. Pinned ids come from the record's Edition id, since a file
-    name has unsafe characters replaced: a preprint's file is one of its Versions, a venue Edition's is the Edition.
+
+def from_record(snapshot_dir: Path, pdf_dir: Path, manifest_path: Path) -> tuple[list[InputFile], list[str]]:
+    """Every file in the Snapshot's full-text record that an included Edition is pinned to, read from ``pdf_dir``,
+    and what is wrong with the ones that can't be parsed: a file missing locally or whose bytes don't match the
+    recorded hash.
+
+    The manifest says which files those are. A file the record keeps for an excluded Edition, such as a withdrawn
+    preprint, or for a Version the Edition is no longer pinned to, is skipped, and so are entries recorded as having
+    no open PDF. The Edition id comes from the manifest, since a file kept across a re-pin is recorded under the old
+    one. Pinned ids come from it too, not from the file name, which has unsafe characters replaced: a preprint's file
+    is one of its Versions, a venue Edition's is the Edition.
     """
+    wanted = included_files(manifest_path)
     files, problems = [], []
     for entry in FulltextRecord(snapshot_dir).all():
-        if not entry.sha256:
+        if not entry.sha256 or entry.file not in wanted:
             continue
         path = pdf_dir / entry.file
         if not path.exists():
@@ -81,7 +97,8 @@ def from_record(snapshot_dir: Path, pdf_dir: Path) -> tuple[list[InputFile], lis
         if (digest := hashlib.sha256(pdf).hexdigest()) != entry.sha256:
             problems.append(f"{path} has sha256 {digest}, but the record pins {entry.sha256}")
             continue
-        pinned_id, version = pinned_id_of_file(entry.edition_id, entry.file)
-        files.append(InputFile(path, ParsedFile(entry.edition_id, pinned_id, version, entry.sha256), pdf))
+        edition_id = wanted[entry.file]
+        pinned_id, version = pinned_id_of_file(edition_id, entry.file)
+        files.append(InputFile(path, ParsedFile(edition_id, pinned_id, version, entry.sha256), pdf))
     return files, problems
 

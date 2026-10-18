@@ -69,6 +69,12 @@ def main(argv: list[str] | None = None) -> None:
     parse_cmd.add_argument("--snapshot", type=Path, default=Path("data/snapshot"))
     parse_cmd.add_argument("--pdfs", type=Path, default=Path("data/pdfs"), help="where `fetch` put the PDFs (default data/pdfs)")
     parse_cmd.add_argument(
+        "--manifest",
+        type=Path,
+        default=Path("data/manifest.csv"),
+        help="only the files of its included Editions are parsed (default data/manifest.csv)",
+    )
+    parse_cmd.add_argument(
         "--limit",
         type=int,
         help="parse at most this many files, the first in pinned-id order, e.g. for a smoke test; writes no report unless --report is given",
@@ -145,7 +151,7 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(f"fetch: {errors}")
     elif args.command == "parse":
         try:
-            files, problems = (inputs.from_paths(args.files), []) if args.files else inputs.from_record(args.snapshot, args.pdfs)
+            files, problems = (inputs.from_paths(args.files), []) if args.files else inputs.from_record(args.snapshot, args.pdfs, args.manifest)
         except inputs.NotFiles as error:
             sys.exit(f"parse: {error}")
         # A smoke run must not quietly replace the committed report of the full run (ADR 0029).
