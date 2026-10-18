@@ -5,12 +5,19 @@ import sys
 from pathlib import Path
 
 from .collection import audit, audit_label, fulltext
+from .config import ConfigError
 from .collection.config import load_config
 from .collection.pipeline import collect
+from .evaluation import pipeline as evaluation
+from .evaluation.evalset import EvaluationSetError
 from .parsing import inputs
 from .parsing import pipeline as parsing
 from .parsing.config import load_parse_config
 from .parsing.grobid import GrobidUnreachable
+from .retrieval import index
+from .retrieval.config import load_retrieval_config
+from .retrieval.corpus import Corpus, CorpusError, load_corpus
+from .retrieval.retriever import RetrieverConfig
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -94,6 +101,29 @@ def main(argv: list[str] | None = None) -> None:
         ),
     )
 
+    index_cmd = commands.add_parser(
+        "index",
+        help="build the retrievers over the Chunks of every file the parse report lists",
+        description=(
+            "Reads the Chunks of each file the parse report lists as parsed from the parse cache, and builds each"
+            " retriever over their context headers and text into the index cache. An index already built over the"
+            " same files, chunking config and retriever settings is kept."
+        ),
+    )
+    _add_corpus_arguments(index_cmd)
+
+    evaluate_cmd = commands.add_parser(
+        "evaluate",
+        help="score the retrievers on the Evaluation set and write the eval report",
+        description=(
+            "Runs every question of the Evaluation set through each retriever `index` built, scores the raw rankings"
+            " against the questions' Passages (Recall@5, MRR@10, Hit@5) and writes the committed eval report."
+        ),
+    )
+    _add_corpus_arguments(evaluate_cmd)
+    evaluate_cmd.add_argument("--evaluation-set", type=Path, default=Path("data/eval/evaluation-set.jsonl"))
+    evaluate_cmd.add_argument("--report", type=Path, default=Path("data/eval/eval-report.md"), help="the eval report (committed)")
+
     audit_cmd = commands.add_parser("audit", help="build the Audit set and measure the Relevance verdict on it")
     audit_commands = audit_cmd.add_subparsers(dest="audit_command", required=True)
     export_cmd = audit_commands.add_parser(
@@ -170,6 +200,15 @@ def main(argv: list[str] | None = None) -> None:
             )
         if messages:
             sys.exit("\n".join(messages))
+    elif args.command == "index":
+        corpus, retrievers = _corpus_and_retrievers(args)
+        index.build(args.index_cache, corpus, retrievers)
+    elif args.command == "evaluate":
+        corpus, retrievers = _corpus_and_retrievers(args)
+        try:
+            evaluation.evaluate(corpus, retrievers, args.index_cache, args.evaluation_set, args.report)
+        except (EvaluationSetError, index.IndexMissing) as error:
+            sys.exit(f"evaluate: {error}")
     elif args.command == "audit" and args.audit_command == "export":
         audit.export(load_config(args.config), args.snapshot, args.output, args.size, args.seed, force=args.force)
     elif args.command == "audit" and args.audit_command == "report":
@@ -178,3 +217,30 @@ def main(argv: list[str] | None = None) -> None:
         )
     elif args.command == "audit" and args.audit_command == "label":
         audit_label.serve(load_config(args.config), args.audit_set, args.port)
+
+
+def _add_corpus_arguments(command: argparse.ArgumentParser) -> None:
+    """The arguments `index` and `evaluate` share: where the Chunks are, and which retrievers."""
+    command.add_argument("--config", type=Path, default=Path("config/retrieval.toml"), help="the retrievers' settings")
+    command.add_argument("--parse-config", type=Path, default=Path("config/parse.toml"), help="the chunking config the Chunks were cut with")
+    command.add_argument("--cache", type=Path, default=Path("data/parse-cache"), help="the parse cache (default data/parse-cache)")
+    command.add_argument(
+        "--parse-report", type=Path, default=Path("data/parse-report.md"), help="its parsed files make up the corpus (default data/parse-report.md)"
+    )
+    command.add_argument("--index-cache", type=Path, default=Path("data/index-cache"), help="the index cache (default data/index-cache, gitignored)")
+    command.add_argument("--retriever", action="append", help="a retriever in the config, e.g. bm25; repeat for several (default all)")
+
+
+def _corpus_and_retrievers(args: argparse.Namespace) -> tuple[Corpus, list[RetrieverConfig]]:
+    try:
+        configured = load_retrieval_config(args.config).retrievers
+    except ConfigError as error:
+        sys.exit(f"{args.command}: {error}")
+    names = args.retriever or list(configured)
+    if unknown := [name for name in names if name not in configured]:
+        sys.exit(f"{args.command}: unknown retriever {', '.join(unknown)}; {args.config} configures {', '.join(configured)}")
+    try:
+        corpus = load_corpus(load_parse_config(args.parse_config), args.cache, args.parse_report)
+    except CorpusError as error:
+        sys.exit(f"{args.command}: {error}")
+    return corpus, [configured[name] for name in names]

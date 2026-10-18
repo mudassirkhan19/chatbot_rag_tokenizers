@@ -28,3 +28,6 @@ tmp/
 
 # The parse cache: TEI and Chunks derived from papers whose licences are not ours (ADR 0027)
 data/parse-cache/
+
+# The index cache: retrievers built over the parse cache's Chunks (ADR 0039)
+data/index-cache/

@@ -175,3 +175,11 @@ fetch *args:
 # Parse the recorded PDFs (or --files) into Chunks with GROBID; extra arguments go to the CLI
 parse *args:
     uv run chatbot-rag-tokenizers parse "$@"
+
+# Build the retrievers over the parsed Chunks; extra arguments go to the CLI
+index *args:
+    uv run chatbot-rag-tokenizers index "$@"
+
+# Score the retrievers on the Evaluation set and write the eval report; extra arguments go to the CLI
+evaluate *args:
+    uv run chatbot-rag-tokenizers evaluate "$@"

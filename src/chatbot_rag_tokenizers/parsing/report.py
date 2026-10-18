@@ -1,7 +1,8 @@
 """The parse report writer: the committed Markdown summary of a parse run (ADR 0027).
 
 It names the parser and the chunking config, gives one line per file and the totals. Nothing in it
-depends on the time or the machine, so the same inputs give the same report.
+depends on the time or the machine, so the same inputs give the same report. `read_report` reads back the
+parser, the chunking config and the files, which is how `index` knows which Chunks make up the corpus.
 """
 
 import re
@@ -95,3 +96,32 @@ def write_report(path: Path, config: ParseConfig, grobid_versions: set[str], res
     ]
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")  # the same bytes on every machine
+
+
+@dataclass(frozen=True)
+class ReportedRun:
+    """What `read_report` reads back from a parse report: the parser, the chunking config and the files."""
+
+    image: str  # the GROBID image reference, by digest
+    chunking: dict[str, str]  # each setting `ChunkingConfig.describe` gives, as the report prints it
+    parsed: list[tuple[str, str]]  # (pinned id, sha256) of each parsed file, in the report's order
+
+
+class UnreadableReport(ValueError):
+    """The file isn't a parse report that `write_report` wrote."""
+
+
+_IMAGE = re.compile(r"^- Image: `([^`]+)`", re.M)
+_SETTING = re.compile(r"^- (\w+): `([^`]*)`$")
+_FILE = re.compile(r"^\| (\S+) \| `([0-9a-f]{64})` \| (parsed|failed: .*?) \|", re.M)
+
+
+def read_report(path: Path) -> ReportedRun:
+    text = path.read_text(encoding="utf-8")
+    image = _IMAGE.search(text)
+    _, found, rest = text.partition("\n## Chunking config\n")
+    if not image or not found:
+        raise UnreadableReport(f"{path} is not a parse report: it names no GROBID image or chunking config")
+    chunking = {match[1]: match[2] for line in rest.split("\n## ", 1)[0].splitlines() if (match := _SETTING.match(line))}
+    parsed = [(pinned_id, sha256) for pinned_id, sha256, status in _FILE.findall(text) if status == "parsed"]
+    return ReportedRun(image[1], chunking, parsed)
