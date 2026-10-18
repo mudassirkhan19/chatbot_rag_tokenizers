@@ -44,7 +44,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0037](0037-withdrawn-preprints-are-excluded.md) | Withdrawn arXiv preprints are excluded from the corpus | Accepted |
 | [0038](0038-parse-only-the-files-of-included-editions.md) | Parse only the files of included Editions | Accepted |
 | [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) | Retrieval tracer: BM25, the index cache and the evaluate harness | Accepted |
-| [0040](0040-the-corpus-keeps-only-papers.md) | The corpus keeps only papers: theses, manuals, front matter and other non-papers are excluded on their metadata | Accepted |
+| [0040](0040-the-corpus-keeps-only-papers.md) | The corpus keeps only papers | Accepted |
 
 ## Template
 

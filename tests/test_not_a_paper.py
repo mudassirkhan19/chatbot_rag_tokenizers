@@ -100,7 +100,12 @@ def test_titles_that_name_no_paper(title, reason):
 
 @pytest.mark.parametrize(
     "title",
-    ["Package-Level Tokenizers for R Code", "Findings of the WMT 2018 Shared Task on Proceedings-Based Translation"],
+    [
+        "Package-Level Tokenizers for R Code",
+        "Findings of the WMT 2018 Shared Task on Proceedings-Based Translation",
+        # A paper's own PDF cover page, as Semantic Scholar sometimes records it.
+        "This paper is included in the Proceedings of the 33rd USENIX Security Symposium",
+    ],
 )
 def test_titles_of_papers(title):
     assert not_a_paper(venue(title=title)) == ""

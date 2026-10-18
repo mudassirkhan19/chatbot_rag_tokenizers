@@ -26,7 +26,7 @@ Every source records some of what a document is, but none records it completely:
   4. its OpenAlex primary location's `raw_source_name` names a degree (Doctor of Philosophy, Master or Bachelor of Science or Arts, Master of Philosophy);
   5. its OpenAlex primary location's `raw_type` is `Audiovisual`;
   6. its arXiv comments have a clause that starts with a thesis or dissertation, optionally after "a" and a degree ("PhD thesis", "MSc Thesis, 44 pages", "A dissertation submitted …"), or with "textbook";
-  7. its title contains "[R package" or "Proceedings of the".
+  7. its title contains "[R package", starts with "Proceedings of", or ends with "Proceedings of the <word> Workshop". A paper's cover page ("This paper is included in the Proceedings of the 33rd USENIX …") is neither.
 - **It is its own stage**: `relevance_verdict=excluded`, `relevance_stage=not a paper`, and a reason naming the signal, such as `not a paper: OpenAlex type dissertation`. Like the withdrawn stage, it runs after the arXiv records, because the comments come from them, and before the judge, which never scores such an Edition. Withdrawn comes first. A cached verdict stays in the cache and is unused.
 - **The funnel report** counts these Editions on their own row, "Not a paper", after "Withdrawn from arXiv".
 - **OpenAlex's three fields are carried on the Edition** and follow its `openalex_id` when Candidates combine. They are not manifest columns: the reason names the one that fired.

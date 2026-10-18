@@ -37,9 +37,11 @@ NOT_PAPER_OPENALEX_TYPES = {
 DEGREE = re.compile(r"\b(?:Doctor of Philosophy|Master of (?:Science|Arts|Philosophy)|Bachelor of (?:Science|Arts))\b")
 
 # Semantic Scholar's responses in the Snapshot carry no publication type, so for its records only
-# the title tells: "… [R package wordpiece version 1.0.2]", or a whole proceedings volume.
+# the title tells: "… [R package wordpiece version 1.0.2]", or a whole proceedings volume, whose
+# title starts "Proceedings of" or ends "Proceedings of the Second Workshop". A paper's cover page
+# ("This paper is included in the Proceedings of the 33rd USENIX …") is neither.
 R_PACKAGE_TITLE = re.compile(r"\[R package\b", re.IGNORECASE)
-PROCEEDINGS_TITLE = re.compile(r"\bProceedings of the\b", re.IGNORECASE)
+PROCEEDINGS_TITLE = re.compile(r"^Proceedings of\b|\bProceedings of the \w+ Workshop$", re.IGNORECASE)
 
 # arXiv records no document type, but authors say so in the comments: "PhD thesis", "MSc Thesis,
 # 44 pages", "A dissertation submitted to …", "… preprint. Textbook for senior undergraduates".
