@@ -67,18 +67,16 @@ def main() -> None:
             abstracts.setdefault(chunk.edition_id, []).append(chunk.text)
         elif section and section not in (titles := sections.setdefault(chunk.edition_id, [])):
             titles.append(section)
-    lock = threading.Lock()
-
-    def editions() -> dict[str, dict]:
-        """What the page shows beside each row, which saving never changes."""
-        return {
-            edition_id: {
-                **{field: manifest.get(edition_id, {}).get(field, "") for field in IDENTIFIERS},
-                "abstract": " ".join(" ".join(abstracts.get(edition_id) or [first_chunk.get(edition_id, "")]).split()),
-                "sections": sections.get(edition_id, []),
-            }
-            for edition_id in grouped
+    # What the page shows beside each row, which saving never changes.
+    editions = {
+        edition_id: {
+            **{field: manifest.get(edition_id, {}).get(field, "") for field in IDENTIFIERS},
+            "abstract": " ".join(" ".join(abstracts.get(edition_id) or [first_chunk.get(edition_id, "")]).split()),
+            "sections": sections.get(edition_id, []),
         }
+        for edition_id in grouped
+    }
+    lock = threading.Lock()
 
     class Handler(BaseHTTPRequestHandler):
         def _send(self, body: object, status: HTTPStatus = HTTPStatus.OK) -> None:
@@ -91,7 +89,7 @@ def main() -> None:
 
         def do_GET(self) -> None:
             if self.path == "/rows":
-                self._send({"rows": read_rows(), "editions": editions()})
+                self._send({"rows": read_rows(), "editions": editions})
             else:
                 self._send(PAGE.read_bytes())
 

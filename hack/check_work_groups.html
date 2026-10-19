@@ -247,6 +247,8 @@ async function save(checkedBy) {
     edition_id: r.edition_id, work_id: draft.workId, survey: draft.survey,
     ...(checkedBy !== undefined ? {checked_by: checkedBy} : changed ? {checked_by: ""} : {}),
   }));
+  // Renaming onto another Work merges the two, so that Work's rows lose their check as well.
+  if (draft.workId !== w.id) work(draft.workId)?.members.forEach(r => updates.push({edition_id: r.edition_id, survey: draft.survey, checked_by: ""}));
   const ok = await post(updates, checkedBy ? `Checked ${draft.workId}` : `Saved ${draft.workId}`);
   if (ok) { current = draft.workId; draft = null; }
   return ok;
