@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evaluation Set Checker</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #fff; --ink: #1c1c1a; --muted: #6b6b66; --line: #e2e2dc;
+    --yes: #1f7a4a; --yes-bg: #e3f3ea; --no: #a8322d; --no-bg: #f8e4e2; --warn-bg: #fff4d6; --mark: #ffe58a; --accent: #2f5fd0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161615; --card: #20201e; --ink: #ecece8; --muted: #9a9a93; --line: #34342f;
+      --yes: #5fcf8f; --yes-bg: #183626; --no: #f0807a; --no-bg: #3d1d1b; --warn-bg: #3a3218; --mark: #6b5a12; --accent: #8aa8ff; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 -apple-system, system-ui, sans-serif; }
+  .layout { display: grid; grid-template-columns: 270px 1fr; min-height: 100vh; }
+  nav { border-right: 1px solid var(--line); padding: 12px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  nav .summary { font-weight: 600; margin-bottom: 4px; }
+  nav .help { margin-bottom: 10px; }
+  nav button { display: flex; gap: 8px; align-items: center; width: 100%; text-align: left; padding: 4px 8px; border: 0; border-radius: 6px; background: none; cursor: pointer; font: 13px/1.4 ui-monospace, monospace; color: var(--ink); }
+  nav button.on { background: var(--card); outline: 1px solid var(--line); }
+  nav .group { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; margin: 10px 8px 2px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--line); }
+  .dot.ok { background: var(--yes); } .dot.bad { background: var(--no); }
+  main { max-width: 900px; padding: 16px 24px 80px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px; margin-bottom: 14px; }
+  h1 { font-size: 15px; font-family: ui-monospace, monospace; margin: 0; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 8px; }
+  .meta { color: var(--muted); font-size: 13px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .chip { border: 1px solid var(--line); border-radius: 99px; padding: 0 8px; }
+  .chip.ok { color: var(--yes); border-color: var(--yes); } .chip.bad { color: var(--no); border-color: var(--no); }
+  textarea, input { font: inherit; color: inherit; width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  textarea { resize: vertical; min-height: 44px; }
+  textarea.question { font-size: 17px; }
+  label.field { display: block; color: var(--muted); font-size: 13px; margin: 10px 0 3px; }
+  .context { white-space: pre-wrap; max-height: 260px; overflow-y: auto; font-size: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
+  mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 1px; }
+  .problems { background: var(--no-bg); color: var(--no); border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; }
+  .problems div::before { content: "✗ "; }
+  pre.lines { white-space: pre-wrap; font-size: 12px; color: var(--muted); margin: 0; }
+  .checklist label { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0; cursor: pointer; }
+  .checklist input { width: auto; margin-top: 4px; }
+  .reading { background: var(--warn-bg); border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; }
+  details.search { border-top: 1px solid var(--line); padding: 6px 0; }
+  details.search summary { cursor: pointer; font-size: 14px; }
+  .row { font-size: 13px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+  .row .where { color: var(--muted); font-family: ui-monospace, monospace; font-size: 12px; }
+  .bar { position: fixed; bottom: 0; left: 270px; right: 0; background: var(--bg); border-top: 1px solid var(--line); padding: 10px 24px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .bar input { width: 160px; }
+  .bar button { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); cursor: pointer; font: inherit; color: inherit; }
+  .bar .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .status { color: var(--muted); font-size: 13px; margin-left: auto; }
+  .help { color: var(--muted); font-size: 13px; }
+  kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; font-size: 12px; }
+  .small-btn { font: inherit; font-size: 12px; padding: 1px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--muted); cursor: pointer; }
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; } nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+    .bar { left: 0; } main { padding: 16px 16px 120px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav>
+    <div class="summary" id="summary">Loading the corpus…</div>
+    <div class="help"><kbd>[</kbd> <kbd>]</kbd> previous / next · <kbd>⌘</kbd><kbd>↵</kbd> mark checked</div>
+    <div id="list"></div>
+  </nav>
+  <main id="main"></main>
+</div>
+<div class="bar">
+  <span class="help">Your name</span><input id="name" placeholder="e.g. mudassir">
+  <button id="save">Save edits</button>
+  <button id="approve" class="primary">Save &amp; mark checked</button>
+  <button id="unmark">Unmark</button>
+  <span class="status" id="status"></span>
+</div>
+<script>
+const TYPES = ["single-paper", "multi-paper", "follow-up", "unanswerable"];
+const CHECKS = {
+  all: [
+    "The question reads naturally, as a user would ask it, and asks one thing.",
+    "It is paraphrased away from the quotes (not copied), but keeps the named entities (papers, models, methods).",
+  ],
+  answerable: [
+    "The marked quotes fully answer it: nothing the answer needs is missing.",
+    "Each quote is the right sentence, in the right Section, and is no longer than it needs to be.",
+  ],
+  "multi-paper": ["It truly needs every paper quoted: no one paper answers it alone."],
+  "follow-up": [
+    "Without the history the question is unclear (it leans on it: 'it', 'that method'…).",
+    "The rewrite stands alone and asks exactly what the question asks in context.",
+  ],
+  unanswerable: [
+    "No row in the absence evidence answers it (open the searches and read the closest ones).",
+    "It is a fair near-miss: on-topic, plausibly something the corpus could say (or clearly off-topic for the 2 out-of-topic ones).",
+  ],
+};
+let items = [], current = 0;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+try { $("name").value = localStorage.getItem("checker-name") || ""; } catch {}
+$("name").addEventListener("input", () => { try { localStorage.setItem("checker-name", $("name").value); } catch {} });
+
+function state(item) {
+  if (item.check.problems.length) return "bad";
+  return item.record.checked_by ? "ok" : "";
+}
+
+function renderList() {
+  const done = items.filter(i => i.record.checked_by).length;
+  $("summary").textContent = `${done} of ${items.length} checked`;
+  $("list").innerHTML = TYPES.map(type => `<div class="group">${type}</div>` + items.map((item, i) => item.record.type !== type ? "" :
+    `<button data-i="${i}" class="${i === current ? "on" : ""}"><span class="dot ${state(item)}"></span>${esc(item.record.id)}</button>`).join("")).join("");
+  $("list").querySelectorAll("button").forEach(b => b.onclick = () => show(+b.dataset.i));
+}
+
+function context(passage, info) {
+  if (!info.text) return `<div class="context">No Section ${esc(passage.section)} in ${esc(passage.edition_id)}.</div>`;
+  if (!info.mark) return `<div class="context">${esc(info.text)}</div>`;
+  const [a, b] = info.mark;
+  return `<div class="context">${esc(info.text.slice(0, a))}<mark>${esc(info.text.slice(a, b))}</mark>${esc(info.text.slice(b))}</div>`;
+}
+
+function render() {
+  const {record: r, check: c, evidence: e} = items[current];
+  const checks = [...CHECKS.all, ...(r.type === "unanswerable" ? CHECKS.unanswerable : CHECKS.answerable), ...(CHECKS[r.type] || [])];
+  let html = `<div class="card"><div class="meta"><h1>${esc(r.id)}</h1><span class="chip">${r.type}</span>
+    ${r.checked_by ? `<span class="chip ok">checked by ${esc(r.checked_by)}</span>` : `<span class="chip">unchecked</span>`}
+    ${c.problems.length ? `<span class="chip bad">${c.problems.length} problem${c.problems.length > 1 ? "s" : ""}</span>` : `<span class="chip ok">eval-check ok</span>`}
+    <span class="help">${current + 1} / ${items.length}</span></div>`;
+  if (r.type === "follow-up") {
+    html += `<label class="field">History, oldest turn first</label>` +
+      (r.history || []).map((turn, i) => `<textarea data-history="${i}">${esc(turn)}</textarea>`).join("");
+  }
+  html += `<label class="field">Question</label><textarea class="question" id="f-question">${esc(r.question)}</textarea>`;
+  if (r.type === "follow-up") html += `<label class="field">Rewrite (standalone)</label><textarea id="f-rewrite">${esc(r.rewrite || "")}</textarea>`;
+  html += `</div>`;
+  if (c.problems.length) html += `<div class="problems">${c.problems.map(p => `<div>${esc(p)}</div>`).join("")}</div>`;
+  r.passages.forEach((p, i) => {
+    const info = c.passages[i] || {};
+    html += `<div class="card"><h2>Passage ${i + 1} · ${esc(info.title || "")}</h2>
+      <div class="meta"><span class="chip">${esc(p.edition_id)}</span><span>${esc(p.section)}</span><span>${p.quote.length} / 300 characters</span></div>
+      <label class="field">Quote (verbatim)</label><textarea data-quote="${i}">${esc(p.quote)}</textarea>
+      <label class="field">Section</label><input data-section="${i}" value="${esc(p.section)}">
+      <label class="field">The whole Section, quote marked ${info.mark ? "" : "(couldn't mark it here; eval-check is what counts)"}</label>${context(p, info)}</div>`;
+  });
+  if (e) {
+    html += `<div class="card"><h2>Absence evidence</h2><div class="reading"><b>Drafter's reading:</b> ${esc(e.reading)}</div>` +
+      e.searches.map(s => `<details class="search"><summary><b>${esc(s.retriever)}</b>: ${esc(s.query)}</summary>` +
+        s.rows.map(row => `<div class="row"><div class="where">#${row.rank} · ${esc(row.pinned_id)} · ${esc(row.section)}</div>${esc(row.text)}</div>`).join("") +
+        `</details>`).join("") + `</div>`;
+  }
+  if (c.lines.length) html += `<div class="card"><h2>eval-check</h2><pre class="lines">${esc(c.lines.join("\n"))}</pre></div>`;
+  html += `<div class="card checklist"><h2>Before you mark it checked</h2>` +
+    checks.map(text => `<label><input type="checkbox">${esc(text)}</label>`).join("") + `</div>`;
+  $("main").innerHTML = html;
+  $("main").querySelectorAll("mark").forEach(m => { const box = m.parentElement; box.scrollTop = m.offsetTop - box.offsetTop - 60; });
+}
+
+function show(i) { current = Math.max(0, Math.min(items.length - 1, i)); render(); renderList(); window.scrollTo(0, 0); }
+
+function edited() {
+  const r = structuredClone(items[current].record);
+  r.question = $("f-question").value.trim();
+  if ($("f-rewrite")) r.rewrite = $("f-rewrite").value.trim();
+  document.querySelectorAll("[data-history]").forEach(t => r.history[+t.dataset.history] = t.value.trim());
+  document.querySelectorAll("[data-quote]").forEach(t => r.passages[+t.dataset.quote].quote = t.value.trim());
+  document.querySelectorAll("[data-section]").forEach(t => r.passages[+t.dataset.section].section = t.value.trim());
+  return r;
+}
+
+async function save(checkedBy) {
+  const r = edited();
+  if (checkedBy !== undefined) r.checked_by = checkedBy;
+  else if (JSON.stringify(r) !== JSON.stringify(items[current].record) && r.checked_by) r.checked_by = "";  // an edit undoes the check (ADR 0046)
+  $("status").textContent = "Saving…";
+  const res = await fetch("/", {method: "POST", body: JSON.stringify(r)});
+  const body = await res.json();
+  if (!res.ok) { $("status").textContent = body.error; return; }
+  items[current] = {...items[current], record: body.record, check: body.check};
+  $("status").textContent = body.check.problems.length ? "Saved, but eval-check has problems" : `Saved ${r.id}`;
+  return body.check.problems.length === 0;
+}
+
+$("save").onclick = () => save().then(() => { render(); renderList(); });
+$("unmark").onclick = () => save("").then(() => { render(); renderList(); });
+$("approve").onclick = async () => {
+  const name = $("name").value.trim();
+  if (!name) { $("status").textContent = "Type your name first"; $("name").focus(); return; }
+  if (await save(name)) {
+    const next = items.findIndex((item, i) => i > current && !item.record.checked_by);
+    show(next >= 0 ? next : current);
+  } else { render(); renderList(); }
+};
+document.addEventListener("keydown", ev => {
+  if ((ev.metaKey || ev.ctrlKey) && ev.key === "Enter") { ev.preventDefault(); $("approve").click(); return; }
+  if (ev.target.matches("textarea, input")) return;
+  if (ev.key === "]") show(current + 1);
+  if (ev.key === "[") show(current - 1);
+});
+
+fetch("/questions").then(r => r.json()).then(data => {
+  items = data;
+  const first = items.findIndex(item => !item.record.checked_by);
+  show(first >= 0 ? first : 0);
+});
+</script>
+</body>
+</html>

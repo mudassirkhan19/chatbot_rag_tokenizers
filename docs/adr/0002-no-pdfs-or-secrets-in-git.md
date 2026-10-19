@@ -1,7 +1,7 @@
 # 0002. Keep PDFs, downloaded data and secrets out of git
 
 - **Date:** 2026-10-15
-- **Status:** Accepted; the part about downloaded data is superseded by [0003](0003-commit-the-snapshot.md); text from CC BY papers in test fixtures is allowed by [0033](0033-cc-by-tei-fixtures-may-be-committed.md)
+- **Status:** Accepted; the part about downloaded data is superseded by [0003](0003-commit-the-snapshot.md); text from CC BY papers in test fixtures is allowed by [0033](0033-cc-by-tei-fixtures-may-be-committed.md); short quotes in the Evaluation set are allowed by [0046](0046-evaluation-set-quotes-checked-by-and-absence-evidence.md)
 
 ## Context
 The brief asks us not to commit the paper PDFs, but to commit the script that downloads them, and to keep API keys out of the repository. Papers also carry their own licences, so redistributing them is not ours to decide.

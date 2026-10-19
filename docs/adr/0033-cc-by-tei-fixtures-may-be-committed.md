@@ -1,7 +1,7 @@
 # 0033. CC BY TEI fixtures may be committed; the parse cache may not
 
 - **Date:** 2026-10-18
-- **Status:** Accepted
+- **Status:** Accepted; short quotes in the Evaluation set are covered by [0046](0046-evaluation-set-quotes-checked-by-and-absence-evidence.md), not by this rule
 
 ## Context
 [0002](0002-no-pdfs-or-secrets-in-git.md) keeps PDFs and downloaded data out of git because each paper carries its own licence, so redistributing it isn't ours to decide. [0027](0027-parse-tracer-paragraph-packing-pinned-tokenizer-and-parse-cache.md) keeps the parse cache local for the same reason: its TEI and Chunks are text derived from the papers. Yet the offline `parse` tests answer with five committed TEI fixtures in `tests/fixtures/tei/`, which hold real paper text: WECHSEL v2 whole, three files trimmed or rearranged from it or from Sennrich et al. v5. #14 asks for CC BY fixtures with the licence checked in the manifest. Until now the licence was named only in test docstrings and one file's comment, with no attribution of the authors and no check.

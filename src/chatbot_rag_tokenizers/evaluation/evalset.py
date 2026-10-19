@@ -4,6 +4,7 @@
      "passages": [{"edition_id": "2112.06598v2", "section": "5 Results › 5.3 Is freezing necessary?", "quote": "..."}]}
 
 A follow-up also has "history", the prior turns in order, and "rewrite", a hand-written standalone question.
+"checked_by" names who checked the question; a question without it is unchecked (ADR 0046).
 An unanswerable question has no Passages. A Passage's Section is its path as the context header gives it.
 
 Loading checks only that each line can be read as a question: JSON, known fields and types, unique ids.
@@ -38,6 +39,7 @@ class Question:
     passages: tuple[Passage, ...]
     history: tuple[str, ...] = ()  # a follow-up's prior turns, oldest first
     rewrite: str = ""  # a follow-up's reference rewrite
+    checked_by: str = ""  # who checked it by hand; empty until someone has
 
     @property
     def answerable(self) -> bool:
@@ -62,7 +64,7 @@ def load_evaluation_set(path: Path) -> list[Question]:
 def _question(record: object, where: str) -> Question:
     if not isinstance(record, dict):
         raise EvaluationSetError(f"{where}: not a JSON object")
-    expected = {"id", "type", "question", "passages", "history", "rewrite"}
+    expected = {"id", "type", "question", "passages", "history", "rewrite", "checked_by"}
     if unknown := sorted(set(record) - expected):
         raise EvaluationSetError(f"{where}: unknown fields {', '.join(unknown)}")
     if record.get("type") not in QUESTION_TYPES:
@@ -70,7 +72,13 @@ def _question(record: object, where: str) -> Question:
     try:
         passages = tuple(Passage(p["edition_id"], p["section"], p["quote"]) for p in record["passages"])
         question = Question(
-            record["id"], record["type"], record["question"], passages, tuple(record.get("history", ())), record.get("rewrite", "")
+            record["id"],
+            record["type"],
+            record["question"],
+            passages,
+            tuple(record.get("history", ())),
+            record.get("rewrite", ""),
+            record.get("checked_by", ""),
         )
     except (KeyError, TypeError) as error:
         raise EvaluationSetError(f"{where}: missing or malformed field {error}") from error

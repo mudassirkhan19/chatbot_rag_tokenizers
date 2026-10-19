@@ -37,7 +37,8 @@ def passage(quote: str, section: str = UNIGRAM, edition_id: str = "1508.07909v5"
 
 
 def question(id: str, *passages: dict, type: str = "single-paper", **fields) -> dict:
-    return {"id": id, "type": type, "question": f"What does {id} say?", "passages": list(passages), **fields}
+    """A question the developer has checked, unless `checked_by` says otherwise."""
+    return {"id": id, "type": type, "question": f"What does {id} say?", "passages": list(passages), "checked_by": "developer", **fields}
 
 
 def write_set(tmp_path: Path, *questions: dict) -> Path:
@@ -220,6 +221,17 @@ def test_eval_check_fails_a_malformed_follow_up_and_an_answerable_question_witho
     assert "no-passages: an answerable question needs a Passage" in out
     assert "unanswerable-with-passage: an unanswerable question has no Passages" in out
     assert "well-formed" not in out
+
+
+def test_eval_check_fails_a_question_nobody_has_checked(corpus):
+    unchecked, blank = question("unchecked", *GOOD["passages"]), question("blank", *GOOD["passages"], checked_by=" ")
+    del unchecked["checked_by"]
+    out = failures(corpus, GOOD, unchecked, blank, question("abstains", type="unanswerable", checked_by=""))
+
+    assert "unchecked: nobody has checked this question (checked_by is empty)" in out
+    assert "blank: nobody has checked this question (checked_by is empty)" in out
+    assert "abstains: nobody has checked this question (checked_by is empty)" in out
+    assert "good" not in out
 
 
 def test_eval_check_fails_a_multi_paper_question_whose_passages_come_from_one_work(corpus, grobid, tmp_path):
