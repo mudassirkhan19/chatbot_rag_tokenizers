@@ -1,8 +1,7 @@
 # 0042. Dense baseline: bge-small behind the embedder boundary, on MPS by default
 
 - **Date:** 2026-10-18
-- **Status:** Accepted. Amends [0007](0007-local-llm-judge.md) and [0013](0013-working-worktrees.md) on the `judge` dependency group.
-- **Note (2026-10-19):** [0050](0050-named-dense-tables-and-a-configurable-embedder.md) names the dense tables, so `[dense]` is now `[dense.bge-small]` and the retriever is `dense.bge-small`. The pooling and token limit described below are now settings of that table rather than constants, and its index key is unchanged.
+- **Status:** Accepted. Amends [0007](0007-local-llm-judge.md) and [0013](0013-working-worktrees.md) on the `judge` dependency group. Amended by [0050](0050-named-dense-tables-and-a-configurable-embedder.md): `[dense]` is now the named table `[dense.bge-small]`, with its pooling and token limit in config, under the same index key.
 
 ## Context
 Spec #31 compares BM25 ([0039](0039-retrieval-tracer-bm25-index-and-evaluate.md)) with a dense baseline before the embedding comparison and the chatbot. Slice #35 adds that baseline. It has to:

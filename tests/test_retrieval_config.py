@@ -7,11 +7,11 @@ import pytest
 from chatbot_rag_tokenizers.config import ConfigError
 from chatbot_rag_tokenizers.retrieval.config import load_retrieval_config
 
-REPO_CONFIG = Path(__file__).parents[1] / "config" / "retrieval.toml"
+RETRIEVAL_CONFIG = Path(__file__).parents[1] / "config" / "retrieval.toml"
 
 
 def test_the_repo_config_names_bge_small_with_the_key_of_the_index_built_before_dense_tables_were_named():
-    config = load_retrieval_config(REPO_CONFIG)
+    config = load_retrieval_config(RETRIEVAL_CONFIG)
 
     [dense] = config.dense
     assert dense.name == "dense.bge-small"
@@ -23,7 +23,7 @@ def test_the_repo_config_names_bge_small_with_the_key_of_the_index_built_before_
 
 def with_bge_small(tmp_path: Path, old: str, new: str) -> Path:
     """The repo's retrieval config with one line of [dense.bge-small] replaced (or removed, when new is "")."""
-    config = REPO_CONFIG.read_text()
+    config = RETRIEVAL_CONFIG.read_text()
     assert config.count(old) == 1
     path = tmp_path / "retrieval.toml"
     path.write_text(config.replace(old, new))
@@ -38,8 +38,10 @@ def with_bge_small(tmp_path: Path, old: str, new: str) -> Path:
         ('model_sha256 = "3c9f', 'model_sha256 = "3c9', r"\[dense.bge-small\] model_sha256 '3c9.*' is not 64 hex digits"),
         ("max_tokens = 512\n", "", r"\[dense.bge-small\] in .* has no max_tokens"),
         ("max_tokens = 512", 'max_tokens = "512"', r"\[dense.bge-small\] max_tokens '512' is not a int"),
+        ("max_tokens = 512", "max_tokens = 0", r"\[dense.bge-small\] max_tokens 0 must be at least 1"),
+        ("[dense.bge-small]", "[dense.BGE_small]", r"\[dense.BGE_small\] in .*: a dense table's name is lower-case letters, digits and dashes"),
     ],
-    ids=["pooling", "revision", "weights-hash", "missing-field", "mistyped-field"],
+    ids=["pooling", "revision", "weights-hash", "missing-field", "mistyped-field", "no-tokens", "table-name"],
 )
 def test_a_bad_dense_table_stops_with_a_message_naming_the_table(tmp_path, old, new, message):
     with pytest.raises(ConfigError, match=message):

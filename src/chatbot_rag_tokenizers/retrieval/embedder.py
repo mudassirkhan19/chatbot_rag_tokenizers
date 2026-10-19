@@ -97,10 +97,12 @@ class TransformersEmbedder:
                 hidden = self._network(**encoded).last_hidden_state
                 if self._pooling == "cls":
                     pooled = hidden[:, 0]
-                else:
+                elif self._pooling == "mean":
                     # Padding positions are masked out, so a text's vector doesn't depend on its batch.
                     mask = encoded["attention_mask"].unsqueeze(-1).to(hidden.dtype)
                     pooled = (hidden * mask).sum(dim=1) / mask.sum(dim=1)
+                else:
+                    raise ConfigError(f"pooling {self._pooling!r} is not one of {', '.join(POOLINGS)}")
                 vectors[rows] = torch.nn.functional.normalize(pooled, dim=-1).cpu().numpy()
                 if number % _PROGRESS_EVERY == 0:
                     print(f"embedder: {min(start + _BATCH, len(texts))}/{len(texts)} texts", file=sys.stderr)

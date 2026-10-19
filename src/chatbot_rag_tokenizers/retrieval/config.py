@@ -42,10 +42,10 @@ def load_retrieval_config(path: Path = DEFAULT_PATH) -> RetrievalConfig:
     tables = raw.get("dense", {})
     if not isinstance(tables, dict) or not tables:
         raise ConfigError(f"{path} has no [dense.<name>] table")
-    return RetrievalConfig(bm25=bm25, dense=[_dense(raw, table, path) for table in tables])
+    return RetrievalConfig(bm25=bm25, dense=[_load_dense_table(raw, table, path) for table in tables])
 
 
-def _dense(raw: dict, table: str, path: Path) -> DenseConfig:
+def _load_dense_table(raw: dict, table: str, path: Path) -> DenseConfig:
     name = f"dense.{table}"
     if not isinstance(raw["dense"][table], dict):
         raise ConfigError(f"[dense] {table} in {path} is not a table; give each dense model its own [dense.<name>] table")
