@@ -5,8 +5,9 @@ import sys
 from pathlib import Path
 
 from .chat import page
-from .chat.chat_eval import chat_eval
-from .chat.config import load_chat_config
+from .chat.answers import AnswersMismatch
+from .chat.chat_eval import chat_eval, rescore_answers
+from .chat.config import ChatConfig, load_chat_config
 from .chat.conversation import Chatbot
 from .chat.model import AnswerModelUnavailable
 from .collection import audit, audit_label, fulltext, indexed
@@ -177,7 +178,7 @@ def main(argv: list[str] | None = None) -> None:
             " its stored history, and writes the committed chat report (grounded, abstention and false-abstention rates,"
             " Recall@k of the retrieved Chunks, a line per question and the latency per Turn) and every Turn's answer as"
             " JSON Lines. Refuses a set that fails `eval-check`. Needs the retriever's index (`just index`) and Ollama with"
-            " the pinned model (`just init`)."
+            " the pinned model (`just init`), except with --from-answers, which asks nothing."
         ),
     )
     chat_eval_cmd.add_argument("--config", type=Path, default=Path("config/retrieval.toml"), help="the [chat] table and the retrievers")
@@ -187,6 +188,19 @@ def main(argv: list[str] | None = None) -> None:
     chat_eval_cmd.add_argument("--report", type=Path, default=Path("data/eval/chat-report.md"), help="the chat report (committed)")
     chat_eval_cmd.add_argument(
         "--answers", type=Path, default=Path("data/eval/chat-answers.jsonl"), help="every Turn's answer, one per line (committed)"
+    )
+    chat_eval_cmd.add_argument(
+        "--from-answers",
+        action="store_true",
+        help="ask nothing: score the --answers file (and its runs file) again with the current code, and rewrite it and the report",
+    )
+    chat_eval_cmd.add_argument(
+        "--baseline",
+        type=Path,
+        help="an answers file to compare with question by question; read before anything is written, so it may be --answers",
+    )
+    chat_eval_cmd.add_argument(
+        "--runs", type=_at_least_one, default=1, help="ask the whole set this many times and report the variation (default 1)"
     )
 
     eval_check_cmd = commands.add_parser(
@@ -308,10 +322,16 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "chat":
         _chat(args)
     elif args.command == "chat-eval":
-        chatbot, corpus = _chatbot(args)
+        if args.from_answers and args.runs != 1:
+            sys.exit("chat-eval: --from-answers asks nothing, so it takes the runs the answers file holds, not --runs")
         try:
-            chat_eval(chatbot, corpus, args.evaluation_set, args.report, args.answers, _matching_rule(args), _works(args))
-        except (EvaluationSetError, AnswerModelUnavailable) as error:
+            if args.from_answers:
+                config, corpus = _chat_config(args), _load_corpus(args)
+                rescore_answers(config, corpus, args.evaluation_set, args.report, args.answers, _matching_rule(args), _works(args), args.baseline)
+            else:
+                chatbot, corpus = _chatbot(args)
+                chat_eval(chatbot, corpus, args.evaluation_set, args.report, args.answers, _matching_rule(args), _works(args), args.runs, args.baseline)
+        except (EvaluationSetError, AnswerModelUnavailable, AnswersMismatch) as error:
             sys.exit(f"chat-eval: {error}")
     elif args.command == "eval-check":
         rule = _matching_rule(args)
@@ -333,12 +353,22 @@ def main(argv: list[str] | None = None) -> None:
         audit_label.serve(load_config(args.config), args.audit_set, args.port)
 
 
-def _chatbot(args: argparse.Namespace) -> tuple[Chatbot, Corpus]:
-    """The chatbot the [chat] table configures, over the corpus's index, and the corpus."""
+def _chat_config(args: argparse.Namespace) -> ChatConfig:
     try:
-        config = load_chat_config(args.config)
+        return load_chat_config(args.config)
     except ConfigError as error:
         sys.exit(f"{args.command}: {error}")
+
+
+def _at_least_one(text: str) -> int:
+    if int(text) < 1:
+        raise argparse.ArgumentTypeError(f"{text} is not at least 1")
+    return int(text)
+
+
+def _chatbot(args: argparse.Namespace) -> tuple[Chatbot, Corpus]:
+    """The chatbot the [chat] table configures, over the corpus's index, and the corpus."""
+    config = _chat_config(args)
     corpus = _load_corpus(args)
     try:
         built = index.load(args.index_cache, corpus, config.retriever)

@@ -237,21 +237,35 @@ Type a question and the page answers it from the papers. Each question retrieves
 ### Measure the chatbot
 
 ```sh
-just chat-eval   # asks every question of the Evaluation set; rewrites data/eval/chat-report.md and data/eval/chat-answers.jsonl
-git diff --stat data/eval/   # mostly the report's Timings section; see below
+just chat-eval --runs 3                    # asks every question three times; rewrites data/eval/chat-report.md, chat-answers.jsonl and chat-answers-runs.jsonl
+just chat-eval --from-answers              # asks nothing: re-scores the committed answers and rewrites the report and the answers
+just chat-eval --baseline data/eval/chat-answers.jsonl   # a fresh run, compared question by question with the committed one
 ```
 
 `chat-eval` asks the chatbot every question of the Evaluation set through the same Conversation code as the page (ADR 0059). Each single-paper, multi-paper and unanswerable question is a Conversation of one Turn. A follow-up is a Conversation that first asks its stored history, the bot answering each, then the follow-up, so its Rewrite is written from the bot's own answers. It refuses a set that fails `eval-check`, and needs what `chat` needs: the retriever's index and Ollama with the pinned model. The full set, 44 Turns, takes about 2.5 minutes on an Apple-silicon laptop with the model cold, and under a minute warm.
 
-The pinned model is not quite deterministic run to run, even at temperature 0 with a fixed seed (ADR 0059): over three runs the retrieved Chunks and the Abstentions were the same, but about a third of the replies changed wording and one grounded verdict flipped. Expect `git diff` to show a line or two of the answers and the report besides the timings.
+The pinned model is not quite deterministic run to run, even at temperature 0 with a fixed seed (ADRs 0059 and 0062): about a third of the replies change wording between runs, and a verdict or two can move. So the scoring is made exactly reproducible, the variation is measured, and every rate has an interval:
+
+- **Reproduce the committed report exactly:** `chat-eval --from-answers` reads the committed answers (and the runs file beside them) and scores every Turn again from its stored reply and retrieved Chunk ids, with the current code. It needs neither Ollama nor the index. Everything above the Timings section comes out as committed, and the answers file is rewritten byte for byte, unless the scoring code changed: then the report and the stored verdicts follow the new code, with the model's replies held fixed. That is how to measure a change to the scoring (what counts as an Abstention, or as grounded) with no model noise. It refuses answers asked over other Chunks (the parser or chunking key differs, or a retrieved Chunk is missing) or another chatbot (retriever, k, model pin or settings, or a prompt changed).
+- **Remeasure the variation:** `chat-eval --runs 3` asks the whole set three times. The report is run 1's, and its Variation section gives each rate in every run with its range, the questions whose verdict changed between runs, and how many Turns changed wording or retrieved other Chunks. The committed report comes from three runs.
+- **Compare against the committed run:** `chat-eval --baseline data/eval/chat-answers.jsonl` reads the baseline's answers and runs file before anything is written, so it may name the file the run overwrites, and works with `--from-answers` too. The report's *Against the baseline* section lists each question whose verdict changed from the baseline's run 1, marked *flaky in the baseline* when the baseline's runs disagreed on it. A change to the prompt or the retriever should be read there: a verdict that also flips between the baseline's own runs is noise, not an effect.
+
+How to read the numbers:
+
+- Every rate (abstention, false-abstention, grounded), in each row of the Results table and in the lines below it, has its **95% Wilson interval**. It covers the sampling of the questions: with 34 answers, the committed grounded rate of 0.82 is [0.66, 0.92], against the 0.03 one flipped verdict moves it. It does not cover the model's run-to-run variation, which the Variation section measures. An empty group shows `—`.
+- **Recall@5 has no interval here.** It is a mean of per-question shares, not a proportion, so the Wilson interval doesn't apply, and it is the retriever's measure: `evaluate`'s eval report gives its bootstrap interval (ADR 0061).
+
+What it writes:
 
 - **The chat report** (`data/eval/chat-report.md`, `--report`, committed) names the Evaluation set's sha256, the corpus, the retriever, the answer model's pin and settings, and the sha256 of the system prompt and of the rewrite prompt. Then it gives, per question type and overall:
   - the **abstention rate**: on the unanswerable questions, the share answered with the Abstention sentence, split into near-miss and out-of-topic; on the answerable ones, the false-abstention rate;
   - the **grounded rate** over the answers that are not Abstentions. An answer is grounded when it cites at least one retrieved Chunk, every marker names a Chunk retrieved for its Turn, and every number in it (a word that starts with a digit, cut and normalised as the Passage matcher cuts words) appears in a cited Chunk's context header or text. An uncited answer is not grounded;
   - **Recall@5** of the Chunks each question's Turn actually retrieved, with the Passage matcher;
   - one line per question: its type, whether it abstained, whether it is grounded, its invalid Citations, its numbers that no cited Chunk holds, and the Passages in its Chunks;
-  - timings, last: p50 and p95 per Turn of retrieval, rewriting (over the Turns that were rewritten) and answering.
-- **The answers** (`data/eval/chat-answers.jsonl`, `--answers`, committed) hold every Turn asked, a follow-up's history included, one per line: the question id, the Turn's place in its Conversation and whether it is the scored one, the question and its Rewrite, the retrieved Chunk ids, the model's raw reply, the cited Chunk ids, the invalid markers, the Abstention and grounding verdicts and the Passages found. They hold no timings, so they change only where the model's replies do.
+  - the Variation section, and the comparison against a baseline when one is given;
+  - timings, last: p50 and p95 per Turn of retrieval, rewriting (over the Turns that were rewritten) and answering. A re-scored report says they were not measured.
+- **The answers** (`data/eval/chat-answers.jsonl`, `--answers`, committed) start with one line naming what the Turns were asked over (the parser and chunking keys, the retriever, k, the model pin and settings and the prompts' hashes). Then they hold every Turn of run 1, a follow-up's history included, one per line: the question id, the Turn's place in its Conversation and whether it is the scored one, the question and its Rewrite, the retrieved Chunk ids, the model's raw reply, the cited Chunk ids, the invalid markers, the Abstention and grounding verdicts and the Passages found. They hold no timings, so they change only where the model's replies or the scoring do.
+- **The runs file** (`data/eval/chat-answers-runs.jsonl`, beside the answers, committed) holds runs 2..N as full Turns, the same records with a `run` field, so re-scoring rebuilds the Variation section. A single run removes it.
 
 ## Measure the Relevance verdict
 
