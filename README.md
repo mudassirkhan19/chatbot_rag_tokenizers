@@ -122,12 +122,12 @@ This sends each PDF to the pinned GROBID service and cuts its text into Chunks t
 ## Index and evaluate retrieval
 
 ```sh
-just index        # build BM25 and the dense baseline over the parsed Chunks (uv run chatbot-rag-tokenizers index)
+just index        # build every configured retriever over the parsed Chunks (uv run chatbot-rag-tokenizers index)
 just eval-check   # check the Evaluation set's questions and quotes against the parsed text
 just evaluate     # score the retrievers on the Evaluation set and write the eval report
 ```
 
-`index` builds the retrievers, `eval-check` checks the hand-checked Evaluation set, and `evaluate` scores the retrievers on it (ADRs 0039, 0041 and 0042). There are two retrievers, BM25 and the dense baseline, and the corpus is every file the committed parse report lists as parsed: 2,689 files of the full-corpus run.
+`index` builds the retrievers, `eval-check` checks the hand-checked Evaluation set, and `evaluate` scores the retrievers on it (ADRs 0039, 0041 and 0042). There are seven retrievers: BM25, three dense models (`dense.bge-small`, the baseline; `dense.bge-base`; `dense.openscholar`) and the three BM25 + dense hybrids. The corpus is every file the committed parse report lists as parsed: 2,689 files of the full-corpus run.
 
 - **`index` inputs.**
   - The parse report (`data/parse-report.md`, `--parse-report`) decides which files make up the corpus: every file it lists as parsed.
@@ -201,21 +201,25 @@ just evaluate     # score the retrievers on the Evaluation set and write the eva
   - A Chunk holds a Passage when at least 65% of the quote's words match the Chunk's in order, and every number in the quote matches (ADR 0041), whichever Edition the Chunk comes from. Before matching, unicode, case, whitespace and hyphenation are normalised and citations are dropped. The 65% was calibrated on three CC BY Seeds with several Versions; `hack/calibrate_matcher.py` reruns the sweep from `data/eval/calibration.jsonl`.
 - **Reproducible.** Two runs on the same index give the same report apart from the times in the Cost table.
 
-The committed Evaluation set has 36 checked questions (ADR 0046), and the committed eval report is the baseline over the full corpus.
+The committed Evaluation set has 36 checked questions (ADR 0046), and the committed eval report scores all seven retrievers over the full corpus. ADR 0065 (Proposed) applies the embedding comparison's decision rule to its raw numbers: nothing beats `dense.bge-small` beyond noise, so it stays. The final choice is made on the Collapsed ranking (#61).
 
 ## Reproduce the baseline
 
-The baseline eval report (`data/eval/eval-report.md`) gives the numbers for BM25, the dense baseline and their hybrid (ADR 0058), each raw and with its `+collapsed` twin, on the full corpus and the 36-question Evaluation set. These numbers are Recall@5, MRR@10 and Hit@5 per question type and per follow-up mode, the duplicate, restatement and mostly-numeric shares of the top 5, the Comparison with bge-small (wins, ties, losses and paired bootstrap intervals), and each retriever's size, build time and latency. To reproduce it from a clone:
+The eval report (`data/eval/eval-report.md`) gives the numbers for all seven retrievers (BM25, the three dense models and their three hybrids), each raw and with its `+collapsed` twin, on the full corpus and the 36-question Evaluation set. These numbers are Recall@5, MRR@10 and Hit@5 per question type and per follow-up mode, the duplicate, restatement and mostly-numeric shares of the top 5, the Comparison with bge-small (wins, ties, losses and paired bootstrap intervals), and each retriever's size, build time and latency. To reproduce it from a clone:
 
 ```sh
 just init        # dependencies, the pinned GROBID image and the judge model
 just fetch       # the pinned PDFs, checked against their recorded hashes (about 3.5 GB, roughly 2 h)
 just grobid-up   # start GROBID on localhost
 just parse       # every recorded file into Chunks (about 1.5 h on an Apple-silicon laptop)
-just index --retriever hybrid.bm25+bge-small   # BM25 (about 10 s), the dense baseline (14 to 22 min on MPS) and their hybrid
-just evaluate --retriever bm25 --retriever dense.bge-small --retriever hybrid.bm25+bge-small   # rewrites data/eval/eval-report.md
+just index --retriever hybrid.bm25+bge-small     # BM25 (about 10 s), the dense baseline (14 to 22 min on MPS) and their hybrid
+just index --retriever hybrid.bm25+bge-base      # bge-base (about 48 min on MPS) and its hybrid
+just index --retriever hybrid.bm25+openscholar   # OpenScholar (48 to 85 min on MPS) and its hybrid
+just evaluate    # every retriever; rewrites data/eval/eval-report.md
 git diff --stat data/   # only the times in the report's Cost table differ
 ```
+
+Plain `just index` builds all seven in one go (about 2.5 h on an M1 Max). The three lines above build one model at a time, so a long build can stop between models and resume. `evaluate` stops with a pointer to `just index` when a retriever isn't built. ADR 0065 applies the embedding comparison's decision rule to this report's raw numbers.
 
 `evaluate` reads the committed Evaluation set and Work groups. On an unchanged index it writes the same report every time apart from the timings, and `git diff` shows only the latency cells of the Cost table. The parse report and index record are committed, so `parse` and `index` also show whether the corpus you rebuilt matches the committed one.
 
@@ -232,8 +236,8 @@ To rerun it on a corpus that is already parsed (see *Reproduce the baseline* for
 
 ```sh
 just collect     # rebuilds data/manifest.csv and data/report.md from the Snapshot; git diff shows no change
-just index --retriever hybrid.bm25+bge-small
-just evaluate --retriever bm25 --retriever dense.bge-small --retriever hybrid.bm25+bge-small
+just index       # every retriever; Reproduce the baseline builds them one model at a time
+just evaluate
 git diff --stat data/   # only the times in the Cost table differ
 ```
 
