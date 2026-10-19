@@ -27,7 +27,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
   - k1: `1.2`
   - b: `0.75`
   - tokens: `lower-cased letter and digit runs, decimals whole, no stemming, no stop words`
-- dense: `dense-784e5a0da1b5`
+- dense.bge-small: `dense-784e5a0da1b5`
   - model: `BAAI/bge-small-en-v1.5`
   - revision: `5c38ec7c405ec4b44b94cc5a9bb96e735b38267a`
   - model_sha256: `3c9f31665447c8911517620762200d2245a2518d6e7208acc78cd9db317e21ad`
@@ -60,7 +60,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | all answerable | as asked, follow-ups alone | 28 | 0.16 | 0.118 | 0.18 |
 | unanswerable | left out | 8 | — | — | — |
 
-### Results: dense
+### Results: dense.bge-small
 
 | Question type | Query | Questions | Recall@5 | MRR@10 | Hit@5 |
 |---|---|---:|---:|---:|---:|
@@ -93,7 +93,7 @@ What takes the top 5 slots of each answerable question, as a user would ask it (
 - Grouped: 28 of 28 questions have a Work group for every Edition in their top 5.
 - Mostly-numeric slots holding a Passage: 0 of 1
 
-### Crowding: dense
+### Crowding: dense.bge-small
 
 | Measure | Top-5 slots | Share of slots | Questions | Share of questions |
 |---|---:|---:|---:|---:|
@@ -171,7 +171,7 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | vitamin-d | unanswerable | as asked | left out | — | — | — | — |
 | world-cup-2018 | unanswerable | as asked | left out | — | — | — | — |
 
-### Questions: dense
+### Questions: dense.bge-small
 
 | Question | Type | Query | First hit | Passages found | Duplicate slots | Restatement slots | Numeric slots |
 |---|---|---|---:|---:|---:|---:|---:|
@@ -232,5 +232,5 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 
 These depend on the machine and change from run to run.
 
-- bm25: index built on cpu in 10.17 s; 52 queries on cpu, latency p50 196.37 ms, p95 300.85 ms
-- dense: index built on mps in 771.08 s; 52 queries on mps, latency p50 28.30 ms, p95 31.32 ms
+- bm25: index built on cpu in 10.17 s; 52 queries on cpu, latency p50 192.88 ms, p95 291.79 ms
+- dense.bge-small: index built on mps in 771.08 s; 52 queries on mps, latency p50 27.97 ms, p95 29.96 ms

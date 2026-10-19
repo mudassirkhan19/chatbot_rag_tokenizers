@@ -1,4 +1,4 @@
-"""The opt-in test of the real embedder (#35, ADR 0042): the pinned bge-small on the CPU and on MPS.
+"""The opt-in test of the real embedder (#35, ADRs 0042 and 0050): dense.bge-small on the CPU and on MPS.
 
 Skipped unless RUN_EMBEDDER_TESTS=1. The first run downloads the pinned model (~130 MB) from Hugging Face:
 
@@ -18,13 +18,13 @@ import pytest
 from chatbot_rag_tokenizers.retrieval.config import load_retrieval_config
 from chatbot_rag_tokenizers.retrieval.corpus import load_corpus
 from chatbot_rag_tokenizers.retrieval.dense import Dense
-from chatbot_rag_tokenizers.retrieval.embedder import BgeEmbedder, default_device
+from chatbot_rag_tokenizers.retrieval.embedder import TransformersEmbedder, default_device
 from chatbot_rag_tokenizers.retrieval.retriever import indexed_text
 from chatbot_rag_tokenizers.parsing.config import load_parse_config
 from parse_support import REPO_CONFIG, FakeGrobid, run_parse, seed_pdf
 
 ROOT = Path(__file__).parents[1]
-DENSE = load_retrieval_config(ROOT / "config" / "retrieval.toml").dense
+[DENSE] = load_retrieval_config(ROOT / "config" / "retrieval.toml").dense  # dense.bge-small
 EVALUATION_SET = Path(__file__).parent / "fixtures" / "eval" / "evaluation-set.jsonl"
 
 pytestmark = pytest.mark.skipif(
@@ -33,11 +33,11 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def embedders() -> dict[str, BgeEmbedder]:
+def embedders() -> dict[str, TransformersEmbedder]:
     """The real embedder on each device, made before the parse fixtures shut the network off."""
     if default_device() != "mps":
         pytest.skip("this machine has no MPS")
-    return {device: BgeEmbedder(DENSE.pin, device) for device in ("cpu", "mps")}
+    return {device: TransformersEmbedder(DENSE.embedding_model, device) for device in ("cpu", "mps")}
 
 
 @pytest.fixture

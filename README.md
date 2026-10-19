@@ -131,7 +131,7 @@ just evaluate     # score both retrievers on the Evaluation set and write the ev
 - **`index` inputs.**
   - The parse report (`data/parse-report.md`, `--parse-report`) decides which files make up the corpus: every file it lists as parsed.
   - Their Chunks come from the parse cache (`--cache`), under the chunking config in `config/parse.toml` (`--parse-config`).
-  - Each retriever's settings are in `config/retrieval.toml` (`--config`). `--retriever bm25` or `--retriever dense` builds only the retrievers named; the default is all of them.
+  - Each retriever's settings are in `config/retrieval.toml` (`--config`). `--retriever bm25` or `--retriever dense.bge-small` builds only the retrievers named; the default is all of them.
   - `index` stops with a pointer to `just parse` when the report is missing, when the report was written with another GROBID image or chunking config, when the cache holds no Chunks for the report's files, or when it holds them only under another chunking config.
 - **`index` outputs.** Each index goes to the index cache (`data/index-cache/<chunking key>/<retriever key>/`, `--index-cache`, never committed) with a record of:
   - its settings;
@@ -145,9 +145,9 @@ just evaluate     # score both retrievers on the Evaluation set and write the ev
   - Tokens are lower-cased runs of letters and digits. Numbers are kept, a decimal such as "0.1" as one token, and there is no stemming and no stop-word list, so "SentencePiece" stays a distinctive term.
   - `k1` and `b` are in `[bm25]`.
   - A Chunk that shares no word with the question isn't ranked.
-- **The dense baseline** embeds the same context header plus text with [`BAAI/bge-small-en-v1.5`](https://huggingface.co/BAAI/bge-small-en-v1.5) (ADR 0042).
+- **The dense baseline**, `dense.bge-small`, embeds the same context header plus text with [`BAAI/bge-small-en-v1.5`](https://huggingface.co/BAAI/bge-small-en-v1.5) (ADR 0042).
   - 384 dimensions and at most 512 tokens, with the same uncased BERT WordPiece vocabulary the chunker counts with, so a Chunk of 350 tokens plus its header fits (5 Chunks of the full corpus have headers long enough to be cut; `index` says how many).
-  - `[dense]` pins the model's revision and the sha256 of its weights, as the chunking tokenizer is pinned. Both are part of the index's key, so a new pin builds a new dense index and leaves BM25 alone. The first `index` downloads the weights (about 130 MB) into the Hugging Face cache; a weights file with another hash stops it.
+  - Each dense model has its own `[dense.<name>]` table, and the retriever is named after it (ADR 0050). `[dense.bge-small]` pins the model's revision and the sha256 of its weights, as the chunking tokenizer is pinned, and says how the model is used: `pooling` (`cls` or `mean`), `max_tokens` and `query_instruction`. All of them are part of the index's key, so a new pin builds a new index for that table only and leaves BM25 and the other dense tables alone. Adding a model to compare is one more table. The first `index` downloads the weights (about 130 MB) into the Hugging Face cache; a weights file with another hash stops it.
   - Each query gets the model card's instruction in front ("Represent this sentence for searching relevant passages: "); Chunks don't.
   - A query is scored against every Chunk by exact dot product over the normalised float32 vectors (about 220 MB for the full corpus), with no vector database.
   - **Device.** It runs on MPS when the machine has it, otherwise on the CPU. The two agree to within 5×10⁻⁷ per dimension, and give the same top 10. The index record and the eval report's timings name the device. On an M1 Max the full corpus embeds at about 200 Chunks/s on MPS against about 50 on the CPU.
