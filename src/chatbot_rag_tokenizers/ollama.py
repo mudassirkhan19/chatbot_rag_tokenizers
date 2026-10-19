@@ -3,15 +3,17 @@ parser and the check that the server runs the pinned weights on the pinned runti
 
 An Ollama model is pinned as ``<digest>@<Ollama version>``. The digest pins the weights and the version pins
 the runtime that runs them: upgrading Ollama moved some of the judge's P("Yes") scores by 0.16 (ADR 0021).
-The judge and the chatbot's answer model both refuse to start unless both match.
+The judge refuses to start, and the chatbot's answer model to answer, unless both match.
 """
 
+import re
 from collections.abc import Sequence
 from typing import Any
 
 import httpx
 
 OLLAMA_URL = "http://localhost:11434"
+PIN = re.compile(r"[0-9a-f]{64}@\d+\.\d+\.\d+")  # <digest>@<Ollama version>
 _TIMEOUT = 120.0  # seconds; an answer from a few-billion-parameter model on a laptop takes a few
 
 

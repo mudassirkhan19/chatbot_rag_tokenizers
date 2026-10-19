@@ -57,6 +57,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0050](0050-named-dense-tables-and-a-configurable-embedder.md) | Named dense tables and a configurable embedder; `dense` becomes `dense.bge-small` | Accepted, amended by 0052 |
 | [0051](0051-work-grouping-in-collect.md) | Work grouping in `collect`: work_id, Canonical Edition, Survey flag and Suspected pairs | Accepted |
 | [0052](0052-bge-base-and-openscholar-pinned-and-verified.md) | bge-base and OpenScholar_Retriever pinned, and checked by the opt-in model test | Accepted |
+| [0053](0053-pinned-local-answer-model-and-the-chat-page.md) | The pinned local answer model, the shared Ollama module and the chat page | Accepted |
 
 ## Template
 
@@ -78,4 +79,3 @@ What else we looked at and why we didn't pick it.
 ## Consequences
 What this makes easier or harder.
 ```
-| [0053](0053-pinned-local-answer-model-and-the-chat-page.md) | The pinned local answer model, the shared Ollama module and the chat page | Accepted |

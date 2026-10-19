@@ -4,17 +4,16 @@ It names the retriever the chatbot asks, out of the retrievers the same file con
 retrieves, the pinned answer model and how it is run, the system prompt and the fixed Abstention sentence.
 """
 
-import re
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
 from chatbot_rag_tokenizers.config import ConfigError, read_table
+from chatbot_rag_tokenizers.ollama import PIN
 from chatbot_rag_tokenizers.retrieval.config import load_retrieval_config
 from chatbot_rag_tokenizers.retrieval.retriever import RetrieverConfig
 
 DEFAULT_PATH = Path("config/retrieval.toml")
-OLLAMA_PIN = re.compile(r"[0-9a-f]{64}@\d+\.\d+\.\d+")
 _FIELDS = {
     "retriever": str,
     "k": int,
@@ -51,7 +50,7 @@ def load_chat_config(path: Path = DEFAULT_PATH) -> ChatConfig:
         raise ConfigError(f"[chat] retriever {fields['retriever']!r} is not a retriever {path} configures: {', '.join(retrievers)}")
     if fields["k"] < 1:
         raise ConfigError(f"[chat] k {fields['k']} must be at least 1")
-    if not OLLAMA_PIN.fullmatch(fields["revision"]):
+    if not PIN.fullmatch(fields["revision"]):
         raise ConfigError(f"[chat] revision {fields['revision']!r} is not pinned as <digest>@<Ollama version>")
     if "{abstention}" not in fields["system_prompt"]:
         raise ConfigError("[chat] system_prompt must name the Abstention sentence as {abstention}")

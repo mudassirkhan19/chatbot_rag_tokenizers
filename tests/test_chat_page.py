@@ -179,6 +179,17 @@ def test_an_answer_that_only_mentions_abstaining_is_not_an_abstention(chat, fake
     assert ask(chat, FREEZING)["abstention"] is False
 
 
+@pytest.mark.parametrize("body", [b"not json", b'["a list"]', b'{"question": "  "}'], ids=["not-json", "not-an-object", "blank"])
+def test_a_turn_without_a_question_is_refused_and_asks_nothing(chat, fake_answer_model, body):
+    request = urllib.request.Request(f"{chat.url}/turn", body, {"Content-Type": "application/json"})
+
+    with pytest.raises(urllib.error.HTTPError) as raised:
+        urllib.request.urlopen(request)
+
+    assert raised.value.code == 400
+    assert fake_answer_model.chats == []
+
+
 def ollama_answering(monkeypatch: pytest.MonkeyPatch, handler) -> None:
     """The real answer model, with every request to Ollama answered by ``handler``."""
     monkeypatch.setattr(answer_model, "load_answer_model", REAL_LOAD)

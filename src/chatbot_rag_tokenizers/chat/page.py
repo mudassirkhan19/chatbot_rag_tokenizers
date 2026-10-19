@@ -48,8 +48,11 @@ def make_server(chatbot: Chatbot, port: int = 8766) -> ThreadingHTTPServer:
             if self.path != "/turn":
                 self._json({"error": f"no such action: {self.path}"}, HTTPStatus.NOT_FOUND)
                 return
-            payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])) or b"{}")
-            question = str(payload.get("question", "")).strip()
+            try:
+                payload = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+            except ValueError:
+                payload = None
+            question = str(payload.get("question", "")).strip() if isinstance(payload, dict) else ""
             if not question:
                 self._json({"error": "ask a question"}, HTTPStatus.BAD_REQUEST)
                 return
