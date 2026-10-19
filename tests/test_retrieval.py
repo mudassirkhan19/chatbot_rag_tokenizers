@@ -719,3 +719,36 @@ def test_the_report_records_the_pool_and_how_many_pools_held_fewer_works_than_as
     crowded = report.split("### Crowding: bm25+collapsed\n", 1)[1].split("\n### ", 1)[0]
     assert "- Pool: the top 20 raw Chunks held fewer than 5 Works for 4 of 4 questions, and fewer than 10, the depth each query asks for, for 4." in crowded
     assert "- Pool:" not in report.split("### Crowding: bm25\n", 1)[1].split("\n### ", 1)[0]
+
+
+@pytest.fixture
+def with_short_venue_edition(tmp_path: Path, grobid: FakeGrobid) -> Path:
+    """The fixture corpus plus a file standing in for the BPE paper's ACL Edition (P16-1162, its Work's Canonical
+    Edition) with another paper's text, which has no Section 5.1: none of its Chunks is a copy of the preprint's."""
+    files = [
+        seed_pdf(tmp_path, grobid, "wechsel_2112.06598v2.pdf", "wechsel_2112.06598v2.tei.xml"),
+        seed_pdf(tmp_path, grobid, "bpe_1508.07909v5.pdf", "missed-table.tei.xml"),
+        seed_pdf(tmp_path, grobid, "P16-1162.pdf", "lost-heading.tei.xml"),
+    ]
+    run_parse(tmp_path, *files)
+    run_index(tmp_path)
+    return tmp_path
+
+
+def test_a_work_shows_its_best_ranked_chunk_not_a_canonical_chunk_of_another_section(with_short_venue_edition, tmp_path):
+    question = {
+        "id": "f1-differences",
+        "type": "single-paper",
+        "question": "Which qualitative differences between the translation systems do the F1 numbers hide?",
+        "passages": [
+            {"edition_id": "1508.07909v5", "section": "5.1 Unigram accuracy", "quote": "The F 1 numbers hide some qualitative differences between systems"}
+        ],
+    }
+
+    report = run_evaluate(with_short_venue_edition, write_question(tmp_path, question))
+
+    # The preprint's Section 5.1 Chunk holds the Passage and stands for the BPE Work, with the Canonical Edition's
+    # Chunks of other Sections merged behind it rather than shown in its place.
+    [line] = [row for row in table(report, "### Questions: bm25+collapsed") if row[0] == "f1-differences"]
+    assert line[3] == "1"
+    assert line[8].startswith("1508.07909v5 + P16-1162")

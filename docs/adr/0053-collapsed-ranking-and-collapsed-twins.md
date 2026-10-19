@@ -1,7 +1,7 @@
 # 0053. The Collapsed ranking: one Chunk per Work, scored as a `+collapsed` twin of every retriever
 
 - **Date:** 2026-10-19
-- **Status:** Accepted. Amends [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) (metrics on the raw ranking only) and [0044](0044-duplicate-rate-restatement-and-numeric-share-in-evaluate.md) (crowding on the raw ranking only). Builds on [0051](0051-work-grouping-in-collect.md); measured against the Work groups of [0044](0044-duplicate-rate-restatement-and-numeric-share-in-evaluate.md) and [0047](0047-hand-checked-work-groups-are-the-duplicate-ground-truth.md).
+- **Status:** Accepted; which Chunk stands for a Work superseded by [0055](0055-a-work-shows-its-best-ranked-section.md). Amends [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) (metrics on the raw ranking only) and [0044](0044-duplicate-rate-restatement-and-numeric-share-in-evaluate.md) (crowding on the raw ranking only). Builds on [0051](0051-work-grouping-in-collect.md); measured against the Work groups of [0044](0044-duplicate-rate-restatement-and-numeric-share-in-evaluate.md) and [0047](0047-hand-checked-work-groups-are-the-duplicate-ground-truth.md).
 
 ## Context
 The baseline eval report gives 59 of 140 top-5 slots for BM25 and 70 of 140 for the dense baseline to a Chunk from a Work already ranked higher ([0047](0047-hand-checked-work-groups-are-the-duplicate-ground-truth.md)), most of them another Chunk of the same file. `collect` now names each included Edition's Work and its Canonical Edition ([0051](0051-work-grouping-in-collect.md)). Spec #49 asks for a ranking that holds at most one Chunk per Work, over any retriever, measured before and after on one index (#52).

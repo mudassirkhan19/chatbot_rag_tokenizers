@@ -100,10 +100,10 @@ def write_eval_report(
         f" matches (ADR 0041). A match running into the Chunk's first or last word counts only the quote's words on the"
         f" Chunk's side, and must cover at least {rule.edge_min_words} words. The Chunk may come from any Edition.",
         "- A retriever's own ranking is scored raw: duplicates of one Work all take their slots.",
-        f"- Its `{SUFFIX}` twin is scored on the Collapsed ranking (ADR 0053) over the same index: from the raw top"
-        " *pool* Chunks it keeps one per Work, by the manifest's work_id (an Edition with none is its own Work), in the"
-        " raw order between Works. A Work shows its Canonical Edition's Chunk when one is in the pool, else a Chunk of"
-        " an Edition's latest file, else its best-ranked Chunk. Surveys are not demoted.",
+        f"- Its `{SUFFIX}` twin is scored on the Collapsed ranking (ADRs 0053 and 0055) over the same index: from the raw"
+        " top *pool* Chunks it keeps one per Work, by the manifest's work_id (an Edition with none is its own Work), in the"
+        " raw order between Works. A Work shows its best-ranked Chunk's Section, from the Canonical Edition's file when"
+        " the pool holds that Section from it, else from an Edition's latest file, else as ranked. Surveys are not demoted.",
         "- Unanswerable questions are run but left out of the metrics.",
         f"- A follow-up is run three ways: {FOLLOW_UP_ALONE}, {WITH_HISTORY} (its prior turns, then the follow-up, joined by"
         f" spaces) and {REWRITE}. The *all answerable* row takes each follow-up alone, as a user would ask it.",
