@@ -1,4 +1,4 @@
-"""`chat-eval` (spec #63, ADR 0058): the whole Evaluation set asked of the chatbot, through the same Conversation
+"""`chat-eval` (spec #63, ADR 0059): the whole Evaluation set asked of the chatbot, through the same Conversation
 code as the chat page, scored and written as the chat report and the answers.
 
 Each question is a Conversation of its own. A single-paper, multi-paper or unanswerable question is one Turn. A

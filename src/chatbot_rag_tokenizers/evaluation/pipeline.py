@@ -46,7 +46,7 @@ def evaluate(
 ) -> None:
     """Raises EvaluationSetError for a set that fails `eval-check` (ADR 0041), WorkGroupsError for a malformed Work
     groups file and index.IndexMissing when a retriever isn't built. `pool` is the raw Chunks each Collapsed ranking
-    picks one per Work from. With `export`, also writes there every Edition in a top 5 that has no Work group."""
+    merges copies in. With `export`, also writes there every Edition in a top 5 that has no Work group."""
     rows = {row["edition_id"]: row for row in manifest}
     works = Works(rows.values())
     groups = load_work_groups(work_groups)

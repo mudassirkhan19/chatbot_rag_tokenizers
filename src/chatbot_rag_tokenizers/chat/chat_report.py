@@ -1,11 +1,11 @@
-"""The chat report writer (spec #63, ADR 0058): the committed Markdown record of a `chat-eval` run, in the eval
+"""The chat report writer (spec #63, ADR 0059): the committed Markdown record of a `chat-eval` run, in the eval
 report's style.
 
 It names what was scored (the Evaluation set, the Chunks, the retriever, the answer model's pin and the prompts'
 hashes), then gives the grounded, abstention and false-abstention rates and Recall@k per question type, a line
 per question, and the timings last. Everything above the timings depends only on the inputs and the model's
 replies, so two runs that get the same replies give the same report up to that section (the pinned model
-varies a few replies between runs, ADR 0058).
+varies a few replies between runs, ADR 0059).
 """
 
 import hashlib

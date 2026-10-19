@@ -1,4 +1,4 @@
-"""The grounding check (spec #63, ADR 0058): whether an answer is Grounded, decided from the Turn alone.
+"""The grounding check (spec #63, ADR 0059): whether an answer is Grounded, decided from the Turn alone.
 
 An answer is Grounded when it cites at least one retrieved Chunk, every marker in it names a Chunk retrieved for
 its Turn, and every number in it appears in a cited Chunk. Numbers are compared as the Passage matcher cuts
