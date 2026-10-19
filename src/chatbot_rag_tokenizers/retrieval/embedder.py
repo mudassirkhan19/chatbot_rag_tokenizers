@@ -72,14 +72,14 @@ class TransformersEmbedder:
         self.model, self.revision, self.device = settings.model, settings.revision, device
         self._pooling, self._max_tokens = settings.pooling, settings.max_tokens
         weights = weights_file(settings.model, settings.revision)
-        self.weights = weights.name  # the file the pin's sha256 was checked against
+        self.weights_file = weights.name  # the file the pin's sha256 was checked against
         if (found := _sha256(weights)) != settings.sha256:
             raise ConfigError(f"the weights of {settings.model}@{settings.revision} have sha256 {found[:12]}, not the pinned {settings.sha256[:12]}")
         print(f"embedder: loading {settings.model}@{settings.revision[:12]} on {device}", file=sys.stderr)
         self.tokenizer = AutoTokenizer.from_pretrained(settings.model, revision=settings.revision)
         # Loaded from the file whose hash was checked, never from another format the repo also holds.
         network, loading = AutoModel.from_pretrained(
-            settings.model, revision=settings.revision, dtype=torch.float32, use_safetensors=weights.name == "model.safetensors", output_loading_info=True
+            settings.model, revision=settings.revision, dtype=torch.float32, use_safetensors=weights.name == WEIGHTS[0], output_loading_info=True
         )
         check_loading(settings.model, loading)
         # transformers types .to() as taking a model, not a device.
@@ -118,7 +118,8 @@ class TransformersEmbedder:
 
 
 def weights_file(model: str, revision: str) -> Path:
-    """The weights file of the repo at that revision, downloaded: the first of WEIGHTS it holds."""
+    """The weights file of the repo at that revision, downloaded: the first of WEIGHTS it holds. Offline, a file
+    Hugging Face hasn't cached counts as not held, so a wrong one stops at the hash check instead."""
     import huggingface_hub
     from huggingface_hub.errors import EntryNotFoundError
 
@@ -127,7 +128,7 @@ def weights_file(model: str, revision: str) -> Path:
             return Path(huggingface_hub.hf_hub_download(model, name, revision=revision))
         except EntryNotFoundError:
             continue
-    raise ConfigError(f"{model}@{revision[:12]} has neither {' nor '.join(WEIGHTS)}")
+    raise ConfigError(f"found neither {' nor '.join(WEIGHTS)} of {model}@{revision[:12]}, on Hugging Face or, offline, in its cache")
 
 
 def check_loading(model: str, loading: dict) -> None:

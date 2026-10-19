@@ -32,7 +32,7 @@ DENSE = {config.name: config for config in load_retrieval_config(ROOT / "config"
 EVALUATION_SET = Path(__file__).parent / "fixtures" / "eval" / "evaluation-set.jsonl"
 # Each model's vector size and the weights file its repo holds, from its model card and repo.
 DIMENSIONS = {"dense.bge-small": 384, "dense.bge-base": 768, "dense.openscholar": 768}
-WEIGHTS = {"dense.bge-small": "model.safetensors", "dense.bge-base": "model.safetensors", "dense.openscholar": "pytorch_model.bin"}
+WEIGHTS_FILES = {"dense.bge-small": "model.safetensors", "dense.bge-base": "model.safetensors", "dense.openscholar": "pytorch_model.bin"}
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("RUN_EMBEDDER_TESTS") != "1", reason="loads the embedding models; set RUN_EMBEDDER_TESTS=1"
@@ -70,9 +70,9 @@ def test_the_weights_are_the_pinned_file(table, embedders):
     from huggingface_hub import hf_hub_download
 
     model = embedders["cpu"]
-    weights = Path(hf_hub_download(model.model, model.weights, revision=model.revision))
+    weights = Path(hf_hub_download(model.model, model.weights_file, revision=model.revision))
 
-    assert model.weights == WEIGHTS[table]
+    assert model.weights_file == WEIGHTS_FILES[table]
     assert hashlib.sha256(weights.read_bytes()).hexdigest() == DENSE[table].model_sha256
 
 

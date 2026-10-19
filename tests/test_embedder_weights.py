@@ -39,7 +39,7 @@ def test_a_repo_without_model_safetensors_is_checked_on_its_pytorch_model_bin(re
 
 
 def test_a_repo_with_neither_weights_file_is_refused(repo):
-    with pytest.raises(ConfigError, match=r"OpenScholar/OpenScholar_Retriever@aaaaaaaaaaaa has neither model.safetensors nor pytorch_model.bin"):
+    with pytest.raises(ConfigError, match=r"found neither model.safetensors nor pytorch_model.bin of OpenScholar/OpenScholar_Retriever@aaaaaaaaaaaa"):
         weights_file("OpenScholar/OpenScholar_Retriever", "a" * 40)
 
 

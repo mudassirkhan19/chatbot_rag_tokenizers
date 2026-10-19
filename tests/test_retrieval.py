@@ -76,7 +76,7 @@ def test_index_builds_bm25_and_dense_and_a_rerun_with_nothing_changed_does_not_r
 def with_revision(tmp_path: Path, revision: str) -> Path:
     """The repo's retrieval config with dense.bge-small at another revision."""
     config = RETRIEVAL_CONFIG.read_text()
-    pinned = load_retrieval_config(RETRIEVAL_CONFIG).dense[0].revision
+    [pinned] = [dense.revision for dense in load_retrieval_config(RETRIEVAL_CONFIG).dense if dense.name == "dense.bge-small"]
     other = tmp_path / "retrieval-other-revision.toml"
     other.write_text(config.replace(pinned, revision))
     return other

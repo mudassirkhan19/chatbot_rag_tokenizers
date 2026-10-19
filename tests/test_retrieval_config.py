@@ -13,8 +13,7 @@ RETRIEVAL_CONFIG = Path(__file__).parents[1] / "config" / "retrieval.toml"
 def test_the_repo_config_names_bge_small_with_the_key_of_the_index_built_before_dense_tables_were_named():
     config = load_retrieval_config(RETRIEVAL_CONFIG)
 
-    dense = config.dense[0]
-    assert dense.name == "dense.bge-small"
+    [dense] = [table for table in config.dense if table.name == "dense.bge-small"]
     assert (dense.pooling, dense.max_tokens) == ("cls", 512)
     # The key of the full-corpus index built as `dense` (data/eval/eval-report.md), so it isn't embedded again.
     assert dense.key == "dense-784e5a0da1b5"
