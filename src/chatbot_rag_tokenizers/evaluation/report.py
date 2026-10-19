@@ -105,7 +105,8 @@ def write_eval_report(
         " row's queries), on the raw ranking (ADR 0044).",
         "",
         f"- Work groups: `{groups.path}` (sha256 `{groups.sha256}`), {len(groups.editions)} Editions in"
-        f" {len({group.work_id for group in groups.editions.values()})} Works, hand-checked, never computed by the system being measured.",
+        f" {len({group.work_id for group in groups.editions.values()})} Works, {groups.checked} of the Editions checked by hand"
+        " (checked_by), never computed by the system being measured.",
         "- A duplicate slot holds a Chunk from a Work already ranked higher: another Edition or Version of it, or another"
         " Chunk of the same file.",
         "- A restatement slot holds a Chunk from a Survey. A Survey is always its own Work, and its Chunks are never duplicates.",

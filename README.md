@@ -167,10 +167,10 @@ just evaluate     # score both retrievers on the Evaluation set and write the ev
   - It runs `eval-check`'s checks first and refuses a set that fails them.
   - It stops with a pointer to `just index` when an index isn't built.
 - **The Work groups** (`data/eval/work-groups.csv`, `--work-groups`, committed) are the ground truth for the duplicate rate (ADR 0044): the developer assigns each Edition a Work by hand, so the duplicate stage is never scored by its own grouping.
-  - Its columns are `edition_id,work_id,survey,title,authors,year,venue`. Editions with the same `work_id` are one Work; `survey` is `yes` for a Survey's Editions and `no` otherwise. Title, authors, year and venue are for the person grouping and aren't read.
+  - Its columns are `edition_id,work_id,survey,title,authors,year,venue,checked_by,note`. Editions with the same `work_id` are one Work; `survey` is `yes` for a Survey's Editions and `no` otherwise. Title, authors, year and venue are for the person grouping and aren't read. `checked_by` names who checked the row by hand, and `note` says why a drafted row needs a closer look (ADR 0047); both are optional.
   - A row with a blank `work_id` has no Work group yet. A Work whose Editions are partly Surveys, an Edition listed twice, or a `survey` other than `yes` or `no` stops `evaluate`.
-  - It is committed with only its header until #38 fills it.
-- **The export.** `just evaluate --export-ungrouped ungrouped.csv` also writes every Edition in any retriever's top 5, for any query of an answerable question, that has no Work group, with its title, authors, year and venue from the manifest and `work_id` and `survey` left blank. Fill those two in and add the rows to the Work groups file. Without the flag, `evaluate` still prints the Editions with no Work group.
+  - It holds the 154 Editions the two baselines rank in their top 5, in 130 Works. An agent drafted them and the developer checks every Work on a local page: `uv run python hack/check_work_groups.py`, then open http://localhost:8767. The page shows each Work's Editions with their abstracts and links, and Works that may be the same paper. It can merge, split, rename and flag Surveys, and it refuses a save `evaluate` wouldn't load. The eval report says how many rows have a `checked_by`.
+- **The export.** `just evaluate --export-ungrouped ungrouped.csv` also writes every Edition in any retriever's top 5, for any query of an answerable question, that has no Work group, with its title, authors, year and venue from the manifest and `work_id`, `survey`, `checked_by` and `note` left blank. Fill in the first two, add the rows to the Work groups file and check them on the page. Without the flag, `evaluate` still prints the Editions with no Work group.
 - **`evaluate` output.** The eval report (`data/eval/eval-report.md`, `--report`, committed) gives:
   - the Evaluation set's sha256, the chunking config and each retriever's settings;
   - a results table per retriever and question type: Recall@5 (per Passage, averaged over questions), MRR@10 (0 when no Chunk in the top 10 holds a Passage) and Hit@5, all on the raw ranking;
@@ -187,7 +187,23 @@ just evaluate     # score both retrievers on the Evaluation set and write the ev
   - A Chunk holds a Passage when at least 65% of the quote's words match the Chunk's in order, and every number in the quote matches (ADR 0041), whichever Edition the Chunk comes from. Before matching, unicode, case, whitespace and hyphenation are normalised and citations are dropped. The 65% was calibrated on three CC BY Seeds with several Versions; `hack/calibrate_matcher.py` reruns the sweep from `data/eval/calibration.jsonl`.
 - **Reproducible.** Two runs on the same index give the same report apart from the timings section.
 
-The committed Evaluation set is a first tracer of 3 questions on CC BY Seeds: a single-paper lookup, a multi-paper question and a follow-up. The full set of 36 questions comes with spec #31. The committed eval report is still the run over the 34 Seeds from before the full-corpus parse; #37 and #38 redo it on the full corpus.
+The committed Evaluation set has 36 checked questions (ADR 0046), and the committed eval report is the baseline over the full corpus.
+
+## Reproduce the baseline
+
+The baseline eval report (`data/eval/eval-report.md`) gives the "before" numbers for both retrievers, BM25 and the dense baseline, on the full corpus and the 36-question Evaluation set. These numbers are Recall@5, MRR@10 and Hit@5 per question type and per follow-up mode, the duplicate, restatement and mostly-numeric shares of the top 5, and build time and latency. To reproduce it from a clone:
+
+```sh
+just init        # dependencies, the pinned GROBID image and the judge model
+just fetch       # the pinned PDFs, checked against their recorded hashes (about 3.5 GB, roughly 2 h)
+just grobid-up   # start GROBID on localhost
+just parse       # every recorded file into Chunks (about 1.5 h on an Apple-silicon laptop)
+just index       # BM25 (about 10 s) and the dense baseline (about 14 min on MPS)
+just evaluate    # scores both and rewrites data/eval/eval-report.md
+git diff --stat data/   # only the report's Timings section differs
+```
+
+`evaluate` reads the committed Evaluation set and Work groups. On an unchanged index it writes the same report every time apart from the timings, and `git diff` shows only the latency and build-time lines. The parse report and index record are committed, so `parse` and `index` also show whether the corpus you rebuilt matches the committed one.
 
 ## Measure the Relevance verdict
 

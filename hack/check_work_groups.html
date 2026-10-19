@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Work Groups Checker</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #fff; --ink: #1c1c1a; --muted: #6b6b66; --line: #e2e2dc;
+    --yes: #1f7a4a; --yes-bg: #e3f3ea; --no: #a8322d; --no-bg: #f8e4e2; --warn: #8a6500; --warn-bg: #fff4d6; --accent: #2f5fd0; --accent-bg: #e8eefc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161615; --card: #20201e; --ink: #ecece8; --muted: #9a9a93; --line: #34342f;
+      --yes: #5fcf8f; --yes-bg: #183626; --no: #f0807a; --no-bg: #3d1d1b; --warn: #e8c35a; --warn-bg: #3a3218; --accent: #8aa8ff; --accent-bg: #1f2740; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 -apple-system, system-ui, sans-serif; }
+  a { color: var(--accent); }
+  .layout { display: grid; grid-template-columns: 300px 1fr; min-height: 100vh; }
+  nav { border-right: 1px solid var(--line); padding: 12px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  nav .summary { font-weight: 600; }
+  .progress { height: 6px; border-radius: 99px; background: var(--line); margin: 6px 0 8px; overflow: hidden; }
+  .progress div { height: 100%; background: var(--yes); transition: width .2s; }
+  .filters { display: flex; gap: 4px; margin: 8px 0; flex-wrap: wrap; }
+  .filters button { font: inherit; font-size: 12px; padding: 2px 9px; border-radius: 99px; border: 1px solid var(--line); background: none; color: var(--muted); cursor: pointer; }
+  .filters button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  nav .group { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; margin: 12px 8px 2px; }
+  nav .item { display: flex; gap: 8px; align-items: center; width: 100%; text-align: left; padding: 4px 8px; border: 0; border-radius: 6px; background: none; cursor: pointer; font: 12.5px/1.4 ui-monospace, monospace; color: var(--ink); }
+  nav .item.on { background: var(--card); outline: 1px solid var(--line); }
+  nav .item .n { margin-left: auto; color: var(--muted); }
+  nav .item .flag { color: var(--warn); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; border: 1.5px solid var(--muted); }
+  .dot.ok { background: var(--yes); border-color: var(--yes); } .dot.part { background: linear-gradient(90deg, var(--yes) 50%, transparent 50%); border-color: var(--yes); }
+  main { max-width: 940px; padding: 16px 24px 100px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px; margin-bottom: 14px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 8px; }
+  h3 { font-size: 16px; margin: 0 0 2px; line-height: 1.35; }
+  .meta { color: var(--muted); font-size: 13px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .chip { border: 1px solid var(--line); border-radius: 99px; padding: 0 8px; font-size: 12px; white-space: nowrap; }
+  .chip.ok { color: var(--yes); border-color: var(--yes); } .chip.warn { color: var(--warn); border-color: var(--warn); }
+  .chip.survey { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
+  .head { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; }
+  input { font: inherit; color: inherit; width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  input.work-id { font-family: ui-monospace, monospace; font-size: 15px; }
+  label.field { display: block; color: var(--muted); font-size: 13px; margin: 0 0 3px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { font: inherit; padding: 6px 14px; border: 0; background: var(--bg); color: var(--muted); cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .note { background: var(--warn-bg); color: var(--ink); border-radius: 8px; padding: 8px 12px; margin-top: 12px; font-size: 14px; }
+  .note::before { content: "⚑ "; color: var(--warn); }
+  .problem { background: var(--no-bg); color: var(--no); border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; }
+  .edition { border-top: 1px solid var(--line); padding: 14px 0 6px; }
+  .edition:first-of-type { border-top: 0; padding-top: 0; }
+  .ids { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; font: 12px ui-monospace, monospace; }
+  .ids a, .ids span { border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; text-decoration: none; }
+  .abstract { font-size: 14px; margin: 8px 0 4px; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+  .abstract.open { display: block; }
+  .sections { font-size: 12.5px; color: var(--muted); }
+  .actions { display: flex; gap: 6px; margin-top: 8px; align-items: center; flex-wrap: wrap; }
+  .actions input { width: 260px; padding: 4px 8px; font: 12.5px ui-monospace, monospace; }
+  .btn { font: inherit; font-size: 13px; padding: 4px 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+  .btn:hover { border-color: var(--muted); }
+  .suggest { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 8px 0; border-top: 1px dashed var(--line); font-size: 14px; }
+  .suggest:first-of-type { border-top: 0; }
+  .suggest .why { color: var(--muted); font-size: 12px; }
+  .checklist label { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0; cursor: pointer; font-size: 14px; }
+  .checklist input { width: auto; margin-top: 4px; }
+  .bar { position: fixed; bottom: 0; left: 300px; right: 0; background: var(--bg); border-top: 1px solid var(--line); padding: 10px 24px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .bar input { width: 150px; }
+  .bar button { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); cursor: pointer; font: inherit; color: inherit; }
+  .bar .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .status { color: var(--muted); font-size: 13px; margin-left: auto; }
+  .help { color: var(--muted); font-size: 13px; }
+  kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; font-size: 12px; }
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; } nav { position: static; height: auto; max-height: 40vh; border-right: 0; border-bottom: 1px solid var(--line); }
+    .bar { left: 0; } main { padding: 16px 16px 140px; } .head { grid-template-columns: 1fr; } .actions input { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav>
+    <div class="summary" id="summary">Loading the corpus…</div>
+    <div class="progress"><div id="progress" style="width:0"></div></div>
+    <div class="help"><kbd>[</kbd> <kbd>]</kbd> previous / next · <kbd>⌘</kbd><kbd>↵</kbd> mark checked</div>
+    <div class="filters" id="filters"></div>
+    <div id="list"></div>
+  </nav>
+  <main id="main"></main>
+</div>
+<div class="bar">
+  <span class="help">Your name</span><input id="name" placeholder="e.g. mudassir">
+  <button id="save">Save edits</button>
+  <button id="approve" class="primary">Save &amp; mark checked</button>
+  <button id="unmark">Unmark</button>
+  <span class="status" id="status"></span>
+</div>
+<script>
+const CHECKS = [
+  "Every Edition here is the same paper: the same authors and contribution, as a preprint Version or its venue publication.",
+  "None of the suggested Works below is this paper too (merge it in if one is).",
+  "Survey is yes only if the paper reviews or restates other Works' findings, not when it just has related work.",
+];
+const STOP = new Set("a an the on of for to in and with do how why what is are be or not via by from".split(" "));
+const FILTERS = {todo: "To check", flagged: "Flagged", all: "All"};
+let rows = [], editions = {}, works = [], current = null, filter = "todo", draft = null;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const fold = s => s.normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/ı/g, "i").toLowerCase();
+const words = title => new Set(fold(title).match(/[a-z0-9]+/g)?.filter(w => !STOP.has(w)) || []);
+const surname = authors => fold((authors || "").split(";")[0].trim()).split(/\s+/).pop();
+try { $("name").value = localStorage.getItem("checker-name") || ""; } catch {}
+$("name").addEventListener("input", () => { try { localStorage.setItem("checker-name", $("name").value); } catch {} });
+
+function build() {
+  const by = new Map();
+  rows.forEach(r => { if (!by.has(r.work_id)) by.set(r.work_id, []); by.get(r.work_id).push(r); });
+  works = [...by].map(([id, members]) => ({
+    id, members,
+    checked: members.filter(r => r.checked_by).length,
+    flagged: members.some(r => r.note),
+    survey: members.some(r => r.survey === "yes"),
+  }));
+  const rank = w => (w.members.length > 1 ? 0 : w.flagged ? 1 : 2);
+  works.sort((a, b) => rank(a) - rank(b) || a.id.localeCompare(b.id));
+}
+const work = id => works.find(w => w.id === id);
+const done = w => w.checked === w.members.length;
+const visible = w => filter === "all" || (filter === "todo" ? !done(w) : w.flagged);
+
+function renderList() {
+  const checked = rows.filter(r => r.checked_by).length;
+  $("summary").textContent = `${checked} of ${rows.length} Editions checked · ${works.filter(done).length} of ${works.length} Works`;
+  $("progress").style.width = `${100 * checked / rows.length}%`;
+  $("filters").innerHTML = Object.entries(FILTERS).map(([key, label]) =>
+    `<button data-f="${key}" class="${key === filter ? "on" : ""}">${label}</button>`).join("");
+  $("filters").querySelectorAll("button").forEach(b => b.onclick = () => { filter = b.dataset.f; renderList(); });
+  const groups = [["Several Editions", w => w.members.length > 1], ["Flagged", w => w.members.length === 1 && w.flagged], ["One Edition", w => w.members.length === 1 && !w.flagged]];
+  $("list").innerHTML = groups.map(([label, test]) => {
+    const items = works.filter(w => test(w) && visible(w));
+    return items.length ? `<div class="group">${label} · ${items.length}</div>` + items.map(w =>
+      `<button class="item ${w.id === current ? "on" : ""}" data-id="${esc(w.id)}"><span class="dot ${done(w) ? "ok" : w.checked ? "part" : ""}"></span>` +
+      `${esc(w.id)}${w.flagged ? ' <span class="flag">⚑</span>' : ""}${w.survey ? ' <span class="chip survey">S</span>' : ""}` +
+      `${w.members.length > 1 ? `<span class="n">×${w.members.length}</span>` : ""}</button>`).join("") : "";
+  }).join("") || `<div class="help" style="margin:12px 8px">Nothing left in this filter.</div>`;
+  $("list").querySelectorAll(".item").forEach(b => b.onclick = () => show(b.dataset.id));
+}
+
+function suggestions(w) {
+  const mine = w.members.map(r => words(r.title)), authors = new Set(w.members.map(r => surname(r.authors)));
+  return works.filter(o => o.id !== w.id).map(o => {
+    const r = o.members[0], theirs = words(r.title);
+    const overlap = Math.max(...mine.map(m => [...m].filter(x => theirs.has(x)).length / new Set([...m, ...theirs]).size));
+    const sameAuthor = authors.has(surname(r.authors));
+    return {o, overlap, sameAuthor, score: overlap + (sameAuthor ? 0.25 : 0)};
+  }).filter(s => s.overlap >= 0.45 || (s.sameAuthor && s.overlap >= 0.15)).sort((a, b) => b.score - a.score).slice(0, 5);
+}
+
+function idLinks(e, id) {
+  const links = [];
+  if (e.arxiv_id) links.push(`<a href="https://arxiv.org/abs/${esc(e.arxiv_id)}" target="_blank">arXiv ${esc(e.arxiv_id)}</a>`);
+  if (e.acl_id) links.push(`<a href="https://aclanthology.org/${esc(e.acl_id)}/" target="_blank">ACL ${esc(e.acl_id)}</a>`);
+  if (e.doi) links.push(`<a href="https://doi.org/${esc(e.doi)}" target="_blank">doi ${esc(e.doi)}</a>`);
+  if (e.source_link && !links.length) links.push(`<a href="${esc(e.source_link)}" target="_blank">source</a>`);
+  return `<span>${esc(e.edition_kind || "edition")}: ${esc(id)}</span>` + links.join("");
+}
+
+function render() {
+  const w = work(current);
+  if (!w) { $("main").innerHTML = `<div class="card">Every Work is checked. Rerun <code>just evaluate</code>.</div>`; return; }
+  draft = draft?.id === w.id ? draft : {id: w.id, workId: w.id, survey: w.survey ? "yes" : "no"};
+  const notes = [...new Set(w.members.map(r => r.note).filter(Boolean))];
+  const checkers = [...new Set(w.members.map(r => r.checked_by).filter(Boolean))];
+  let html = `<div class="card"><div class="head"><div><label class="field">Work id (shared by its Editions; renaming to another Work's id merges them)</label>
+      <input class="work-id" id="f-work" value="${esc(draft.workId)}" spellcheck="false"></div>
+      <div><label class="field">Survey</label><div class="seg" id="f-survey">${["no", "yes"].map(v =>
+        `<button data-v="${v}" class="${draft.survey === v ? "on" : ""}">${v}</button>`).join("")}</div></div></div>
+    <div class="meta" style="margin-top:10px"><span class="chip">${w.members.length} Edition${w.members.length > 1 ? "s" : ""}</span>
+      ${done(w) ? `<span class="chip ok">checked by ${esc(checkers.join(", "))}</span>` : w.checked ? `<span class="chip warn">${w.checked} of ${w.members.length} checked</span>` : `<span class="chip">unchecked</span>`}
+      <span class="help">${works.indexOf(w) + 1} / ${works.length}</span></div>
+    ${notes.map(n => `<div class="note">${esc(n)}</div>`).join("")}</div>`;
+  html += `<div class="card"><h2>Editions</h2>` + w.members.map(r => {
+    const e = editions[r.edition_id] || {};
+    return `<div class="edition"><h3>${esc(r.title)}</h3>
+      <div class="meta">${esc(r.authors)}</div>
+      <div class="meta">${esc(r.year)}${r.venue ? ` · ${esc(r.venue)}` : ""}${r.checked_by ? ` · <span class="chip ok">✓ ${esc(r.checked_by)}</span>` : ""}</div>
+      <div class="ids">${idLinks(e, r.edition_id)}</div>
+      ${e.abstract ? `<div class="abstract" title="Click to expand">${esc(e.abstract)}</div>` : `<div class="help">No parsed text.</div>`}
+      ${e.sections?.length ? `<div class="sections">Sections: ${esc(e.sections.slice(0, 10).join(" · "))}${e.sections.length > 10 ? " …" : ""}</div>` : ""}
+      <div class="actions"><input list="work-ids" placeholder="move to Work id…" data-move="${esc(r.edition_id)}" spellcheck="false">
+        <button class="btn" data-go="${esc(r.edition_id)}">Move</button>
+        ${w.members.length > 1 ? `<button class="btn" data-split="${esc(r.edition_id)}">Split off as its own Work</button>` : ""}</div></div>`;
+  }).join("") + `</div>`;
+  const near = suggestions(w);
+  html += `<div class="card"><h2>Possibly the same Work</h2>` + (near.length ? near.map(s => {
+    const r = s.o.members[0];
+    return `<div class="suggest"><div><b>${esc(r.title)}</b><div class="why">${esc(s.o.id)} · ${esc(surname(r.authors))} ${esc(r.year)} ·
+      ${Math.round(100 * s.overlap)}% title words shared${s.sameAuthor ? " · same first author" : ""}${s.o.members.length > 1 ? ` · ${s.o.members.length} Editions` : ""}</div></div>
+      <button class="btn" data-merge="${esc(s.o.id)}">Merge into this Work</button></div>`;
+  }).join("") : `<div class="help">No other Work shares many title words or the first author.</div>`) + `</div>`;
+  html += `<div class="card checklist"><h2>Before you mark it checked</h2>` +
+    CHECKS.map(text => `<label><input type="checkbox">${esc(text)}</label>`).join("") + `</div>`;
+  html += `<datalist id="work-ids">${works.map(o => `<option value="${esc(o.id)}">`).join("")}</datalist>`;
+  $("main").innerHTML = html;
+  $("f-work").oninput = ev => { draft.workId = ev.target.value.trim(); };
+  $("f-survey").querySelectorAll("button").forEach(b => b.onclick = () => { draft.survey = b.dataset.v; render(); });
+  $("main").querySelectorAll(".abstract").forEach(a => a.onclick = () => a.classList.toggle("open"));
+  $("main").querySelectorAll("[data-go]").forEach(b => b.onclick = () => {
+    const target = $("main").querySelector(`[data-move="${CSS.escape(b.dataset.go)}"]`).value.trim();
+    if (target) move([b.dataset.go], target);
+  });
+  $("main").querySelectorAll("[data-split]").forEach(b => b.onclick = () => {
+    const r = rows.find(x => x.edition_id === b.dataset.split);
+    move([r.edition_id], `${w.id}-${fold(r.edition_id).replace(/[^a-z0-9]+/g, "-")}`);
+  });
+  $("main").querySelectorAll("[data-merge]").forEach(b => b.onclick = () =>
+    move(work(b.dataset.merge).members.map(r => r.edition_id), w.id, true));
+}
+
+async function post(updates, message) {
+  $("status").textContent = "Saving…";
+  const res = await fetch("/", {method: "POST", body: JSON.stringify(updates)});
+  const body = await res.json();
+  if (!res.ok) { $("status").textContent = `Not saved: ${body.error}`; return false; }
+  rows = body.rows; build();
+  $("status").textContent = message;
+  return true;
+}
+
+// Moving Editions changes two Works, so every row of both loses its check (as an edit does in ADR 0046).
+async function move(ids, target, stay = false) {
+  const from = rows.find(r => r.edition_id === ids[0]).work_id;
+  const survey = (work(target) || work(from)).survey ? "yes" : "no";  // a moved Edition takes its new Work's flag
+  const touched = rows.filter(r => ids.includes(r.edition_id) || r.work_id === from || r.work_id === target);
+  const updates = touched.map(r => ({edition_id: r.edition_id, checked_by: "", ...(ids.includes(r.edition_id) ? {work_id: target, survey} : {})}));
+  if (await post(updates, `Moved ${ids.join(", ")} to ${target}`)) {
+    current = stay || !work(from) ? target : from; draft = null; render(); renderList();
+  }
+}
+
+async function save(checkedBy) {
+  const w = work(current);
+  if (!draft.workId) { $("status").textContent = "The Work id can't be empty"; return false; }
+  const changed = draft.workId !== w.id || (draft.survey === "yes") !== w.survey;
+  const updates = w.members.map(r => ({
+    edition_id: r.edition_id, work_id: draft.workId, survey: draft.survey,
+    ...(checkedBy !== undefined ? {checked_by: checkedBy} : changed ? {checked_by: ""} : {}),
+  }));
+  const ok = await post(updates, checkedBy ? `Checked ${draft.workId}` : `Saved ${draft.workId}`);
+  if (ok) { current = draft.workId; draft = null; }
+  return ok;
+}
+
+function step(delta) {
+  const list = works.filter(w => visible(w) || w.id === current);
+  const i = list.findIndex(w => w.id === current);
+  if (list.length) show(list[Math.max(0, Math.min(list.length - 1, i + delta))].id);
+}
+function show(id) { current = id; draft = null; render(); renderList(); window.scrollTo(0, 0); }
+
+$("save").onclick = () => save().then(() => { render(); renderList(); });
+$("unmark").onclick = () => save("").then(() => { render(); renderList(); });
+$("approve").onclick = async () => {
+  const name = $("name").value.trim();
+  if (!name) { $("status").textContent = "Type your name first"; $("name").focus(); return; }
+  if (!(await save(name))) { render(); renderList(); return; }
+  const order = works.map(w => w.id), at = order.indexOf(current);
+  const next = works.find((w, i) => i > at && !done(w)) || works.find(w => !done(w));
+  show(next ? next.id : current);
+};
+document.addEventListener("keydown", ev => {
+  if ((ev.metaKey || ev.ctrlKey) && ev.key === "Enter") { ev.preventDefault(); $("approve").click(); return; }
+  if (ev.target.matches("input")) return;
+  if (ev.key === "]") step(1);
+  if (ev.key === "[") step(-1);
+});
+
+fetch("/rows").then(r => r.json()).then(data => {
+  rows = data.rows; editions = data.editions; build();
+  const first = works.find(w => !done(w)) || works[0];
+  show(first?.id);
+});
+</script>
+</body>
+</html>
