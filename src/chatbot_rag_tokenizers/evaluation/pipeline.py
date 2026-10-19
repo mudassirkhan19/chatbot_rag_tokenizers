@@ -15,6 +15,7 @@ from .check import check
 from .comparison import check_baseline
 from .crowding import ungrouped
 from .evalset import EvaluationSetError, Question, load_evaluation_set
+from .grouping import score_grouping
 from .harness import CROWDING_DEPTH, all_answerable, metrics, score
 from .matching import MatchingRule
 from .report import RetrieverRun, write_eval_report
@@ -81,5 +82,6 @@ def evaluate(
         write_export(export, missing, rows)
         print(f"evaluate: {editions} without a Work group exported to {export}")
     digest = hashlib.sha256(evaluation_set.read_bytes()).hexdigest()
-    write_eval_report(report, evaluation_set, digest, questions, corpus, runs, rule, groups, missing, comparison)
+    grouping = score_grouping(groups.editions, rows)
+    write_eval_report(report, evaluation_set, digest, questions, corpus, runs, rule, groups, grouping, missing, comparison)
     print(f"evaluate: {len(questions)} questions; report in {report}")

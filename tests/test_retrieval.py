@@ -398,7 +398,7 @@ def test_two_runs_give_the_same_report_apart_from_timings(indexed):
     second = run_evaluate(indexed, report="second.md")
 
     # The Comparison's intervals are drawn from a seeded generator, so they are the same too.
-    assert "## Comparison" in first.split("## Cost")[0]
+    assert "## Comparison" in first.split("## Cost")[0] and "## Grouping" in first.split("## Cost")[0]
     assert first.split("## Cost")[0] == second.split("## Cost")[0]
     # The Cost table differs only in its times.
     untimed = {name: row[:4] + row[5:7] for name, row in cost(first).items()}
@@ -601,6 +601,117 @@ def test_evaluate_stops_on_a_malformed_work_groups_file(indexed, tmp_path):
         run_evaluate(indexed, work_groups=groups)
 
     assert str(groups) in str(stopped.value) and "survey" in str(stopped.value)
+
+
+def grouping(report: str) -> str:
+    """The Grouping section, without its heading."""
+    return report.split("\n## Grouping\n", 1)[1].split("\n## ", 1)[0]
+
+
+def under(report: str, heading: str) -> list[str]:
+    """The lines under a Grouping subsection's heading, up to the next heading."""
+    return re.split(r"\n#+ ", grouping(report).split(f"\n{heading}\n", 1)[1], maxsplit=1)[0].strip().splitlines()
+
+
+def scores(report: str) -> list[str]:
+    """The Grouping section's opening list: the pair counts, precision and recall."""
+    return [line for line in grouping(report).split("\n### ", 1)[0].splitlines() if line.startswith("- ")]
+
+
+def test_the_grouping_scores_work_id_against_the_work_groups_pair_by_pair(indexed):
+    report = run_evaluate(indexed)
+
+    # The manifest names the Works differently from the Work groups but joins the same two pairs.
+    assert scores(report) == [
+        "- Editions: 4 in the Work groups, all with a work_id in the manifest",
+        "- Pairs the rule joins: 2",
+        "- Pairs the Work groups join: 2",
+        "- Pairs both join: 2",
+        "- Precision: 2/2 = 1.00",
+        "- Recall: 2/2 = 1.00",
+    ]
+    assert under(report, "### Pairs the rule joins and the Work groups keep apart") == ["None."]
+    assert under(report, "### Pairs the Work groups join and the rule misses") == ["None."]
+    assert report.index("## Crowding") < report.index("## Grouping") < report.index("## Editions without a Work group")
+
+
+BPE_TITLE = "Neural Machine Translation of Rare Words with Subword Units"
+WECHSEL_TITLE = "WECHSEL: Effective initialization of subword embeddings for cross-lingual transfer of monolingual language models"
+
+
+def test_a_pair_the_rule_joins_and_the_work_groups_split_is_named(indexed, tmp_path):
+    apart = tmp_path / "work-groups-venue-apart.csv"
+    apart.write_text(WORK_GROUPS.read_text().replace("P16-1162,sennrich-2016-bpe,", "P16-1162,sennrich-2016-bpe-acl,"))
+
+    report = run_evaluate(indexed, work_groups=apart)
+
+    assert scores(report)[1:] == [
+        "- Pairs the rule joins: 2",
+        "- Pairs the Work groups join: 1",
+        "- Pairs both join: 1",
+        "- Precision: 1/2 = 0.50",
+        "- Recall: 1/1 = 1.00",
+    ]
+    assert under(report, "### Pairs the rule joins and the Work groups keep apart")[2:] == [
+        f"| 1508.07909v5 | {BPE_TITLE} | P16-1162 | {BPE_TITLE} | sennrich-2016-neural-machine-translation /"
+        " sennrich-2016-neural-machine-translation | sennrich-2016-bpe / sennrich-2016-bpe-acl |"
+    ]
+    assert under(report, "### Pairs the Work groups join and the rule misses") == ["None."]
+
+
+def test_a_pair_the_work_groups_join_and_the_rule_misses_is_named(indexed, tmp_path):
+    # The Work groups take both papers for one Work; the rule keeps them two.
+    joined = tmp_path / "work-groups-one-work.csv"
+    joined.write_text(WORK_GROUPS.read_text().replace(",minixhofer-2022-wechsel,", ",sennrich-2016-bpe,"))
+
+    report = run_evaluate(indexed, work_groups=joined)
+
+    assert scores(report)[1:] == [
+        "- Pairs the rule joins: 2",
+        "- Pairs the Work groups join: 6",
+        "- Pairs both join: 2",
+        "- Precision: 2/2 = 1.00",
+        "- Recall: 2/6 = 0.33",
+    ]
+    assert under(report, "### Pairs the rule joins and the Work groups keep apart") == ["None."]
+    missed = table(report, "### Pairs the Work groups join and the rule misses")
+    assert [(row[0], row[2]) for row in missed] == [
+        ("1508.07909v5", "2022.naacl-main.293"),
+        ("1508.07909v5", "2112.06598v2"),
+        ("2022.naacl-main.293", "P16-1162"),
+        ("2112.06598v2", "P16-1162"),
+    ]
+    assert missed[0] == [
+        "1508.07909v5",
+        BPE_TITLE,
+        "2022.naacl-main.293",
+        WECHSEL_TITLE,
+        "sennrich-2016-neural-machine-translation / minixhofer-2022-wechsel-effective-initialization",
+        "sennrich-2016-bpe / sennrich-2016-bpe",
+    ]
+
+
+def test_the_survey_rule_agrees_with_the_work_groups_when_neither_flags_a_survey(indexed):
+    report = run_evaluate(indexed)
+
+    assert under(report, "### Surveys") == ["- Surveys: 0 of 2 Works in the Work groups, 0 flagged by the rule; the two agree on 2 of 2 Works", "", "None."]
+
+
+def test_a_survey_the_rule_did_not_flag_is_named(indexed, tmp_path):
+    report = run_evaluate(indexed, work_groups=with_survey(tmp_path, "sennrich-2016-bpe"))
+
+    assert under(report, "### Surveys")[0] == "- Surveys: 1 of 2 Works in the Work groups, 0 flagged by the rule; the two agree on 1 of 2 Works"
+    assert table(report, "### Surveys") == [["sennrich-2016-bpe", "yes", "no", "1508.07909v5, P16-1162"]]
+
+
+def test_a_manifest_with_no_work_id_gives_a_grouping_section_that_says_so_and_no_score(indexed, tmp_path):
+    manifest = tmp_path / "manifest-before-grouping.csv"
+    manifest.write_text(MANIFEST.read_text().replace(",sennrich-2016-neural-machine-translation,", ",,").replace(",minixhofer-2022-wechsel-effective-initialization,", ",,"))
+    assert all(not row["work_id"] for row in read_csv(manifest))
+
+    report = run_evaluate(indexed, manifest=manifest)
+
+    assert grouping(report).strip() == "The manifest has no work_id filled, so there is no grouping to score: `collect` fills it."
 
 
 # A hybrid small enough to fuse by hand: each member's top 3, and k = 1, so ranks 1, 2 and 3 score 1/2, 1/3 and 1/4.

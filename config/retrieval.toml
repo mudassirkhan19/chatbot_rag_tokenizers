@@ -87,7 +87,7 @@ pool = 100
 [collapse]
 pool = 50
 
-# The eval report's Comparison (spec #55, ADR 0060): every retriever against `baseline`, and every `+collapsed` twin
+# The eval report's Comparison (spec #55, ADR 0061): every retriever against `baseline`, and every `+collapsed` twin
 # against the baseline's twin, on the answerable questions as a user asks them. It counts the questions each wins,
 # ties and loses on Recall@5 and on MRR@10, and gives 95% percentile bootstrap intervals on each mean and on the
 # paired difference from the baseline: `resamples` draws of the questions with replacement, the same draws for every

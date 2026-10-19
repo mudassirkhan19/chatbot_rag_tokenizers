@@ -1,4 +1,4 @@
-# 0060. The Comparison: wins, ties, losses and paired bootstrap intervals against a baseline, and the Cost table
+# 0061. The Comparison: wins, ties, losses and paired bootstrap intervals against a baseline, and the Cost table
 
 - **Date:** 2026-10-19
 - **Status:** Accepted. Amends [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md): `evaluate` stops when the Comparison's baseline isn't among the retrievers it scores, and the eval report's Timings section becomes the Cost table.

@@ -1,5 +1,5 @@
 """The retrieval config file: each retriever's settings (ADRs 0039, 0042, 0050 and 0058), the Collapsed ranking's pool (ADR 0053)
-and the eval report's Comparison (ADR 0060)."""
+and the eval report's Comparison (ADR 0061)."""
 
 import re
 import tomllib
@@ -35,7 +35,7 @@ class RetrievalConfig:
     dense: list[DenseConfig]  # one per [dense.<name>] table, in the file's order
     hybrid: list[HybridConfig]  # one per [hybrid.<name>] table, in the file's order
     collapse_pool: int  # the raw Chunks the Collapsed ranking merges copies in
-    comparison: ComparisonConfig  # how the eval report compares the retrievers (ADR 0060)
+    comparison: ComparisonConfig  # how the eval report compares the retrievers (ADR 0061)
 
     @property
     def retrievers(self) -> dict[str, RetrieverConfig]:

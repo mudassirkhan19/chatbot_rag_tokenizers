@@ -323,6 +323,37 @@ What takes the top 5 slots of each answerable question, as a user would ask it (
 - Mostly-numeric slots holding a Passage: 0 of 2
 - Pool: the top 50 raw Chunks held fewer than 5 distinct Chunks, once copies were merged, for 0 of 28 questions, and fewer than 10, the depth each query asks for, for 0.
 
+## Grouping
+
+The grouping rule (ADR 0051), as the manifest's work_id and survey columns hold it, scored against the Work groups. Over the Editions in the Work groups, a pair is two Editions one Work holds; an Edition the manifest gives no work_id is its own Work. Precision is the share of the rule's pairs the Work groups join too, recall the share of the Work groups' pairs the rule joins. A Work of the Work groups is named under *Surveys* when its Survey flag differs from the rule's survey column on any of its Editions (blank reads as no).
+
+- Editions: 154 in the Work groups, all with a work_id in the manifest
+- Pairs the rule joins: 23
+- Pairs the Work groups join: 24
+- Pairs both join: 23
+- Precision: 23/23 = 1.00
+- Recall: 23/24 = 0.96
+
+### Pairs the rule joins and the Work groups keep apart
+
+None.
+
+### Pairs the Work groups join and the rule misses
+
+| Edition | Title | Edition | Title | work_id | Work groups |
+|---|---|---|---|---|---|
+| 2026.findings-eacl.341 | Teaching Old Tokenizers New Words: Efficient Tokenizer Adaptation for Pretrained Models | 2512.03989v2 | Teaching Old Tokenizers New Words: Efficient Tokenizer Adaptation for Pre-trained Models | purason-2026-teaching-old-tokenizers / purason-2025-teaching-old-tokenizers | purason-2025-teaching-old / purason-2025-teaching-old |
+
+### Surveys
+
+- Surveys: 2 of 130 Works in the Work groups, 1 flagged by the rule; the two agree on 127 of 130 Works
+
+| Work | Work groups | Rule | Editions |
+|---|---|---|---|
+| cognetta-2025-tutorial-varphi | no | yes | 2506.17942v1 |
+| libovicky-2021-don-t | yes | no | 2110.08191v2 |
+| mielke-2021-between-words | yes | no | 2112.10508v1 |
+
 ## Editions without a Work group
 
 Editions in any retriever's top 5 for an answerable question, in any query, with no Work group. `evaluate --export-ungrouped` writes them, with their titles, for grouping.
@@ -735,9 +766,9 @@ Each retriever's model and index, with how long the index took to build and each
 
 | Retriever | Parameters | Dimension | Index on disk | Built on | Build time | Queries | Queried on | Latency p50 | Latency p95 |
 |---|---:|---:|---:|---|---:|---:|---|---:|---:|
-| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 199.08 ms | 297.03 ms |
-| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 190.90 ms | 293.67 ms |
-| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 26.64 ms | 30.69 ms |
-| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 28.37 ms | 29.73 ms |
-| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 225.84 ms | 340.74 ms |
-| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 228.37 ms | 333.10 ms |
+| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 199.89 ms | 302.49 ms |
+| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 200.64 ms | 293.33 ms |
+| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 27.91 ms | 30.13 ms |
+| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 27.49 ms | 29.72 ms |
+| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 227.30 ms | 337.43 ms |
+| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 224.83 ms | 337.58 ms |

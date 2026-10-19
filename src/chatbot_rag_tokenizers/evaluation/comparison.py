@@ -1,4 +1,4 @@
-"""The Comparison (spec #55, ADR 0060): each retriever against a baseline, question by question, on the answerable
+"""The Comparison (spec #55, ADR 0061): each retriever against a baseline, question by question, on the answerable
 questions as a user asks them (harness.all_answerable).
 
 - A win is a question where the retriever's Recall@5 (or reciprocal rank) is higher than the baseline's, a loss
