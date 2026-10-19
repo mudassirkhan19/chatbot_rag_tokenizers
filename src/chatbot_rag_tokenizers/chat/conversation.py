@@ -53,20 +53,22 @@ class Chatbot:
         with self._asking:
             model = self.model()
             shown = self.turns[-self.config.history :]
-            started = time.perf_counter()
-            rewrite = None
+            rewrite, rewriting = None, 0.0
             if shown:
+                started = time.perf_counter()
                 # The rewriter reads the questions as the user asked them, as a reader of the transcript would.
                 asked = [(turn.question, turn.answer.text) for turn in shown]
                 rewrite = read_rewrite(self._complete(model, rewrite_messages(self.config.rewrite_prompt, asked, question)), question)
-            rewriting = time.perf_counter() - started
+                rewriting = time.perf_counter() - started
             query = rewrite or question
+            started = time.perf_counter()
             retrieved = tuple(self.chunks[chunk_id] for chunk_id, _ in self.retriever.query(query, self.config.k))
-            retrieval = time.perf_counter() - started - rewriting
+            retrieval = time.perf_counter() - started
             # The answer model is shown each earlier Turn as it was answered: its Rewrite, or its question on a first Turn.
             earlier = [(turn.rewrite or turn.question, turn.answer.text) for turn in shown]
+            started = time.perf_counter()
             reply = self._complete(model, messages(self.config.system_prompt, query, retrieved, earlier))
-            answering = time.perf_counter() - started - rewriting - retrieval
+            answering = time.perf_counter() - started
             seconds = {"retrieval": retrieval, "rewriting": rewriting, "answering": answering}
             turn = Turn(question, rewrite, retrieved, reply, read_answer(reply, len(retrieved), self.config.abstention), seconds)
             self.turns.append(turn)

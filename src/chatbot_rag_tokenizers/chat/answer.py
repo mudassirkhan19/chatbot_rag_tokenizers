@@ -2,9 +2,10 @@
 
 The model gets the config's system prompt, then the earlier Turns of the Conversation, each as its question and
 its answer's text without the markers (which numbered that Turn's Chunks, not this one's), then the question with
-the retrieved Chunks numbered from 1, each under its context header. It cites by number. The reply is cut into text and markers: a marker naming a
-retrieved Chunk is a Citation, and any other number is kept as an invalid marker, never dropped. A reply holding
-the fixed Abstention sentence, compared after the Passage matcher's normalisation, is an Abstention.
+the retrieved Chunks numbered from 1, each under its context header. It cites by number. The reply is cut into
+text and markers: a marker naming a retrieved Chunk is a Citation, and any other number is kept as an invalid
+marker, never dropped. A reply holding the fixed Abstention sentence, compared after the Passage matcher's
+normalisation, is an Abstention.
 """
 
 import re

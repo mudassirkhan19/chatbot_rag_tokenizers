@@ -309,9 +309,13 @@ def test_a_follow_up_is_retrieved_with_the_rewrite_and_shows_it(chat, fake_answe
     assert set(follow_up["seconds"]) == {"retrieval", "rewriting", "answering"}
     *_, answering = fake_answer_model.chats
     assert f"Question: {REWRITTEN}" in answering[-1]["content"] and MMLU not in answering[-1]["content"]
-    # Retrieval saw the Rewrite: the follow-up has the Chunks the Rewrite gets when asked as a first question.
+    # Retrieval saw the Rewrite: the follow-up has the Chunks the Rewrite gets when asked as a first question,
+    # not those of the follow-up asked alone.
     post(chat, "reset")
     assert ask(chat, REWRITTEN)["retrieved"] == follow_up["retrieved"]
+    post(chat, "reset")
+    fake_answer_model.script[MMLU] = "Freezing gave no gain on MMLU [2]."
+    assert ask(chat, MMLU)["retrieved"] != follow_up["retrieved"]
 
 
 def test_the_rewriter_sees_the_earlier_questions_and_answer_texts_and_no_chunk_text(chat, fake_answer_model):
@@ -356,7 +360,7 @@ def test_reset_empties_the_conversation_so_the_next_question_is_a_first_turn(cha
     assert len(fake_answer_model.chats) == 1 and len(fake_answer_model.chats[0]) == 2
 
 
-@pytest.mark.skipif(os.environ.get("RUN_OLLAMA_TESTS") != "1",reason="asks the pinned model on Ollama; set RUN_OLLAMA_TESTS=1")
+@pytest.mark.skipif(os.environ.get("RUN_OLLAMA_TESTS") != "1", reason="asks the pinned model on Ollama; set RUN_OLLAMA_TESTS=1")
 def test_the_real_pinned_model_cites_a_retrieved_chunk_and_abstains_off_topic(start_chat, monkeypatch):
     monkeypatch.setattr(answer_model, "load_answer_model", REAL_LOAD)
     monkeypatch.setattr(httpx.HTTPTransport, "handle_request", REAL_TRANSPORT)
