@@ -1,4 +1,4 @@
-# 0063. A decline in the model's own words is an Abstention
+# 0064. A decline in the model's own words is an Abstention
 
 - **Date:** 2026-10-20
 - **Status:** Accepted; amends [0054](0054-pinned-local-answer-model-and-the-chat-page.md)'s and [0059](0059-abstention-by-instruction-and-the-chat-report.md)'s rule for what an Abstention is

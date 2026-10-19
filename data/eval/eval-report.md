@@ -125,10 +125,10 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | Question type | Query | Questions | Recall@5 | MRR@10 | Hit@5 |
 |---|---|---:|---:|---:|---:|
 | single-paper | as asked | 12 | 0.75 | 0.482 | 0.75 |
-| multi-paper | as asked | 8 | 0.10 | 0.120 | 0.25 |
+| multi-paper | as asked | 8 | 0.10 | 0.122 | 0.25 |
 | follow-up | follow-up alone | 8 | 0.12 | 0.125 | 0.12 |
 | follow-up | history + follow-up | 8 | 0.12 | 0.080 | 0.12 |
-| follow-up | reference rewrite | 8 | 0.88 | 0.467 | 0.88 |
+| follow-up | reference rewrite | 8 | 0.88 | 0.473 | 0.88 |
 | all answerable | as asked, follow-ups alone | 28 | 0.39 | 0.277 | 0.43 |
 | unanswerable | left out | 8 | — | — | — |
 
@@ -160,7 +160,7 @@ Each retriever against the baseline, dense.bge-small, and each `+collapsed` twin
 | dense.bge-small | dense.bge-small | 0.244 | [0.114, 0.393] | +0.000 | [+0.000, +0.000] | within noise | 0 | 28 | 0 |
 | dense.bge-small+collapsed | dense.bge-small+collapsed | 0.271 | [0.142, 0.418] | +0.000 | [+0.000, +0.000] | within noise | 0 | 28 | 0 |
 | hybrid.bm25+bge-small | dense.bge-small | 0.257 | [0.127, 0.400] | +0.013 | [-0.091, +0.111] | within noise | 6 | 17 | 5 |
-| hybrid.bm25+bge-small+collapsed | dense.bge-small+collapsed | 0.277 | [0.146, 0.421] | +0.005 | [-0.099, +0.105] | within noise | 7 | 14 | 7 |
+| hybrid.bm25+bge-small+collapsed | dense.bge-small+collapsed | 0.277 | [0.146, 0.421] | +0.006 | [-0.098, +0.106] | within noise | 7 | 14 | 7 |
 
 ### First hit: raw ranking
 
@@ -218,7 +218,7 @@ The rank of each question's first hit within the top 10, by retriever.
 | bpe-and-wechsel-vocabularies | multi-paper | 6 | none | 2 |
 | compression-and-accuracy | multi-paper | none | 8 | none |
 | one-sided-regularization | multi-paper | 6 | none | 4 |
-| tokenizer-swap-budget | multi-paper | 1 | none | 10 |
+| tokenizer-swap-budget | multi-paper | 1 | none | 9 |
 | megabyte-and-blt-patches | multi-paper | none | 8 | none |
 | api-cost-by-language | multi-paper | none | 5 | 9 |
 | renyi-efficiency | multi-paper | none | none | none |
@@ -236,7 +236,7 @@ The rank of each question's first hit within the top 10, by retriever.
 
 What takes the top 5 slots of each answerable question, as a user would ask it (the *all answerable* row's queries), on the raw ranking and on the Collapsed ranking (ADR 0044). Both are measured against the same Work groups, never the manifest's work_id the collapse uses.
 
-- Work groups: `data/eval/work-groups.csv` (sha256 `447de1df77b3df26b3b88e292ec3ececf0af9ea8b40dc6b24525d3d292ff0fe2`), 154 Editions in 130 Works, 154 of the Editions checked (who checked each is in checked_by), never computed by the system being measured.
+- Work groups: `data/eval/work-groups.csv` (sha256 `34f0268e19e1a8d8ea3d3fe48d1662846f6df9ed32cdc4b3c6841a3afd7b4cf3`), 209 Editions in 179 Works, 209 of the Editions checked (who checked each is in checked_by), never computed by the system being measured.
 - A duplicate slot holds a Chunk from a Work already ranked higher: another Edition or Version of it, or another Chunk of the same file. The two are counted apart too: the first repeats a paper, the second is more of it. A Collapsed ranking merges only copies, the first kind.
 - A restatement slot holds a Chunk from a Survey. A Survey is always its own Work, and its Chunks are never duplicates.
 - Duplicates and restatement count only the questions whose top 5 Editions all have a Work group.
@@ -259,13 +259,13 @@ What takes the top 5 slots of each answerable question, as a user would ask it (
 
 | Measure | Top-5 slots | Share of slots | Questions | Share of questions |
 |---|---:|---:|---:|---:|
-| duplicate | 27/65 | 0.42 | 12/13 | 0.92 |
-| duplicate: another Edition or Version | 7/65 | 0.11 | 7/13 | 0.54 |
-| duplicate: same file | 20/65 | 0.31 | 10/13 | 0.77 |
-| restatement | 0/65 | 0.00 | 0/13 | 0.00 |
+| duplicate | 38/140 | 0.27 | 19/28 | 0.68 |
+| duplicate: another Edition or Version | 12/140 | 0.09 | 12/28 | 0.43 |
+| duplicate: same file | 26/140 | 0.19 | 15/28 | 0.54 |
+| restatement | 0/140 | 0.00 | 0/28 | 0.00 |
 | mostly numeric | 2/140 | 0.01 | 1/28 | 0.04 |
 
-- Grouped: 13 of 28 questions have a Work group for every Edition in their top 5.
+- Grouped: 28 of 28 questions have a Work group for every Edition in their top 5.
 - Mostly-numeric slots holding a Passage: 0 of 2
 - Pool: the top 50 raw Chunks held fewer than 5 distinct Chunks, once copies were merged, for 0 of 28 questions, and fewer than 10, the depth each query asks for, for 0.
 
@@ -286,13 +286,13 @@ What takes the top 5 slots of each answerable question, as a user would ask it (
 
 | Measure | Top-5 slots | Share of slots | Questions | Share of questions |
 |---|---:|---:|---:|---:|
-| duplicate | 46/100 | 0.46 | 19/20 | 0.95 |
-| duplicate: another Edition or Version | 13/100 | 0.13 | 11/20 | 0.55 |
-| duplicate: same file | 33/100 | 0.33 | 17/20 | 0.85 |
-| restatement | 1/100 | 0.01 | 1/20 | 0.05 |
+| duplicate | 57/140 | 0.41 | 25/28 | 0.89 |
+| duplicate: another Edition or Version | 13/140 | 0.09 | 13/28 | 0.46 |
+| duplicate: same file | 44/140 | 0.31 | 23/28 | 0.82 |
+| restatement | 1/140 | 0.01 | 1/28 | 0.04 |
 | mostly numeric | 2/140 | 0.01 | 1/28 | 0.04 |
 
-- Grouped: 20 of 28 questions have a Work group for every Edition in their top 5.
+- Grouped: 28 of 28 questions have a Work group for every Edition in their top 5.
 - Mostly-numeric slots holding a Passage: 0 of 2
 - Pool: the top 50 raw Chunks held fewer than 5 distinct Chunks, once copies were merged, for 0 of 28 questions, and fewer than 10, the depth each query asks for, for 0.
 
@@ -300,39 +300,52 @@ What takes the top 5 slots of each answerable question, as a user would ask it (
 
 | Measure | Top-5 slots | Share of slots | Questions | Share of questions |
 |---|---:|---:|---:|---:|
-| duplicate | 49/80 | 0.61 | 15/16 | 0.94 |
-| duplicate: another Edition or Version | 23/80 | 0.29 | 14/16 | 0.88 |
-| duplicate: same file | 26/80 | 0.33 | 12/16 | 0.75 |
-| restatement | 0/80 | 0.00 | 0/16 | 0.00 |
+| duplicate | 65/140 | 0.46 | 25/28 | 0.89 |
+| duplicate: another Edition or Version | 32/140 | 0.23 | 21/28 | 0.75 |
+| duplicate: same file | 33/140 | 0.24 | 17/28 | 0.61 |
+| restatement | 0/140 | 0.00 | 0/28 | 0.00 |
 | mostly numeric | 2/140 | 0.01 | 1/28 | 0.04 |
 
-- Grouped: 16 of 28 questions have a Work group for every Edition in their top 5.
+- Grouped: 28 of 28 questions have a Work group for every Edition in their top 5.
 - Mostly-numeric slots holding a Passage: 0 of 2
 
 ### Crowding: hybrid.bm25+bge-small+collapsed
 
 | Measure | Top-5 slots | Share of slots | Questions | Share of questions |
 |---|---:|---:|---:|---:|
-| duplicate | 29/55 | 0.53 | 10/11 | 0.91 |
-| duplicate: another Edition or Version | 7/55 | 0.13 | 6/11 | 0.55 |
-| duplicate: same file | 22/55 | 0.40 | 9/11 | 0.82 |
-| restatement | 0/55 | 0.00 | 0/11 | 0.00 |
+| duplicate | 51/140 | 0.36 | 22/28 | 0.79 |
+| duplicate: another Edition or Version | 10/140 | 0.07 | 10/28 | 0.36 |
+| duplicate: same file | 41/140 | 0.29 | 20/28 | 0.71 |
+| restatement | 0/140 | 0.00 | 0/28 | 0.00 |
 | mostly numeric | 2/140 | 0.01 | 1/28 | 0.04 |
 
-- Grouped: 11 of 28 questions have a Work group for every Edition in their top 5.
+- Grouped: 28 of 28 questions have a Work group for every Edition in their top 5.
 - Mostly-numeric slots holding a Passage: 0 of 2
 - Pool: the top 50 raw Chunks held fewer than 5 distinct Chunks, once copies were merged, for 0 of 28 questions, and fewer than 10, the depth each query asks for, for 0.
+
+## Before and after
+
+Each retriever's raw ranking and its Collapsed ranking, over the answerable questions as a user asks them: the duplicate slots in the top 5 as *Crowding* counts them, over the questions whose top 5 is grouped, and the *all answerable* row of *Results*.
+
+| Retriever | Ranking | Duplicate | Another Edition or Version | Same file | Grouped questions | Recall@5 | MRR@10 | Hit@5 |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| bm25 | raw | 59/140 | 38/140 | 21/140 | 28/28 | 0.16 | 0.118 | 0.18 |
+| bm25 | collapsed | 38/140 | 12/140 | 26/140 | 28/28 | 0.20 | 0.138 | 0.21 |
+| dense.bge-small | raw | 70/140 | 33/140 | 37/140 | 28/28 | 0.30 | 0.244 | 0.32 |
+| dense.bge-small | collapsed | 57/140 | 13/140 | 44/140 | 28/28 | 0.38 | 0.271 | 0.39 |
+| hybrid.bm25+bge-small | raw | 65/140 | 32/140 | 33/140 | 28/28 | 0.34 | 0.257 | 0.36 |
+| hybrid.bm25+bge-small | collapsed | 51/140 | 10/140 | 41/140 | 28/28 | 0.39 | 0.277 | 0.43 |
 
 ## Grouping
 
 The grouping rule (ADR 0051), as the manifest's work_id and survey columns hold it, scored against the Work groups. Over the Editions in the Work groups, a pair is two Editions one Work holds; an Edition the manifest gives no work_id is its own Work. Precision is the share of the rule's pairs the Work groups join too, recall the share of the Work groups' pairs the rule joins. A Work of the Work groups is named under *Surveys* when its Survey flag differs from the rule's survey column on any of its Editions (blank reads as no).
 
-- Editions: 154 in the Work groups, all with a work_id in the manifest
-- Pairs the rule joins: 23
-- Pairs the Work groups join: 24
-- Pairs both join: 23
-- Precision: 23/23 = 1.00
-- Recall: 23/24 = 0.96
+- Editions: 209 in the Work groups, all with a work_id in the manifest
+- Pairs the rule joins: 30
+- Pairs the Work groups join: 30
+- Pairs both join: 30
+- Precision: 30/30 = 1.00
+- Recall: 30/30 = 1.00
 
 ### Pairs the rule joins and the Work groups keep apart
 
@@ -340,16 +353,15 @@ None.
 
 ### Pairs the Work groups join and the rule misses
 
-| Edition | Title | Edition | Title | work_id | Work groups |
-|---|---|---|---|---|---|
-| 2026.findings-eacl.341 | Teaching Old Tokenizers New Words: Efficient Tokenizer Adaptation for Pretrained Models | 2512.03989v2 | Teaching Old Tokenizers New Words: Efficient Tokenizer Adaptation for Pre-trained Models | purason-2026-teaching-old-tokenizers / purason-2025-teaching-old-tokenizers | purason-2025-teaching-old / purason-2025-teaching-old |
+None.
 
 ### Surveys
 
-- Surveys: 2 of 130 Works in the Work groups, 1 flagged by the rule; the two agree on 127 of 130 Works
+- Surveys: 3 of 179 Works in the Work groups, 1 flagged by the rule; the two agree on 175 of 179 Works
 
 | Work | Work groups | Rule | Editions |
 |---|---|---|---|
+| barolo-2026-tokens-agents | yes | no | 2603.19269v1 |
 | cognetta-2025-tutorial-varphi | no | yes | 2506.17942v1 |
 | libovicky-2021-don-t | yes | no | 2110.08191v2 |
 | mielke-2021-between-words | yes | no | 2112.10508v1 |
@@ -358,61 +370,7 @@ None.
 
 Editions in any retriever's top 5 for an answerable question, in any query, with no Work group. `evaluate --export-ungrouped` writes them, with their titles, for grouping.
 
-- 1712.01807v1
-- 1808.06226v1
-- 2004.14109v2
-- 2008.09396v2
-- 2021.findings-emnlp.141
-- 2021.wat-1.29
-- 2022.amta-research.8
-- 2022.amta-research.9
-- 2022.emnlp-main.536
-- 2023.acl-srw.5
-- 2023.insights-1.7
-- 2023.ranlp-1.62
-- 2024.iwclul-1.11
-- 2024.lrec-main.1469
-- 2025.babylm-main.16
-- 2102.13019v3
-- 2107.08091v1
-- 2201.13242v2
-- 2202.13590v2
-- 2212.07284v1
-- 2305.07185v2
-- 2311.05741v2
-- 2402.02791v4
-- 2402.14614v2
-- 2410.06898v1
-- 2410.11627v2
-- 2410.18836v1
-- 2410.20771v3
-- 2505.16868v1
-- 2507.15773v2
-- 2507.22543v1
-- 2508.01685v1
-- 2508.11260v1
-- 2509.05486v1
-- 2510.06824v2
-- 2510.13481v2
-- 2510.15346v2
-- 2511.14365v1
-- 2601.08808v1
-- 2601.13260v2
-- 2603.19269v1
-- 2604.07466v2
-- 2605.11774v1
-- 2606.23566v2
-- 2607.01239v1
-- 2609.12960v1
-- 2609.15528v1
-- 2609.39001v1
-- 2610.04002v1
-- 2610.13325v1
-- C18-1052
-- D18-2012
-- W18-6303
-- W7217633576
-- arXiv:2607.05691v1
+None.
 
 ## Questions
 
@@ -479,45 +437,45 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 
 | Question | Type | Query | First hit | Passages found | Duplicate slots | Restatement slots | Numeric slots | Top-5 files + merged |
 |---|---|---|---:|---:|---:|---:|---:|---|
-| wechsel-freezing | single-paper | as asked | 3 | 1/1 | ungrouped | ungrouped | 0 | 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2112.06598v1; 2410.06898v1; 2022.naacl-main.293 + 2112.06598v2 |
-| sentencepiece-whitespace | single-paper | as asked | none | 0/1 | ungrouped | ungrouped | 0 | 2608.08847v2 + 2608.08847v1; 2606.18717v2; 2608.00837v3 + 2608.00837v1; 2606.23566v2 + 2606.23566v1; 2610.12144v1 |
-| bpe-dropout-rate | single-paper | as asked | 5 | 2/2 | ungrouped | ungrouped | 0 | 2204.14268v2; 2024.emnlp-main.925; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2023.acl-srw.5 + 2306.09572v1; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2 |
-| bpe-cyrillic | single-paper | as asked | none | 0/1 | ungrouped | ungrouped | 0 | W17-4102 + 1610.06510v3 + 1610.06510v1; 1911.00317v1; W19-6620 + 1905.10453v1 + 1905.10453v2; 2021.wat-1.29; 2022.amta-research.9 + 2208.05225v2 + 2208.05225v1 |
+| wechsel-freezing | single-paper | as asked | 3 | 1/1 | 3 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2112.06598v1; 2410.06898v1; 2022.naacl-main.293 + 2112.06598v2 |
+| sentencepiece-whitespace | single-paper | as asked | none | 0/1 | 0 | 0 | 0 | 2608.08847v2 + 2608.08847v1; 2606.18717v2; 2608.00837v3 + 2608.00837v1; 2606.23566v2 + 2606.23566v1; 2610.12144v1 |
+| bpe-dropout-rate | single-paper | as asked | 5 | 2/2 | 1 | 0 | 0 | 2204.14268v2; 2024.emnlp-main.925; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2023.acl-srw.5 + 2306.09572v1; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2 |
+| bpe-cyrillic | single-paper | as asked | none | 0/1 | 0 | 0 | 0 | W17-4102 + 1610.06510v3 + 1610.06510v1; 1911.00317v1; W19-6620 + 1905.10453v1 + 1905.10453v2; 2021.wat-1.29; 2022.amta-research.9 + 2208.05225v2 + 2208.05225v1 |
 | canine-amharic | single-paper | as asked | 1 | 1/1 | 3 | 0 | 2 | 2022.tacl-1.5; 2103.06874v4; 2023.mrl-1.6 + 2310.08078v1; 2022.tacl-1.5; 2103.06874v4 |
-| byt5-span-length | single-paper | as asked | none | 0/1 | ungrouped | ungrouped | 0 | 2411.11808v1; 2022.tacl-1.17 + 2105.13626v3 + 2105.13626v1; 2022.findings-emnlp.207; 2212.07284v1; 2410.11627v2 + 2410.11627v1 |
+| byt5-span-length | single-paper | as asked | none | 0/1 | 0 | 0 | 0 | 2411.11808v1; 2022.tacl-1.17 + 2105.13626v3 + 2105.13626v1; 2022.findings-emnlp.207 + 2212.07284v1; 2410.11627v2 + 2410.11627v1; 2410.20771v1 |
 | digits-right-to-left | single-paper | as asked | none | 0/1 | 1 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2305.14201v1; 2608.18062v3 + 2608.18062v1; 2604.11582v3 |
 | llama2-70b-vocabulary | single-paper | as asked | 2 | 1/1 | 4 | 0 | 0 | 2407.13623v3; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v1; 2407.13623v3 + 2407.13623v1 |
-| xlm-r-tokens-per-language | single-paper | as asked | none | 0/1 | ungrouped | ungrouped | 0 | 2301.10472v2 + 2301.10472v1; 2608.07727v1; 2609.22097v1; 2607.15209v3 + 2607.15209v1; arXiv:2607.05691v1 |
+| xlm-r-tokens-per-language | single-paper | as asked | none | 0/1 | 0 | 0 | 0 | 2301.10472v2 + 2301.10472v1; 2608.07727v1; 2609.22097v1; 2607.15209v3 + 2607.15209v1; 2607.05691v1 |
 | magikarp-verified-share | single-paper | as asked | none | 0/1 | 4 | 0 | 0 | 2405.05417v1; 2405.05417v1; 2405.05417v1; 2405.05417v1; 2405.05417v1 |
-| superbpe-curriculum | single-paper | as asked | none | 0/1 | ungrouped | ungrouped | 0 | 2503.13423v3 + 2503.13423v1; 2610.01984v1; 2503.13423v3; 2503.13423v1; 2025.babylm-main.16 |
+| superbpe-curriculum | single-paper | as asked | none | 0/1 | 2 | 0 | 0 | 2503.13423v3 + 2503.13423v1; 2610.01984v1; 2503.13423v3; 2503.13423v1; 2025.babylm-main.16 |
 | fast-wordpiece-speed | single-paper | as asked | 2 | 1/1 | 4 | 0 | 0 | 2021.emnlp-main.160 + 2012.15524v1 + 2012.15524v3; 2021.emnlp-main.160 + 2012.15524v3; 2021.emnlp-main.160 + 2012.15524v3; 2012.15524v1; 2021.emnlp-main.160 + 2012.15524v3 + 2012.15524v1 |
-| bpe-and-wechsel-vocabularies | multi-paper | as asked | 6 | 0/2 | ungrouped | ungrouped | 0 | 1809.02223v1; W19-6620 + 1905.10453v1 + 1905.10453v2; 2022.emnlp-main.434 + 2211.12781v1; W18-1207; 2023.insights-1.7 + 2305.03029v1 |
+| bpe-and-wechsel-vocabularies | multi-paper | as asked | 6 | 0/2 | 0 | 0 | 0 | 1809.02223v1; W19-6620 + 1905.10453v1 + 1905.10453v2; 2022.emnlp-main.434 + 2211.12781v1; W18-1207; 2023.insights-1.7 + 2305.03029v1 |
 | compression-and-accuracy | multi-paper | as asked | none | 0/3 | 2 | 0 | 0 | 2024.emnlp-main.40 + 2402.18376v2; 2024.emnlp-main.40; 2024.emnlp-main.925; 2409.04599v1; 2508.08424v3 + 2508.08424v1 |
-| one-sided-regularization | multi-paper | as asked | 6 | 0/3 | ungrouped | ungrouped | 0 | 2020.acl-main.275 + 2005.06606v1; 2005.06606v2; 2020.acl-main.170 + 1910.13267v2 + 1910.13267v1; 2004.14109v1; 2005.06606v2 |
+| one-sided-regularization | multi-paper | as asked | 6 | 0/3 | 2 | 0 | 0 | 2020.acl-main.275 + 2005.06606v1; 2005.06606v2; 2020.acl-main.170 + 1910.13267v2 + 1910.13267v1; 2004.14109v1; 2005.06606v2 |
 | tokenizer-swap-budget | multi-paper | as asked | 1 | 1/2 | 3 | 0 | 0 | 2405.07883v1; 2607.15232v1; 2405.07883v1; 2405.07883v2; 2405.07883v2 |
-| megabyte-and-blt-patches | multi-paper | as asked | none | 0/2 | ungrouped | ungrouped | 0 | 2412.09871v1; 2412.09871v1; 2404.14408v3 + 2404.14408v1; 2605.09630v1; 2604.07466v2 + 2604.07466v1 |
+| megabyte-and-blt-patches | multi-paper | as asked | none | 0/2 | 1 | 0 | 0 | 2412.09871v1; 2412.09871v1; 2404.14408v3 + 2404.14408v1; 2605.09630v1; 2604.07466v2 + 2604.07466v1 |
 | api-cost-by-language | multi-paper | as asked | none | 0/2 | 1 | 0 | 0 | 2506.06446v2; 2506.06446v2; 2410.10665v1; 2607.24276v1; 2403.05434v2 + 2403.05434v1 |
 | renyi-efficiency | multi-paper | as asked | none | 0/2 | 1 | 0 | 0 | 2507.06378v1; 2512.03989v1; 2502.15343v2 + 2502.15343v1; 2025.findings-acl.572; 2411.14198v1 |
 | gpt-4-number-tokens | multi-paper | as asked | none | 0/2 | 2 | 0 | 0 | 2610.19801v1; 2610.19801v1; 2609.08703v2 + 2609.08703v1; 2610.12144v1; 2610.12144v1 |
-| wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2311.08849v2; 2024.conll-1.8 + 2407.05841v1 + 2407.05841v2; 2311.08849v1; 2311.05741v2; 1712.01807v1 |
-| wechsel-neighbours | follow-up | history + follow-up | none | 0/1 | ungrouped | ungrouped | 0 | 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2025.findings-acl.109; 2410.06898v1 |
+| wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2311.08849v2; 2024.conll-1.8 + 2407.05841v1 + 2407.05841v2; 2311.08849v1; 2311.05741v2; 1712.01807v1 |
+| wechsel-neighbours | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2025.findings-acl.109; 2410.06898v1 |
 | wechsel-neighbours | follow-up | reference rewrite | none | 0/1 | 1 | 0 | 0 | 2020.lrec-1.475 + 2002.11004v1; 2407.00894v2 + 2407.00894v1; 2025.findings-acl.109; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2112.06598v1 |
-| canine-hashing | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | Q17-1026 + 1610.03017v3; 1908.05344v1; 2610.19801v1; 2103.00073v4 + 2103.00073v1; 2607.01239v1 |
-| canine-hashing | follow-up | history + follow-up | none | 0/1 | ungrouped | ungrouped | 1 | 2022.tacl-1.5; 2103.06874v4; 2023.mrl-1.6 + 2310.08078v1; 2022.tacl-1.5; 2603.19269v1 |
+| canine-hashing | follow-up | follow-up alone | none | 0/1 | 0 | 0 | 0 | Q17-1026 + 1610.03017v3; 1908.05344v1; 2610.19801v1; 2103.00073v4 + 2103.00073v1; 2607.01239v1 |
+| canine-hashing | follow-up | history + follow-up | none | 0/1 | 2 | 1 | 1 | 2022.tacl-1.5; 2103.06874v4; 2023.mrl-1.6 + 2310.08078v1; 2022.tacl-1.5; 2603.19269v1 |
 | canine-hashing | follow-up | reference rewrite | 2 | 1/1 | 2 | 0 | 0 | 2507.04886v4; 2103.06874v4 + 2103.06874v1; 2022.tacl-1.5 + 2103.06874v1 + 2103.06874v4; 2507.04886v1; 2305.15425v2 |
-| digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 1909.07940v2 + 1909.07940v1; 2507.06195v1; 2602.10416v1; 2402.14903v1; 2601.08808v1 |
+| digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 0 | 0 | 0 | 1909.07940v2 + 1909.07940v1; 2507.06195v1; 2602.10416v1; 2402.14903v1; 2601.08808v1 |
 | digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2305.14201v1; 2402.14903v1 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 2 | 0 | 0 | 2402.14903v1; 2602.10416v1; 2402.14903v1; 2604.11582v3; 2604.11582v1 |
 | vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2602.13266v1; 2407.16607v4; 2024.repl4nlp-1.10 + 2401.07923v1 + 2401.07923v2; 2603.16077v1; 2024.repl4nlp-1.10 + 2401.07923v2 |
-| vocabulary-with-scarce-data | follow-up | history + follow-up | none | 0/1 | ungrouped | ungrouped | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2603.20854v1; 2507.15773v2 + 2507.15773v1; 2407.13623v3 + 2407.13623v1 |
+| vocabulary-with-scarce-data | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2603.20854v1; 2507.15773v2 + 2507.15773v1; 2407.13623v3 + 2407.13623v1 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | 1 | 1/1 | 3 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2605.01188v2 + 2605.01188v1; 2407.13623v3 + 2407.13623v1 |
 | code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | 0 | 0 | 0 | 2003.07914v1; 2601.13328v1; 10.1186/s12859-026-06562-5; 2211.08192v1; 2402.14714v1 |
 | code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 | 2024.iwclul-1.13 + 2501.02631v1; 2405.07883v1; 2405.07883v2 + 2405.07883v1; 2607.15232v1; 2607.15232v1 |
-| code-tokenizer-initialisation | follow-up | reference rewrite | 1 | 1/1 | ungrouped | ungrouped | 0 | 2402.01035v2 + 2402.01035v1; 2024.iwclul-1.13 + 2501.02631v1; 2406.14670v1; 2607.15232v1; 2605.11774v1 |
-| magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2510.06244v1; 2610.14427v1; 2608.21106v3 + 2608.21106v1; 2608.21106v1; 2508.11260v1 |
+| code-tokenizer-initialisation | follow-up | reference rewrite | 1 | 1/1 | 0 | 0 | 0 | 2402.01035v2 + 2402.01035v1; 2024.iwclul-1.13 + 2501.02631v1; 2406.14670v1; 2607.15232v1; 2605.11774v1 |
+| magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2510.06244v1; 2610.14427v1; 2608.21106v3 + 2608.21106v1; 2608.21106v1; 2508.11260v1 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2405.05417v1; 2405.05417v1; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2 |
 | magikarp-norm-indicator | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2 |
-| superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2607.15232v1; 2305.15108v1; 2405.13929v1; 2024.lrec-main.89 + 2404.08018v1; 2107.08091v1 |
+| superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | 0 | 0 | 0 | 2607.15232v1; 2305.15108v1; 2405.13929v1; 2024.lrec-main.89 + 2404.08018v1; 2107.08091v1 |
 | superbpe-mmlu | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2503.13423v3 + 2503.13423v1; 2503.13423v1; 2503.13423v3; 2503.13423v1; 2610.01984v1 |
 | superbpe-mmlu | follow-up | reference rewrite | 5 | 1/1 | 4 | 0 | 0 | 2503.13423v3; 2503.13423v1; 2503.13423v1; 2503.13423v3; 2503.13423v3 + 2503.13423v1 |
 | tokenization-latency | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2409.04599v1; 2411.17669v1; 2024.emnlp-main.925; 2511.04952v1 |
@@ -528,7 +486,7 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — | 2412.09871v1; 2023.acl-long.402; 2412.09871v1; 2412.09871v1; 2203.09963v1 |
 | fast-wordpiece-gpu | unanswerable | as asked | left out | — | — | — | — | 2606.17358v3; 2610.19801v1; 2610.13325v1; 2607.29678v3 + 2607.29678v1; 2610.19801v1 |
 | sentencepiece-korean-speed | unanswerable | as asked | left out | — | — | — | — | 2302.09207v3; 2302.09207v1; 1812.08621v1; 2502.12560v2 + 2502.12560v1; 2502.12560v2 + 2502.12560v1 |
-| byt5-learning-rate | unanswerable | as asked | left out | — | — | — | — | 2308.09440v3; 2022.findings-emnlp.207; 2212.07284v1; 2606.30140v1; W19-6620 + 1905.10453v1 |
+| byt5-learning-rate | unanswerable | as asked | left out | — | — | — | — | 2308.09440v3; 2022.findings-emnlp.207 + 2212.07284v1; 2606.30140v1; W19-6620 + 1905.10453v1; 2510.21372v2 |
 | vitamin-d | unanswerable | as asked | left out | — | — | — | — | 2604.22709v2 + 2604.22709v1; 2404.05892v4 + 2404.05892v1; 2407.03232v1; 2602.03195v2 + 2602.03195v1; 2606.15521v1 |
 | world-cup-2018 | unanswerable | as asked | left out | — | — | — | — | 2408.07065v1; 2607.17689v1; 2106.06297v1; 2205.05093v1; 2601.22710v2 + 2601.22710v1 |
 
@@ -594,24 +552,24 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | Question | Type | Query | First hit | Passages found | Duplicate slots | Restatement slots | Numeric slots | Top-5 files + merged |
 |---|---|---|---:|---:|---:|---:|---:|---|
 | wechsel-freezing | single-paper | as asked | 2 | 1/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1 |
-| sentencepiece-whitespace | single-paper | as asked | 3 | 1/1 | ungrouped | ungrouped | 0 | 10.22260/isarc2023/0057; 2101.09635v2 + 2101.09635v1; 2405.17067v2; 1812.08621v1; D18-2012 + 1808.06226v1 |
-| bpe-dropout-rate | single-paper | as asked | 2 | 2/2 | ungrouped | ungrouped | 0 | 2305.03029v1; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2025.loresmt-1.8; 2023.insights-1.7 + 2305.03029v1; 2202.13590v2 + 2202.13590v1 |
-| bpe-cyrillic | single-paper | as asked | 1 | 1/1 | ungrouped | ungrouped | 0 | P16-1162 + 1508.07909v5 + 1508.07909v1; W18-1207; W17-4102 + 1610.06510v3; W18-6303 + 1809.02694v1; 1905.10453v1 |
+| sentencepiece-whitespace | single-paper | as asked | 3 | 1/1 | 0 | 0 | 0 | 10.22260/isarc2023/0057; 2101.09635v2 + 2101.09635v1; 2405.17067v2; 1812.08621v1; D18-2012 + 1808.06226v1 |
+| bpe-dropout-rate | single-paper | as asked | 2 | 2/2 | 1 | 0 | 0 | 2305.03029v1; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2025.loresmt-1.8; 2023.insights-1.7 + 2305.03029v1; 2202.13590v2 + 2202.13590v1 |
+| bpe-cyrillic | single-paper | as asked | 1 | 1/1 | 0 | 0 | 0 | P16-1162 + 1508.07909v5 + 1508.07909v1; W18-1207; W17-4102 + 1610.06510v3; W18-6303 + 1809.02694v1; 1905.10453v1 |
 | canine-amharic | single-paper | as asked | 1 | 1/1 | 3 | 0 | 2 | 2022.tacl-1.5; 2103.06874v4; 2022.tacl-1.5 + 2103.06874v4; 2103.06874v4; 2024.naacl-srw.14 + 2404.18810v2 + 2404.18810v1 |
-| byt5-span-length | single-paper | as asked | 3 | 1/1 | ungrouped | ungrouped | 0 | 2022.tacl-1.17 + 2105.13626v3 + 2105.13626v1; 2025.findings-emnlp.297 + 2505.17102v1; 2022.tacl-1.17 + 2105.13626v3 + 2105.13626v1; 2201.13242v2; 2201.13242v1 |
+| byt5-span-length | single-paper | as asked | 3 | 1/1 | 2 | 0 | 0 | 2022.tacl-1.17 + 2105.13626v3 + 2105.13626v1; 2025.findings-emnlp.297 + 2505.17102v1; 2022.tacl-1.17 + 2105.13626v3 + 2105.13626v1; 2201.13242v2; 2201.13242v1 |
 | digits-right-to-left | single-paper | as asked | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2512.20757v1; 2402.14903v1; 2512.20757v2; 2402.14903v1 |
 | llama2-70b-vocabulary | single-paper | as asked | none | 0/1 | 1 | 0 | 0 | 2407.13623v3; 2402.01035v2 + 2402.01035v1; 2510.17001v1; 2406.11477v3; 2407.13623v3 |
-| xlm-r-tokens-per-language | single-paper | as asked | 1 | 1/1 | ungrouped | ungrouped | 0 | 2301.10472v2 + 2301.10472v1; 2301.10472v2 + 2301.10472v1; 2301.10472v2 + 2301.10472v1; 2301.10472v2 + 2301.10472v1; 2024.iwclul-1.11 |
+| xlm-r-tokens-per-language | single-paper | as asked | 1 | 1/1 | 3 | 0 | 0 | 2301.10472v2 + 2301.10472v1; 2301.10472v2 + 2301.10472v1; 2301.10472v2 + 2301.10472v1; 2301.10472v2 + 2301.10472v1; 2024.iwclul-1.11 |
 | magikarp-verified-share | single-paper | as asked | 3 | 1/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v2 + 2405.05417v1; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2 |
 | superbpe-curriculum | single-paper | as asked | 7 | 0/1 | 1 | 0 | 0 | 2503.13423v3 + 2503.13423v1; 2510.21909v1; 2504.00178v2; 2504.00178v1; 2604.05192v2 + 2604.05192v1 |
 | fast-wordpiece-speed | single-paper | as asked | 1 | 1/1 | 4 | 0 | 0 | 2021.emnlp-main.160 + 2012.15524v3; 2021.emnlp-main.160 + 2012.15524v3 + 2012.15524v1; 2012.15524v1; 2021.emnlp-main.160 + 2012.15524v3 + 2012.15524v1; 2021.emnlp-main.160 + 2012.15524v3 + 2012.15524v1 |
 | bpe-and-wechsel-vocabularies | multi-paper | as asked | none | 0/2 | 2 | 1 | 0 | 2112.10508v1; 2020.lrec-1.450; W19-6620 + 1905.10453v2 + 1905.10453v1; 2020.lrec-1.450; 1905.10453v2 + 1905.10453v1 |
 | compression-and-accuracy | multi-paper | as asked | 8 | 0/3 | 3 | 0 | 0 | 2403.06265v2 + 2403.06265v1; 2510.21909v1; 2403.06265v2 + 2403.06265v1; 2403.06265v2 + 2403.06265v1; 2403.06265v2 + 2403.06265v1 |
-| one-sided-regularization | multi-paper | as asked | none | 0/3 | ungrouped | ungrouped | 0 | 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2023.ranlp-1.62; 2020.acl-main.170 + 1910.13267v1 |
-| tokenizer-swap-budget | multi-paper | as asked | none | 0/2 | 2 | 0 | 0 | 2026.findings-eacl.341; 2512.03989v2 + 2512.03989v1; 2607.15232v1; 2405.07883v1; 2405.07883v2 |
-| megabyte-and-blt-patches | multi-paper | as asked | 8 | 0/2 | ungrouped | ungrouped | 0 | 2412.09871v1; 2412.09871v1; 2412.09871v1; 2404.14408v3 + 2404.14408v1; 2305.07185v2 + 2305.07185v1 |
+| one-sided-regularization | multi-paper | as asked | none | 0/3 | 3 | 0 | 0 | 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2023.ranlp-1.62; 2020.acl-main.170 + 1910.13267v1 |
+| tokenizer-swap-budget | multi-paper | as asked | none | 0/2 | 2 | 0 | 0 | 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2607.15232v1; 2405.07883v1; 2405.07883v2; 2607.15232v1 |
+| megabyte-and-blt-patches | multi-paper | as asked | 8 | 0/2 | 2 | 0 | 0 | 2412.09871v1; 2412.09871v1; 2412.09871v1; 2404.14408v3 + 2404.14408v1; 2305.07185v2 + 2305.07185v1 |
 | api-cost-by-language | multi-paper | as asked | 5 | 1/2 | 3 | 0 | 0 | 2506.06446v2; 2506.06446v2; 2506.06446v2; 2506.06446v2; 2305.15425v2 |
-| renyi-efficiency | multi-paper | as asked | none | 0/2 | 3 | 0 | 0 | 2512.03989v1; 2512.03989v1; 2026.findings-eacl.341; 2512.03989v2; 2411.14198v1 |
+| renyi-efficiency | multi-paper | as asked | none | 0/2 | 2 | 0 | 0 | 2512.03989v1; 2512.03989v1; 2026.findings-eacl.341 + 2512.03989v2; 2411.14198v1; 2510.21909v1 |
 | gpt-4-number-tokens | multi-paper | as asked | none | 0/2 | 0 | 0 | 0 | 2608.18062v3; 2402.14903v1; 2505.14178v1; 2512.20757v2; 2304.14780v1 |
 | wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 1805.03710v1; 1805.03710v1; K19-1021 + 1909.12375v1; 2020.lrec-1.330; 2022.naacl-main.293 + 2112.06598v1 |
 | wechsel-neighbours | follow-up | history + follow-up | 8 | 0/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2112.06598v1; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2 |
@@ -622,12 +580,12 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 | 2502.19981v1; 2402.14903v1; 2402.14903v1; 2502.19981v1; 2602.10416v1 |
 | digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2602.10416v1; 2402.14903v1; 2402.14903v1 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 2 | 0 | 0 | 2602.10416v1; 2402.14903v1; 2305.14201v1; 2402.14903v1; 2402.14903v1 |
-| vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2405.14159v2 + 2405.14159v1; 2405.14159v2 + 2405.14159v1; 1806.09089v2; 2402.02791v1; 2507.22543v1 |
+| vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2405.14159v2 + 2405.14159v1; 2405.14159v2 + 2405.14159v1; 1806.09089v2; 2402.02791v1; 2507.22543v1 |
 | vocabulary-with-scarce-data | follow-up | history + follow-up | 4 | 1/1 | 4 | 0 | 0 | 2407.13623v3; 2407.13623v3; 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3; 2407.13623v1; 2407.13623v3 + 2407.13623v1 |
 | code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | 3 | 0 | 0 | 2505.20133v3; 2505.20133v3; 2505.20133v3; 2505.20133v1; 2412.10924v1 |
-| code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 | 2405.07883v1; 2405.07883v2; 2607.15232v1; 2026.findings-eacl.341; 2512.03989v2 + 2512.03989v1 |
-| code-tokenizer-initialisation | follow-up | reference rewrite | none | 0/1 | 2 | 0 | 0 | 2510.21954v1; 2512.03989v2 + 2512.03989v1; 2512.03989v1; 2026.findings-eacl.341; 2405.07883v2 + 2405.07883v1 |
+| code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 1 | 0 | 0 | 2405.07883v1; 2405.07883v2; 2607.15232v1; 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2510.21954v1 |
+| code-tokenizer-initialisation | follow-up | reference rewrite | none | 0/1 | 1 | 0 | 0 | 2510.21954v1; 2026.findings-eacl.341 + 2512.03989v1 + 2512.03989v2; 2512.03989v1; 2405.07883v2 + 2405.07883v1; 2505.20133v3 |
 | magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 | 2010.01003v1; 2112.09348v1; 2506.17942v1; 2010.01003v1; 2010.01003v1 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2 + 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2 |
 | magikarp-norm-indicator | follow-up | reference rewrite | 10 | 0/1 | 4 | 0 | 0 | 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1 |
@@ -651,47 +609,47 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | Question | Type | Query | First hit | Passages found | Duplicate slots | Restatement slots | Numeric slots |
 |---|---|---|---:|---:|---:|---:|---:|
 | wechsel-freezing | single-paper | as asked | 1 | 1/1 | 4 | 0 | 0 |
-| sentencepiece-whitespace | single-paper | as asked | none | 0/1 | ungrouped | ungrouped | 0 |
+| sentencepiece-whitespace | single-paper | as asked | none | 0/1 | 1 | 0 | 0 |
 | bpe-dropout-rate | single-paper | as asked | 1 | 2/2 | 3 | 0 | 0 |
-| bpe-cyrillic | single-paper | as asked | 4 | 1/1 | ungrouped | ungrouped | 0 |
+| bpe-cyrillic | single-paper | as asked | 4 | 1/1 | 0 | 0 | 0 |
 | canine-amharic | single-paper | as asked | 1 | 1/1 | 3 | 0 | 2 |
 | byt5-span-length | single-paper | as asked | 6 | 0/1 | 3 | 0 | 0 |
 | digits-right-to-left | single-paper | as asked | none | 0/1 | 3 | 0 | 0 |
 | llama2-70b-vocabulary | single-paper | as asked | 2 | 1/1 | 4 | 0 | 0 |
 | xlm-r-tokens-per-language | single-paper | as asked | 3 | 1/1 | 4 | 0 | 0 |
 | magikarp-verified-share | single-paper | as asked | none | 0/1 | 4 | 0 | 0 |
-| superbpe-curriculum | single-paper | as asked | 5 | 1/1 | ungrouped | ungrouped | 0 |
+| superbpe-curriculum | single-paper | as asked | 5 | 1/1 | 2 | 0 | 0 |
 | fast-wordpiece-speed | single-paper | as asked | 1 | 1/1 | 4 | 0 | 0 |
-| bpe-and-wechsel-vocabularies | multi-paper | as asked | 2 | 1/2 | ungrouped | ungrouped | 0 |
+| bpe-and-wechsel-vocabularies | multi-paper | as asked | 2 | 1/2 | 1 | 0 | 0 |
 | compression-and-accuracy | multi-paper | as asked | none | 0/3 | 4 | 0 | 0 |
 | one-sided-regularization | multi-paper | as asked | 7 | 0/3 | 4 | 0 | 0 |
 | tokenizer-swap-budget | multi-paper | as asked | none | 0/2 | 3 | 0 | 0 |
 | megabyte-and-blt-patches | multi-paper | as asked | none | 0/2 | 3 | 0 | 0 |
-| api-cost-by-language | multi-paper | as asked | 9 | 0/2 | ungrouped | ungrouped | 0 |
-| renyi-efficiency | multi-paper | as asked | none | 0/2 | ungrouped | ungrouped | 0 |
-| gpt-4-number-tokens | multi-paper | as asked | none | 0/2 | ungrouped | ungrouped | 0 |
+| api-cost-by-language | multi-paper | as asked | 9 | 0/2 | 3 | 0 | 0 |
+| renyi-efficiency | multi-paper | as asked | none | 0/2 | 2 | 0 | 0 |
+| gpt-4-number-tokens | multi-paper | as asked | none | 0/2 | 0 | 0 | 0 |
 | wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 |
 | wechsel-neighbours | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | wechsel-neighbours | follow-up | reference rewrite | 3 | 1/1 | 3 | 0 | 0 |
-| canine-hashing | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
+| canine-hashing | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 |
 | canine-hashing | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 2 |
 | canine-hashing | follow-up | reference rewrite | 1 | 1/1 | 3 | 0 | 0 |
-| digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
-| digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | ungrouped | ungrouped | 0 |
+| digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 |
+| digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 3 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | history + follow-up | 5 | 1/1 | 4 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 |
-| code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
+| code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 |
 | code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 |
 | code-tokenizer-initialisation | follow-up | reference rewrite | 6 | 0/1 | 3 | 0 | 0 |
 | magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | 0 | 0 | 0 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | magikarp-norm-indicator | follow-up | reference rewrite | 3 | 1/1 | 4 | 0 | 0 |
-| superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
-| superbpe-mmlu | follow-up | history + follow-up | none | 0/1 | ungrouped | ungrouped | 0 |
+| superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 |
+| superbpe-mmlu | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
 | superbpe-mmlu | follow-up | reference rewrite | 9 | 0/1 | 4 | 0 | 0 |
-| tokenization-latency | follow-up | follow-up alone | 1 | 1/1 | ungrouped | ungrouped | 0 |
+| tokenization-latency | follow-up | follow-up alone | 1 | 1/1 | 2 | 0 | 0 |
 | tokenization-latency | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
 | tokenization-latency | follow-up | reference rewrite | 1 | 1/1 | 3 | 0 | 0 |
 | bpe-english-french | unanswerable | as asked | left out | — | — | — | — |
@@ -708,47 +666,47 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | Question | Type | Query | First hit | Passages found | Duplicate slots | Restatement slots | Numeric slots | Top-5 files + merged |
 |---|---|---|---:|---:|---:|---:|---:|---|
 | wechsel-freezing | single-paper | as asked | 1 | 1/1 | 4 | 0 | 0 | 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1 |
-| sentencepiece-whitespace | single-paper | as asked | none | 0/1 | ungrouped | ungrouped | 0 | 2505.16868v1; D18-2012 + 1808.06226v1; 2610.12144v1; 2008.09396v1; W7217633576 |
-| bpe-dropout-rate | single-paper | as asked | 1 | 2/2 | ungrouped | ungrouped | 0 | 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2005.06606v1; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2022.amta-research.8 |
-| bpe-cyrillic | single-paper | as asked | 4 | 1/1 | ungrouped | ungrouped | 0 | C18-1052; W18-1207; 2508.01685v1; P16-1162 + 1508.07909v5 + 1508.07909v1; W19-6620 |
+| sentencepiece-whitespace | single-paper | as asked | none | 0/1 | 0 | 0 | 0 | 2505.16868v1; D18-2012 + 1808.06226v1; 2610.12144v1; 2008.09396v1; W7217633576 |
+| bpe-dropout-rate | single-paper | as asked | 1 | 2/2 | 2 | 0 | 0 | 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2005.06606v1; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2022.amta-research.8 |
+| bpe-cyrillic | single-paper | as asked | 4 | 1/1 | 0 | 0 | 0 | C18-1052; W18-1207; 2508.01685v1; P16-1162 + 1508.07909v5 + 1508.07909v1; W19-6620 |
 | canine-amharic | single-paper | as asked | 1 | 1/1 | 3 | 0 | 2 | 2022.tacl-1.5; 2103.06874v4; 2022.tacl-1.5 + 2103.06874v4; 2103.06874v4; 2023.mrl-1.6 + 2310.08078v1 |
-| byt5-span-length | single-paper | as asked | 3 | 1/1 | ungrouped | ungrouped | 0 | 2022.tacl-1.17 + 2105.13626v3 + 2105.13626v1; 2025.findings-emnlp.297 + 2505.17102v1; 2022.tacl-1.17 + 2105.13626v3 + 2105.13626v1; 2411.11808v1; 2410.20771v1 |
+| byt5-span-length | single-paper | as asked | 3 | 1/1 | 1 | 0 | 0 | 2022.tacl-1.17 + 2105.13626v3 + 2105.13626v1; 2025.findings-emnlp.297 + 2505.17102v1; 2022.tacl-1.17 + 2105.13626v3 + 2105.13626v1; 2411.11808v1; 2410.20771v1 |
 | digits-right-to-left | single-paper | as asked | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2402.14903v1; 2512.20757v1 |
 | llama2-70b-vocabulary | single-paper | as asked | 2 | 1/1 | 4 | 0 | 0 | 2407.13623v3; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3; 2407.13623v1 |
-| xlm-r-tokens-per-language | single-paper | as asked | 2 | 1/1 | ungrouped | ungrouped | 0 | 2301.10472v2 + 2301.10472v1; 2301.10472v2 + 2301.10472v1; 2301.10472v1; 2301.10472v2; 2024.iwclul-1.11 |
+| xlm-r-tokens-per-language | single-paper | as asked | 2 | 1/1 | 3 | 0 | 0 | 2301.10472v2 + 2301.10472v1; 2301.10472v2 + 2301.10472v1; 2301.10472v1; 2301.10472v2; 2024.iwclul-1.11 |
 | magikarp-verified-share | single-paper | as asked | none | 0/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v2 + 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1; 2405.05417v1; 2405.05417v1 |
-| superbpe-curriculum | single-paper | as asked | 5 | 1/1 | ungrouped | ungrouped | 0 | 2025.babylm-main.16; 2604.05192v2 + 2604.05192v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1 |
+| superbpe-curriculum | single-paper | as asked | 5 | 1/1 | 2 | 0 | 0 | 2025.babylm-main.16; 2604.05192v2 + 2604.05192v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1 |
 | fast-wordpiece-speed | single-paper | as asked | 1 | 1/1 | 4 | 0 | 0 | 2021.emnlp-main.160 + 2012.15524v3; 2021.emnlp-main.160 + 2012.15524v3 + 2012.15524v1; 2012.15524v1; 2021.emnlp-main.160 + 2012.15524v3; 2021.emnlp-main.160 + 2012.15524v3 + 2012.15524v1 |
-| bpe-and-wechsel-vocabularies | multi-paper | as asked | 2 | 1/2 | ungrouped | ungrouped | 0 | 2020.lrec-1.450; P16-1162 + 1508.07909v5; W18-1207; 2023.insights-1.7 + 2305.03029v1; 2020.lrec-1.450 |
-| compression-and-accuracy | multi-paper | as asked | none | 0/3 | ungrouped | ungrouped | 0 | 2403.06265v2 + 2403.06265v1; 2403.06265v2 + 2403.06265v1; 2403.06265v2 + 2403.06265v1; 2403.06265v2 + 2403.06265v1; 2609.15528v1 |
-| one-sided-regularization | multi-paper | as asked | 4 | 1/3 | ungrouped | ungrouped | 0 | 2020.acl-main.170 + 1910.13267v2 + 1910.13267v1; 2020.acl-main.170 + 1910.13267v2; 2023.ranlp-1.62; 2020.acl-main.170 + 1910.13267v2; 2020.acl-main.275 + 2005.06606v1 |
-| tokenizer-swap-budget | multi-paper | as asked | 10 | 0/2 | 2 | 0 | 0 | 2026.findings-eacl.341; 2405.07883v1; 2512.03989v2 + 2512.03989v1; 2405.07883v2; 2607.15232v1 |
+| bpe-and-wechsel-vocabularies | multi-paper | as asked | 2 | 1/2 | 1 | 0 | 0 | 2020.lrec-1.450; P16-1162 + 1508.07909v5; W18-1207; 2023.insights-1.7 + 2305.03029v1; 2020.lrec-1.450 |
+| compression-and-accuracy | multi-paper | as asked | none | 0/3 | 3 | 0 | 0 | 2403.06265v2 + 2403.06265v1; 2403.06265v2 + 2403.06265v1; 2403.06265v2 + 2403.06265v1; 2403.06265v2 + 2403.06265v1; 2609.15528v1 |
+| one-sided-regularization | multi-paper | as asked | 4 | 1/3 | 2 | 0 | 0 | 2020.acl-main.170 + 1910.13267v2 + 1910.13267v1; 2020.acl-main.170 + 1910.13267v2; 2023.ranlp-1.62; 2020.acl-main.170 + 1910.13267v2; 2020.acl-main.275 + 2005.06606v1 |
+| tokenizer-swap-budget | multi-paper | as asked | 9 | 0/2 | 2 | 0 | 0 | 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2405.07883v1; 2405.07883v2; 2607.15232v1; 2607.15232v1 |
 | megabyte-and-blt-patches | multi-paper | as asked | none | 0/2 | 3 | 0 | 0 | 2412.09871v1; 2412.09871v1; 2404.14408v3 + 2404.14408v1; 2412.09871v1; 2412.09871v1 |
-| api-cost-by-language | multi-paper | as asked | 9 | 0/2 | ungrouped | ungrouped | 0 | 2506.06446v2; 2506.06446v2; 2506.06446v2; 2506.06446v2; 2609.39001v1 |
-| renyi-efficiency | multi-paper | as asked | none | 0/2 | ungrouped | ungrouped | 0 | 2512.03989v1; 2411.14198v1; 2024.lrec-main.1469 + 2402.14614v1 + 2402.14614v2; 2504.00178v2 + 2504.00178v1; 2609.12960v1 |
-| gpt-4-number-tokens | multi-paper | as asked | none | 0/2 | ungrouped | ungrouped | 0 | 2610.19801v1; 2610.12144v1; 2608.18062v3; 2402.14903v1; 2610.13325v1 |
+| api-cost-by-language | multi-paper | as asked | 9 | 0/2 | 3 | 0 | 0 | 2506.06446v2; 2506.06446v2; 2506.06446v2; 2506.06446v2; 2609.39001v1 |
+| renyi-efficiency | multi-paper | as asked | none | 0/2 | 0 | 0 | 0 | 2512.03989v1; 2411.14198v1; 2024.lrec-main.1469 + 2402.14614v1 + 2402.14614v2; 2504.00178v2 + 2504.00178v1; 2609.12960v1 |
+| gpt-4-number-tokens | multi-paper | as asked | none | 0/2 | 0 | 0 | 0 | 2610.19801v1; 2610.12144v1; 2608.18062v3; 2402.14903v1; 2610.13325v1 |
 | wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v1; 2311.08849v2 + 2311.08849v1; 2010.12730v1; 2311.08849v2; 1805.03710v1 |
 | wechsel-neighbours | follow-up | history + follow-up | 9 | 0/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2112.06598v1 |
 | wechsel-neighbours | follow-up | reference rewrite | 3 | 1/1 | 3 | 0 | 0 | 2025.findings-acl.109; 2022.naacl-main.293 + 2112.06598v1; 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2112.06598v2 |
-| canine-hashing | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2010.12730v1; 2021.findings-emnlp.141 + 2010.12730v3; 2610.04002v1; Q17-1026 + 1610.03017v3; 2024.findings-acl.302 |
+| canine-hashing | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2010.12730v1; 2021.findings-emnlp.141 + 2010.12730v3; 2610.04002v1; Q17-1026 + 1610.03017v3; 2024.findings-acl.302 |
 | canine-hashing | follow-up | history + follow-up | 6 | 0/1 | 3 | 0 | 2 | 2022.tacl-1.5; 2103.06874v4; 2022.tacl-1.5; 2103.06874v4; 2023.mrl-1.6 + 2310.08078v1 |
-| canine-hashing | follow-up | reference rewrite | 2 | 1/1 | ungrouped | ungrouped | 0 | 2022.tacl-1.5 + 2103.06874v4 + 2103.06874v1; 2022.tacl-1.5 + 2103.06874v1 + 2103.06874v4; 2305.15425v2; 2507.04886v4; 2022.emnlp-main.536 |
-| digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2402.14903v1; 2602.10416v1; 2502.19981v1; 2502.19981v1; 2102.13019v3 |
-| digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | ungrouped | ungrouped | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2402.14903v1; 2510.06824v1 |
+| canine-hashing | follow-up | reference rewrite | 2 | 1/1 | 1 | 0 | 0 | 2022.tacl-1.5 + 2103.06874v4 + 2103.06874v1; 2022.tacl-1.5 + 2103.06874v1 + 2103.06874v4; 2305.15425v2; 2507.04886v4; 2022.emnlp-main.536 |
+| digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2402.14903v1; 2602.10416v1; 2502.19981v1; 2502.19981v1; 2102.13019v3 |
+| digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2402.14903v1; 2510.06824v1 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2305.14201v1; 2402.14903v1 |
 | vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2602.13266v1; 2405.14159v2 + 2405.14159v1; 2407.16607v4; 2024.repl4nlp-1.10 + 2401.07923v1 + 2401.07923v2; 2405.14159v2 + 2405.14159v1 |
 | vocabulary-with-scarce-data | follow-up | history + follow-up | 4 | 1/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v1 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 |
-| code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2505.20133v3; 2505.20133v1; 2511.14365v1; 2601.13260v2; 2003.07914v1 |
-| code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 | 2026.findings-eacl.341; 2607.15232v1; 2512.03989v2 + 2512.03989v1; 2024.iwclul-1.13 + 2501.02631v1; 2607.15232v1 |
-| code-tokenizer-initialisation | follow-up | reference rewrite | 5 | 1/1 | 2 | 0 | 0 | 2512.03989v1; 2026.findings-eacl.341; 2512.03989v2 + 2512.03989v1; 2607.15232v1; 2402.01035v2 + 2402.01035v1 |
+| code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2505.20133v3; 2505.20133v1; 2511.14365v1; 2601.13260v2; 2003.07914v1 |
+| code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 1 | 0 | 0 | 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2607.15232v1; 2024.iwclul-1.13 + 2501.02631v1; 2607.15232v1; 2405.07883v1 |
+| code-tokenizer-initialisation | follow-up | reference rewrite | 4 | 1/1 | 1 | 0 | 0 | 2512.03989v1; 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2607.15232v1; 2402.01035v2 + 2402.01035v1; 2024.iwclul-1.13 + 2501.02631v1 |
 | magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | 0 | 0 | 0 | 2510.06244v1; 2010.01003v1; 2610.14427v1; 2112.09348v1; 2608.21106v3 + 2608.21106v1 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v2 + 2405.05417v1; 2405.05417v1; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2 |
 | magikarp-norm-indicator | follow-up | reference rewrite | 2 | 1/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1; 2024.emnlp-main.649 |
-| superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2510.13481v2 + 2510.13481v1; 2509.05486v1; 2410.18836v1; 2607.15232v1; 2509.15020v1 |
-| superbpe-mmlu | follow-up | history + follow-up | 9 | 0/1 | ungrouped | ungrouped | 0 | 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2025.babylm-main.16; 2503.13423v3 + 2503.13423v1; 2503.13423v3 |
+| superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | 0 | 0 | 0 | 2510.13481v2 + 2510.13481v1; 2509.05486v1; 2410.18836v1; 2607.15232v1; 2509.15020v1 |
+| superbpe-mmlu | follow-up | history + follow-up | 9 | 0/1 | 3 | 0 | 0 | 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2025.babylm-main.16; 2503.13423v3 + 2503.13423v1; 2503.13423v3 |
 | superbpe-mmlu | follow-up | reference rewrite | 5 | 1/1 | 4 | 0 | 0 | 2503.13423v3; 2503.13423v3 + 2503.13423v1; 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1 |
-| tokenization-latency | follow-up | follow-up alone | 1 | 1/1 | ungrouped | ungrouped | 0 | 2305.15425v2; 2511.04952v1; 2305.15425v1; 2305.15425v1; 2510.15346v2 |
+| tokenization-latency | follow-up | follow-up alone | 1 | 1/1 | 2 | 0 | 0 | 2305.15425v2; 2511.04952v1; 2305.15425v1; 2305.15425v1; 2510.15346v2 |
 | tokenization-latency | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2305.13707v1; 2305.13707v1; 2305.15425v1; 2305.13707v1; 2305.13707v1 |
 | tokenization-latency | follow-up | reference rewrite | 1 | 1/1 | 3 | 0 | 0 | 2305.15425v1; 2305.15425v1; 2305.15425v2; 2608.25904v3 + 2608.25904v1; 2305.15425v1 |
 | bpe-english-french | unanswerable | as asked | left out | — | — | — | — | 2020.wmt-1.9; P16-1162 + 1508.07909v5; 2017.mtsummit-papers.18 + 1704.04520v6 + 1704.04520v1; 2023.icon-1.24; 2004.14280v2 |
@@ -766,9 +724,9 @@ Each retriever's model and index, with how long the index took to build and each
 
 | Retriever | Parameters | Dimension | Index on disk | Built on | Build time | Queries | Queried on | Latency p50 | Latency p95 |
 |---|---:|---:|---:|---|---:|---:|---|---:|---:|
-| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 199.89 ms | 302.49 ms |
-| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 200.64 ms | 293.33 ms |
-| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 27.91 ms | 30.13 ms |
-| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 27.49 ms | 29.72 ms |
-| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 227.30 ms | 337.43 ms |
-| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 224.83 ms | 337.58 ms |
+| bm25 | — | — | 140.3 MB | cpu | 14.55 s | 52 | cpu | 226.64 ms | 382.98 ms |
+| bm25+collapsed | — | — | 140.3 MB | cpu | 14.55 s | 52 | cpu | 210.37 ms | 327.88 ms |
+| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 2917.55 s | 52 | mps | 44.08 ms | 72.94 ms |
+| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 2917.55 s | 52 | mps | 46.08 ms | 55.79 ms |
+| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 2932.10 s | 52 | cpu+mps | 281.79 ms | 408.96 ms |
+| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 2932.10 s | 52 | cpu+mps | 260.28 ms | 402.02 ms |

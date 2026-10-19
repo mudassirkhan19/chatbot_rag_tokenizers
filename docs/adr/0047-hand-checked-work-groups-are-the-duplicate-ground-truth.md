@@ -1,7 +1,7 @@
 # 0047. Hand-checked Work groups are the ground truth for the duplicate rate
 
 - **Date:** 2026-10-19
-- **Status:** Accepted
+- **Status:** Accepted. Amended by [0063](0063-versions-and-near-duplicates-measured-before-and-after.md): rows may be checked by a blind agent.
 
 ## Context
 [0044](0044-duplicate-rate-restatement-and-numeric-share-in-evaluate.md) built the duplicate rate into `evaluate`, measured against a Work groups file given as input, and left that file empty. Issue #38 fills it: every Edition that either baseline ranks in its top 5, for any query of an answerable question, gets a Work and a Survey flag. The file is also the test set for the duplicate stage that comes later. So it must not come from the rule that stage will use, and a reader must be able to tell which rows a person checked.

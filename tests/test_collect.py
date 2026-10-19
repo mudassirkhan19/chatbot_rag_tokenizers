@@ -1118,6 +1118,31 @@ def test_editions_sharing_a_title_and_first_author_are_one_work(fixture_snapshot
     assert works["2410.20771v3"] == ("kallini-2022-mrt5-dynamic-token", "no", "no")
 
 
+@pytest.mark.parametrize(
+    "title",
+    [
+        # A hyphen inside a word, as Purason et al.'s "Pre-trained Models" against their EACL Findings Edition's
+        # "Pretrained Models".
+        "Mr-T5 - Dynamic Token Merging for Efficient Byte-Level Language Models",
+        # Godey et al.'s preprint says "Robust End-to-End", its EMNLP Findings Edition "End-to-End Robust".
+        "MrT5 - Dynamic Token Merging for Byte-Level Efficient Language Models",
+    ],
+)
+def test_a_title_with_a_hyphen_dropped_or_its_words_reordered_is_the_same_title(fixture_snapshot, no_network, no_model, tmp_path, title):
+    edit_openalex_page(
+        fixture_snapshot,
+        "page-0.json",
+        ("Unigram Tokenization for Morphologically Rich Languages", title),
+        ('"display_name": "Ayşe Yılmaz"', '"display_name": "Kallini, Julie"'),
+    )
+    manifest = tmp_path / "manifest.csv"
+
+    run_collect(fixture_snapshot, manifest)
+
+    works = works_of(read_manifest(manifest))
+    assert works["10.5555/lrm.2022.7"][0] == works["2410.20771v3"][0]
+
+
 def test_the_venue_edition_with_the_latest_year_stands_for_the_work(fixture_snapshot, no_network, no_model, tmp_path):
     # The Unigram paper (2022) becomes an earlier venue Edition of the TACL paper (2023).
     edit_openalex_page(
