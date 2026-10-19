@@ -1,4 +1,4 @@
-# 0053. The pinned local answer model, the shared Ollama module and the chat page
+# 0054. The pinned local answer model, the shared Ollama module and the chat page
 
 - **Date:** 2026-10-19
 - **Status:** Accepted. Amends [0021](0021-tev1-decision-model-judge.md) (the judge's Ollama code moves to a shared module).
@@ -31,5 +31,5 @@ The brief asks that the bot run with no API key and no cost. The README's setup 
 - `just init` pulls about 6.5 GB more when the chat model is missing, and stops when Ollama's copy has another digest.
 - Changing the answer model, its pin or its settings means editing `[chat]`. The chat report (#63) will print the pin and the prompt's hash.
 - A smoke run over the full corpus (BM25, five questions) shows the shape and one weakness. Answers cite Chunks from the right Sections, and an off-topic question abstains. But a near-miss question ("Who won the 2018 football World Cup?") was answered with an unrelated fact from a cited Chunk instead of an Abstention. Rewording the abstention rule did not change it, so the prompt here keeps the simple wording. `chat-eval` (#63) measures abstention on the Evaluation set's unanswerable questions, and its ADR decides any change.
-- Duplicate Editions of one Work fill several of the five slots (the WECHSEL v2 preprint and its NAACL Edition both came back) until the Collapsed ranking (#49) wraps the retriever.
+- Duplicate Editions of one Work fill several of the five slots (the WECHSEL v2 preprint and its NAACL Edition both came back) until the chatbot takes a `+collapsed` twin of its retriever ([0053](0053-collapsed-ranking-and-collapsed-twins.md)), a later slice of #63. `[chat]` names only a configured retriever for now.
 - The opt-in test (`RUN_OLLAMA_TESTS=1`) asks the real model a fixture question and gets a valid Citation, the same text twice, and an Abstention on an off-topic question.

@@ -129,6 +129,7 @@ def main(argv: list[str] | None = None) -> None:
         help="score the retrievers on the Evaluation set and write the eval report",
         description=(
             "Runs every question of the Evaluation set through each retriever `index` built, scores the raw rankings"
+            " and their Collapsed rankings (`<retriever>+collapsed`, one Chunk per Work by the manifest's work_id)"
             " against the questions' Passages (Recall@5, MRR@10, Hit@5), measures what crowds the top 5 (duplicates"
             " of one Work and Survey restatement, against the Work groups, and mostly-numeric Chunks) and writes the"
             " committed eval report."
@@ -263,6 +264,7 @@ def main(argv: list[str] | None = None) -> None:
             print("index: the parse report comes from a `--files` run, so no Edition is marked indexed", file=sys.stderr)
     elif args.command == "evaluate":
         corpus, retrievers = _corpus_and_retrievers(args)
+        pool = load_retrieval_config(args.config).collapse_pool
         rule = _matching_rule(args)
         try:
             evaluation.evaluate(
@@ -274,6 +276,7 @@ def main(argv: list[str] | None = None) -> None:
                 rule,
                 read_manifest(args.manifest),
                 args.work_groups,
+                pool,
                 args.export_ungrouped,
             )
         except (EvaluationSetError, WorkGroupsError, index.IndexMissing) as error:

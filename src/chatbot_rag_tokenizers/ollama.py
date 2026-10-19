@@ -1,4 +1,4 @@
-"""The one way any model here is reached on Ollama (ADRs 0021 and 0053): a client for the local server, the pin
+"""The one way any model here is reached on Ollama (ADRs 0021 and 0054): a client for the local server, the pin
 parser and the check that the server runs the pinned weights on the pinned runtime.
 
 An Ollama model is pinned as ``<digest>@<Ollama version>``. The digest pins the weights and the version pins

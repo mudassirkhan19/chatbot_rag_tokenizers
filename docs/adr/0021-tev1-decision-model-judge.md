@@ -1,7 +1,7 @@
 # 0021. Tev1 4B as the judge, served by Ollama and pinned with its runtime
 
 - **Date:** 2026-10-17
-- **Status:** Accepted. Amends [0007](0007-local-llm-judge.md): the judge model, how it is run, and the threshold. Amended by [0025](0025-judge-cuts-only-refused-inputs.md) for inputs too long for the model, and by [0053](0053-pinned-local-answer-model-and-the-chat-page.md), which moves its Ollama code to a shared module.
+- **Status:** Accepted. Amends [0007](0007-local-llm-judge.md): the judge model, how it is run, and the threshold. Amended by [0025](0025-judge-cuts-only-refused-inputs.md) for inputs too long for the model, and by [0054](0054-pinned-local-answer-model-and-the-chat-page.md), which moves its Ollama code to a shared module.
 
 ## Context
 Issue #1 asks for the judge model and its threshold to be chosen on the Audit set ([0011](0011-audit-set-and-relevance-metrics.md), [0020](0020-blind-agent-labels-checked-by-the-developer.md)). The decision rule: the smallest model within about 2 F1 points of the best, as long as a full run over the 7,203 rule passes takes about 1 h or less on the M1 Max.

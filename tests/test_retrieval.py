@@ -14,7 +14,10 @@ import pytest
 
 from chatbot_rag_tokenizers.cli import main
 from chatbot_rag_tokenizers.parsing.config import load_parse_config
+from chatbot_rag_tokenizers.retrieval import index
+from chatbot_rag_tokenizers.retrieval.collapse import Collapsed, Merged
 from chatbot_rag_tokenizers.retrieval.config import load_retrieval_config
+from chatbot_rag_tokenizers.retrieval.corpus import load_corpus
 from parse_support import REPO_CONFIG, FakeGrobid, config_with_budget, run_parse, seed_pdf
 
 ROOT = Path(__file__).parents[1]
@@ -22,6 +25,9 @@ RETRIEVAL_CONFIG = ROOT / "config" / "retrieval.toml"
 EVALUATION_SET = Path(__file__).parent / "fixtures" / "eval" / "evaluation-set.jsonl"
 # Both fixture papers, each grouped with its venue Edition into one Work, neither of them a Survey.
 WORK_GROUPS = Path(__file__).parent / "fixtures" / "eval" / "work-groups.csv"
+# The manifest's rows for the fixture papers and their venue Editions, as `collect` grouped them: each paper's
+# venue Edition is its Work's Canonical Edition, and neither Work is a Survey.
+MANIFEST = Path(__file__).parent / "fixtures" / "eval" / "manifest.csv"
 
 
 @pytest.fixture
@@ -246,6 +252,7 @@ def run_evaluate(
     work_groups: Path = WORK_GROUPS,
     options: tuple[str, ...] = (),
     retrieval_config: Path = RETRIEVAL_CONFIG,
+    manifest: Path = MANIFEST,
 ) -> str:
     """Run `evaluate` on the corpus in tmp_path and return the eval report."""
     main(
@@ -257,7 +264,7 @@ def run_evaluate(
             "--parse-report", str(tmp_path / "parse-report.md"),
             "--index-cache", str(tmp_path / "index-cache"),
             "--evaluation-set", str(evaluation_set),
-            "--manifest", str(ROOT / "data" / "manifest.csv"),
+            "--manifest", str(manifest),
             "--work-groups", str(work_groups),
             "--report", str(tmp_path / report),
             *options,
@@ -557,3 +564,158 @@ def test_evaluate_stops_on_a_malformed_work_groups_file(indexed, tmp_path):
         run_evaluate(indexed, work_groups=groups)
 
     assert str(groups) in str(stopped.value) and "survey" in str(stopped.value)
+
+
+# The Collapsed ranking (#52): every retriever's `+collapsed` twin, over the same index.
+
+
+def headings(report: str) -> list[str]:
+    return [line for line in report.splitlines() if line.startswith("### ")]
+
+
+def test_every_retriever_gets_a_collapsed_twin_in_every_table(indexed):
+    report = run_evaluate(indexed)
+
+    names = ["bm25", "dense.bge-small", "dense.bge-base", "dense.openscholar"]
+    for section in ("Results", "Crowding", "Questions"):
+        assert [h for h in headings(report) if h.startswith(f"### {section}: ")] == [
+            f"### {section}: {name}{twin}" for name in names for twin in ("", "+collapsed")
+        ]
+    retrievers = report.split("## Retrievers\n", 1)[1].split("\n## ", 1)[0]
+    timings = report.split("## Timings\n", 1)[1]
+    for name in names:
+        assert f"- {name}+collapsed: {name}'s index, collapsed to one Chunk per Work" in retrievers
+        assert f"- {name}+collapsed: index built on cpu" in timings
+
+
+def collapsed_lines(report: str, retriever: str = "bm25") -> dict[tuple[str, str], list[str]]:
+    """A Collapsed ranking's line per question: (question id, query) to its [duplicate, restatement, numeric] slots and
+    its top-5 files, each with the merged ones after a +."""
+    return {(row[0], row[2]): row[5:] for row in table(report, f"### Questions: {retriever}+collapsed")}
+
+
+def test_the_collapsed_top_5_holds_one_chunk_per_work_and_the_raw_ranking_is_unchanged(with_venue_edition):
+    report = run_evaluate(with_venue_edition)
+
+    # Raw, as before: ranks 2, 4 and 5 repeat the BPE Work (the ACL Edition's copy, then both Editions' Section 4.1).
+    assert slots(report)["vocabulary-sizes", "as asked"] == ["3", "0", "0"]
+    # Collapsed: the BPE Work once, shown by its Canonical Edition, with the preprint merged into it; then WECHSEL.
+    assert collapsed_lines(report)["vocabulary-sizes", "as asked"] == ["0", "0", "0", "P16-1162 + 1508.07909v5; 2112.06598v2"]
+    for retriever in ("bm25", "dense.bge-small"):
+        duplicate = {row[0]: row[1:] for row in table(report, f"### Crowding: {retriever}+collapsed")}["duplicate"]
+        assert duplicate[0].startswith("0/") and duplicate[2] == "0/4"
+
+
+@pytest.fixture
+def with_v1(tmp_path: Path, grobid: FakeGrobid) -> Path:
+    """The fixture corpus with the BPE paper's v1 beside its latest Version, both indexed under the Edition
+    1508.07909v5. v1's Section 5.1 says the F1 numbers "conceal a few" differences where v5 says "hide some"."""
+    files = [
+        seed_pdf(tmp_path, grobid, "wechsel_2112.06598v2.pdf", "wechsel_2112.06598v2.tei.xml"),
+        seed_pdf(tmp_path, grobid, "bpe_1508.07909v1.pdf", "missed-table-v1.tei.xml"),
+        seed_pdf(tmp_path, grobid, "bpe_1508.07909v5.pdf", "missed-table.tei.xml"),
+    ]
+    run_parse(tmp_path, *files)
+    run_index(tmp_path)
+    return tmp_path
+
+
+def qualitative_differences(tmp_path: Path) -> Path:
+    """Two questions on BPE's Section 5.1: one worded as v1 words it, which BM25 ranks v1's Chunk first for and v5's
+    after it, and one in a word only v1 has, which only v1's Chunk is ranked for."""
+    questions = [
+        {
+            "id": "both-versions",
+            "type": "single-paper",
+            "question": "Which qualitative differences between the systems do the F1 numbers conceal?",
+            "passages": [
+                {"edition_id": "1508.07909v5", "section": "5.1 Unigram accuracy", "quote": "The F 1 numbers hide some qualitative differences between systems"}
+            ],
+        },
+        {
+            "id": "only-v1",
+            "type": "single-paper",
+            "question": "conceal",
+            "passages": [
+                {
+                    "edition_id": "1508.07909v1",
+                    "section": "5.1 Unigram accuracy",
+                    "quote": "The F 1 numbers conceal a few qualitative differences between the systems",
+                }
+            ],
+        },
+    ]
+    path = tmp_path / "versions.jsonl"
+    path.write_text("".join(json.dumps({**q, "checked_by": "developer"}) + "\n" for q in questions), encoding="utf-8")
+    return path
+
+
+def test_the_latest_version_stands_for_its_work_when_it_is_in_the_pool_and_v1_only_when_it_is_not(with_v1, tmp_path):
+    report = run_evaluate(with_v1, qualitative_differences(tmp_path))
+
+    lines = collapsed_lines(report)
+    assert lines["both-versions", "as asked"][3].startswith("1508.07909v5 + 1508.07909v1; ")
+    assert lines["only-v1", "as asked"][3] == "1508.07909v1"
+
+
+def manifest_with(tmp_path: Path, name: str, **columns: str) -> Path:
+    """The fixture manifest with these columns set on the BPE paper's two Editions."""
+    rows = read_csv(MANIFEST)
+    for row in rows:
+        if row["edition_id"] in ("1508.07909v5", "P16-1162"):
+            row.update(columns)
+    path = tmp_path / f"manifest-{name}.csv"
+    with path.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, list(rows[0]), lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+    return path
+
+
+def test_an_edition_without_a_work_id_keeps_its_slot_as_its_own_work(with_venue_edition, tmp_path):
+    report = run_evaluate(with_venue_edition, manifest=manifest_with(tmp_path, "ungrouped", work_id="", canonical="", survey=""))
+
+    # Neither BPE Edition is dropped or joined: each is a Work of its own, with only its own file's Chunks behind it.
+    assert collapsed_lines(report)["vocabulary-sizes", "as asked"][3] == "1508.07909v5; P16-1162; 2112.06598v2"
+
+
+def test_a_survey_keeps_its_slot(with_venue_edition, tmp_path):
+    report = run_evaluate(with_venue_edition, manifest=manifest_with(tmp_path, "survey", survey="yes"))
+
+    assert collapsed_lines(report)["vocabulary-sizes", "as asked"][3] == "P16-1162 + 1508.07909v5; 2112.06598v2"
+
+
+def test_a_collapsed_hit_carries_its_work_merged_editions_and_sibling_chunks_and_keeps_its_citation_anchor(with_venue_edition):
+    corpus = load_corpus(load_parse_config(REPO_CONFIG), with_venue_edition / "cache", with_venue_edition / "parse-report.md")
+    bm25 = load_retrieval_config(RETRIEVAL_CONFIG).bm25
+    raw = index.load(with_venue_edition / "index-cache", corpus, bm25).retriever
+    chunks = {chunk.chunk_id: chunk for chunk in corpus.chunks}
+    collapsed = Collapsed(raw, chunks, read_csv(MANIFEST), pool=50)
+    text = "What vocabulary size do the translation systems use?"
+
+    collapse = collapsed.collapse(text, 5)
+
+    pool = [chunk_id for chunk_id, _ in raw.query(text, 50)]
+    bpe = [chunk_id for chunk_id in pool if chunks[chunk_id].edition_id in ("1508.07909v5", "P16-1162")]
+    [shown] = [chunk_id for chunk_id, _ in collapse.ranking if chunk_id in bpe]
+    assert chunks[shown].pinned_id == "P16-1162"
+    assert collapse.merged[shown] == Merged(
+        "sennrich-2016-neural-machine-translation", ("1508.07909v5",), tuple(chunk_id for chunk_id in bpe if chunk_id != shown)
+    )
+    # The raw (chunk id, score) shape, and the Chunk itself with its citation anchor, as the raw ranking gives them.
+    assert dict(collapse.ranking)[shown] == dict(raw.query(text, 50))[shown]
+    assert collapsed.query(text, 5) == collapse.ranking
+
+
+def test_the_report_records_the_pool_and_how_many_pools_held_fewer_works_than_asked_for(indexed, tmp_path):
+    config = tmp_path / "retrieval-pool-20.toml"
+    config.write_text(RETRIEVAL_CONFIG.read_text().replace("pool = 50", "pool = 20"))
+
+    report = run_evaluate(indexed, retrieval_config=config)
+
+    retrievers = report.split("## Retrievers\n", 1)[1].split("\n## ", 1)[0]
+    assert "- bm25+collapsed: bm25's index, collapsed to one Chunk per Work\n  - pool: `20`" in retrievers
+    # The fixture corpus holds two Works, so no pool reaches the 10 Works a query asks for.
+    crowded = report.split("### Crowding: bm25+collapsed\n", 1)[1].split("\n### ", 1)[0]
+    assert "- Pool: the top 20 raw Chunks held fewer than 5 Works for 4 of 4 questions, and fewer than 10, the depth each query asks for, for 4." in crowded
+    assert "- Pool:" not in report.split("### Crowding: bm25\n", 1)[1].split("\n### ", 1)[0]

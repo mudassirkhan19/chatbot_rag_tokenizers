@@ -94,7 +94,7 @@ init:
         docker pull "$GROBID_REFERENCE" || fail "could not pull $GROBID_REFERENCE. Check the network, then rerun just init."
     fi
 
-    # The runtime and weights of the judge and the chat model are both pinned (ADRs 0021 and 0053): a different
+    # The runtime and weights of the judge and the chat model are both pinned (ADRs 0021 and 0054): a different
     # Ollama version or model digest changes the scores and answers, so init stops rather than fixing either
     # behind your back.
     load_judge

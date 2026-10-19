@@ -190,7 +190,7 @@ class TransformersJudge:
 
 class _Ollama:
     """A model served by a local Ollama, pinned as ``<digest>@<Ollama version>``: the judge refuses to start
-    unless the server runs both (the shared Ollama module, ADRs 0021 and 0053)."""
+    unless the server runs both (the shared Ollama module, ADRs 0021 and 0054)."""
 
     def __init__(self, config: JudgeConfig, client: httpx.Client | None = None) -> None:
         self.config = config

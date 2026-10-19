@@ -8,7 +8,7 @@ Setup is supported on **macOS only**. Install these yourself; the repo installs 
 
 - **uv and just:** `brew install uv just`.
 - **A Docker daemon,** such as Docker Desktop, OrbStack or Colima. It must be running for `just init`.
-- **[Ollama](https://ollama.com) 0.40.5 exactly,** from its [release page](https://github.com/ollama/ollama/releases/tag/v0.40.5), for the relevance judge and the chatbot's answer model. Another version changes the judge's scores and the chatbot's answers, so both refuse to run on it (ADRs 0021 and 0053). It must be running for `just init`.
+- **[Ollama](https://ollama.com) 0.40.5 exactly,** from its [release page](https://github.com/ollama/ollama/releases/tag/v0.40.5), for the relevance judge and the chatbot's answer model. Another version changes the judge's scores and the chatbot's answers, so both refuse to run on it (ADRs 0021 and 0054). It must be running for `just init`.
 
 Tested with macOS 26.6, uv 0.10.8, just 1.46.0, Docker 29.2.1 and Ollama 0.40.5. `pyproject.toml` sets the oldest uv the repo accepts (`[tool.uv] required-version`); `uv.lock` pins Python 3.12 and every package.
 
@@ -216,7 +216,7 @@ git diff --stat data/   # only the report's Timings section differs
 just chat        # serves the chat page and prints its URL, http://localhost:8766 (--port sets another)
 ```
 
-Type a question and the page answers it from the papers. Each question retrieves the top 5 Chunks from the retriever the `[chat]` table of `config/retrieval.toml` names, which is the dense baseline (`dense.bge-small`) until the embedding comparison names its choice. The pinned answer model, `gemma4:e2b-mlx` on Ollama with thinking off and temperature 0, answers from those Chunks only (ADR 0053). An answer takes one to three seconds on an Apple-silicon laptop.
+Type a question and the page answers it from the papers. Each question retrieves the top 5 Chunks from the retriever the `[chat]` table of `config/retrieval.toml` names, which is the dense baseline (`dense.bge-small`) until the embedding comparison names its choice. The pinned answer model, `gemma4:e2b-mlx` on Ollama with thinking off and temperature 0, answers from those Chunks only (ADR 0054). An answer takes one to three seconds on an Apple-silicon laptop.
 
 - **The answer** carries a numbered marker such as `[2]` for each Chunk it uses. A marker that names no retrieved Chunk is struck through as invalid, never dropped.
 - **The references** under the answer give, for each cited Chunk, the paper's title, its pinned Edition id with Version, the Section number and title, and the pages.

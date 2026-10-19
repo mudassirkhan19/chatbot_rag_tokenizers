@@ -1,4 +1,4 @@
-"""The chat page (ADR 0053): `chat` serves it on localhost with the standard library's threading HTTP server, as
+"""The chat page (ADR 0054): `chat` serves it on localhost with the standard library's threading HTTP server, as
 `audit label` serves its page.
 
     GET  /        the page

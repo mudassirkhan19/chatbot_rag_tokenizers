@@ -1,5 +1,5 @@
 """Print the answer model's Ollama pin from the [chat] table of config/retrieval.toml as shell assignments, for
-`just init` to eval, as judge_env does for the judge (ADRs 0022 and 0053).
+`just init` to eval, as judge_env does for the judge (ADRs 0022 and 0054).
 
 Usage: python -m chatbot_rag_tokenizers.chat.chat_env [path/to/retrieval.toml]
 """

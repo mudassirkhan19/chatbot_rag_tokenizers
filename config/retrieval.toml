@@ -57,7 +57,14 @@ pooling = "mean"
 max_tokens = 512
 query_instruction = ""
 
-# The chatbot (spec #63, ADR 0053). Each Turn retrieves k Chunks from the retriever named here, one of the
+# The Collapsed ranking (ADR 0053): `evaluate` scores every retriever above beside its `<name>+collapsed` twin,
+# which asks the retriever for its top `pool` Chunks, keeps one Chunk per Work (the manifest's work_id) in the raw
+# order, and fills the top k from them. A pool that holds fewer than k Works leaves the top k short; the eval
+# report counts the queries where it did. It changes no index.
+[collapse]
+pool = 50
+
+# The chatbot (spec #63, ADR 0054). Each Turn retrieves k Chunks from the retriever named here, one of the
 # retrievers above, and the answer model answers from them. The dense baseline until the embedding comparison
 # (#61) names its choice.
 [chat]

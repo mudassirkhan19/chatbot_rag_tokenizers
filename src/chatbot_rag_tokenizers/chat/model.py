@@ -1,4 +1,4 @@
-"""The answer-model boundary (ADR 0053), shaped like the embedder's: the one way the chatbot gets text from a model.
+"""The answer-model boundary (ADR 0054), shaped like the embedder's: the one way the chatbot gets text from a model.
 
 An answer model completes a chat, a list of messages, with one text, and describes its pin. `load_answer_model`
 makes the real one, the pinned model on the local Ollama; the tests put a scripted fake in its place, so no test

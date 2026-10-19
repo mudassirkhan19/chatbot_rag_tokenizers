@@ -1,4 +1,4 @@
-"""The shared Ollama module (ADR 0053) against a stand-in Ollama server: the answer model's pin check
+"""The shared Ollama module (ADR 0054) against a stand-in Ollama server: the answer model's pin check
 and its chat completion. The judge's own requests are in test_ollama_judge.py."""
 
 import json
