@@ -1,11 +1,13 @@
 """`evaluate` (ADR 0039): score each retriever's index on the Evaluation set and write the eval report, with what
-crowds the top 5 measured against the Work groups (ADR 0044)."""
+crowds the top 5 measured against the Work groups (ADR 0044). Every retriever is scored twice: raw, and as its
+Collapsed ranking over the same index (ADR 0052)."""
 
 import hashlib
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 
 from ..retrieval import index
+from ..retrieval.collapse import Collapsed
 from ..retrieval.corpus import Corpus
 from ..retrieval.retriever import RetrieverConfig
 from .check import check
@@ -27,11 +29,12 @@ def evaluate(
     rule: MatchingRule,
     manifest: Iterable[Mapping[str, str]],
     work_groups: Path,
+    pool: int,
     export: Path | None = None,
 ) -> None:
     """Raises EvaluationSetError for a set that fails `eval-check` (ADR 0041), WorkGroupsError for a malformed Work
-    groups file and index.IndexMissing when a retriever isn't built. With `export`, also writes there every Edition
-    in a top 5 that has no Work group."""
+    groups file and index.IndexMissing when a retriever isn't built. `pool` is the raw Chunks each Collapsed ranking
+    picks one per Work from. With `export`, also writes there every Edition in a top 5 that has no Work group."""
     rows = {row["edition_id"]: row for row in manifest}
     works = Works(rows.values())
     groups = load_work_groups(work_groups)
@@ -45,11 +48,14 @@ def evaluate(
     chunks = {chunk.chunk_id: chunk for chunk in corpus.chunks}
     runs = []
     for config, built in indexes:
-        scored = score(questions, built.retriever, chunks, rule)
-        runs.append(RetrieverRun(config, built, scored))
-        overall = metrics(all_answerable(scored))
-        if overall:
-            print(f"evaluate: {config.name}: Recall@5 {overall.recall:.2f}, MRR@10 {overall.mrr:.3f}, Hit@5 {overall.hit:.2f}")
+        collapsed = Collapsed(built.retriever, chunks, rows.values(), pool)
+        for run in (
+            RetrieverRun(config, built, score(questions, built.retriever, chunks, rule)),
+            RetrieverRun(config, built, score(questions, collapsed, chunks, rule), pool),
+        ):
+            runs.append(run)
+            if overall := metrics(all_answerable(run.scored)):
+                print(f"evaluate: {run.name}: Recall@5 {overall.recall:.2f}, MRR@10 {overall.mrr:.3f}, Hit@5 {overall.hit:.2f}")
     missing = sorted(ungrouped((s for run in runs for s in run.scored if s.question.answerable), groups.editions))
     editions = "1 Edition" if len(missing) == 1 else f"{len(missing)} Editions"
     if missing:

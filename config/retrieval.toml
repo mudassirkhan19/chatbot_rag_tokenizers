@@ -31,3 +31,10 @@ model_sha256 = "3c9f31665447c8911517620762200d2245a2518d6e7208acc78cd9db317e21ad
 pooling = "cls"
 max_tokens = 512
 query_instruction = "Represent this sentence for searching relevant passages: "
+
+# The Collapsed ranking (ADR 0052): `evaluate` scores every retriever above beside its `<name>+collapsed` twin,
+# which asks the retriever for its top `pool` Chunks, keeps one Chunk per Work (the manifest's work_id) in the raw
+# order, and fills the top k from them. A pool that holds fewer than k Works leaves the top k short; the eval
+# report counts the queries where it did. It changes no index.
+[collapse]
+pool = 50

@@ -56,6 +56,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0049](0049-normalised-arxiv-ids-and-borrowed-files.md) | Normalised arXiv ids, and Editions that hold another Edition's file | Accepted |
 | [0050](0050-named-dense-tables-and-a-configurable-embedder.md) | Named dense tables and a configurable embedder; `dense` becomes `dense.bge-small` | Accepted |
 | [0051](0051-work-grouping-in-collect.md) | Work grouping in `collect`: work_id, Canonical Edition, Survey flag and Suspected pairs | Accepted |
+| [0052](0052-collapsed-ranking-and-collapsed-twins.md) | The Collapsed ranking: one Chunk per Work, scored as a `+collapsed` twin of every retriever | Accepted |
 
 ## Template
 

@@ -48,6 +48,16 @@ def test_a_bad_dense_table_stops_with_a_message_naming_the_table(tmp_path, old, 
         load_retrieval_config(with_bge_small(tmp_path, old, new))
 
 
+def test_the_collapse_pool_must_be_at_least_one_chunk(tmp_path):
+    config = RETRIEVAL_CONFIG.read_text()
+    assert load_retrieval_config(RETRIEVAL_CONFIG).collapse_pool == 50
+    path = tmp_path / "retrieval.toml"
+    path.write_text(config.replace("pool = 50", "pool = 0"))
+
+    with pytest.raises(ConfigError, match=r"\[collapse\] pool 0 must be at least 1"):
+        load_retrieval_config(path)
+
+
 def test_a_dense_table_written_the_old_way_is_named_and_told_how_to_change(tmp_path):
     path = with_bge_small(tmp_path, "[dense.bge-small]", "[dense]")
 
