@@ -452,6 +452,8 @@ def test_the_export_lists_exactly_the_editions_in_the_top_5_without_a_work_group
             "authors": "Rico Sennrich; Barry Haddow; Alexandra Birch",
             "year": "2015",
             "venue": "",
+            "checked_by": "",
+            "note": "",
         }
     ]
 
@@ -461,9 +463,19 @@ def test_the_export_is_empty_when_every_edition_in_the_top_5_has_a_work_group(in
 
     report = run_evaluate(indexed, options=("--export-ungrouped", str(export)))
 
-    assert export.read_text().splitlines() == ["edition_id,work_id,survey,title,authors,year,venue"]
+    assert export.read_text().splitlines() == ["edition_id,work_id,survey,title,authors,year,venue,checked_by,note"]
     assert listed(report, "## Editions without a Work group") == ["None."]
     assert "no Work group" not in capsys.readouterr().out
+
+
+def test_the_report_counts_the_editions_a_person_checked(indexed, tmp_path):
+    groups = tmp_path / "partly-checked.csv"
+    lines = WORK_GROUPS.read_text().splitlines()
+    groups.write_text(f"{lines[0]},checked_by\n{lines[1]},mudassir\n{lines[2]},\n{lines[3]},mudassir\n{lines[4]},\n")
+
+    report = run_evaluate(indexed, work_groups=groups)
+
+    assert "4 Editions in 2 Works, 2 of the Editions checked (who checked each is in checked_by)," in report
 
 
 def test_evaluate_stops_on_a_malformed_work_groups_file(indexed, tmp_path):
