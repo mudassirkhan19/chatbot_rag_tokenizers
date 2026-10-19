@@ -806,3 +806,17 @@ def test_the_report_records_the_pool_and_how_many_pools_held_fewer_works_than_as
     crowded = report.split("### Crowding: bm25+collapsed\n", 1)[1].split("\n### ", 1)[0]
     assert "- Pool: the top 20 raw Chunks held fewer than 5 Works for 4 of 4 questions, and fewer than 10, the depth each query asks for, for 4." in crowded
     assert "- Pool:" not in report.split("### Crowding: bm25\n", 1)[1].split("\n### ", 1)[0]
+
+
+def test_a_hybrids_build_time_is_its_members_build_time_now_not_when_its_record_was_written(corpus):
+    name = "hybrid.bm25+bge-small"
+    run_index(corpus, options=("--retriever", name))
+    # As if bge-small had since been deleted and rebuilt, taking 1000 s; the hybrid's own record is untouched.
+    record = index_folders(corpus)["dense.bge-small"] / "index.json"
+    record.write_text(json.dumps({**json.loads(record.read_text()), "build_seconds": 1000.0}))
+
+    report = run_evaluate(corpus, options=("--retriever", name))
+
+    bm25 = json.loads((index_folders(corpus)["bm25"] / "index.json").read_text())["build_seconds"]
+    [timing] = [line for line in report.split("## Timings\n", 1)[1].splitlines() if line.startswith(f"- {name}:")]
+    assert f"index built on cpu in {bm25 + 1000:.2f} s;" in timing

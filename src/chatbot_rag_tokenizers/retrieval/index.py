@@ -83,10 +83,13 @@ def build(root: Path, corpus: Corpus, configs: list[RetrieverConfig]) -> None:
 
 
 def load(root: Path, corpus: Corpus, config: RetrieverConfig) -> Index:
-    for member in _members(config):
-        _built(root, corpus, member)
+    members = [_built(root, corpus, member) for member in _members(config)]
     record = _built(root, corpus, config)
     folder = directory(root, corpus, config)
+    if members:
+        # The members as they are now: one rebuilt since the hybrid's record was written keeps that record up to date.
+        seconds = sum(member["build_seconds"] for member in members)
+        return Index(config.load(folder), seconds, hybrid.devices(member.get("device", "cpu") for member in members))
     # A BM25 index built before records named their device was built in plain Python, on the CPU.
     return Index(config.load(folder), record["build_seconds"], record.get("device", "cpu"))
 
