@@ -198,7 +198,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
   <p class="lede">One page for a project manager's view of the pipeline so far: five stages, the decisions behind each one, the numbers they produced, how each is checked, and what is still open. Every decision links to its record on GitHub. Software structure is deliberately left out.</p>
   <div class="asof">
     <span>As of <b>2026-10-20</b></span>
-    <span>Commit <b class="mono">096cdda</b> on <a data-file="">main</a></span>
+    <span>Commit <b class="mono">a54b3ea</b> on <a data-file="">main</a></span>
     <span>Snapshot date <b>2026-10-16</b> (judge and PDF hashes 2026-10-17)</span>
     <span>Status: <span class="chip done">done</span> <span class="chip partial">partial</span> <span class="chip planned">planned</span></span>
   </div>
@@ -269,7 +269,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <div class="stat"><div class="v">141,348</div><div class="k">Chunks in the index, from 2,689 files</div></div>
       <div class="stat"><div class="v">36</div><div class="k">Evaluation questions, every one checked by a person</div></div>
       <div class="stat"><div class="v">0.30</div><div class="k">Best baseline Recall@5 (dense, all answerable)</div></div>
-      <div class="stat"><div class="v">42–50% → 27–41%</div><div class="k">Top-5 slots holding a duplicate, raw and collapsed</div></div>
+      <div class="stat"><div class="v">42–50% → 27–41%</div><div class="k">Top-5 slots holding a duplicate, raw and collapsed (BM25, bge-small and their hybrid)</div></div>
       <div class="stat"><div class="v">180</div><div class="k">Audit-set Candidates that chose the judge</div></div>
       <div class="stat"><div class="v">63</div><div class="k">Decision records (ADRs)</div></div>
     </div>
@@ -638,7 +638,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
   <div class="sec-head">
     <div class="eyebrow">Stage 4</div>
     <div class="title-row"><h2>Retrieve: how a question finds Chunks</h2><span class="chip partial">partial</span></div>
-    <p class="goal">Rank the 141,348 Chunks for a question. Two baselines exist so every later choice has a number to beat, and every retriever has a Collapsed twin that merges copies of a passage across a Work's files. The embedding comparison is not finished yet.</p>
+    <p class="goal">Rank the 141,348 Chunks for a question. Two baselines exist so every later choice has a number to beat, and every retriever has a Collapsed twin that merges copies of a passage across a Work's files. The embedding comparison has run on the raw ranking (bge-small stays); the final choice waits for the collapsed numbers.</p>
   </div>
   <div class="panel">
     <div class="block">
@@ -650,12 +650,18 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <ul class="plain">
         <li><b>BM25</b>, keyword search: lower-cased letter and digit runs, decimals kept whole, no stemming, no stop words, k1 1.2, b 0.75. Index built in 10 s; a query takes about 200 ms.</li>
         <li><b>Dense</b>, vector search: bge-small-en-v1.5 (33M parameters, 384 dimensions), exact dot product over float32 vectors, query prefixed with the model's search instruction. Index built in 14 minutes on the laptop GPU; a query takes about 30 ms.</li>
-        <li>Both embed the context header with the text.</li>
+        <li>Every retriever indexes the context header with the text.</li>
         <li><b>Collapsed ranking</b> (<code>&lt;retriever&gt;+collapsed</code>): takes a retriever's raw top 50 and merges copies of a passage from a Work's other Versions and Editions into one slot, shown from the Canonical Edition's file. A Work's other passages keep their slots, and Surveys are marked, not demoted.</li>
+      </ul>
+      <h4>The embedding comparison: five more retrievers</h4>
+      <ul class="plain">
+        <li><b>bge-base-en-v1.5</b>, the size control (110M parameters, 768 dimensions): Recall@5 0.29, built in 48 minutes.</li>
+        <li><b>OpenScholar_Retriever</b>, the scientific candidate (Contriever-base trained further on peS2o): Recall@5 0.07, below bge-small beyond noise. It finds the right paper as often as bge-small, but ranks the paper's short Chunks, such as figure captions, above the one holding the Passage.</li>
+        <li><b>Three hybrids</b>, BM25 plus each dense model by reciprocal rank fusion: Recall@5 0.34, 0.34 and 0.28.</li>
+        <li>On the raw ranking nothing beats bge-small's 0.30 beyond noise, so it stays (Proposed until the collapsed numbers are in).</li>
       </ul>
       <h4>Not yet built</h4>
       <ul class="plain">
-        <li>A second embedding model suited to scientific text, compared on Recall@5, MRR, cost and latency.</li>
         <li>Optional: a reranker, year and venue filters.</li>
       </ul>
     </div>
@@ -674,6 +680,10 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
         <div class="body"><p>collect joins two Editions into one Work when they share an arXiv id, DOI, ACL ID or file bytes, or a title (hyphens inside words dropped, word order ignored) and a first-author surname: 2,705 included Editions in 2,393 Works. The Collapsed ranking reads that grouping and merges a passage's copies into the best-ranked slot. On the Work groups the rule joins 30 of 30 pairs and nothing more.</p><p class="why"><b>Why:</b> one Chunk per Work dropped the passages that answered; merging only copies frees the slots copies took, and a title match with a different author is listed as a Suspected pair, never joined. <a data-adr="0051">ADR 0051</a>, <a data-adr="0057">ADR 0057</a>, <a data-adr="0063">ADR 0063</a>.</p></div>
       </details>
       <details class="dec">
+        <summary>The embedding comparison on the raw ranking: bge-small stays<span class="ref">ADR 0065, Proposed</span></summary>
+        <div class="body"><p>Seven retrievers over the full corpus, each against bge-small on the 28 answerable questions with paired bootstrap intervals. The best Recall@5, 0.34, belongs to the BM25 + bge-small and BM25 + bge-base hybrids, but their +0.04 lead (interval −0.09 to +0.16) is within noise, so the rule fixed before the run picks the cheaper bge-small. OpenScholar is the only retriever beyond noise, and it is a loss.</p><p class="why"><b>Why:</b> a rule written before the run keeps the choice from being fitted to the numbers, and one question moves Recall@5 by 0.036. <a data-adr="0065">ADR 0065</a>.</p></div>
+      </details>
+      <details class="dec">
         <summary>Index marks Editions indexed, from a record committed in the Snapshot<span class="ref">ADR 0045</span></summary>
         <div class="body"><p>The index step writes the list of indexed files into the Snapshot and marks the manifest, so the funnel's last row survives a collect rerun and a fresh clone. An Edition whose file failed the gate shows as "with full text, not indexed".</p><p class="why"><b>Why:</b> the manifest must show whether each paper made it into the index, and collect rebuilds the manifest from the Snapshot alone. <a data-adr="0045">Read ADR 0045</a>.</p></div>
       </details>
@@ -684,7 +694,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
           <li>Exact search over 141k vectors is fine today but is not a production index.</li>
         </ul>
       </div>
-      <p class="repro">Reproduce: <code>just index</code> builds both retrievers into <code>data/index-cache/</code> (not committed). Settings in <a data-file="config/retrieval.toml">config/retrieval.toml</a>.</p>
+      <p class="repro">Reproduce: <code>just index</code> builds all seven retrievers (2.5 to 3 hours; <code>--retriever</code> builds one at a time) into <code>data/index-cache/</code> (not committed). Settings in <a data-file="config/retrieval.toml">config/retrieval.toml</a>.</p>
     </div>
   </div>
 </section>
@@ -814,14 +824,14 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <div class="eyebrow">Brief: challenging</div>
       <h3>Pick an embedding model with evidence</h3>
       <p>Compare at least two models, one suited to scientific text; consider keyword search beside vectors; report Recall@5, MRR, cost and latency; recommend one.</p>
-      <p><b>Exists:</b> the embedder boundary, bge-small as one of the two, BM25 as the keyword side, the harness with latency and build time, and the numbers to beat.</p>
-      <p><a data-issue="31">Spec issue 31</a></p>
+      <p><b>Done on the raw ranking:</b> bge-small, bge-base (size control), OpenScholar (scientific) and their BM25 hybrids, scored with paired bootstrap intervals, cost and latency. Nothing beats bge-small beyond noise, so it stays (ADR 0065, Proposed). <b>Left:</b> the same rule on the collapsed numbers, then the chatbot's retriever.</p>
+      <p><a data-issue="55">Spec issue 55</a></p>
     </div>
     <div class="plan">
       <div class="eyebrow">Brief: challenging</div>
       <h3>Handle Versions and near-duplicates</h3>
       <p>Stop versions, preprint-plus-venue pairs and Survey restatements crowding the top 5 without merging different papers. Show before and after, with the duplicate rate.</p>
-      <p><b>Done:</b> collect groups Editions into Works (scored 30/30 against the Work groups), every retriever has a Collapsed twin, and the eval report's <i>Before and after</i> table gives the duplicate rate falling from 42–50% to 27–41% of top-5 slots with Recall@5 up for every retriever. Surveys are marked, not demoted: they take 0 or 1 of 140 slots.</p>
+      <p><b>Done:</b> collect groups Editions into Works (scored 30/30 against the Work groups), every retriever has a Collapsed twin, and the eval report's <i>Before and after</i> table gives the duplicate rate falling from 42–50% to 27–41% of top-5 slots for BM25, bge-small and their hybrid, the three whose top 5s are all grouped, with Recall@5 up for every retriever. Surveys are marked, not demoted: they take 0 or 1 of 140 slots.</p>
       <p><a data-issue="49">Spec issue 49</a></p>
     </div>
     <div class="plan">
@@ -906,7 +916,8 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
     "0059":"0059-abstention-by-instruction-and-the-chat-report",
     "0060":"0060-the-grouping-rule-scored-against-the-work-groups",
     "0061":"0061-the-comparison-paired-bootstrap-against-a-baseline",
-    "0063":"0063-versions-and-near-duplicates-measured-before-and-after"
+    "0063":"0063-versions-and-near-duplicates-measured-before-and-after",
+    "0065":"0065-the-embedding-comparison-on-the-raw-ranking"
   };
   document.querySelectorAll("a[data-adr]").forEach(function (a) {
     var n = a.getAttribute("data-adr");
