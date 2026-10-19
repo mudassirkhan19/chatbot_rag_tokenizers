@@ -5,7 +5,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 ## Evaluation set
 
 - File: `data/eval/evaluation-set.jsonl`
-- sha256: `091b160499444e92c384d4ff741242032a75ef25f76c02d8524a9f6b25ac7f59`
+- sha256: `19bd5da54270b0c4998294ca275394ea9bc2f70ffd2443f3fda489057d44c5b7`
 - Questions: 36 (12 single-paper, 8 multi-paper, 8 follow-up, 8 unanswerable)
 
 ## Chunks
@@ -735,9 +735,9 @@ Each retriever's model and index, with how long the index took to build and each
 
 | Retriever | Parameters | Dimension | Index on disk | Built on | Build time | Queries | Queried on | Latency p50 | Latency p95 |
 |---|---:|---:|---:|---|---:|---:|---|---:|---:|
-| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 208.54 ms | 313.81 ms |
-| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 214.43 ms | 322.59 ms |
-| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 28.88 ms | 31.16 ms |
-| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 29.18 ms | 30.70 ms |
-| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 242.08 ms | 352.80 ms |
-| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 237.26 ms | 342.35 ms |
+| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 198.08 ms | 305.30 ms |
+| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 217.82 ms | 319.10 ms |
+| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 29.10 ms | 38.85 ms |
+| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 29.29 ms | 33.38 ms |
+| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 254.63 ms | 391.21 ms |
+| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 238.98 ms | 348.55 ms |

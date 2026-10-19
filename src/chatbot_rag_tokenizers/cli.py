@@ -5,8 +5,10 @@ import sys
 from pathlib import Path
 
 from .chat import page
+from .chat.chat_eval import chat_eval
 from .chat.config import load_chat_config
 from .chat.conversation import Chatbot
+from .chat.model import AnswerModelUnavailable
 from .collection import audit, audit_label, fulltext, indexed
 from .config import ConfigError
 from .collection.config import load_config
@@ -167,6 +169,26 @@ def main(argv: list[str] | None = None) -> None:
     chat_cmd.add_argument("--index-cache", type=Path, default=Path("data/index-cache"), help="the index cache (default data/index-cache)")
     chat_cmd.add_argument("--port", type=int, default=8766, help="port on localhost (default 8766)")
 
+    chat_eval_cmd = commands.add_parser(
+        "chat-eval",
+        help="ask the chatbot every question of the Evaluation set and write the chat report and the answers",
+        description=(
+            "Asks each question as a Conversation of its own through the chatbot of the [chat] table, a follow-up after"
+            " its stored history, and writes the committed chat report (grounded, abstention and false-abstention rates,"
+            " Recall@k of the retrieved Chunks, a line per question and the latency per Turn) and every Turn's answer as"
+            " JSON Lines. Refuses a set that fails `eval-check`. Needs the retriever's index (`just index`) and Ollama with"
+            " the pinned model (`just init`)."
+        ),
+    )
+    chat_eval_cmd.add_argument("--config", type=Path, default=Path("config/retrieval.toml"), help="the [chat] table and the retrievers")
+    _add_chunk_arguments(chat_eval_cmd)
+    chat_eval_cmd.add_argument("--index-cache", type=Path, default=Path("data/index-cache"), help="the index cache (default data/index-cache)")
+    _add_evaluation_set_arguments(chat_eval_cmd)
+    chat_eval_cmd.add_argument("--report", type=Path, default=Path("data/eval/chat-report.md"), help="the chat report (committed)")
+    chat_eval_cmd.add_argument(
+        "--answers", type=Path, default=Path("data/eval/chat-answers.jsonl"), help="every Turn's answer, one per line (committed)"
+    )
+
     eval_check_cmd = commands.add_parser(
         "eval-check",
         help="check every question and Passage of the Evaluation set against the parsed text",
@@ -285,6 +307,12 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(f"evaluate: {error}")
     elif args.command == "chat":
         _chat(args)
+    elif args.command == "chat-eval":
+        chatbot, corpus = _chatbot(args)
+        try:
+            chat_eval(chatbot, corpus, args.evaluation_set, args.report, args.answers, _matching_rule(args), _works(args))
+        except (EvaluationSetError, AnswerModelUnavailable) as error:
+            sys.exit(f"chat-eval: {error}")
     elif args.command == "eval-check":
         rule = _matching_rule(args)
         try:
@@ -305,17 +333,22 @@ def main(argv: list[str] | None = None) -> None:
         audit_label.serve(load_config(args.config), args.audit_set, args.port)
 
 
-def _chat(args: argparse.Namespace) -> None:
+def _chatbot(args: argparse.Namespace) -> tuple[Chatbot, Corpus]:
+    """The chatbot the [chat] table configures, over the corpus's index, and the corpus."""
     try:
         config = load_chat_config(args.config)
     except ConfigError as error:
-        sys.exit(f"chat: {error}")
+        sys.exit(f"{args.command}: {error}")
     corpus = _load_corpus(args)
     try:
         built = index.load(args.index_cache, corpus, config.retriever)
     except index.IndexMissing as error:
-        sys.exit(f"chat: {error}")
-    chatbot = Chatbot(config, built.retriever, {chunk.chunk_id: chunk for chunk in corpus.chunks})
+        sys.exit(f"{args.command}: {error}")
+    return Chatbot(config, built.retriever, {chunk.chunk_id: chunk for chunk in corpus.chunks}), corpus
+
+
+def _chat(args: argparse.Namespace) -> None:
+    chatbot, _ = _chatbot(args)
     try:
         server = page.make_server(chatbot, args.port)
     except OSError as error:
@@ -341,7 +374,7 @@ def _add_chunk_arguments(command: argparse.ArgumentParser) -> None:
 
 
 def _add_evaluation_set_arguments(command: argparse.ArgumentParser) -> None:
-    """The arguments `evaluate` and `eval-check` share: the Evaluation set and the Passage matching rule."""
+    """The arguments `evaluate`, `chat-eval` and `eval-check` share: the Evaluation set and the Passage matching rule."""
     command.add_argument("--evaluation-set", type=Path, default=Path("data/eval/evaluation-set.jsonl"))
     command.add_argument("--eval-config", type=Path, default=Path("config/evaluation.toml"), help="the Passage matching rule")
     command.add_argument(

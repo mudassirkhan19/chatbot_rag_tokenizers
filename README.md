@@ -163,12 +163,14 @@ just evaluate     # score the retrievers on the Evaluation set and write the eva
 - **The Evaluation set** (`data/eval/evaluation-set.jsonl`, `--evaluation-set`) has one JSON question per line:
   - its `id`, its `type` (`single-paper`, `multi-paper`, `follow-up` or `unanswerable`), the `question` and its `passages`;
   - each Passage has the pinned `edition_id` of the file it quotes (such as `2112.06598v2`), its `section` as the context header gives it (`5 Results › 5.3 Is freezing necessary?`) and a verbatim `quote`;
-  - a follow-up also has its prior turns (`history`) and a hand-written standalone `rewrite`.
+  - a follow-up also has its prior turns (`history`) and a hand-written standalone `rewrite`;
+  - an unanswerable question also has its `unanswerable_kind`: `near-miss` when the corpus holds the paper or the measure but not this answer, `out-of-topic` when it is about something else. The chat report splits the abstention rate by it.
 - **`eval-check`** reads the same corpus as `index`, the Evaluation set, the matching rule in `config/evaluation.toml` (`--eval-config`) and the manifest (`--manifest`, which links the Editions of a Work). It fails:
   - a Passage whose quote, normalised, isn't in its named Edition and Section (the `edition_id` must be the pinned id of a parsed file, so a quote from an Edition with no parsed PDF fails);
   - a quote over 300 characters;
   - a follow-up without a history or a rewrite, or another question with either;
   - an answerable question without a Passage, or an unanswerable one with a Passage;
+  - an unanswerable question without an `unanswerable_kind` of `near-miss` or `out-of-topic`, or an answerable one with any;
   - a multi-paper question whose Passages all come from one Work (the manifest's `work_id`; for a row where it is blank, Editions sharing an arXiv id, DOI or ACL id).
 
   It prints each question's lexical overlap with its Passages (the share of the question's words in their quotes; a follow-up's rewrite too). It also prints, for each Passage, how many Chunks hold it and in which pinned Editions; a Passage held by dozens of Chunks shows that the rule is too loose for it. Then it lists every failure and exits non-zero, or says it passed.
@@ -230,6 +232,25 @@ Type a question and the page answers it from the papers. Each question retrieves
 
 `chat` needs the retriever's index (`just index --retriever dense.bge-small`) and Ollama running with the pinned model (`just init`). When Ollama is stopped, runs another version or lacks the model, `chat` says so in the terminal and on the page, and the next question tries again once Ollama is started.
 
+### Measure the chatbot
+
+```sh
+just chat-eval   # asks every question of the Evaluation set; rewrites data/eval/chat-report.md and data/eval/chat-answers.jsonl
+git diff --stat data/eval/   # mostly the report's Timings section; see below
+```
+
+`chat-eval` asks the chatbot every question of the Evaluation set through the same Conversation code as the page (ADR 0059). Each single-paper, multi-paper and unanswerable question is a Conversation of one Turn. A follow-up is a Conversation that first asks its stored history, the bot answering each, then the follow-up, so its Rewrite is written from the bot's own answers. It refuses a set that fails `eval-check`, and needs what `chat` needs: the retriever's index and Ollama with the pinned model. The full set, 44 Turns, takes about 2.5 minutes on an Apple-silicon laptop with the model cold, and under a minute warm.
+
+The pinned model is not quite deterministic run to run, even at temperature 0 with a fixed seed (ADR 0059): over three runs the retrieved Chunks and the Abstentions were the same, but about a third of the replies changed wording and one grounded verdict flipped. Expect `git diff` to show a line or two of the answers and the report besides the timings.
+
+- **The chat report** (`data/eval/chat-report.md`, `--report`, committed) names the Evaluation set's sha256, the corpus, the retriever, the answer model's pin and settings, and the sha256 of the system prompt and of the rewrite prompt. Then it gives, per question type and overall:
+  - the **abstention rate**: on the unanswerable questions, the share answered with the Abstention sentence, split into near-miss and out-of-topic; on the answerable ones, the false-abstention rate;
+  - the **grounded rate** over the answers that are not Abstentions. An answer is grounded when it cites at least one retrieved Chunk, every marker names a Chunk retrieved for its Turn, and every number in it (a word that starts with a digit, cut and normalised as the Passage matcher cuts words) appears in a cited Chunk's context header or text. An uncited answer is not grounded;
+  - **Recall@5** of the Chunks each question's Turn actually retrieved, with the Passage matcher;
+  - one line per question: its type, whether it abstained, whether it is grounded, its invalid Citations, its numbers that no cited Chunk holds, and the Passages in its Chunks;
+  - timings, last: p50 and p95 per Turn of retrieval, rewriting (over the Turns that were rewritten) and answering.
+- **The answers** (`data/eval/chat-answers.jsonl`, `--answers`, committed) hold every Turn asked, a follow-up's history included, one per line: the question id, the Turn's place in its Conversation and whether it is the scored one, the question and its Rewrite, the retrieved Chunk ids, the model's raw reply, the cited Chunk ids, the invalid markers, the Abstention and grounding verdicts and the Passages found. They hold no timings, so they change only where the model's replies do.
+
 ## Measure the Relevance verdict
 
 The Audit set (`data/audit/audit-set.csv`) is a hand-labelled, stratified sample of Candidates used to choose the judge model and threshold and to report precision and recall. See ADR 0011.
@@ -278,4 +299,4 @@ The test of the real answer model is opt-in as well. It needs Ollama with the pi
 RUN_OLLAMA_TESTS=1 just test tests/test_chat_page.py -k real -s
 ```
 
-`tests/test_retrieval.py` runs `index` and `evaluate` on Chunks parsed from the CC BY TEI fixtures through the fake GROBID service, with a fixture Evaluation set that has a question of each type and fixture Work groups that join each paper with its venue Edition (`tests/fixtures/eval/`). `tests/test_eval_check.py` runs `eval-check` on the same papers plus a v1 of the BPE paper edited by hand (a reworded sentence, a changed number, a re-dated citation), and checks that `evaluate` refuses a set that fails it. The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model: the dense retriever embeds with a hashed bag of words in their place, and the chatbot answers with a scripted fake model. `tests/test_chat_page.py` runs `chat` over the same fixture papers and posts questions to the page. `tests/test_ollama.py` checks the answer model's requests and pin against a stand-in Ollama server, as `tests/test_ollama_judge.py` does for the judge. `tests/test_dev_setup.py` also runs `just` to check the recipes, that `init` stops when Docker is missing, and, with a fake `docker` and `curl` on PATH, that `init` pulls GROBID by digest and that `grobid-up` and `grobid-down` behave; it skips without just.
+`tests/test_retrieval.py` runs `index` and `evaluate` on Chunks parsed from the CC BY TEI fixtures through the fake GROBID service, with a fixture Evaluation set that has a question of each type and fixture Work groups that join each paper with its venue Edition (`tests/fixtures/eval/`). `tests/test_eval_check.py` runs `eval-check` on the same papers plus a v1 of the BPE paper edited by hand (a reworded sentence, a changed number, a re-dated citation), and checks that `evaluate` refuses a set that fails it. The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model: the dense retriever embeds with a hashed bag of words in their place, and the chatbot answers with a scripted fake model. `tests/test_chat_page.py` runs `chat` over the same fixture papers and posts questions to the page. `tests/test_chat_eval.py` runs `chat-eval` over them with the fake model and reads the chat report and the answers. `tests/test_ollama.py` checks the answer model's requests and pin against a stand-in Ollama server, as `tests/test_ollama_judge.py` does for the judge. `tests/test_dev_setup.py` also runs `just` to check the recipes, that `init` stops when Docker is missing, and, with a fake `docker` and `curl` on PATH, that `init` pulls GROBID by digest and that `grobid-up` and `grobid-down` behave; it skips without just.

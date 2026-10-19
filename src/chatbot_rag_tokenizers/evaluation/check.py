@@ -11,7 +11,7 @@ from pathlib import Path
 
 from ..parsing.chunker import HEADER_SEPARATOR
 from ..retrieval.corpus import Corpus
-from .evalset import Passage, Question
+from .evalset import UNANSWERABLE_KINDS, Passage, Question
 from .matching import MatchingRule, Words, holds_words, words
 from .works import Works
 
@@ -97,6 +97,11 @@ def _shape(question: Question) -> list[str]:
         problems.append("an answerable question needs a Passage")
     if not question.answerable and question.passages:
         problems.append("an unanswerable question has no Passages")
+    # chat-eval splits the abstention rate by it (spec #63).
+    if not question.answerable and question.unanswerable_kind not in UNANSWERABLE_KINDS:
+        problems.append(f"an unanswerable question needs an unanswerable_kind: {' or '.join(UNANSWERABLE_KINDS)}")
+    if question.answerable and question.unanswerable_kind:
+        problems.append("only an unanswerable question has an unanswerable_kind")
     if question.type == "follow-up" and not (question.history and question.rewrite):
         problems.append("a follow-up needs a history and a rewrite")
     if question.type != "follow-up" and (question.history or question.rewrite):
