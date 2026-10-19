@@ -2,8 +2,8 @@
 
 It names what was scored (the Evaluation set, the chunking config and corpus, each retriever's settings),
 then gives a results table per retriever and question type, each retriever's raw ranking followed by its
-Collapsed ranking (ADR 0053), what crowds the top 5 (ADR 0044) and a line per
-question. Everything above the timings, which come last, depends only on the inputs, so two runs on the same index give the same report
+Collapsed ranking (ADR 0053), what crowds the top 5 (ADR 0044), the grouping rule scored against the Work
+groups (ADR 0060) and a line per question. Everything above the timings, which come last, depends only on the inputs, so two runs on the same index give the same report
 up to that section.
 """
 
@@ -19,6 +19,7 @@ from ..retrieval.retriever import RetrieverConfig
 from ..parsing.report import NUMERIC_SHARE
 from .crowding import Share, crowding, totals
 from .evalset import QUESTION_TYPES, Question
+from .grouping import GroupingScore
 from .matching import MIN_BLOCK, MatchingRule
 from .harness import (
     AS_ASKED,
@@ -61,6 +62,7 @@ def write_eval_report(
     runs: Sequence[RetrieverRun],
     rule: MatchingRule,
     groups: WorkGroups,
+    grouping: GroupingScore | None,
     ungrouped: Sequence[str],
 ) -> None:
     counts = ", ".join(f"{sum(1 for q in questions if q.type == kind)} {kind}" for kind in QUESTION_TYPES)
@@ -131,6 +133,7 @@ def write_eval_report(
         " report counts them (ADR 0035). It counts every question.",
         "",
         *[line for run in runs for line in _crowding(run, groups.editions)],
+        *_grouping(grouping, groups.editions),
         "## Editions without a Work group",
         "",
         f"Editions in any retriever's top {CROWDING_DEPTH} for an answerable question, in any query, with no Work group."
@@ -216,6 +219,73 @@ def _crowding(run: RetrieverRun, groups: Mapping[str, WorkGroup]) -> list[str]:
         f"- Grouped: {total.grouped} of {total.queries} questions have a Work group for every Edition in their top {CROWDING_DEPTH}.",
         f"- Mostly-numeric slots holding a Passage: {total.numeric_holding} of {total.numeric.slots}",
         *(short if run.pool else []),
+        "",
+    ]
+
+
+def _grouping(grouping: GroupingScore | None, groups: Mapping[str, WorkGroup]) -> list[str]:
+    if grouping is None:
+        return ["## Grouping", "", "The manifest has no work_id filled, so there is no grouping to score: `collect` fills it.", ""]
+    lines = [
+        "## Grouping",
+        "",
+        "The grouping rule (ADR 0051), as the manifest's work_id and survey columns hold it, scored against the Work"
+        " groups. Over the Editions in the Work groups, a pair is two Editions one Work holds; an Edition the manifest"
+        " gives no work_id is its own Work. Precision is the share of the rule's pairs the Work groups join too, recall"
+        " the share of the Work groups' pairs the rule joins. A Work of the Work groups is named under *Surveys* when its"
+        " Survey flag differs from the rule's survey column on any of its Editions (blank reads as no).",
+        "",
+    ]
+    both = len(grouping.rule & grouping.checked)
+    without = (
+        f"{len(grouping.without_work_id)} without a work_id in the manifest: {', '.join(grouping.without_work_id)}"
+        if grouping.without_work_id
+        else "all with a work_id in the manifest"
+    )
+
+    def pairs(found: Sequence[tuple[str, str]]) -> list[str]:
+        if not found:
+            return ["None.", ""]
+        rows = [
+            f"| {first} | {grouping.titles[first]} | {second} | {grouping.titles[second]} |"
+            f" {grouping.work_ids[first] or NONE} / {grouping.work_ids[second] or NONE} |"
+            f" {groups[first].work_id} / {groups[second].work_id} |"
+            for first, second in found
+        ]
+        return ["| Edition | Title | Edition | Title | work_id | Work groups |", "|---|---|---|---|---|---|", *rows, ""]
+
+    return [
+        *lines,
+        f"- Editions: {grouping.editions} in the Work groups, {without}",
+        f"- Pairs the rule joins: {len(grouping.rule)}",
+        f"- Pairs the Work groups join: {len(grouping.checked)}",
+        f"- Pairs both join: {both}",
+        f"- Precision: {both}/{len(grouping.rule)} = {_share(both, len(grouping.rule))}",
+        f"- Recall: {both}/{len(grouping.checked)} = {_share(both, len(grouping.checked))}",
+        "",
+        "### Pairs the rule joins and the Work groups keep apart",
+        "",
+        *pairs(grouping.joined_apart),
+        "### Pairs the Work groups join and the rule misses",
+        "",
+        *pairs(grouping.missed),
+        "### Surveys",
+        "",
+        f"- Surveys: {grouping.surveys} of {grouping.works} Works in the Work groups, {grouping.flagged} flagged by the rule;"
+        f" the two agree on {grouping.works - len(grouping.survey_disagreements)} of {grouping.works} Works",
+        "",
+        *(
+            [
+                "| Work | Work groups | Rule | Editions |",
+                "|---|---|---|---|",
+                *[
+                    f"| {d.work_id} | {'yes' if d.checked else 'no'} | {', '.join(d.flagged)} | {', '.join(d.editions)} |"
+                    for d in grouping.survey_disagreements
+                ],
+            ]
+            if grouping.survey_disagreements
+            else ["None."]
+        ),
         "",
     ]
 

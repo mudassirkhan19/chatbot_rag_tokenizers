@@ -188,6 +188,7 @@ just evaluate     # score the retrievers on the Evaluation set and write the eva
     - **restatement**: a Chunk from a Survey, never counted as a duplicate;
     - **mostly numeric**: a text Chunk with more than 35% of its words numbers, as the parse report counts them, with how many of these slots hold a Passage;
   - duplicates and restatement only over the questions whose top 5 Editions all have a Work group, and the list of Editions that have none;
+  - the grouping rule's `work_id` scored against the Work groups (ADR 0060): pairwise precision and recall over the Work groups' Editions with the counts behind them, every pair the two disagree on, and every Work whose Survey flag differs from the rule's;
   - one line per question: its type, the rank of its first hit, the Passages found in the top 5, and its duplicate, restatement and mostly-numeric slots (`ungrouped` when an Edition in its top 5 has no Work group);
   - timings, last: each retriever's index build time and device, and its query latency (p50 and p95) and device.
 - **Scoring rules.**
