@@ -1,7 +1,7 @@
 # 0044. Duplicate rate, Survey restatement and the numeric-Chunk share in evaluate
 
 - **Date:** 2026-10-19
-- **Status:** Accepted. Amended by [0052](0052-collapsed-ranking-and-collapsed-twins.md): the Crowding tables also measure each `+collapsed` twin, against the same Work groups.
+- **Status:** Accepted. Amended by [0053](0053-collapsed-ranking-and-collapsed-twins.md): the Crowding tables also measure each `+collapsed` twin, against the same Work groups.
 
 ## Context
 Spec #31 asks for the "before" numbers for duplicate handling: how much of the top 5 is taken by Chunks of a Work already ranked higher. It also asks for #26's question to be answered: do mostly-numeric text Chunks, most of them a missed table's cells ([0035](0035-missed-table-cells-stay-in-text-chunks.md)), crowd the top 5, and does any of them ever answer a question? Issue #36 builds the measurement into `evaluate`. Issue #38 then groups the baseline top-5 Editions by hand and commits the baseline report.

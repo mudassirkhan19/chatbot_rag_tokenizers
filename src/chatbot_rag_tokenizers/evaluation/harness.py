@@ -6,7 +6,7 @@
 
 Unanswerable questions are run, so they get a line and a latency, but are left out of the metrics. A
 follow-up is run three ways: alone, after its history, and as its reference rewrite. Each query keeps its
-top 5, for measuring what crowds it (crowding.py). A Collapsed ranking (ADR 0052) is scored the same way, and
+top 5, for measuring what crowds it (crowding.py). A Collapsed ranking (ADR 0053) is scored the same way, and
 its query also keeps the Editions merged into each slot and how many Works its pool held.
 """
 

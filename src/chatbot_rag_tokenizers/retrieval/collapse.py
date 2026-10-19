@@ -1,4 +1,4 @@
-"""The Collapsed ranking (ADR 0052): at most one Chunk per Work, over any retriever.
+"""The Collapsed ranking (ADR 0053): at most one Chunk per Work, over any retriever.
 
 The wrapper asks the retriever it wraps for a pool of Chunks, maps each to its Work through the manifest's
 work_id, and keeps the Works in the order their best-ranked Chunk came in. A Chunk whose Edition has no

@@ -1,6 +1,6 @@
 """`evaluate` (ADR 0039): score each retriever's index on the Evaluation set and write the eval report, with what
 crowds the top 5 measured against the Work groups (ADR 0044). Every retriever is scored twice: raw, and as its
-Collapsed ranking over the same index (ADR 0052)."""
+Collapsed ranking over the same index (ADR 0053)."""
 
 import hashlib
 from collections.abc import Iterable, Mapping, Sequence

@@ -1,7 +1,7 @@
 # 0039. Retrieval tracer: BM25, the index cache and the evaluate harness
 
 - **Date:** 2026-10-18
-- **Status:** Accepted. Amended by [0043](0043-recover-numbered-headings-grobid-left-in-paragraphs.md): the index record's corpus fingerprint also hashes the Chunks, so Chunks rebuilt differently under the same config rebuild the index. Amended by [0052](0052-collapsed-ranking-and-collapsed-twins.md): each retriever is also scored on its Collapsed ranking, as a `+collapsed` twin.
+- **Status:** Accepted. Amended by [0043](0043-recover-numbered-headings-grobid-left-in-paragraphs.md): the index record's corpus fingerprint also hashes the Chunks, so Chunks rebuilt differently under the same config rebuild the index. Amended by [0053](0053-collapsed-ranking-and-collapsed-twins.md): each retriever is also scored on its Collapsed ranking, as a `+collapsed` twin.
 
 ## Context
 Spec #31 needs a number for every retrieval choice that follows: duplicate handling, the embedding comparison and the chatbot. Its tracer, #33, asks for the thinnest path from an Evaluation set to a committed eval report:

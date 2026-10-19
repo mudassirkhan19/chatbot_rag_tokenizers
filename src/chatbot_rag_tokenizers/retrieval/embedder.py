@@ -26,7 +26,9 @@ POOLINGS = {
     "cls": "[CLS] vector of the last layer, L2-normalised",
     "mean": "mean of the last layer over non-padding tokens, L2-normalised",
 }
-WEIGHTS = "model.safetensors"  # the file the pin's sha256 is checked against
+# The files a pin's sha256 can be checked against, in the order they are looked for: a repo without
+# model.safetensors (OpenScholar_Retriever has only pytorch_model.bin) is checked on the file it has (ADR 0052).
+WEIGHTS = ("model.safetensors", "pytorch_model.bin")
 _BATCH = 32
 _PROGRESS_EVERY = 100  # batches
 
@@ -64,18 +66,22 @@ def load_embedder(settings: EmbeddingModel, device: str | None = None) -> Embedd
 class TransformersEmbedder:
     def __init__(self, settings: EmbeddingModel, device: str) -> None:
         import torch
-        from huggingface_hub import hf_hub_download
         from transformers import AutoModel, AutoTokenizer
 
         self._torch = torch
         self.model, self.revision, self.device = settings.model, settings.revision, device
         self._pooling, self._max_tokens = settings.pooling, settings.max_tokens
-        weights = Path(hf_hub_download(settings.model, WEIGHTS, revision=settings.revision))
+        weights = weights_file(settings.model, settings.revision)
+        self.weights_file = weights.name  # the file the pin's sha256 was checked against
         if (found := _sha256(weights)) != settings.sha256:
             raise ConfigError(f"the weights of {settings.model}@{settings.revision} have sha256 {found[:12]}, not the pinned {settings.sha256[:12]}")
         print(f"embedder: loading {settings.model}@{settings.revision[:12]} on {device}", file=sys.stderr)
         self.tokenizer = AutoTokenizer.from_pretrained(settings.model, revision=settings.revision)
-        network = AutoModel.from_pretrained(settings.model, revision=settings.revision, dtype=torch.float32)
+        # Loaded from the file whose hash was checked, never from another format the repo also holds.
+        network, loading = AutoModel.from_pretrained(
+            settings.model, revision=settings.revision, dtype=torch.float32, use_safetensors=weights.name == WEIGHTS[0], output_loading_info=True
+        )
+        check_loading(settings.model, loading)
         # transformers types .to() as taking a model, not a device.
         self._network = network.to(device).eval()  # type: ignore[arg-type]
         # The first pass on MPS compiles its kernels; doing it here keeps that out of the first query's latency.
@@ -109,6 +115,40 @@ class TransformersEmbedder:
         if cut:
             print(f"embedder: {cut} of {len(texts)} texts were cut to their first {self._max_tokens} tokens", file=sys.stderr)
         return vectors
+
+
+def weights_file(model: str, revision: str) -> Path:
+    """The weights file of the repo at that revision, downloaded: the first of WEIGHTS it holds. Offline, a file
+    Hugging Face hasn't cached counts as not held, so a wrong one stops at the hash check instead."""
+    import huggingface_hub
+    from huggingface_hub.errors import EntryNotFoundError
+
+    for name in WEIGHTS:
+        try:
+            return Path(huggingface_hub.hf_hub_download(model, name, revision=revision))
+        except EntryNotFoundError:
+            continue
+    raise ConfigError(f"found neither {' nor '.join(WEIGHTS)} of {model}@{revision[:12]}, on Hugging Face or, offline, in its cache")
+
+
+def check_loading(model: str, loading: dict) -> None:
+    """Refuse a checkpoint that doesn't fill the encoder exactly, as transformers reports its loading.
+
+    Only the pooling layer may be missing: no pooling uses it, and a Contriever such as OpenScholar_Retriever
+    is saved without it. Any other missing weight would be left at random, and the vectors would mean nothing.
+    """
+
+    def named(key) -> str:  # a mismatched key may come with the two shapes
+        return key[0] if isinstance(key, tuple) else key
+
+    if missing := sorted(key for key in loading["missing_keys"] if not key.startswith("pooler.")):
+        raise ConfigError(f"{model} left {', '.join(missing)} untrained: its checkpoint does not hold them")
+    if unexpected := sorted(loading["unexpected_keys"]):
+        raise ConfigError(f"{model} did not use {', '.join(unexpected)} from its checkpoint")
+    if mismatched := sorted(named(key) for key in loading["mismatched_keys"]):
+        raise ConfigError(f"{model}: {', '.join(mismatched)} has the wrong shape in its checkpoint")
+    if loading.get("error_msgs"):
+        raise ConfigError(f"{model} did not load: {'; '.join(loading['error_msgs'])}")
 
 
 def _sha256(path: Path) -> str:

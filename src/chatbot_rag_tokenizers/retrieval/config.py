@@ -1,4 +1,4 @@
-"""The retrieval config file: each retriever's settings (ADRs 0039, 0042 and 0050) and the Collapsed ranking's pool (ADR 0052)."""
+"""The retrieval config file: each retriever's settings (ADRs 0039, 0042 and 0050) and the Collapsed ranking's pool (ADR 0053)."""
 
 import re
 import tomllib

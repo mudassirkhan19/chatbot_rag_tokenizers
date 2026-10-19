@@ -2,7 +2,7 @@
 
 It names what was scored (the Evaluation set, the chunking config and corpus, each retriever's settings),
 then gives a results table per retriever and question type, each retriever's raw ranking followed by its
-Collapsed ranking (ADR 0052), what crowds the top 5 (ADR 0044) and a line per
+Collapsed ranking (ADR 0053), what crowds the top 5 (ADR 0044) and a line per
 question. Everything above the timings, which come last, depends only on the inputs, so two runs on the same index give the same report
 up to that section.
 """
@@ -100,7 +100,7 @@ def write_eval_report(
         f" matches (ADR 0041). A match running into the Chunk's first or last word counts only the quote's words on the"
         f" Chunk's side, and must cover at least {rule.edge_min_words} words. The Chunk may come from any Edition.",
         "- A retriever's own ranking is scored raw: duplicates of one Work all take their slots.",
-        f"- Its `{SUFFIX}` twin is scored on the Collapsed ranking (ADR 0052) over the same index: from the raw top"
+        f"- Its `{SUFFIX}` twin is scored on the Collapsed ranking (ADR 0053) over the same index: from the raw top"
         " *pool* Chunks it keeps one per Work, by the manifest's work_id (an Edition with none is its own Work), in the"
         " raw order between Works. A Work shows its Canonical Edition's Chunk when one is in the pool, else a Chunk of"
         " an Edition's latest file, else its best-ranked Chunk. Surveys are not demoted.",
