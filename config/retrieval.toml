@@ -57,6 +57,29 @@ pooling = "mean"
 max_tokens = 512
 query_instruction = ""
 
+# The hybrids (ADR 0058), one per dense table, named `hybrid.<name>` for `--retriever`: BM25 and that dense table,
+# fused by reciprocal rank fusion. A query takes each member's top `pool` Chunks, scores each Chunk by the sum of
+# 1 / (k + rank) over the members that ranked it, and ranks by that sum; a tie goes to the member listed first.
+# A hybrid stores no vectors: its index points to its members' indexes, and `index` builds a missing member first.
+#   members  bm25 and one dense table, by their `--retriever` names
+#   k        the RRF constant; 60, the value Cormack, Clarke and Büttcher (2009) fixed after a pilot run
+#   pool     how many Chunks each member ranks for a query
+# The members' keys are part of the hybrid's key, so a change to a member builds the hybrid's record again too.
+[hybrid."bm25+bge-small"]
+members = ["bm25", "dense.bge-small"]
+k = 60
+pool = 100
+
+[hybrid."bm25+bge-base"]
+members = ["bm25", "dense.bge-base"]
+k = 60
+pool = 100
+
+[hybrid."bm25+openscholar"]
+members = ["bm25", "dense.openscholar"]
+k = 60
+pool = 100
+
 # The Collapsed ranking (ADRs 0053 and 0057): `evaluate` scores every retriever above beside its `<name>+collapsed`
 # twin, which asks the retriever for its top `pool` Chunks, merges copies of a passage from a Work's other files
 # (the manifest's work_id), and fills the top k from them in the raw order. A pool that holds fewer than k distinct

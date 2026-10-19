@@ -1,5 +1,7 @@
-"""The retrieval config file (ADRs 0039, 0042, 0050 and 0052): BM25's table and the named dense tables."""
+"""The retrieval config file (ADRs 0039, 0042, 0050, 0052, 0053, 0054 and 0058): BM25's table, the named dense tables, the
+hybrids, the Collapsed ranking's pool and the chat table."""
 
+import re
 from pathlib import Path
 
 import pytest
@@ -18,7 +20,7 @@ def test_the_repo_config_names_bge_small_with_the_key_of_the_index_built_before_
     assert (dense.pooling, dense.max_tokens) == ("cls", 512)
     # The key of the full-corpus index built as `dense` (data/eval/eval-report.md), so it isn't embedded again.
     assert dense.key == "dense-784e5a0da1b5"
-    assert list(config.retrievers) == ["bm25", "dense.bge-small", "dense.bge-base", "dense.openscholar"]
+    assert list(config.retrievers)[:4] == ["bm25", "dense.bge-small", "dense.bge-base", "dense.openscholar"]
 
 
 def test_the_repo_config_pins_the_size_control_and_the_scientific_candidate():
@@ -82,6 +84,26 @@ def test_a_dense_table_written_the_old_way_is_named_and_told_how_to_change(tmp_p
         load_retrieval_config(path)
 
 
+def test_the_repo_config_fuses_bm25_with_each_dense_table():
+    config = load_retrieval_config(RETRIEVAL_CONFIG)
+
+    hybrids = {hybrid.name: hybrid for hybrid in config.hybrid}
+    assert list(hybrids) == ["hybrid.bm25+bge-small", "hybrid.bm25+bge-base", "hybrid.bm25+openscholar"]
+    bge_small = hybrids["hybrid.bm25+bge-small"]
+    assert [member.name for member in bge_small.members] == ["bm25", "dense.bge-small"]
+    assert (bge_small.k, bge_small.pool) == (60, 100)
+    assert list(config.retrievers)[-3:] == list(hybrids)
+
+
+def with_hybrid(tmp_path: Path, table: str) -> Path:
+    """The repo's retrieval config with its hybrid tables replaced by this one."""
+    config = re.sub(r"\n\[hybrid\.[^\n]*\]\n(?:[a-z][^\n]*\n)*", "\n", RETRIEVAL_CONFIG.read_text())
+    assert "[hybrid." not in config
+    path = tmp_path / "retrieval.toml"
+    path.write_text(config + "\n" + table)
+    return path
+
+
 def test_the_chatbot_asks_the_dense_baseline_for_five_chunks_and_answers_with_the_pinned_gemma():
     chat = load_chat_config(RETRIEVAL_CONFIG)
 
@@ -99,6 +121,26 @@ def with_chat_line(tmp_path: Path, old: str, new: str) -> Path:
     path = tmp_path / "retrieval.toml"
     path.write_text(config.replace(old, new))
     return path
+
+
+@pytest.mark.parametrize(
+    "members, k, pool, message",
+    [
+        ('["bm25", "dense.missing"]', 60, 100, r"\[hybrid.test\] member 'dense.missing' is not a retriever in .*; it configures bm25, dense.bge-small"),
+        ('["bm25", "hybrid.other"]', 60, 100, r"\[hybrid.test\] member 'hybrid.other' is not bm25 or a dense table"),
+        ('["dense.bge-small", "dense.bge-base"]', 60, 100, r"\[hybrid.test\] fuses bm25 with one dense table, not dense.bge-small and dense.bge-base"),
+        ('["bm25"]', 60, 100, r"\[hybrid.test\] fuses bm25 with one dense table, not bm25"),
+        ('["bm25", "dense.bge-small"]', 0, 100, r"\[hybrid.test\] k 0 must be at least 1"),
+        ('["bm25", "dense.bge-small"]', 60, -1, r"\[hybrid.test\] pool -1 must be at least 1"),
+    ],
+    ids=["unknown-member", "hybrid-member", "two-dense", "one-member", "k", "pool"],
+)
+def test_a_bad_hybrid_table_stops_with_a_message_naming_the_table(tmp_path, members, k, pool, message):
+    other = "[hybrid.other]\nmembers = [\"bm25\", \"dense.bge-base\"]\nk = 60\npool = 100\n"
+    table = f"[hybrid.test]\nmembers = {members}\nk = {k}\npool = {pool}\n"
+
+    with pytest.raises(ConfigError, match=message):
+        load_retrieval_config(with_hybrid(tmp_path, other + table))
 
 
 @pytest.mark.parametrize(

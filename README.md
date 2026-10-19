@@ -124,7 +124,7 @@ This sends each PDF to the pinned GROBID service and cuts its text into Chunks t
 ```sh
 just index        # build BM25 and the dense baseline over the parsed Chunks (uv run chatbot-rag-tokenizers index)
 just eval-check   # check the Evaluation set's questions and quotes against the parsed text
-just evaluate     # score both retrievers on the Evaluation set and write the eval report
+just evaluate     # score the retrievers on the Evaluation set and write the eval report
 ```
 
 `index` builds the retrievers, `eval-check` checks the hand-checked Evaluation set, and `evaluate` scores the retrievers on it (ADRs 0039, 0041 and 0042). There are two retrievers, BM25 and the dense baseline, and the corpus is every file the committed parse report lists as parsed: 2,689 files of the full-corpus run.
@@ -132,7 +132,7 @@ just evaluate     # score both retrievers on the Evaluation set and write the ev
 - **`index` inputs.**
   - The parse report (`data/parse-report.md`, `--parse-report`) decides which files make up the corpus: every file it lists as parsed.
   - Their Chunks come from the parse cache (`--cache`), under the chunking config in `config/parse.toml` (`--parse-config`).
-  - Each retriever's settings are in `config/retrieval.toml` (`--config`). `--retriever bm25` or `--retriever dense.bge-small` builds only the retrievers named; the default is all of them.
+  - Each retriever's settings are in `config/retrieval.toml` (`--config`). `--retriever bm25` or `--retriever dense.bge-small` builds only the retrievers named, and a hybrid's members with it; the default is all of them.
   - `index` stops with a pointer to `just parse` when the report is missing, when the report was written with another GROBID image or chunking config, when the cache holds no Chunks for the report's files, or when it holds them only under another chunking config.
 - **`index` outputs.** Each index goes to the index cache (`data/index-cache/<chunking key>/<retriever key>/`, `--index-cache`, never committed) with a record of:
   - its settings;
@@ -156,6 +156,10 @@ just evaluate     # score both retrievers on the Evaluation set and write the ev
   - Each query gets the model card's instruction in front ("Represent this sentence for searching relevant passages: "); Chunks don't.
   - A query is scored against every Chunk by exact dot product over the normalised float32 vectors (about 220 MB for the full corpus), with no vector database.
   - **Device.** It runs on MPS when the machine has it, otherwise on the CPU. The two agree to within 1×10⁻⁶ per dimension for each model (2×10⁻⁷ for bge-small, 4×10⁻⁷ for bge-base, 7×10⁻⁷ for OpenScholar), and give the same top 10. The index record and the eval report's timings name the device. On an M1 Max the full corpus embeds at about 200 Chunks/s on MPS against about 50 on the CPU.
+- **The hybrids** answer "should keyword search sit beside vector search?" (ADR 0058). Each `[hybrid.<name>]` table fuses BM25 with one dense table by reciprocal rank fusion, and there is one per dense table: `hybrid.bm25+bge-small`, `hybrid.bm25+bge-base` and `hybrid.bm25+openscholar`.
+  - A table names its `members` (`bm25` and one dense table), the RRF constant `k` (60) and a `pool` (100). A query takes each member's top `pool` Chunks, gives each Chunk the sum of 1 / (`k` + rank) over the members that ranked it, and ranks by that sum. A tie goes to the Chunk the member listed first ranks higher.
+  - A hybrid stores no vectors. Its folder in the index cache holds only its record, which names its members' keys; `index --retriever hybrid.bm25+bge-small` builds any member that is missing first. Its build time is its members' and its latency covers both members' queries and the fusion.
+  - A member that isn't configured, a member that isn't BM25 or a dense table, anything but BM25 plus one dense table, or a `k` or `pool` below 1 stops loading with a message naming the table.
 - **The Evaluation set** (`data/eval/evaluation-set.jsonl`, `--evaluation-set`) has one JSON question per line:
   - its `id`, its `type` (`single-paper`, `multi-paper`, `follow-up` or `unanswerable`), the `question` and its `passages`;
   - each Passage has the pinned `edition_id` of the file it quotes (such as `2112.06598v2`), its `section` as the context header gives it (`5 Results › 5.3 Is freezing necessary?`) and a verbatim `quote`;
@@ -196,15 +200,15 @@ The committed Evaluation set has 36 checked questions (ADR 0046), and the commit
 
 ## Reproduce the baseline
 
-The baseline eval report (`data/eval/eval-report.md`) gives the "before" numbers for both retrievers, BM25 and the dense baseline, on the full corpus and the 36-question Evaluation set. These numbers are Recall@5, MRR@10 and Hit@5 per question type and per follow-up mode, the duplicate, restatement and mostly-numeric shares of the top 5, and build time and latency. To reproduce it from a clone:
+The baseline eval report (`data/eval/eval-report.md`) gives the "before" numbers for BM25, the dense baseline and their hybrid (ADR 0058), each with its `+collapsed` twin, on the full corpus and the 36-question Evaluation set. These numbers are Recall@5, MRR@10 and Hit@5 per question type and per follow-up mode, the duplicate, restatement and mostly-numeric shares of the top 5, and build time and latency. To reproduce it from a clone:
 
 ```sh
 just init        # dependencies, the pinned GROBID image and the judge model
 just fetch       # the pinned PDFs, checked against their recorded hashes (about 3.5 GB, roughly 2 h)
 just grobid-up   # start GROBID on localhost
 just parse       # every recorded file into Chunks (about 1.5 h on an Apple-silicon laptop)
-just index       # BM25 (about 10 s) and the dense baseline (about 14 min on MPS)
-just evaluate    # scores both and rewrites data/eval/eval-report.md
+just index --retriever hybrid.bm25+bge-small   # BM25 (about 10 s), the dense baseline (14 to 22 min on MPS) and their hybrid
+just evaluate --retriever bm25 --retriever dense.bge-small --retriever hybrid.bm25+bge-small   # rewrites data/eval/eval-report.md
 git diff --stat data/   # only the report's Timings section differs
 ```
 
