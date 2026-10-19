@@ -207,3 +207,7 @@ evaluate *args:
 # Serve the chat page on localhost and print its URL; extra arguments go to the CLI
 chat *args:
     uv run chatbot-rag-tokenizers chat "$@"
+
+# Ask the chatbot every question of the Evaluation set and write the chat report and answers; extra arguments go to the CLI
+chat-eval *args:
+    uv run chatbot-rag-tokenizers chat-eval "$@"
