@@ -1,4 +1,4 @@
-# 0058. Abstention by instruction, and the chat report that measures it
+# 0059. Abstention by instruction, and the chat report that measures it
 
 - **Date:** 2026-10-19
 - **Status:** Accepted
