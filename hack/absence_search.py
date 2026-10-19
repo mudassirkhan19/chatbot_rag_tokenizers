@@ -37,10 +37,10 @@ SEARCHES = {
         ("Byte Latent Transformer 70B MMLU", "BLT byte-level model 70B parameters results"),
         "The Byte Latent Transformer is trained up to 8B parameters; no Chunk gives a 70B BLT.",
     ),
-    "llama-3-shan-premium": Search(
-        ("Llama 3 tokenizer Shan tokenization parity", "Shan language token premium Llama 3"),
-        "Petrov et al. predate Llama 3 and measure GPT-2, RoBERTa, ChatGPT, GPT-4 and others. A 2026 paper quotes"
-        " their cl100k_base figure for Shan, not a Llama 3 one.",
+    "blt-8b-gpu-hours": Search(
+        ("Byte Latent Transformer 8B pre-training GPU hours", "BLT training wall-clock time compute cost H100"),
+        "The BLT paper compares models by training FLOPs and names wall-clock time as a limitation, without giving hours."
+        " Papers that report GPU-hours for a BLT train their own small ones, not the 8B model.",
     ),
     "fast-wordpiece-gpu": Search(
         ("Fast WordPiece GPU throughput", "LinMaxMatch WordPiece tokenization on GPU"),

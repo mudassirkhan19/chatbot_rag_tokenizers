@@ -196,101 +196,101 @@ Drafter's reading: The Byte Latent Transformer is trained up to 8B parameters; n
 | 9 | 0.827 | 2605.08044v1 | B All 1B Model Results | Table 4 (B All 1B Model Results): Full German-to-English translation results for 1B-parameter models across various generation settings. \| \| \| \| \| \| \| Memory \|  |
 | 10 | 0.827 | 2605.08044v1 | B All 1B Model Results | Table 6 (B All 1B Model Results): Full MBPP task results for 1B-parameter models across various generation settings. \| \| \| \| \| \| \| Memory \| Memory \| BLT-DV (dif |
 
-## llama-3-shan-premium
+## blt-8b-gpu-hours
 
-> How many times more tokens does the Llama 3 tokenizer need for Shan than for English, according to Petrov et al.?
+> How many GPU-hours did it take to pre-train the 8B-parameter Byte Latent Transformer?
 
-Drafter's reading: Petrov et al. predate Llama 3 and measure GPT-2, RoBERTa, ChatGPT, GPT-4 and others. A 2026 paper quotes their cl100k_base figure for Shan, not a Llama 3 one.
+Drafter's reading: The BLT paper compares models by training FLOPs and names wall-clock time as a limitation, without giving hours. Papers that report GPU-hours for a BLT train their own small ones, not the 8B model.
 
-### bm25: How many times more tokens does the Llama 3 tokenizer need for Shan than for English, according to Petrov et al.?
-
-| Rank | Score | Pinned id | Section | Text |
-|---:|---:|---|---|---|
-| 1 | 35.974 | 2601.13328v1 | 3 Comparing Tokenizers › 3.3 Language-Specific Tokenization Premiums | The "dev" split of the FLORES-200 corpus provides 997 sentence translation pairs between English and a given language X, for each of 200 distinct languages. As  |
-| 2 | 33.565 | 2506.10766v1 | 6.1 Multilingual Tokenizers | Tokenization remains a key challenge for multilingual models, particularly due to inefficiencies and disparities across scripts. Petrov et al. [2023] show that  |
-| 3 | 33.355 | 2610.01984v2 | 1 Introduction | Petrov et al. [2023] show that, under widely deployed tokenizers such as GPT-4's cl100k_base, parallel Shan text can require up to 15× as many tokens as English |
-| 4 | 31.981 | 2305.15425v2 | 1 Introduction | However, this multilingualism is currently treated as a curious emergent phenomenon rather than a carefully designed, controlled and managed process. The perfor |
-| 5 | 31.608 | 2610.01984v1 | 1 Introduction | Petrov et al. [2023] show that, under widely deployed tokenizers such as GPT-4's cl100k_base, parallel Shan text can require up to 15× as many tokens as English |
-| 6 | 30.827 | 2607.24276v1 | 2 Related Work | Subword tokenization. Byte-Pair Encoding [15] and the unigram language-model tokenizer [8], both popularized through Sentence-Piece [9], underlie virtually all  |
-| 7 | 30.694 | 10.1007/s00146-026-02990-2 | 1 Introduction | The API of LLMs charges users a fixed amount for a certain quantity of input and generated tokens. 2 The subword tokenization system of the ChatGPT API, for exa |
-| 8 | 30.296 | 2407.12869v1 | 3. Methodology › 3.1. Vocabulary Extension | The first step in adapting a monolingual foundation model for multilingual use is to construct a balanced vocabulary that includes all target languages. Recent  |
-| 9 | 29.202 | 2305.15425v1 | 1 Introduction | This work demonstrates how the unequal treatment of languages arises at the tokenization stage, well before the language model sees any data at all. For instanc |
-| 10 | 29.130 | 2610.21679v1 | 9 Discussion › Different Approaches To Tokenizer Evaluation. | We have focused on the impact of tokenization on model performance. There are other ways in which tokenizers affect language models. Tokenizers in part determin |
-
-### dense: How many times more tokens does the Llama 3 tokenizer need for Shan than for English, according to Petrov et al.?
+### bm25: How many GPU-hours did it take to pre-train the 8B-parameter Byte Latent Transformer?
 
 | Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
-| 1 | 0.782 | 2407.16607v1 | 5 Attacking commercial tokenizers › 5.2 LLAMA MODELS | LLAMA The LLAMA tokenizer was introduced with LLAMA and re-used for LLAMA 2. The training data for LLAMA is known to be primarily English, though the Wikipedia  |
-| 2 | 0.781 | 2304.08177v1 | 2 CHINESE LLAMA | Directly pre-training LLaMA on Chinese corpora faces several challenges. Firstly, there are less than one thousand Chinese characters in the original LLaMA toke |
-| 3 | 0.779 | 2407.16607v4 | 5 Attacking commercial tokenizers › 5.2 LLAMA MODELS | LLAMA The training data for LLAMA is known to be primarily English, though the Wikipedia split "covers 20 languages which use either the Latin or Cyrillic scrip |
-| 4 | 0.773 | 2510.27254v1 | 3 Background | Figure2: Tokenization of the same sentence with the LLaMA-3.2-1B tokenizer -English: 16 tokens (0.3 tok/char); Khmer translit: 35 (0.5); Khmer: 104 (1.7). Divid |
-| 5 | 0.770 | 2405.05417v1 | 3 Results › 3.3 Model-specific observations › 3.3.7 Models using the OpenAI 'tiktoken' tokenizer | The Qwen model family by Alibaba significantly extends the tokenizer to over 150,000 tokens with "commonly used Chinese characters and words, as well as those i |
-| 6 | 0.770 | 2609.39001v1 | 3 Measuring the token premium | OpenAI o200k (GPT-4o, GPT-5 family, gpt-oss), Meta Llama 3.1, Alibaba Qwen3, DeepSeek V3 and V4 (identical counts on our texts, merged), Google Gemma 3 (same to |
-| 7 | 0.765 | 2304.08177v3 | 2 CHINESE LLAMA AND CHINESE ALPACA › 2.2 CHINESE VOCABULARY EXTENSION | • To enhance the tokenizer's support for Chinese texts, we initially train a Chinese tokenizer with SentencePiece (Kudo & Richardson, 2018) on Chinese corporafo |
-| 8 | 0.764 | 2407.12869v1 | 3. Methodology › 3.1. Vocabulary Extension | We perform extrinsic evaluation by continually training Llama 2 7B on a mixture of AraV5 and Pile, and monitoring the AraV5 validation loss. For a fair comparis |
-| 9 | 0.763 | 2409.16235v1 | 3 TOKENIZER | To train the tokenizer, we adopt the approach used by the LLaMa-2 and Mistral models (Touvron et al., 2023;Jiang et al., 2023), training a BPE tokenizer with by |
-| 10 | 0.763 | 2610.08794v1 | 5 Conclusion | Figure 4 compares bytes-per-token for 8 programming languages, contrasting GPT-2 (2019) with three modern tokenizers (Llama 3.1, Kimi K2, gpt-oss).Programming-l |
+| 1 | 23.132 | 2412.09871v1 | 9 Limitations and Future Work | In this work, for the purposes of architectural choices, we train models for the optimal number of steps as determined for Llama 3 (Dubey et al., 2024). However |
+| 2 | 23.041 | 2023.acl-long.402 | C Did you run computational experiments? | 3.2 C1. Did you report the number of parameters in the models used, the total computational budget (e.g., GPU hours), and computing infrastructure used? |
+| 3 | 22.657 | 2412.09871v1 | 7 Ablations and Discussion | In this section, we discuss ablations justifying architectural choices for BLT and the patching scheme and hyper-parameters for the BLT 8B parameter model train |
+| 4 | 22.348 | 2412.09871v1 | 5 Scaling Trends › 5.1 Parameter Matched Compute Optimal Scaling Trends | Using the Llama 2 dataset, we train various compute-optimal bpe and BLT models across four different sizes, ranging from 1B to 8B parameters. We then plot the t |
+| 5 | 22.070 | 2203.09963v1 | 4 Methods › 4.3 Training Details | To train the models, we used a GeForce RTX 2080 Ti GPU. Following the best practices with the T5 family of models [15,18,30,31], we used the total batch size (n |
+| 6 | 21.964 | 2305.07185v1 | 4. Experimental setup › 4.4. Inference Methods | Table 4 (4.4. Inference Methods): Bits per byte (bpb) on ImageNet 64×64. MEGABYTE matches the current state-of-the-art while only using half the amount of GPU h |
+| 7 | 21.964 | 2305.07185v2 | 4. Experimental setup › 4.4. Inference Methods | Table 4 (4.4. Inference Methods): Bits per byte (bpb) on ImageNet 64×64. MEGABYTE matches the current state-of-the-art while only using half the amount of GPU h |
+| 8 | 21.751 | 2412.09871v1 | Local Model Hyperparamaters | ), which can maintain a fixed-size memory state over a very large context length,Wang et al. (2024) train a byte-level Mamba architecture also without using pat |
+| 9 | 21.684 | 2412.09871v1 | 7 Ablations and Discussion › Entropy Model Hyper-parameters | Character-Level Transformers: The development of transformer models using attention (Vaswani et al., 2017) together with subword tokenization (Sennrich et al.,  |
+| 10 | 21.504 | 2023.acl-long.200 | C Did you run computational experiments? | In section 4. C1. Did you report the number of parameters in the models used, the total computational budget (e.g., GPU hours), and computing infrastructure use |
 
-### bm25: Llama 3 tokenizer Shan tokenization parity
-
-| Rank | Score | Pinned id | Section | Text |
-|---:|---:|---|---|---|
-| 1 | 22.558 | 2305.15425v1 | 5 Tokenization Length Differences Across Languages › 5.1 Parity for English-centric Models | corresponds to 9 tokens, almost double that of English: 36644 19861 2868 5203 1048 6863 60110 460 0 Vi aug uro una bu ona giorn ata ! Shan is the language with  |
-| 2 | 22.147 | 2305.15425v2 | 4 Tokenization Length Differences Across Languages › 4.1 Parity for English-centric Models › Summary. | All four English-centric tokenizers we consider are far from tokenization parity. Portuguese is closest to parity with English for the ChatGPT and GPT-4 tokeniz |
-| 3 | 22.101 | 2305.15425v1 | 5 Tokenization Length Differences Across Languages › 5.1 Parity for English-centric Models › Summary. | All four English-centric tokenizers we consider are far from tokenization parity. Portuguese is closest to parity with English for the tokenizer for ChatGPT and |
-| 4 | 20.486 | 2305.15425v1 | 5 Tokenization Length Differences Across Languages › 5.5 Parity for Byte-level Tokenization Models | Recently, models working around this issue have been proposed. CANINE (Clark et al., 2022) is a large model that operates at the Unicode codepoint level rather  |
-| 5 | 20.032 | 2305.15425v2 | 4 Tokenization Length Differences Across Languages › 4.1 Parity for English-centric Models | MuRIL English 1.00 Nepali 1.01 Bengali 1.01 Tamil 1.06 Marathi 1.06 Kannada 1.06 Hindi 1.16 Malayalam 1.18 Gujarati 1.19 Sanskrit 1.21 Telugu 1.21 Odia 1.21 Sin |
-| 6 | 19.185 | 2305.15425v1 | 5 Tokenization Length Differences Across Languages › 5.4 Parity for Multilingual Models | Thanks to the byte-level BPE tokenization, BLOOM is the only model encoding all languages without needing too many UNK tokens (see Table 7). The other four mode |
-| 7 | 18.891 | 2305.15425v2 | 4 Tokenization Length Differences Across Languages › 4.4 Parity for Byte-level Tokenization Models | Tokenization disparity is also present in the ByT5 model. The tokenization premium for ByT5 ranges from 0.87 (for Yue Chinese) to 3.94 (for Shan). The introduct |
-| 8 | 18.130 | 2305.15425v1 | 5 Tokenization Length Differences Across Languages › 5.4 Parity for Multilingual Models | Table 7 (5.4 Parity for Multilingual Models): Tokenizer premiums on the FLORES-200 dataset for multilingual models. The languages that are in the top or bottom  |
-| 9 | 18.120 | 2305.15425v1 | 5 Tokenization Length Differences Across Languages › 5.5 Parity for Byte-level Tokenization Models | Table 8 (5.5 Parity for Byte-level Tokenization Models): Tokenizer premiums on the FLORES-200 dataset for byte-level models. The languages that are in the top o |
-| 10 | 17.960 | 2305.15425v2 | 4 Tokenization Length Differences Across Languages › 4.3 Parity for Multilingual Models | Table 4 (4.3 Parity for Multilingual Models): Tokenizer premiums with respect to English on FLORES-200 for multilingual models. The languages that are in the to |
-
-### dense: Llama 3 tokenizer Shan tokenization parity
+### dense: How many GPU-hours did it take to pre-train the 8B-parameter Byte Latent Transformer?
 
 | Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
-| 1 | 0.844 | 2503.02174v1 | 1 Introduction | Underneath most Large Language Model (LLM) pipelines lies a fundamental yet often overlooked component: the tokenizer. In a nutshell, a tokenizer maps text from |
-| 2 | 0.840 | 2304.08177v1 | 2 CHINESE LLAMA | Directly pre-training LLaMA on Chinese corpora faces several challenges. Firstly, there are less than one thousand Chinese characters in the original LLaMA toke |
-| 3 | 0.835 | 2503.02174v2 | 1 Introduction | Underneath most Large Language Model (LLM) pipelines lies a fundamental yet often overlooked component: the tokenizer. In a nutshell, a tokenizer maps text from |
-| 4 | 0.835 | 2402.01035v1 | 3. Code Tokenizers Experiments › 3.3. Tokenizer update methods › 3.3.2. TOKENIZER EXTENSION | We train a 64k vocabulary tokenizer using Sentencepiece on code data, changing the pre-tokenization scheme to allow tokens over tabs and new line characters, an |
-| 5 | 0.835 | 2402.01035v2 | 3. Code Tokenizers Experiments › 3.3. Tokenizer update methods › 3.3.2. TOKENIZER EXTENSION | We train a 64k vocabulary tokenizer using Sentencepiece on code data, changing the pre-tokenization scheme to allow tokens over tabs and new line characters, an |
-| 6 | 0.833 | 2407.12869v1 | A Tokenizer ablations | We experimented with one more tokenizer variant, Llama3-replace5 in addition to Llama 2-extend100 and Llama3-replace30. Here we replace only 5% of the Llama 2 t |
-| 7 | 0.833 | 2407.12869v2 | A Tokenizer ablations | We experimented with one more tokenizer variant, Llama3-replace5 in addition to Llama 2-extend100 and Llama3-replace30. Here we replace only 5% of the Llama 2 t |
-| 8 | 0.833 | 2304.08177v1 | 2 CHINESE LLAMA | The new rows are appended to the end of the original embedding matrices, ensuring that the embeddings of the tokens in the original vocabulary remain unaffected |
-| 9 | 0.831 | 2407.16607v1 | 5 Attacking commercial tokenizers › 5.2 LLAMA MODELS | LLAMA3 LLAMA3 extends GPT-3.5's merge list (of 100,000 merges) with an extra 27,744 merges. We apply our attack to these new merges to infer what data was used  |
-| 10 | 0.828 | 2509.20045v1 | 5 Results › 5.3 A closer look at the Llama tokenizer | As the Llama-3.2 model performance was behind all other models on all tasks, we take a closer look into its tokenizer and how it deals with non-Latin scripts. F |
+| 1 | 0.779 | 2402.18376v1 | 7 Conclusion › Ethics Statement | We have used the commonly used public dataset The Pile, which has not undergone a formal ethics review (Biderman et al., 2022). Our models may include biases fr |
+| 2 | 0.779 | 2402.18376v2 | 7 Conclusion › Ethics Statement | We have used the commonly used public dataset The Pile, which has not undergone a formal ethics review (Biderman et al., 2022). Our models may include biases fr |
+| 3 | 0.778 | 2610.01984v1 | G Reproducibility and compute disclosure › G.2 Compute disclosure | The primary 28-run LM suite and its single-GPU evaluations ran on internal Linux nodes with NVIDIA A100 80 GB GPUs. Tokenizer training used our two-phase CPU pi |
+| 4 | 0.775 | 2610.01984v2 | G Reproducibility and compute disclosure › G.2 Compute disclosure | The primary 28-run LM suite and its single-GPU evaluations ran on internal Linux nodes with NVIDIA A100 80 GB GPUs. Tokenizer training used our two-phase CPU pi |
+| 5 | 0.774 | 2023.acl-long.353 | 5 Results › Time and Space Complexity | To capture the concrete gains in efficiency of models with higher SFs, we have measured the memory consumption and training time of our PyTorch implementation o |
+| 6 | 0.774 | 2211.09761v2 | 5 Results › Time and Space Complexity | To capture the concrete gains in efficiency of models with higher SFs, we have measured the memory consumption and training time of our PyTorch implementation o |
+| 7 | 0.774 | 2211.09761v1 | B Shortening benefits | We quantify the reduction in GPU memory and training time that results from different shortening factors (SFs) in Figure 5. We measure these metrics on an NVIDI |
+| 8 | 0.772 | 2507.22543v1 | D Experimental Details | Computational Resources. All experiments were conducted using a combination of 8 NVIDIA 2080Ti GPUs and 4 NVIDIA A10 GPUs. In total, our experiments consumed ap |
+| 9 | 0.771 | 2610.15373v1 | G Long-context checkpoint evaluation | Table 8 (G Long-context checkpoint evaluation): GPU-hours for CPT, excluding embedding warmup and ablations.Broad training and annealing ran at a median 5.85 s  |
+| 10 | 0.771 | 2310.08754v4 | E Infrastructure & Computational Costs | We trained each of our 26 2.6B parameter models on NVIDIA A100 GPUs, and the training of each model took up to 2304 GPU hours. Therefore, the total training cos |
 
-### bm25: Shan language token premium Llama 3
-
-| Rank | Score | Pinned id | Section | Text |
-|---:|---:|---|---|---|
-| 1 | 20.660 | 2305.15425v2 | 4 Tokenization Length Differences Across Languages › 4.1 Parity for English-centric Models | MuRIL English 1.00 Nepali 1.01 Bengali 1.01 Tamil 1.06 Marathi 1.06 Kannada 1.06 Hindi 1.16 Malayalam 1.18 Gujarati 1.19 Sanskrit 1.21 Telugu 1.21 Odia 1.21 Sin |
-| 2 | 20.046 | 2410.10665v1 | 5 Results › 5.4 Improvements in Premium Costs and Performance | Table 4 (5.4 Improvements in Premium Costs and Performance): Premium cost comparison between tokenizers used by GPT-4 and GPT-4o for selected languages Language |
-| 3 | 18.862 | 2305.15425v2 | 4 Tokenization Length Differences Across Languages › 4.4 Parity for Byte-level Tokenization Models | Tokenization disparity is also present in the ByT5 model. The tokenization premium for ByT5 ranges from 0.87 (for Yue Chinese) to 3.94 (for Shan). The introduct |
-| 4 | 18.247 | 2305.15425v1 | 5 Tokenization Length Differences Across Languages › 5.5 Parity for Byte-level Tokenization Models | Tokenization disparity is also present in the ByT5 model. The tokenization premium for ByT5 ranges from 0.87 (for Yue Chinese) to 3.94 (for Shan). The issue wit |
-| 5 | 18.239 | 2606.24460v1 | 8. Mitigation & Guidance › 8.1 Tokenizer Ranking by African Premium | Table 8.1: Tokenizer leaderboard: mean African-language premium (FLORES-200+, 18 languages, 11 tokenizers; Afrikaans excluded as Indo-European control, see §7.4 |
-| 6 | 18.202 | 2305.15425v1 | 5 Tokenization Length Differences Across Languages › 5.5 Parity for Byte-level Tokenization Models | Recently, models working around this issue have been proposed. CANINE (Clark et al., 2022) is a large model that operates at the Unicode codepoint level rather  |
-| 7 | 18.138 | 2305.15425v2 | 4 Tokenization Length Differences Across Languages › 4.4 Parity for Byte-level Tokenization Models | Byte-level representation is crucial for multilingual support, as it encodes any Unicode codepoint, even if unseen during training. One can also bypass vocabula |
-| 8 | 17.437 | 2510.21909v1 | 2 Related Work › 2.1 Token Premiums | To reduce token premium inequities, byte-level tokenization (sometimes referred to as "tokenizerfree"; Choe et al., 2019;Clark et al., 2022;Xue et al., 2022, in |
-| 9 | 17.146 | 2305.15425v2 | 4 Tokenization Length Differences Across Languages › 4.2 Parity for Models with Other Target Languages › Summary. | 1 5 10 15 Tokenization premium Yue Chinese Yoruba Turkish Thai Telugu Tamil Tajik Swedish Std. Malay Std. Arabic Shan Pangasinan Odia Nuer Norwegian Nynorsk Nor |
-| 10 | 17.075 | 2601.13328v1 | 3 Comparing Tokenizers › 3.3 Language-Specific Tokenization Premiums | The "dev" split of the FLORES-200 corpus provides 997 sentence translation pairs between English and a given language X, for each of 200 distinct languages. As  |
-
-### dense: Shan language token premium Llama 3
+### bm25: Byte Latent Transformer 8B pre-training GPU hours
 
 | Rank | Score | Pinned id | Section | Text |
 |---:|---:|---|---|---|
-| 1 | 0.781 | 2304.08177v3 | 2 CHINESE LLAMA AND CHINESE ALPACA › 2.2 CHINESE VOCABULARY EXTENSION | LLaMA's training set encompasses roughly 1.4T tokens, with the majority in English and a small fraction in other European languages using Latin or Cyrillic scri |
-| 2 | 0.781 | 2304.08177v1 | 2 CHINESE LLAMA | LLaMA (Touvron et al., 2023) is a decoder-only, foundational large language model based on the transformer architecture (Vaswani et al., 2017). Similar to other |
-| 3 | 0.774 | 2304.08177v1 | 2 CHINESE LLAMA | Directly pre-training LLaMA on Chinese corpora faces several challenges. Firstly, there are less than one thousand Chinese characters in the original LLaMA toke |
-| 4 | 0.773 | 2505.17784v1 | 4 Results › 4.3 Model Performance | Gemma 2 Llama 3.1 Llama 3.3 Qwen 2.5 Mistral 8B 32B 9B 27B 8B 70B 70B 7B 32B 8B 24B Zho Char to Rad 0.0 2.0 0.0 0.8 0.0 1.4 1.8 1.4 16.4 0.8 3.5 Rad to Char 1.4 |
-| 5 | 0.771 | 2304.08177v1 | 2 CHINESE LLAMA | The new rows are appended to the end of the original embedding matrices, ensuring that the embeddings of the tokens in the original vocabulary remain unaffected |
-| 6 | 0.767 | 2502.11187v1 | 3 Pretraining › 3.2 Model Architecture | We have modified llama-3.2-1b and llama-3.2-3b models according to the merged tokenizers. As too many new tokens will increase the model's size and the training |
-| 7 | 0.767 | 2502.11187v3 | 3 Pretraining › 3.2 Model Architecture | We have modified Llama-3.2-1b and Llama-3.2-3b models according to the merged tokenizers. As too many new tokens will increase the model's size and the training |
-| 8 | 0.767 | 2024.findings-emnlp.86 | B Experimental Settings › B.1 Baselines | We include Llama3-8B, Llama3-8B-Instruct, Llama3-70B, Mistral-7B and Mixtral-8x7B for LLM evaluation. Llama3 Llama3 (AI@Meta, 2024) series are one of the most p |
-| 9 | 0.767 | 2406.11687v3 | B Experimental Settings › B.1 Baselines | We include Llama3-8B, Llama3-8B-Instruct, Llama3-70B, Mistral-7B and Mixtral-8x7B for LLM evaluation. Llama3 Llama3 (AI@Meta, 2024) series are one of the most p |
-| 10 | 0.765 | 2405.17067v2 | 3 Methodology of Dataset Construction › 3.1 Vocabulary Export | Notably, the Chinese vocabulary of Qwen-7B-Chat and Qwen1.5-72B-Chat is the same, so is the English vocabulary of Llama-3-8B-Instruct and Llama-3-70B-Instruct.  |
+| 1 | 22.024 | 2610.01984v1 | G Reproducibility and compute disclosure › G.2 Compute disclosure | The primary 28-run LM suite and its single-GPU evaluations ran on internal Linux nodes with NVIDIA A100 80 GB GPUs. Tokenizer training used our two-phase CPU pi |
+| 2 | 22.002 | 2610.01984v2 | G Reproducibility and compute disclosure › G.2 Compute disclosure | The primary 28-run LM suite and its single-GPU evaluations ran on internal Linux nodes with NVIDIA A100 80 GB GPUs. Tokenizer training used our two-phase CPU pi |
+| 3 | 20.678 | 2601.03034v1 | 3 Model Training › 3.2 Pre-training | Table 1 (3.2 Pre-training): NorwAI LLMs training specifications. Model \| Params Architecture \| Context Length \| Hidden Size \| Vocab Size \| Training Strategy \| G |
+| 4 | 20.678 | 2601.03034v2 | 3 Model Training › 3.2 Pre-training | Table 1 (3.2 Pre-training): NorwAI LLMs training specifications. Model \| Params Architecture \| Context Length \| Hidden Size \| Vocab Size \| Training Strategy \| G |
+| 5 | 20.058 | 2512.03989v1 | G Continued pre-training details | We provide details for the modified Llama-3 tokenizers in the continued pertaining experiments in Table 8. The hyperparamters for continued pre-training are in  |
+| 6 | 19.759 | 2026.findings-eacl.341 | C Continued pre-training details | We provide details for the modified Llama-3 tokenizers in the continued pertaining experiments in Table 9. The hyperparamters for continued pre-training using H |
+| 7 | 19.759 | 2512.03989v2 | C Continued pre-training details | We provide details for the modified Llama-3 tokenizers in the continued pertaining experiments in Table 9. The hyperparamters for continued pre-training using H |
+| 8 | 19.625 | 2504.15431v1 | 3. Pre-training › 3.6. Training Infrastructure | Table 1 \| (3.6. Training Infrastructure): Training costs of Trillion 7B on 2T tokens, given H100 price as $2.49 per GPU hour. Training Costs \| Pre-Training Post |
+| 9 | 19.361 | 2608.12756v1 | B Reproducibility and compute accounting | Other evaluation and plotting jobs range from minutes to roughly two hours each. Including a conservative six GPU-hour allowance for those jobs, the paper pipel |
+| 10 | 19.322 | 2603.27859v1 | 1 Introduction | MATT (Haltiuk and Smywinski-Pohl, 2025) is the most recent and strongest entry: it aligns attention patterns between a teacher (original tokenizer) and a studen |
+
+### dense: Byte Latent Transformer 8B pre-training GPU hours
+
+| Rank | Score | Pinned id | Section | Text |
+|---:|---:|---|---|---|
+| 1 | 0.787 | 2610.01984v1 | G Reproducibility and compute disclosure › G.2 Compute disclosure | The primary 28-run LM suite and its single-GPU evaluations ran on internal Linux nodes with NVIDIA A100 80 GB GPUs. Tokenizer training used our two-phase CPU pi |
+| 2 | 0.783 | 2610.01984v2 | G Reproducibility and compute disclosure › G.2 Compute disclosure | The primary 28-run LM suite and its single-GPU evaluations ran on internal Linux nodes with NVIDIA A100 80 GB GPUs. Tokenizer training used our two-phase CPU pi |
+| 3 | 0.779 | 2603.02597v1 | 5 Experimental results and analysis › 5.1 Latency and throughput | Table 1 (5.1 Latency and throughput): Latency comparison across tokenizers on WikiText-103 (ms). Seq. Len HF GPT2 tiktoken CPU-BPE GPU-Base GPU-Opt 256 \| 4.21 \| |
+| 4 | 0.777 | 2024.findings-naacl.113 | B Ablations Across | Table 5 (B Ablations Across): Average GPU Hours For Full Finetuning Model Size Hours 70M 160M 410M 1.4B \| 0.65 0.74 1.2 1.7 Model Size Training Time Reduction ( |
+| 5 | 0.776 | 2512.03989v1 | G Continued pre-training details | We provide details for the modified Llama-3 tokenizers in the continued pertaining experiments in Table 8. The hyperparamters for continued pre-training are in  |
+| 6 | 0.776 | 2026.findings-eacl.341 | C Continued pre-training details | We provide details for the modified Llama-3 tokenizers in the continued pertaining experiments in Table 9. The hyperparamters for continued pre-training using H |
+| 7 | 0.776 | 2512.03989v2 | C Continued pre-training details | We provide details for the modified Llama-3 tokenizers in the continued pertaining experiments in Table 9. The hyperparamters for continued pre-training using H |
+| 8 | 0.776 | 2602.06394v1 | G Complete Experimental Results › G.3 Computational Costs | Training Time. • Standard BPE: 5-10 minutes (5GB, CPU) • QA-Token Stage 1 (RL): 30-36 GPU-hours (A100) • QA-Token Stage 2 (Adaptive): 20-24 GPU-hours Memory Req |
+| 9 | 0.775 | 2603.02597v1 | 5 Experimental results and analysis › 5.1 Latency and throughput | Table 2 (5.1 Latency and throughput): Speedup ratios of GPU-Optimized relative to CPU and CPU-based tokenizers. Values > 1 indicate GPU advantage. Seq. Len GPU- |
+| 10 | 0.774 | 2211.09761v1 | B Shortening benefits | We quantify the reduction in GPU memory and training time that results from different shortening factors (SFs) in Figure 5. We measure these metrics on an NVIDI |
+
+### bm25: BLT training wall-clock time compute cost H100
+
+| Rank | Score | Pinned id | Section | Text |
+|---:|---:|---|---|---|
+| 1 | 33.901 | 2506.01084v2 | I.5 Compute Resources | We report the compute resources used for training our models in Table 13. All training was conducted on internal servers equipped with NVIDIA H100 GPUs. We esti |
+| 2 | 33.519 | 2506.01084v1 | C Additional Results › Compute Resources | We report the compute resources used for training our models in Table 11. All training was conducted on internal servers equipped with NVIDIA H100 GPUs. We esti |
+| 3 | 32.790 | 2606.15521v1 | E Experimental Compute Resources | Most experiments were run on single H100 and A100 GPUs. The bulk of compute resources were expended in retokenization, temperature and typo sampling procedures. |
+| 4 | 32.556 | 2505.20133v3 | B ADDITIONAL RESULTS › B.2 RESULTS FOR "TOKENS TO WORDS" (KAPLAN ET AL., 2025) | Empirical speedups. We empirically validate that reduced token counts translate into concrete wall-clock speedups. We compare batch processing of documents from |
+| 5 | 30.177 | 2610.05597v1 | 4 Experiments › 4.3 Nanochat speedrun | We next evaluate COBPE on the NANOCHAT speedrun benchmark (Karpathy, 2025) which measures wall-clock training time needed to reach GPT-2-level capability, defin |
+| 6 | 28.816 | 2610.01984v1 | G Reproducibility and compute disclosure › G.2 Compute disclosure | Multiplying the primary-suite per-run ranges by their run counts gives approximately 14.8K-27.3K A100 80 GB GPU-hours, plus <6 GPU-hours for downstream evaluati |
+| 7 | 28.719 | 2610.01984v2 | G Reproducibility and compute disclosure › G.2 Compute disclosure | Multiplying the primary-suite per-run ranges by their run counts gives approximately 14.8K-27.3K A100 80 GB GPU-hours, plus <6 GPU-hours for downstream evaluati |
+| 8 | 27.875 | 2610.01984v1 | G Reproducibility and compute disclosure › G.2 Compute disclosure | The primary 28-run LM suite and its single-GPU evaluations ran on internal Linux nodes with NVIDIA A100 80 GB GPUs. Tokenizer training used our two-phase CPU pi |
+| 9 | 27.844 | 2610.01984v2 | G Reproducibility and compute disclosure › G.2 Compute disclosure | The primary 28-run LM suite and its single-GPU evaluations ran on internal Linux nodes with NVIDIA A100 80 GB GPUs. Tokenizer training used our two-phase CPU pi |
+| 10 | 27.823 | 2610.21679v1 | B Model Details › B.3 VISTA Models › B.3.4 Compute Costs | All VISTA models are trained on 4 or 8 NVIDIA H100/A100 GPUs in bfloat16 mixed precision. VISTA 130M. Each 130M model is trained for 10 epochs on the BP-scaled  |
+
+### dense: BLT training wall-clock time compute cost H100
+
+| Rank | Score | Pinned id | Section | Text |
+|---:|---:|---|---|---|
+| 1 | 0.755 | 2406.02517v1 | A Implementation Details › A.3 Computational Cost | Total training duration and GPU used in DRDA experiments are listed in Table 11. WMT IWSLT TED GPU 2× 4× 2× RTX 3090 TITAN Xp TITAN X (Pascal) time 12 days 2 da |
+| 2 | 0.755 | 2406.02517v2 | A Implementation Details › A.3 Computational Cost | Total training duration and GPU used in DRDA experiments are listed in Table 11. WMT IWSLT TED GPU 2× 4× 2× RTX 3090 TITAN Xp TITAN X (Pascal) time 12 days 2 da |
+| 3 | 0.754 | 2605.07711v3 | F Computational Resources | Table 5 (F Computational Resources): Training time comparison.We report wall-clock training time on a single machine with 8 NVIDIA H20 GPUs. All methods use the |
+| 4 | 0.740 | 2605.07711v1 | E Computational Resources | Table 5 (E Computational Resources): Training time comparison.We report wall-clock training time on a single machine with 8 NVIDIA H20 GPUs. All methods use the |
+| 5 | 0.731 | 2412.09871v1 | 5 Scaling Trends › 5.1 Parameter Matched Compute Optimal Scaling Trends | Using the Llama 2 dataset, we train various compute-optimal bpe and BLT models across four different sizes, ranging from 1B to 8B parameters. We then plot the t |
+| 6 | 0.730 | 2605.08044v1 | A.2 Pre-training Optimization and Hyperparameter Settings | All BLT/BLT-D 1B models are trained for 240,000 steps with a batch size of 2 19 tokens per step (approximately 2 million bytes), and our 3B models are trained f |
+| 7 | 0.729 | 2412.09871v1 | 5 Scaling Trends › 5.2 Beyond Compute Optimal Task Evaluations | To assess scaling properties further, we train an 8B BLT model beyond the compute optimal ratio on the BLT-1T dataset, a larger higher-quality dataset, and meas |
+| 8 | 0.723 | 2504.15431v1 | 3. Pre-training › 3.6. Training Infrastructure | Table 1 \| (3.6. Training Infrastructure): Training costs of Trillion 7B on 2T tokens, given H100 price as $2.49 per GPU hour. Training Costs \| Pre-Training Post |
+| 9 | 0.722 | 2412.09871v1 | 4 Experimental Setup › 4.7 Transformer Architecture Hyperparameters | For all the transformer blocks in BLT, i.e. both local and global models, we largely follow the architecture of Llama 3 (Dubey et al., 2024); we use the SwiGLU  |
+| 10 | 0.720 | 2412.09871v1 | 5 Scaling Trends › 5.2 Beyond Compute Optimal Task Evaluations | trained with an equivalent flop budget. However, with BLT-Entropy we additionally make an inference time adjustment of the entropy threshold from 0.6 to 0.1 whi |
 
 ## fast-wordpiece-gpu
 
