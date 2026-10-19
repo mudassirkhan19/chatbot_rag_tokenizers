@@ -10,7 +10,7 @@ from it. A Work is a Survey when the Canonical Edition's title says so; nothing 
 
 import re
 import unicodedata
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from itertools import combinations
 
@@ -36,6 +36,7 @@ def normalise(text: str) -> str:
 
 
 def first_author(row: Row) -> str:
+    """The first author's name as the manifest gives it, which may be "Surname, Given"."""
     return row["authors"].split("; ")[0].strip()
 
 
@@ -49,7 +50,7 @@ def surname(row: Row) -> str:
     return normalise(words[-1]) if words else ""
 
 
-def identifiers(row: Row) -> set[str]:
+def identifiers(row: Mapping[str, str]) -> set[str]:
     """The row's arXiv id, DOI and ACL ID as comparable names, such as "doi:10.18653/v1/p16-1162"."""
     names = {f"arxiv:{bare_arxiv_id(row['arxiv_id']).casefold()}"} if row["arxiv_id"] else set()
     return names | {f"{kind}:{row[kind].casefold()}" for kind in ("doi", "acl_id") if row[kind]}
@@ -67,7 +68,7 @@ def title_and_author(row: Row) -> set[str]:
     return {f"title:{author}|{title}"} if title and author else set()
 
 
-class _Joins:
+class _UnionFind:
     """Union-find over row positions, joined through the names they share."""
 
     def __init__(self, size: int) -> None:
@@ -155,7 +156,7 @@ def group(rows: Iterable[Row]) -> Grouping:
 
 def _roots(included: list[Row], signals: list[Callable[[Row], set[str]]]) -> list[int]:
     """Each row's Work, as a row position, when Editions are joined by ``signals`` alone."""
-    joins = _Joins(len(included))
+    joins = _UnionFind(len(included))
     for position, row in enumerate(included):
         for names in signals:
             joins.add(position, names(row))

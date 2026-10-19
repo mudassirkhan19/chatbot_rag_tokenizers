@@ -241,7 +241,7 @@ def _works(rows: list[Row]) -> list[str]:
 
     return [
         *lines,
-        "Works with the same title but different first authors. They are never joined.",
+        "Works with the same title whose first authors differ, or are missing on one side. They are never joined.",
         "",
         "| Editions | Title | First author | Editions | Title | First author |",
         "| --- | --- | --- | --- | --- | --- |",

@@ -45,7 +45,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0038](0038-parse-only-the-files-of-included-editions.md) | Parse only the files of included Editions | Accepted |
 | [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) | Retrieval tracer: BM25, the index cache and the evaluate harness | Accepted, Passage matching and the loader's shape checks superseded by 0041; amended by 0043 |
 | [0040](0040-the-corpus-keeps-only-papers.md) | The corpus keeps only papers | Accepted |
-| [0041](0041-passage-matcher-eval-check-and-calibration.md) | The Passage matcher, eval-check and the v1/vN calibration | Accepted; Works read from work_id since 0051 |
+| [0041](0041-passage-matcher-eval-check-and-calibration.md) | The Passage matcher, eval-check and the v1/vN calibration | Accepted, amended by 0051 |
 | [0042](0042-dense-baseline-bge-small-behind-the-embedder-boundary.md) | Dense baseline: bge-small behind the embedder boundary, on MPS by default | Accepted, amended by 0050 |
 | [0043](0043-recover-numbered-headings-grobid-left-in-paragraphs.md) | Recover numbered headings GROBID left in paragraphs | Accepted |
 | [0044](0044-duplicate-rate-restatement-and-numeric-share-in-evaluate.md) | Duplicate rate, Survey restatement and the numeric-Chunk share in evaluate | Accepted, Work groups filled by 0047 |

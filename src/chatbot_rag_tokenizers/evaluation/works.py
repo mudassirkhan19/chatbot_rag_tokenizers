@@ -8,16 +8,15 @@ so that fallback can miss a duplicate; it never joins two Works.
 
 from collections.abc import Iterable, Mapping
 
+from ..collection.works import identifiers
+
 
 class Works:
     def __init__(self, manifest: Iterable[Mapping[str, str]]) -> None:
         self._parent: dict[str, str] = {}
         for row in manifest:
             names = [f"edition:{row['edition_id']}"]
-            if row["work_id"]:
-                names.append(f"work:{row['work_id']}")
-            else:
-                names += [f"{kind}:{row[kind].casefold()}" for kind in ("arxiv_id", "doi", "acl_id") if row[kind]]
+            names += [f"work:{row['work_id']}"] if row["work_id"] else sorted(identifiers(row))
             for name in names[1:]:
                 self._join(names[0], name)
 
