@@ -212,14 +212,14 @@ just init        # dependencies, the pinned GROBID image and the judge model
 just fetch       # the pinned PDFs, checked against their recorded hashes (about 3.5 GB, roughly 2 h)
 just grobid-up   # start GROBID on localhost
 just parse       # every recorded file into Chunks (about 1.5 h on an Apple-silicon laptop)
-just index --retriever hybrid.bm25+bge-small     # BM25 (about 10 s), the dense baseline (14 to 22 min on MPS) and their hybrid
+just index --retriever hybrid.bm25+bge-small     # BM25 (about 10 s), the dense baseline (14 to 49 min on MPS) and their hybrid
 just index --retriever hybrid.bm25+bge-base      # bge-base (about 48 min on MPS) and its hybrid
 just index --retriever hybrid.bm25+openscholar   # OpenScholar (48 to 85 min on MPS) and its hybrid
 just evaluate    # every retriever; rewrites data/eval/eval-report.md
 git diff --stat data/   # only the times in the report's Cost table differ
 ```
 
-Plain `just index` builds all seven in one go (about 2.5 h on an M1 Max). The three lines above build one model at a time, so a long build can stop between models and resume. `evaluate` stops with a pointer to `just index` when a retriever isn't built. ADR 0065 applies the embedding comparison's decision rule to this report's raw numbers.
+Plain `just index` builds all seven in one go (2.5 to 3 h on an M1 Max; build times vary by up to twice between runs). The three lines above build one model at a time, so a long build can stop between models and resume. `evaluate` stops with a pointer to `just index` when a retriever isn't built.
 
 `evaluate` reads the committed Evaluation set and Work groups. On an unchanged index it writes the same report every time apart from the timings, and `git diff` shows only the latency cells of the Cost table. The parse report and index record are committed, so `parse` and `index` also show whether the corpus you rebuilt matches the committed one.
 
