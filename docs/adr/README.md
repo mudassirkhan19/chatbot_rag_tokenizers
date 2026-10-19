@@ -52,6 +52,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0045](0045-index-marks-editions-indexed-from-a-committed-record.md) | `index` marks Editions indexed, from a record committed in the Snapshot | Accepted |
 | [0046](0046-evaluation-set-quotes-checked-by-and-absence-evidence.md) | The Evaluation set: short quotes committed, a check per question, and absence evidence | Accepted |
 | [0047](0047-hand-checked-work-groups-are-the-duplicate-ground-truth.md) | Hand-checked Work groups are the ground truth for the duplicate rate | Accepted |
+| [0048](0048-hand-curated-domain-model-page.md) | A hand-curated domain model page, refreshed by the issue that changes a number | Accepted |
 
 ## Template
 

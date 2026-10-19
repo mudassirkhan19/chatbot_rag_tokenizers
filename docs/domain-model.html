@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Tokenizer Literature Pipeline Map</title>
+<meta name="description" content="How the tokenizer-literature RAG gets its papers, judges them, parses them, retrieves from them and measures itself. Hand-curated; numbers dated.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one scrolling column, 72ch of reading width, with a sticky stage bar.
+   The funnel and tables may be wider than the text and scroll in their own boxes. */
+:root {
+  --bg: #fbfaf7;
+  --surface: #ffffff;
+  --surface-2: #f1efe9;
+  --fg: #1f1d1a;
+  --fg-2: #5a5650;
+  --line: #dcd8cf;
+  --accent: #1f5f8b;       /* funnel ink and links */
+  --accent-soft: #d7e6f1;
+  --done: #2e7d4f;
+  --partial: #b26a00;
+  --planned: #7a766f;
+  --planned-bg: #ecebe6;
+  --warn-bg: #fbf1e6;
+  --display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171a; --surface: #1d2024; --surface-2: #262a2f; --fg: #e8e6e1; --fg-2: #a9a59d;
+    --line: #363b42; --accent: #7fb3d9; --accent-soft: #223747; --done: #6cc08b; --partial: #e0a44a;
+    --planned: #9a968f; --planned-bg: #22252a; --warn-bg: #2b2520; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171a; --surface: #1d2024; --surface-2: #262a2f; --fg: #e8e6e1; --fg-2: #a9a59d;
+  --line: #363b42; --accent: #7fb3d9; --accent-soft: #223747; --done: #6cc08b; --partial: #e0a44a;
+  --planned: #9a968f; --planned-bg: #22252a; --warn-bg: #2b2520; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 4rem;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 78rem; margin: 0 auto; }
+h1, h2, h3, h4 { font-family: var(--display); font-weight: 600; line-height: 1.2; text-wrap: balance; margin: 0; }
+h1 { font-size: 2.1rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.1rem; }
+h4 { font-size: 1rem; font-family: var(--body); font-weight: 600; }
+p { margin: 0; max-width: 72ch; }
+.eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-2); font-weight: 500; }
+code, .mono { font-family: var(--mono); font-size: 0.86em; }
+code { background: var(--surface-2); padding: 0.05em 0.35em; border-radius: 3px; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* header */
+.masthead { padding-block: 2.2rem 1.4rem; display: grid; gap: 0.8rem; border-bottom: 1px solid var(--line); }
+.masthead .lede { font-size: 1.05rem; color: var(--fg-2); max-width: 72ch; }
+.asof { display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; font-size: 0.85rem; color: var(--fg-2); }
+.asof b { color: var(--fg); font-weight: 500; }
+
+/* sticky nav */
+.stagebar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px))) calc(-1 * max(16px, env(safe-area-inset-right, 0px))); padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
+.stagebar ol { list-style: none; margin: 0 auto; padding: 0; max-width: 78rem; display: flex; gap: 0.2rem; overflow-x: auto; scrollbar-width: thin; }
+.stagebar a { display: block; padding: 0.6rem 0.6rem; white-space: nowrap; font-size: 0.85rem; text-decoration: none; color: var(--fg-2); border-bottom: 2px solid transparent; }
+.stagebar a:hover { color: var(--fg); border-bottom-color: var(--line); }
+.stagebar a b { color: var(--fg); font-weight: 500; }
+
+/* sections */
+section { padding-block: 2.2rem; border-bottom: 1px solid var(--line); scroll-margin-top: 3.2rem; }
+.sec-head { display: grid; gap: 0.5rem; margin-bottom: 1.2rem; }
+.sec-head .title-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.6rem 1rem; }
+.goal { color: var(--fg-2); max-width: 72ch; font-size: 1rem; }
+.chip { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.15rem 0.55rem; border-radius: 999px; border: 1px solid currentColor; line-height: 1.5; }
+.chip::before { content: ""; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: currentColor; }
+.chip.done { color: var(--done); }
+.chip.partial { color: var(--partial); }
+.chip.planned { color: var(--planned); }
+
+/* stage grid */
+.panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 1.2rem 2rem; align-items: start; }
+.panel > div { min-width: 0; }
+.block { display: grid; gap: 0.5rem; }
+.block h4 { padding-bottom: 0.3rem; border-bottom: 1px solid var(--line); }
+.io { display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 0.8rem; font-size: 0.95rem; }
+.io dt { color: var(--fg-2); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; padding-top: 0.15rem; }
+.io dd { margin: 0; }
+.nouns { display: grid; gap: 0.5rem; }
+.nouns dt { font-weight: 600; }
+.nouns dd { margin: 0 0 0.2rem; color: var(--fg-2); font-size: 0.93rem; }
+ul.plain { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.35rem; }
+ul.plain li { max-width: 72ch; }
+.risk { background: var(--warn-bg); border-left: 3px solid var(--partial); padding: 0.6rem 0.9rem; border-radius: 0 4px 4px 0; }
+.risk ul { margin: 0.3rem 0 0; padding-left: 1.1rem; display: grid; gap: 0.3rem; font-size: 0.93rem; }
+.repro { font-size: 0.9rem; color: var(--fg-2); }
+
+/* decisions as collapsibles */
+details.dec { border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+details.dec + details.dec { margin-top: 0.4rem; }
+details.dec summary { cursor: pointer; padding: 0.5rem 0.8rem; list-style: none; display: flex; gap: 0.6rem; align-items: baseline; }
+details.dec summary::-webkit-details-marker { display: none; }
+details.dec summary::before { content: "+"; font-family: var(--mono); color: var(--fg-2); width: 1ch; flex: none; }
+details[open].dec summary::before { content: "−"; }
+details.dec summary .ref { margin-left: auto; font-family: var(--mono); font-size: 0.78rem; color: var(--fg-2); white-space: nowrap; }
+details.dec .body { padding: 0 0.8rem 0.8rem 2.2rem; display: grid; gap: 0.5rem; font-size: 0.93rem; }
+details.dec .body p { max-width: 70ch; }
+.why { color: var(--fg-2); }
+.why b { color: var(--fg); font-weight: 500; }
+
+/* tables */
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; font-size: 0.9rem; width: 100%; }
+th, td { text-align: left; padding: 0.35rem 0.6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--fg-2); }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.sum td { font-weight: 600; }
+caption { text-align: left; caption-side: top; font-size: 0.85rem; color: var(--fg-2); padding-bottom: 0.3rem; }
+
+/* overview */
+.overview { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 2rem; align-items: start; }
+@media (max-width: 56rem) { .overview { grid-template-columns: 1fr; } }
+.funnel { width: 100%; height: auto; display: block; }
+.funnel text { font-family: var(--body); fill: var(--fg); font-size: 13px; }
+.funnel text.muted { fill: var(--fg-2); font-size: 12px; }
+.funnel rect.bar { fill: var(--accent); }
+.funnel rect.bar.dim { fill: var(--accent-soft); }
+.funnel line.drop { stroke: var(--line); stroke-width: 1; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: 0.6rem; }
+.stat { border-top: 2px solid var(--line); padding-top: 0.4rem; }
+.stat .v { font-family: var(--display); font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat .k { font-size: 0.8rem; color: var(--fg-2); }
+.stages-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 0.5rem; margin-top: 1.2rem; }
+.stage-card { border: 1px solid var(--line); border-radius: 4px; padding: 0.6rem 0.7rem; background: var(--surface); display: grid; gap: 0.3rem; text-decoration: none; color: inherit; }
+.stage-card:hover { border-color: var(--accent); }
+.stage-card .n { font-family: var(--mono); font-size: 0.75rem; color: var(--fg-2); }
+.stage-card .t { font-weight: 600; }
+.stage-card .d { font-size: 0.82rem; color: var(--fg-2); }
+.stage-card.planned { background: var(--planned-bg); color: var(--planned); border-style: dashed; }
+.stage-card.planned .t { color: var(--planned); }
+
+/* entity strip */
+.entities { display: grid; gap: 0.8rem; margin-top: 1.6rem; }
+.ent-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: stretch; }
+.ent { flex: 1 1 10rem; min-width: 0; border: 1px solid var(--line); background: var(--surface); border-radius: 4px; padding: 0.5rem 0.7rem; display: grid; gap: 0.15rem; }
+.ent b { font-family: var(--display); font-size: 1.02rem; }
+.ent span { font-size: 0.82rem; color: var(--fg-2); }
+.ent .ex { font-family: var(--mono); font-size: 0.75rem; color: var(--accent); }
+.ent.ghost { border-style: dashed; background: transparent; }
+.arrow { align-self: center; color: var(--fg-2); font-size: 1.1rem; flex: none; }
+
+/* foundation band */
+.band { background: var(--surface-2); margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px))) calc(-1 * max(16px, env(safe-area-inset-right, 0px))); padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
+.band .wrap { padding-block: 1.8rem; }
+.found { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 0.6rem; margin-top: 1rem; }
+.found div { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 0.6rem 0.8rem; font-size: 0.9rem; display: grid; gap: 0.2rem; }
+.found div b { font-weight: 600; }
+.found div span { color: var(--fg-2); }
+
+/* planned */
+.plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 0.8rem; }
+.plan { border: 1px dashed var(--planned); border-radius: 4px; padding: 0.8rem 0.9rem; background: var(--planned-bg); display: grid; gap: 0.45rem; }
+.plan h3 { color: var(--planned); }
+.plan p, .plan li { font-size: 0.92rem; }
+.plan .eyebrow { color: var(--planned); }
+
+/* example */
+.trace { display: grid; gap: 0.6rem; }
+.step { display: grid; grid-template-columns: 7.5rem 1fr; gap: 0.8rem; padding: 0.55rem 0; border-top: 1px solid var(--line); }
+.step:last-child { border-bottom: 1px solid var(--line); }
+.step .s { font-weight: 600; font-size: 0.9rem; }
+.step .s small { display: block; font-weight: 400; color: var(--fg-2); font-size: 0.78rem; }
+.step .w { min-width: 0; font-size: 0.93rem; }
+.step .w p { max-width: 72ch; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1.6rem 2.2rem; }
+@media (max-width: 30rem) { .step { grid-template-columns: 1fr; gap: 0.2rem; } }
+blockquote { margin: 0.3rem 0; padding-left: 0.8rem; border-left: 2px solid var(--accent); font-family: var(--display); font-style: italic; color: var(--fg); max-width: 60ch; }
+footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width: 72ch; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div class="eyebrow">Tokenizer literature RAG · business logic, not code</div>
+  <h1>How the corpus is found, judged, parsed, searched and measured</h1>
+  <p class="lede">One page for a project manager's view of the pipeline so far: five stages, the decisions behind each one, the numbers they produced, how each is checked, and what is still open. Every decision links to its record on GitHub. Software structure is deliberately left out.</p>
+  <div class="asof">
+    <span>As of <b>2026-10-19</b></span>
+    <span>Commit <b class="mono">0477b0e</b> on <a data-file="">main</a></span>
+    <span>Snapshot date <b>2026-10-16</b> (judge and PDF hashes 2026-10-17)</span>
+    <span>Status: <span class="chip done">done</span> <span class="chip partial">partial</span> <span class="chip planned">planned</span></span>
+  </div>
+</header>
+
+<nav class="stagebar" aria-label="Stages">
+  <ol>
+    <li><a href="#overview"><b>Overview</b></a></li>
+    <li><a href="#scope"><b>0</b> Scope</a></li>
+    <li><a href="#discover"><b>1</b> Discover</a></li>
+    <li><a href="#judge"><b>2</b> Judge</a></li>
+    <li><a href="#parse"><b>3</b> Acquire &amp; parse</a></li>
+    <li><a href="#retrieve"><b>4</b> Retrieve</a></li>
+    <li><a href="#evaluate"><b>5</b> Evaluate</a></li>
+    <li><a href="#foundation">Foundation</a></li>
+    <li><a href="#remaining">What's left</a></li>
+    <li><a href="#example">Worked example</a></li>
+  </ol>
+</nav>
+
+<!-- ============================ L0 ============================ -->
+<section id="overview">
+  <div class="sec-head">
+    <div class="eyebrow">Level 0 · one screen</div>
+    <h2>From 26,388 discovered records to 2,067 indexed papers and 36 checked questions</h2>
+    <p class="goal">Each stage narrows the corpus and records why. The funnel counts Editions: one distinct publication of a paper, so a preprint and its conference paper are two rows.</p>
+  </div>
+
+  <div class="overview">
+    <div>
+      <svg class="funnel" viewBox="0 0 640 330" role="img" aria-label="Funnel of Editions through the pipeline: 26,388 discovered, 7,203 pass the rules, 2,706 included, 2,068 with full text, 2,067 indexed">
+        <!-- scale: 26388 -> 400px, left edge 200 -->
+        <g>
+          <text x="0" y="36">Discovered</text>
+          <rect class="bar" x="200" y="22" width="400" height="20" rx="2"/>
+          <text class="muted" x="606" y="36">26,388</text>
+          <text class="muted" x="0" y="54">four sources + citation expansion</text>
+        </g>
+        <g>
+          <text x="0" y="96">Pass the rules</text>
+          <rect class="bar" x="200" y="82" width="109" height="20" rx="2"/>
+          <text class="muted" x="316" y="96">7,203 · 27%</text>
+          <text class="muted" x="0" y="114">19,185 rejected by regex rules on title and abstract</text>
+        </g>
+        <g>
+          <text x="0" y="156">Included</text>
+          <rect class="bar" x="200" y="142" width="41" height="20" rx="2"/>
+          <text class="muted" x="248" y="156">2,706 · 10%</text>
+          <text class="muted" x="0" y="174">judge P(Yes) ≥ 0.8; 4,330 judge rejects, 152 non-papers, 15 withdrawn</text>
+        </g>
+        <g>
+          <text x="0" y="216">With full text</text>
+          <rect class="bar" x="200" y="202" width="31" height="20" rx="2"/>
+          <text class="muted" x="238" y="216">2,068 · 8%</text>
+          <text class="muted" x="0" y="234">636 have no open-access PDF; 2 still to fetch</text>
+        </g>
+        <g>
+          <text x="0" y="276">Indexed</text>
+          <rect class="bar" x="200" y="262" width="31" height="20" rx="2"/>
+          <text class="muted" x="238" y="276">2,067 · 8%</text>
+          <text class="muted" x="0" y="294">2,691 pinned files parsed, 1 failed the quality gate</text>
+        </g>
+        <line class="drop" x1="200" y1="14" x2="200" y2="300"/>
+        <text class="muted" x="0" y="322">Editions, from data/report.md at the Snapshot of 2026-10-16</text>
+      </svg>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="v">141,512</div><div class="k">Chunks in the index, from 2,690 files</div></div>
+      <div class="stat"><div class="v">36</div><div class="k">Evaluation questions, every one checked by a person</div></div>
+      <div class="stat"><div class="v">0.30</div><div class="k">Best baseline Recall@5 (dense, all answerable)</div></div>
+      <div class="stat"><div class="v">42–50%</div><div class="k">Top-5 slots wasted on duplicates, before any dedup</div></div>
+      <div class="stat"><div class="v">180</div><div class="k">Audit-set Candidates that chose the judge</div></div>
+      <div class="stat"><div class="v">47</div><div class="k">Decision records (ADRs)</div></div>
+    </div>
+  </div>
+
+  <div class="stages-row">
+    <a class="stage-card" href="#scope"><span class="n">Stage 0</span><span class="t">Scope</span><span class="d">Five topics in, four senses of "token" out</span></a>
+    <a class="stage-card" href="#discover"><span class="n">Stage 1</span><span class="t">Discover</span><span class="d">Keyword queries on 3 sources, one citation hop from 21 Seeds, ACL venue rows</span></a>
+    <a class="stage-card" href="#judge"><span class="n">Stage 2</span><span class="t">Judge relevance</span><span class="d">Rules, then a local LLM judge measured on an Audit set</span></a>
+    <a class="stage-card" href="#parse"><span class="n">Stage 3</span><span class="t">Acquire &amp; parse</span><span class="d">Pinned PDFs, GROBID, Section-aware Chunks, quality gate</span></a>
+    <a class="stage-card" href="#retrieve"><span class="n">Stage 4</span><span class="t">Retrieve</span><span class="d">BM25 and a dense baseline; comparison and dedup still to come</span></a>
+    <a class="stage-card" href="#evaluate"><span class="n">Stage 5</span><span class="t">Evaluate</span><span class="d">36 questions, Recall@5, MRR, duplicate rate against checked Work groups</span></a>
+    <a class="stage-card planned" href="#remaining"><span class="n">Next</span><span class="t">Chatbot</span><span class="d">Multi-turn, cited answers, grounding measured</span></a>
+  </div>
+
+  <div class="entities">
+    <div class="eyebrow">The vocabulary, in the order the pipeline creates it</div>
+    <div class="ent-row">
+      <div class="ent"><b>Work</b><span>A paper as an idea, however often published</span><span class="ex">SentencePiece (Kudo &amp; Richardson)</span></div>
+      <div class="arrow">has</div>
+      <div class="ent"><b>Edition</b><span>One publication of a Work: arXiv preprint or venue paper. The row the funnel counts.</span><span class="ex">1808.06226v1 · D18-2012</span></div>
+      <div class="arrow">has</div>
+      <div class="ent"><b>Version</b><span>One numbered revision of an arXiv Edition</span><span class="ex">v1 … vN</span></div>
+    </div>
+    <div class="ent-row">
+      <div class="ent"><b>Candidate</b><span>Any Edition found, before a verdict. Carries its Discovery channels.</span><span class="ex">26,388</span></div>
+      <div class="arrow">→</div>
+      <div class="ent"><b>Relevance verdict</b><span>Included or excluded, with the stage and reason</span><span class="ex">judge: P(Yes) 0.9971 ≥ 0.8</span></div>
+      <div class="arrow">→</div>
+      <div class="ent"><b>Pinned file</b><span>A PDF of one Version, named by its sha256</span><span class="ex">1808.06226v1.pdf 8a81eb…</span></div>
+      <div class="arrow">→</div>
+      <div class="ent"><b>Chunk</b><span>A run of text from one Section of one file: text, table or caption. The unit retrieved and cited.</span><span class="ex">141,512</span></div>
+      <div class="arrow">⇠</div>
+      <div class="ent ghost"><b>Passage</b><span>A verbatim quote that answers an Evaluation question. Any Chunk holding it, from any Edition, counts.</span><span class="ex">36 questions</span></div>
+    </div>
+    <p class="why">Two sets of hand-made truth sit beside the pipeline and never feed it: the <b>Audit set</b> (180 labelled Candidates) that chose the judge, and the <b>Evaluation set</b> with its <b>Work groups</b> (154 Editions in 130 Works) that scores retrieval. Full definitions in <a data-file="GLOSSARY.md">GLOSSARY.md</a>.</p>
+  </div>
+</section>
+
+<!-- ============================ STAGE 0 ============================ -->
+<section id="scope">
+  <div class="sec-head">
+    <div class="eyebrow">Stage 0</div>
+    <div class="title-row"><h2>Scope: where the boundary of "tokenizer research" sits</h2><span class="chip done">done</span></div>
+    <p class="goal">The brief says "you decide where the boundary of the topic sits; tell us how you drew it". Every later number depends on this line.</p>
+  </div>
+  <div class="panel">
+    <div class="block">
+      <h4>In scope: five topics</h4>
+      <ul class="plain">
+        <li><b>Subword algorithms</b> for text language models: BPE, WordPiece, Unigram, SentencePiece.</li>
+        <li><b>Byte-level</b>, character-level and tokenizer-free models.</li>
+        <li><b>Foundational NMT-era</b> subword papers.</li>
+        <li><b>Effects of tokenization</b>: multilingual fertility and fairness, arithmetic, code, reasoning, vocabulary size and scaling.</li>
+        <li><b>Vocabulary adaptation</b> and transfer between languages or domains.</li>
+      </ul>
+      <h4>Out of scope: other senses of "token"</h4>
+      <ul class="plain">
+        <li>Tokenizers for other modalities: VQ image tokens, audio codecs, motion, molecules.</li>
+        <li>Token pruning, merging and reduction; KV-cache eviction.</li>
+        <li>Crypto assets and asset tokenisation.</li>
+        <li>Mixed-modality papers stay only when text tokenization is a central contribution; the judge decides those.</li>
+      </ul>
+    </div>
+    <div class="block">
+      <h4>Decisions</h4>
+      <details class="dec">
+        <summary>The boundary is a list of topics plus named exclusions, written into config<span class="ref">ADR 0009</span></summary>
+        <div class="body">
+          <p>The five topics and the exclusions live in <code>config/scope.toml</code>, and every keyword query is tagged with the topic it serves, so coverage per topic can be read off the config. The judge's prompt restates the same boundary in words.</p>
+          <p class="why"><b>Why:</b> the brief asks how the line was drawn, and a reviewer can only check a line that is written down in one place. <a data-adr="0009">Read ADR 0009</a>.</p>
+        </div>
+      </details>
+      <details class="dec">
+        <summary>The judge asks for a "substantive contribution or finding", not "mainly about"<span class="ref">ADR 0007</span></summary>
+        <div class="body">
+          <p>A paper that studies tokenization among other things is in. A paper that merely uses a tokenizer is out. This is the question the model scores, with the five topics listed in the prompt.</p>
+          <p class="why"><b>Why:</b> "mainly about" would drop the effects papers (arithmetic, fairness) that the brief names explicitly. <a data-adr="0007">Read ADR 0007</a>.</p>
+        </div>
+      </details>
+      <details class="dec">
+        <summary>The corpus keeps only papers<span class="ref">ADR 0040</span></summary>
+        <div class="body">
+          <p>Journal, conference and workshop papers and preprints. Package manuals, proceedings front matter, textbooks and theses are excluded even when they are about tokenization, using the type fields the sources record and a page-count rule.</p>
+          <p class="why"><b>Why:</b> the parse audit found six CRAN manuals, a 188-page textbook and several theses that the judge had let in because they are "about" tokenization. <a data-adr="0040">Read ADR 0040</a>.</p>
+        </div>
+      </details>
+      <p class="repro">Where it lives: <a data-file="config/scope.toml">config/scope.toml</a>. Changing it changes every later number.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ STAGE 1 ============================ -->
+<section id="discover">
+  <div class="sec-head">
+    <div class="eyebrow">Stage 1</div>
+    <div class="title-row"><h2>Discover: how the data was found</h2><span class="chip done">done</span></div>
+    <p class="goal">Find as many Candidates as possible from open sources, remember how each one was found, and store every raw answer so the run can be replayed offline.</p>
+  </div>
+  <div class="panel">
+    <div class="block">
+      <dl class="io">
+        <dt>Input</dt><dd>19 keyword queries (6 arXiv, 12 Semantic Scholar, 1 OpenAlex) and 21 hand-picked Seed papers, each with a written reason.</dd>
+        <dt>Output</dt><dd>26,388 Candidate Editions with title, authors, year, venue, identifiers, links, licence and the list of Discovery channels that found each one. Every source response saved in the Snapshot.</dd>
+      </dl>
+      <h4>Nouns born here</h4>
+      <dl class="nouns">
+        <dt>Candidate</dt><dd>Any record found during discovery, before it has a verdict.</dd>
+        <dt>Seed</dt><dd>A landmark Work used as a starting point for citation expansion. 21 of them, from Sennrich's BPE paper (2015) to Byte Latent Transformer (2024).</dd>
+        <dt>Discovery channel</dt><dd>The route a Candidate came by: a named query on a source, or one citation hop (references or citers) from a named Seed. One Edition can have twenty.</dd>
+        <dt>Snapshot</dt><dd>The committed record of every source response, keyed by the request. Replaying it rebuilds the manifest byte for byte with no network.</dd>
+      </dl>
+      <h4>How the four routes differ</h4>
+      <ul class="plain">
+        <li><b>arXiv</b> search API: title and abstract queries restricted to cs.CL, cs.LG and cs.AI, 500 per page, one request every 3 s. Each Edition then gets its full record (every Version, comments, licence) from arXiv's OAI-PMH feed.</li>
+        <li><b>Semantic Scholar</b> bulk search: 12 phrase queries by topic. Also serves the citation graph for Seed expansion. No API key, so long throttles are waited out.</li>
+        <li><b>OpenAlex</b>: one phrase query, kept as a switchable channel. It reaches venues the others miss and lists open-access PDF locations.</li>
+        <li><b>ACL Anthology</b>: no query API. Each ACL id found elsewhere gets a venue Edition of its own from the paper page, so a preprint and its conference paper stay two rows.</li>
+      </ul>
+    </div>
+    <div class="block">
+      <h4>Numbers</h4>
+      <div class="tbl"><table>
+        <caption>By source. "Found by no other" shows what each source adds alone.</caption>
+        <thead><tr><th>Source</th><th class="n">Editions</th><th class="n">Included</th><th class="n">Found by no other</th><th class="n">of those included</th></tr></thead>
+        <tbody>
+          <tr><td>Seeds and citation hops</td><td class="n">17,285</td><td class="n">1,842</td><td class="n">14,995</td><td class="n">430</td></tr>
+          <tr><td>Semantic Scholar</td><td class="n">6,648</td><td class="n">1,511</td><td class="n">4,169</td><td class="n">191</td></tr>
+          <tr><td>arXiv</td><td class="n">5,640</td><td class="n">1,417</td><td class="n">3,594</td><td class="n">256</td></tr>
+          <tr><td>OpenAlex</td><td class="n">1,590</td><td class="n">846</td><td class="n">495</td><td class="n">177</td></tr>
+        </tbody>
+      </table></div>
+      <div class="tbl"><table>
+        <caption>What citation expansion adds beyond keyword search.</caption>
+        <thead><tr><th>Found by</th><th class="n">Editions</th><th class="n">Included</th><th class="n">By no keyword query</th><th class="n">of those included</th></tr></thead>
+        <tbody>
+          <tr><td>Keyword search</td><td class="n">11,393</td><td class="n">2,276</td><td class="n">—</td><td class="n">—</td></tr>
+          <tr><td>Citation expansion</td><td class="n">17,284</td><td class="n">1,841</td><td class="n">14,995</td><td class="n">430</td></tr>
+        </tbody>
+      </table></div>
+      <p class="why">Reading: expansion triples the Candidates but most citers of Sennrich (10,584) and SentencePiece (4,923) only use the tool. It still adds 430 included papers nothing else found, about one in six of the corpus.</p>
+
+      <h4>Decisions</h4>
+      <details class="dec">
+        <summary>Commit the Snapshot of every raw source response<span class="ref">ADR 0003</span></summary>
+        <div class="body"><p>Each response is one gzip file keyed by a hash of the request. Collection reads the Snapshot first and only calls the network on a miss. Keys travel in headers, never in the key, so no credential can land in git.</p><p class="why"><b>Why:</b> sources change their answers over time; without the Snapshot a reviewer rerunning months later could not check the counts. <a data-adr="0003">Read ADR 0003</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>Seeds and one hop of citation expansion, kept distinguishable from keyword search<span class="ref">ADR 0009</span></summary>
+        <div class="body"><p>21 Seeds, each with a one-line reason. For each, its references and its citers are fetched as Candidates and tagged with the Seed. The report shows what expansion adds on its own.</p><p class="why"><b>Why:</b> papers that say "digit splitting" or "patches" never match a tokenizer query but cite the landmarks. <a data-adr="0009">Read ADR 0009</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>Every arXiv Edition carries its full Version history and licence<span class="ref">ADR 0006, 0010</span></summary>
+        <div class="body"><p>One OAI-PMH record per arXiv paper gives every Version with its date, the comments (often the only place a venue is named) and the licence. Fetched only for Editions that pass the rules, to save 5–7 hours of rate-limited calls on rows the rules discard.</p><p class="why"><b>Why:</b> the duplicates work needs Version history, and licences must be shown to be respected. <a data-adr="0006">ADR 0006</a>, <a data-adr="0010">ADR 0010</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>A preprint and its venue paper are two Editions, never merged<span class="ref">ADR 0008, 0012, 0017</span></summary>
+        <div class="body"><p>Semantic Scholar and OpenAlex merge a paper's copies into one record. The pipeline splits them: the arXiv id makes the preprint row, the ACL id makes a venue row read from the Anthology paper page. An ACL id that turns out to be a whole proceedings volume counts as no paper.</p><p class="why"><b>Why:</b> the near-duplicate stage must have real version and venue duplicates to detect and measure. <a data-adr="0008">ADR 0008</a>, <a data-adr="0012">ADR 0012</a>, <a data-adr="0017">ADR 0017</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>OpenAlex added as a switchable channel, then kept on with evidence<span class="ref">ADR 0014, 0019</span></summary>
+        <div class="body"><p>The bar was 20 included Editions found by nothing else, or 20 included venue papers whose only PDF source it gives. It found 332 and 204 respectively on the first full run.</p><p class="why"><b>Why:</b> another source costs paging time and Snapshot bytes, so it had to earn its place. <a data-adr="0014">ADR 0014</a>, <a data-adr="0019">ADR 0019</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>Rate limits and throttles are respected, and long ones waited out<span class="ref">ADR 0004, 0016</span></summary>
+        <div class="body"><p>arXiv: 3 s between requests with backoff, pages sorted by submission date ascending so earlier pages stay stable. Semantic Scholar without a key: backoff up to 5 minutes, 16 attempts, after three crashed full runs.</p><p class="why"><b>Why:</b> the brief asks that rate limits and licences be respected, and the first full run proved the shared pool throttles for longer than six minutes. <a data-adr="0004">ADR 0004</a>, <a data-adr="0016">ADR 0016</a>.</p></div>
+      </details>
+
+      <div class="risk"><b>What could be wrong</b>
+        <ul>
+          <li>One arXiv paper sits under two Edition ids, one with an <code>arXiv:</code> prefix, and a CRAN package's open-access link resolved to another paper's PDF. Identifiers from some sources are not normalised before Editions are combined. <a data-issue="44">Issue 44</a>.</li>
+          <li>Coverage is bounded by the query set and 21 Seeds; a sub-topic with its own vocabulary and no Seed is reached only by luck.</li>
+        </ul>
+      </div>
+      <p class="repro">Reproduce: <code>just collect</code> from a clone replays the Snapshot offline and rewrites the manifest and <a data-file="data/report.md">data/report.md</a> byte for byte.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ STAGE 2 ============================ -->
+<section id="judge">
+  <div class="sec-head">
+    <div class="eyebrow">Stage 2</div>
+    <div class="title-row"><h2>Judge relevance: how each Candidate got its verdict</h2><span class="chip done">done</span></div>
+    <p class="goal">Decide, for every Candidate, whether it belongs in the corpus, record why, and measure how good that decision is against hand labels.</p>
+  </div>
+  <div class="panel">
+    <div class="block">
+      <dl class="io">
+        <dt>Input</dt><dd>26,388 Candidates with title and abstract.</dd>
+        <dt>Output</dt><dd>A Relevance verdict per Edition: included (2,706) or excluded, with the stage that decided and the reason, in the manifest.</dd>
+      </dl>
+      <h4>Nouns born here</h4>
+      <dl class="nouns">
+        <dt>Relevance verdict</dt><dd>Included or excluded, plus the stage (rules, withdrawn, not-a-paper, judge) and a reason a reviewer can read.</dd>
+        <dt>Audit set</dt><dd>180 hand-labelled Candidates used to choose and measure the verdict, never to train it. 60 from each stratum: rule-rejected, judge-excluded, judge-included.</dd>
+      </dl>
+      <h4>The four gates, in order</h4>
+      <ul class="plain">
+        <li><b>Rules</b> (deterministic, free). A title with a strong on-topic term skips the exclusions. Otherwise an exclusion pattern on the title rejects with its name. Then title or abstract must contain a required term (tokeniz…, subword, byte-pair, WordPiece, SentencePiece, vocabulary, byte-level, character-level).</li>
+        <li><b>Withdrawn</b>: an arXiv paper whose latest Version is a withdrawal is excluded; the bot must not cite retracted results.</li>
+        <li><b>Not a paper</b>: manuals, proceedings front matter, textbooks and theses, by source type and page count.</li>
+        <li><b>Judge</b>: a local decision model reads title and abstract and returns P(Yes) to the scope question. Included at P(Yes) ≥ 0.8. Every score is cached in the Snapshot, so replays need no model.</li>
+      </ul>
+    </div>
+    <div class="block">
+      <h4>Numbers</h4>
+      <div class="tbl"><table>
+        <caption>Rejections by gate, on the Snapshot of 2026-10-16.</caption>
+        <thead><tr><th>Gate</th><th class="n">Rejected</th><th>Of which</th></tr></thead>
+        <tbody>
+          <tr><td>Rules</td><td class="n">19,185</td><td>missing required term 18,616 · token reduction 341 · other-modality tokenizer 92 · crypto 87 · KV cache 49</td></tr>
+          <tr><td>Withdrawn</td><td class="n">15</td><td>latest arXiv Version listed at 0 kB</td></tr>
+          <tr><td>Not a paper</td><td class="n">152</td><td>manuals, volumes, theses, textbooks</td></tr>
+          <tr><td>Judge</td><td class="n">4,330</td><td>P(Yes) below 0.8</td></tr>
+          <tr class="sum"><td>Included</td><td class="n">2,706</td><td>10.3% of Candidates; 37.6% of rule passes</td></tr>
+        </tbody>
+      </table></div>
+
+      <h4>How it is checked</h4>
+      <p>The Audit set is a stratified sample, weighted back to the 26,388 so precision and recall describe the population. Rules alone reach precision 0.33 at recall 1.00: they throw nothing relevant away but let through two off-topic papers for every relevant one. The judge is chosen on the 120 rule passes of that set.</p>
+      <div class="tbl"><table>
+        <caption>Judge bake-off on the Audit set (rules and judge together), each at its best threshold.</caption>
+        <thead><tr><th>Model</th><th class="n">Threshold</th><th class="n">Precision</th><th class="n">Recall</th><th class="n">F1</th><th class="n">Full run</th></tr></thead>
+        <tbody>
+          <tr class="sum"><td>Tev1 4B (Ollama), chosen</td><td class="n">0.80</td><td class="n">0.810</td><td class="n">0.872</td><td class="n">0.840</td><td class="n">106 min</td></tr>
+          <tr><td>Gemma 4 E2B (Ollama)</td><td class="n">0.005</td><td class="n">0.744</td><td class="n">0.821</td><td class="n">0.781</td><td class="n">7 min</td></tr>
+          <tr><td>Granite 4.0 Micro</td><td class="n">0.80</td><td class="n">0.725</td><td class="n">0.744</td><td class="n">0.734</td><td class="n">76 min</td></tr>
+          <tr><td>Qwen3 4B Instruct</td><td class="n">0.95</td><td class="n">0.579</td><td class="n">0.847</td><td class="n">0.688</td><td class="n">94 min</td></tr>
+          <tr><td>Qwen3 1.7B</td><td class="n">0.90</td><td class="n">0.459</td><td class="n">0.974</td><td class="n">0.624</td><td class="n">33 min</td></tr>
+          <tr><td>Tev1 0.8B (Ollama)</td><td class="n">0.70</td><td class="n">0.467</td><td class="n">0.898</td><td class="n">0.615</td><td class="n">4 min</td></tr>
+        </tbody>
+      </table></div>
+      <p class="why">Reading: the decision rule was "smallest model within 2 F1 of the best, if a full run takes about an hour". None of the small ones came close, so the best model won despite the longest run. Full report in <a data-file="data/audit/report.md">data/audit/report.md</a>.</p>
+
+      <h4>Decisions</h4>
+      <details class="dec">
+        <summary>A rule pre-filter that names the pattern that fired<span class="ref">ADR 0005</span></summary>
+        <div class="body"><p>Case-insensitive regexes in config: a keep guard on the title, named exclusion patterns on the title, and a required-term group on title or abstract. Exclusions run first so the recorded reason is the specific off-topic sense, not the generic "missing term".</p><p class="why"><b>Why:</b> the judge is the expensive step, and a reviewer must see why each Candidate was rejected. <a data-adr="0005">Read ADR 0005</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>A local open-weight judge that returns a probability, not a generated answer<span class="ref">ADR 0007</span></summary>
+        <div class="body"><p>One forward pass; P(Yes) is the softmax over the Yes and No logits. Nothing is sampled or parsed. Verdicts are cached by a hash of the question, model and input.</p><p class="why"><b>Why:</b> a reviewer can rerun collection with no GPU or API key, and a probability lets the threshold be tuned on the Audit set. <a data-adr="0007">Read ADR 0007</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>Audit set: stratified, weighted, labels drafted blind by agents and checked by the developer<span class="ref">ADR 0011, 0020</span></summary>
+        <div class="body"><p>Three agents labelled a third each, seeing only title, abstract and link, never the system's own verdict. 37 hard rows were flagged and all checked by the developer; 48 of 180 were developer-checked in total, 31 labels changed from the draft. The file records who set each label.</p><p class="why"><b>Why:</b> a uniform sample would hold almost no hard cases near the judge's boundary, and labels anchored on the system's answer would flatter it. <a data-adr="0011">ADR 0011</a>, <a data-adr="0020">ADR 0020</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>Tev1 4B on Ollama 0.40.5 at threshold 0.8, pinned with its runtime<span class="ref">ADR 0021, 0025, 0018</span></summary>
+        <div class="body"><p>A decision model asked one true/false question through Ollama. The model digest and the Ollama version are pinned together because another runtime changes the scores. An abstract is cut only when the model refuses it as too long, so cached verdicts stay valid. The MPS cache is released every batch so a 7,000-row run fits in 32 GB.</p><p class="why"><b>Why:</b> best F1 by a margin of 6 points over the next model; reproducibility demands the exact runtime. <a data-adr="0021">ADR 0021</a>, <a data-adr="0025">ADR 0025</a>, <a data-adr="0018">ADR 0018</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>Withdrawn preprints and non-papers are excluded before the judge<span class="ref">ADR 0037, 0040</span></summary>
+        <div class="body"><p>A withdrawal is read from the arXiv record (latest Version at 0 kB). Non-papers are read from source type fields and page counts, after the parse audit found the judge admits anything "about" tokenization.</p><p class="why"><b>Why:</b> a grounded bot must not cite retracted results or package manuals. <a data-adr="0037">ADR 0037</a>, <a data-adr="0040">ADR 0040</a>.</p></div>
+      </details>
+
+      <div class="risk"><b>What could be wrong</b>
+        <ul>
+          <li>Precision 0.81 means roughly one included paper in five is off topic by the Audit set's reading; recall 0.87 means about one relevant rule-pass in eight is lost.</li>
+          <li>The judge sees only title and abstract. Some sources put body text in the abstract field; those inputs are cut to fit and judged on their start.</li>
+          <li>The Audit set is 180 rows, so the figures above carry sampling error of several points.</li>
+        </ul>
+      </div>
+      <p class="repro">Reproduce: <code>just collect</code> replays cached verdicts; <code>just collect --no-judge</code> leaves them pending. The judge itself needs Ollama 0.40.5 exactly.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ STAGE 3 ============================ -->
+<section id="parse">
+  <div class="sec-head">
+    <div class="eyebrow">Stage 3</div>
+    <div class="title-row"><h2>Acquire and parse: from an included Edition to Chunks</h2><span class="chip done">done</span></div>
+    <p class="goal">Download exactly the files the corpus is pinned to, turn each into clean Section-aware Chunks that can be cited by paper, Section and page, and keep garbled parses out.</p>
+  </div>
+  <div class="panel">
+    <div class="block">
+      <dl class="io">
+        <dt>Input</dt><dd>2,706 included Editions.</dd>
+        <dt>Output</dt><dd>2,691 pinned PDF files (hashes in the Snapshot, files never committed) and 141,512 Chunks in a local parse cache, plus a committed parse report with one line per file.</dd>
+      </dl>
+      <h4>Nouns born here</h4>
+      <dl class="nouns">
+        <dt>Pinned file</dt><dd>For a preprint: the latest Version at Snapshot time, plus v1 when they differ. For an ACL paper: the Anthology PDF. Otherwise the first open-access PDF OpenAlex lists. Each with its sha256.</dd>
+        <dt>Section</dt><dd>A headed division of the body as the authors numbered it; an appendix is a Section marked as one.</dd>
+        <dt>Chunk</dt><dd>Up to 350 tokens of one Section of one file, never crossing a Section. Kind: text, table or caption. Carries its Edition id, pinned id and Version.</dd>
+        <dt>Context header</dt><dd>Title and Section path stored apart from the text, so the embedding sees "WECHSEL › 5 Results › 5.3 Is freezing necessary?" and citations quote clean text.</dd>
+        <dt>Citation anchor</dt><dd>Pinned Edition id with Version, Section number and title, page range.</dd>
+        <dt>Quality gate</dt><dd>A file with a GROBID error or timeout, fewer than 2 Sections, or under 2,000 characters of Section text gets no Chunks.</dd>
+      </dl>
+      <h4>What happens to each element</h4>
+      <ul class="plain">
+        <li><b>Body paragraphs</b> become text Chunks, packed whole until the 350-token budget.</li>
+        <li><b>Tables</b> become table Chunks: a header line naming table, Section and caption, then one line per row with cells separated by bars. GROBID finds about half of all tables; the cells of a missed one stay inside text Chunks and are counted as "mostly numeric".</li>
+        <li><b>Figure captions</b> become caption Chunks, since findings are often stated only there.</li>
+        <li><b>Equations</b> are linearised into the text.</li>
+        <li><b>Reference lists</b> are kept as a structured bibliography for the duplicates work but never indexed; they match every keyword.</li>
+        <li><b>Acknowledgements</b> are dropped. <b>Appendices</b> are flagged.</li>
+        <li><b>Headings GROBID missed</b> (left inside a paragraph in larger type) are recovered, so Related Work is not cited as the Introduction.</li>
+      </ul>
+    </div>
+    <div class="block">
+      <h4>Numbers</h4>
+      <div class="tbl"><table>
+        <thead><tr><th>Measure</th><th class="n">Count</th></tr></thead>
+        <tbody>
+          <tr><td>Included Editions with full text</td><td class="n">2,068</td></tr>
+          <tr><td>Included Editions with no open PDF</td><td class="n">636</td></tr>
+          <tr><td>Pinned files parsed / failed the gate</td><td class="n">2,690 / 1</td></tr>
+          <tr><td>Sections</td><td class="n">69,081</td></tr>
+          <tr><td>Chunks</td><td class="n">141,512</td></tr>
+          <tr><td>of which table / caption</td><td class="n">18,038 / 13,737</td></tr>
+          <tr><td>of which mostly numeric text (missed table cells)</td><td class="n">4,782</td></tr>
+        </tbody>
+      </table></div>
+
+      <h4>How it is checked</h4>
+      <p>A full-corpus parse audit sampled 37 files (25 outliers, 12 random) and compared Chunks with the PDF page by page, then counted each pattern it found across the corpus. Parsed text covers a median 77% of each PDF's characters; the gap is mostly reference lists, which are meant to be absent. Four files were found to be "not a paper" and led to the rule above. Report: <a data-file="docs/reports/2026-10-18-full-corpus-parse-audit.md">2026-10-18 parse audit</a>.</p>
+
+      <h4>Decisions</h4>
+      <details class="dec">
+        <summary>Fetch pins exact Versions and records hashes; PDFs stay out of git<span class="ref">ADR 0015, 0002</span></summary>
+        <div class="body"><p>A separate fetch step downloads the files of every included row, writes each sha256 into the Snapshot's full-text record, and checks re-downloads against it so upstream drift is told apart from pipeline failure.</p><p class="why"><b>Why:</b> the duplicates work needs real v1, latest and venue copies, and the brief forbids committing PDFs. <a data-adr="0015">ADR 0015</a>, <a data-adr="0002">ADR 0002</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>GROBID stays the parser after a spike against Docling<span class="ref">ADR 0024, 0023</span></summary>
+        <div class="body"><p>On the 34 Seed PDFs, Docling found 94% of tables against GROBID's 46% and kept more headings, but was 7.3× slower on one GPU, projected at about 30 hours for the corpus against 35 minutes for GROBID with 8 parallel requests, and it failed on SentencePiece's PDF. GROBID also gives a structured bibliography. The CRF image is pinned by digest and runs natively on Apple silicon.</p><p class="why"><b>Why:</b> the bar was "within 2× of GROBID's speed and clearly better"; Docling met only the second half. <a data-adr="0024">ADR 0024</a>, <a data-adr="0023">ADR 0023</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>350-token Chunks, packed by paragraph, counted with a pinned BERT tokenizer<span class="ref">ADR 0027, 0032</span></summary>
+        <div class="body"><p>Chunks never cross a Section. The budget leaves room for the context header inside the 512-token limit of candidate embedding models. The tokenizer file is pinned by revision and hash. Each Chunk carries its Edition id beside its pinned id, so v1's Chunks know they belong to the Edition keyed by the latest Version.</p><p class="why"><b>Why:</b> one fixed counter makes Chunks reproducible, and the duplicates stage is keyed by Edition. <a data-adr="0027">ADR 0027</a>, <a data-adr="0032">ADR 0032</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>Element rules: tables, captions, references, appendices<span class="ref">ADR 0028, 0035, 0043</span></summary>
+        <div class="body"><p>Tables and captions become their own Chunk kinds; references are kept but not indexed; acknowledgements are dropped; appendices flagged. Missed-table cells stay in text because every cut tried on the Seeds also removed real prose. Lost numbered headings are recovered from the type size in GROBID's coordinates.</p><p class="why"><b>Why:</b> the brief asks exactly this question, and numbers that live only in tables must be findable. <a data-adr="0028">ADR 0028</a>, <a data-adr="0035">ADR 0035</a>, <a data-adr="0043">ADR 0043</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>A quality gate, per-file failures, and a run that stops when GROBID goes away<span class="ref">ADR 0029, 0036</span></summary>
+        <div class="body"><p>A file fails on a GROBID error, a timeout, fewer than 2 Sections or under 2,000 characters of body. A failed file is recorded and the run goes on. A dropped or refused connection is the service's fault, not the file's, so the run stops instead of marking every remaining file failed.</p><p class="why"><b>Why:</b> scanned PDFs are expected and OCR is out of scope; a 2,700-file run must always finish and say what went wrong. <a data-adr="0029">ADR 0029</a>, <a data-adr="0036">ADR 0036</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>Parse only the pinned files of included Editions, from the committed record<span class="ref">ADR 0031, 0038, 0030</span></summary>
+        <div class="body"><p>The parse step reads the full-text record and the manifest, so withdrawn preprints, re-pinned Versions and excluded Editions get no Chunks. The cache is keyed by file hash, parser image and chunking config; changing the parser re-parses, changing the config only re-chunks, and the same inputs give byte-identical output.</p><p class="why"><b>Why:</b> the corpus must be exactly the manifest's included rows, and tuning Chunk size later must be cheap. <a data-adr="0031">ADR 0031</a>, <a data-adr="0038">ADR 0038</a>, <a data-adr="0030">ADR 0030</a>.</p></div>
+      </details>
+
+      <div class="risk"><b>What could be wrong</b>
+        <ul>
+          <li>585 Chunks in 19 files are invisible base64 from LaTeX figures, 63 are dot leaders, 333 are four words or fewer. <a data-issue="39">Issue 39</a>.</li>
+          <li>A junk heading starting with a letter A–H can open the appendix and flag the rest of the body, in about 7 files. <a data-issue="40">Issue 40</a>.</li>
+          <li>Reference-list text leaks into body Chunks in 4 of 37 sampled files; author lists match every name query. <a data-issue="42">Issue 42</a>.</li>
+          <li>Headless text at the start of the body is filed under the Abstract; 312 Chunks have an empty Section path. <a data-issue="43">Issue 43</a>.</li>
+          <li>About half of all tables are missed and sit as unlabelled numbers in text Chunks. Whether this hurts retrieval is now measurable: 1% of top-5 slots. <a data-issue="26">Issue 26</a>.</li>
+          <li>Korean and Urdu papers parse badly: no headings, reversed script.</li>
+        </ul>
+      </div>
+      <p class="repro">Reproduce: <code>just fetch</code>, <code>just grobid-up</code>, <code>just parse</code>. The parse report is <a data-file="data/parse-report.md">data/parse-report.md</a>; the Chunks themselves are not committed.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ STAGE 4 ============================ -->
+<section id="retrieve">
+  <div class="sec-head">
+    <div class="eyebrow">Stage 4</div>
+    <div class="title-row"><h2>Retrieve: how a question finds Chunks</h2><span class="chip partial">partial</span></div>
+    <p class="goal">Rank the 141,512 Chunks for a question. Two baselines exist so every later choice has a number to beat. The embedding comparison, hybrid search and duplicate suppression are not built yet.</p>
+  </div>
+  <div class="panel">
+    <div class="block">
+      <dl class="io">
+        <dt>Input</dt><dd>A question as text, and the parsed files the parse report lists.</dd>
+        <dt>Output</dt><dd>A ranked list of Chunks with scores; a local index cache keyed by chunking config and retriever settings; the manifest's "indexed" mark (2,067 Editions).</dd>
+      </dl>
+      <h4>Two baselines, both on every Chunk</h4>
+      <ul class="plain">
+        <li><b>BM25</b>, keyword search: lower-cased letter and digit runs, decimals kept whole, no stemming, no stop words, k1 1.2, b 0.75. Index built in 10 s; a query takes about 200 ms.</li>
+        <li><b>Dense</b>, vector search: bge-small-en-v1.5 (33M parameters, 384 dimensions), exact dot product over float32 vectors, query prefixed with the model's search instruction. Index built in 14 minutes on the laptop GPU; a query takes about 30 ms.</li>
+        <li>Both embed the context header with the text. Neither suppresses duplicates: the raw ranking is what the evaluation scores.</li>
+      </ul>
+      <h4>Not yet built</h4>
+      <ul class="plain">
+        <li>A second embedding model suited to scientific text, compared on Recall@5, MRR, cost and latency.</li>
+        <li>Keyword search beside vector search (hybrid), since terms like "SentencePiece" and "fertility" are exact.</li>
+        <li>Version and near-duplicate suppression, measured before and after against the Work groups.</li>
+        <li>Optional: a reranker, year and venue filters.</li>
+      </ul>
+    </div>
+    <div class="block">
+      <h4>Decisions</h4>
+      <details class="dec">
+        <summary>The corpus is the parse report's parsed files; the index cache is local and keyed<span class="ref">ADR 0039</span></summary>
+        <div class="body"><p>Index and evaluate read only the files the committed parse report lists, not everything in the cache, which also holds Chunks of withdrawn and re-pinned files. The cache folder is named by chunking key and retriever key, so a change to either builds beside the old one.</p><p class="why"><b>Why:</b> the thing being scored must be exactly the corpus, and the report checks against the config so a stale cache stops the run. <a data-adr="0039">Read ADR 0039</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>Dense baseline behind an embedder boundary, bge-small pinned by revision and weight hash<span class="ref">ADR 0042</span></summary>
+        <div class="body"><p>The dense retriever gets vectors only through one function, which tests replace with a hashed bag of words, so the default test suite never loads a model. bge-small shares BERT's vocabulary with the chunker's counter, so Chunks nearly always fit in 512 tokens (5 of 141,360 were cut).</p><p class="why"><b>Why:</b> swapping the model for the comparison must touch one place, and tests must stay offline. <a data-adr="0042">Read ADR 0042</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>Index marks Editions indexed, from a record committed in the Snapshot<span class="ref">ADR 0045</span></summary>
+        <div class="body"><p>The index step writes the list of indexed files into the Snapshot and marks the manifest, so the funnel's last row survives a collect rerun and a fresh clone. An Edition whose file failed the gate shows as "with full text, not indexed".</p><p class="why"><b>Why:</b> the manifest must show whether each paper made it into the index, and collect rebuilds the manifest from the Snapshot alone. <a data-adr="0045">Read ADR 0045</a>.</p></div>
+      </details>
+      <div class="risk"><b>What could be wrong</b>
+        <ul>
+          <li>Neither baseline handles follow-ups: asked alone, a follow-up finds its Passage 0% (BM25) and 12% (dense) of the time. Query rewriting is the chatbot's job and is not built.</li>
+          <li>Multi-paper questions score near zero on both: Recall@5 0.06. The top 5 is filled by one paper's duplicates before the second paper appears.</li>
+          <li>Exact search over 141k vectors is fine today but is not a production index.</li>
+        </ul>
+      </div>
+      <p class="repro">Reproduce: <code>just index</code> builds both retrievers into <code>data/index-cache/</code> (not committed). Settings in <a data-file="config/retrieval.toml">config/retrieval.toml</a>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ STAGE 5 ============================ -->
+<section id="evaluate">
+  <div class="sec-head">
+    <div class="eyebrow">Stage 5</div>
+    <div class="title-row"><h2>Evaluate: how retrieval is measured, and why the score can be trusted</h2><span class="chip done">done</span></div>
+    <p class="goal">A labelled set of questions with the quotes that answer them, a scoring rule that is the same every run, and ground truth for duplicates that the system under test never computed.</p>
+  </div>
+  <div class="panel">
+    <div class="block">
+      <dl class="io">
+        <dt>Input</dt><dd>The Evaluation set, the Work groups, and one or more retrievers.</dd>
+        <dt>Output</dt><dd>A committed eval report: Recall@5, MRR@10 and Hit@5 per question type, the top-5 duplicate rate, Survey restatement, numeric-Chunk share, build time and latency. Rerunning gives the same report apart from timings.</dd>
+      </dl>
+      <h4>Nouns born here</h4>
+      <dl class="nouns">
+        <dt>Evaluation set</dt><dd>36 questions: 12 single-paper lookups, 8 multi-paper, 8 follow-ups (each with its history and a reference rewrite), 8 unanswerable. About 25 grounded in Seeds, 10 in other papers.</dd>
+        <dt>Passage</dt><dd>A verbatim quote of at most 300 characters from one Section of one Edition. Any Chunk holding it answers, whichever Edition or Version it comes from.</dd>
+        <dt>Work groups</dt><dd>154 Editions that either baseline put in a top 5, grouped by hand into 130 Works, 2 of them Surveys. The ground truth for the duplicate rate, and the future dedup stage's test set.</dd>
+      </dl>
+      <h4>The metrics</h4>
+      <ul class="plain">
+        <li><b>Recall@5</b>: share of a question's Passages held by a Chunk in the top 5, averaged over questions.</li>
+        <li><b>MRR@10</b>: 1 over the rank of the first Chunk holding any Passage; 0 if none in the top 10.</li>
+        <li><b>Duplicate rate</b>: share of top-5 slots holding a Chunk from a Work already ranked higher, and share of questions with at least one such slot. A Survey restating a finding is counted separately as restatement, never as a duplicate.</li>
+        <li><b>Follow-ups</b> are scored three ways: alone, with history prepended, and as a hand-written reference rewrite. The headline row uses "alone", as a user would type it.</li>
+        <li><b>Unanswerable</b> questions are run but left out of the retrieval metrics; they are for the chatbot's abstention measure.</li>
+      </ul>
+    </div>
+    <div class="block">
+      <h4>Baseline results (committed 2026-10-19)</h4>
+      <div class="tbl"><table>
+        <caption>Recall@5 / MRR@10 by question type. 28 answerable questions.</caption>
+        <thead><tr><th>Question type</th><th class="n">n</th><th class="n">BM25</th><th class="n">Dense</th></tr></thead>
+        <tbody>
+          <tr><td>Single-paper, as asked</td><td class="n">12</td><td class="n">0.33 / 0.173</td><td class="n">0.58 / 0.462</td></tr>
+          <tr><td>Multi-paper, as asked</td><td class="n">8</td><td class="n">0.06 / 0.153</td><td class="n">0.06 / 0.038</td></tr>
+          <tr><td>Follow-up, alone</td><td class="n">8</td><td class="n">0.00 / 0.000</td><td class="n">0.12 / 0.125</td></tr>
+          <tr><td>Follow-up, reference rewrite</td><td class="n">8</td><td class="n">0.62 / 0.583</td><td class="n">0.50 / 0.400</td></tr>
+          <tr class="sum"><td>All answerable</td><td class="n">28</td><td class="n">0.16 / 0.118</td><td class="n">0.30 / 0.244</td></tr>
+        </tbody>
+      </table></div>
+      <div class="tbl"><table>
+        <caption>Crowding of the top 5, raw ranking, 140 slots per retriever.</caption>
+        <thead><tr><th>Measure</th><th class="n">BM25</th><th class="n">Dense</th></tr></thead>
+        <tbody>
+          <tr><td>Duplicate slots</td><td class="n">59 / 140 (42%)</td><td class="n">70 / 140 (50%)</td></tr>
+          <tr><td>Questions with a duplicate</td><td class="n">27 / 28</td><td class="n">27 / 28</td></tr>
+          <tr><td>Survey restatement slots</td><td class="n">0</td><td class="n">1</td></tr>
+          <tr><td>Mostly-numeric slots</td><td class="n">1</td><td class="n">2</td></tr>
+        </tbody>
+      </table></div>
+      <p class="why">Reading: the dense baseline nearly doubles BM25 overall, BM25 wins once the question is rewritten to name its subject, and half of every top 5 is the same paper again. Those are the "before" numbers the brief's two challenging parts must improve on. Full report: <a data-file="data/eval/eval-report.md">data/eval/eval-report.md</a>.</p>
+
+      <h4>How the set itself is checked</h4>
+      <ul class="plain">
+        <li>An agent drafts; the developer checks every question. Each row records <code>checked_by</code>; nothing unchecked is scored.</li>
+        <li><code>eval-check</code> finds every quote in the parsed text, in the named Section, before evaluate will run.</li>
+        <li>The Passage matcher (65% of the quote's words in order, every number equal) was calibrated on 48 v1-versus-latest pairs so a reworded Version still counts.</li>
+        <li>Each unanswerable question has absence evidence: the top 10 Chunks from both retrievers for the question and for probe queries, read and confirmed by the developer.</li>
+        <li>Work groups were drafted from shared identifiers and titles, then checked Work by Work on a local page; each row records who checked it.</li>
+      </ul>
+
+      <h4>Decisions</h4>
+      <details class="dec">
+        <summary>The Passage matcher, eval-check and the v1/vN calibration<span class="ref">ADR 0041</span></summary>
+        <div class="body"><p>Texts are normalised (NFKC, case, hyphenation, citations dropped), cut into BM25's words, aligned in order; a Chunk holds a Passage at 65% coverage with every number matching. The threshold was set where v1 Chunks still match quotes from the latest Version.</p><p class="why"><b>Why:</b> a substring match would miss any reworded Version, and a Version duplicate must count as a wasted slot, not a miss. <a data-adr="0041">Read ADR 0041</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>Duplicate rate measured against Work groups given as input<span class="ref">ADR 0044, 0047</span></summary>
+        <div class="body"><p>The groups file is committed, drafted from manifest identifiers and matching titles, and checked by a person with a note on each row. 24 of 130 Works have more than one Edition. No Work was merged or split in the check.</p><p class="why"><b>Why:</b> a duplicate rate computed by the system being measured would measure nothing. <a data-adr="0044">ADR 0044</a>, <a data-adr="0047">ADR 0047</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>Short quotes may be committed; every question names who checked it; absence is shown<span class="ref">ADR 0046</span></summary>
+        <div class="body"><p>Quotes of at most 300 characters are committed as quotation for evaluation whatever the paper's licence, with their source named. A question is unanswerable only after a documented search found nothing in the corpus.</p><p class="why"><b>Why:</b> papers stay out of git for licence reasons, but a quote is attribution, not redistribution; and "the corpus can't answer" must be a checked claim. <a data-adr="0046">Read ADR 0046</a>.</p></div>
+      </details>
+
+      <div class="risk"><b>What could be wrong</b>
+        <ul>
+          <li>28 answerable questions is a small set; a single question moves Recall@5 by 0.036.</li>
+          <li>About 25 of 36 questions are grounded in Seeds, the best-known papers, so the set may flatter retrieval of famous results.</li>
+          <li>Grounding rate and abstention on unanswerable questions are defined by the brief but not yet measured; they need the chatbot.</li>
+        </ul>
+      </div>
+      <p class="repro">Reproduce: <code>just evaluate</code> after <code>just index</code>. Set: <a data-file="data/eval/evaluation-set.jsonl">evaluation-set.jsonl</a>, groups: <a data-file="data/eval/work-groups.csv">work-groups.csv</a>, absence evidence: <a data-file="data/eval/absence-evidence.md">absence-evidence.md</a>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ FOUNDATION ============================ -->
+<section id="foundation" class="band">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Under every stage</div>
+      <h2>Foundation: why a reviewer can rerun all of this</h2>
+      <p class="goal">Decisions that belong to no single stage but make every number above reproducible from a clone.</p>
+    </div>
+    <div class="found">
+      <div><b>Python 3.12 and uv, locked</b><span>One interpreter and every package pinned in the lockfile; setup is one sync. <a data-adr="0001">ADR 0001</a></span></div>
+      <div><b>Nothing heavy or secret in git, but the Snapshot is committed</b><span>PDFs and keys stay out; every source response, verdict and hash goes in, so a rerun needs no network. <a data-adr="0002">0002</a>, <a data-adr="0003">0003</a></span></div>
+      <div><b>Paper text in git only as quotes or CC BY fixtures</b><span>Test fixtures from CC BY 4.0 papers, and quotes under 300 characters for evaluation. <a data-adr="0033">0033</a>, <a data-adr="0046">0046</a></span></div>
+      <div><b>Judge pinned with its runtime</b><span>Model digest and Ollama 0.40.5 together, because the runtime changes scores. <a data-adr="0021">0021</a></span></div>
+      <div><b>Parser pinned by image digest</b><span>GROBID 0.9.1 CRF; a re-pushed tag changes nothing. <a data-adr="0023">0023</a></span></div>
+      <div><b>Tooling installed by the reader, checked by <code>just init</code></b><span>uv, just, Docker and Ollama with their tested versions in the README. <a data-adr="0022">0022</a></span></div>
+      <div><b>Reports are written from the data, never by hand</b><span>The funnel report derives from the manifest; the Snapshot is checked for size and credentials. <a data-adr="0026">0026</a></span></div>
+      <div><b>Caches keyed by what they depend on</b><span>Parse cache by file hash, parser and config; index cache by chunking and retriever; identical inputs give identical bytes. <a data-adr="0030">0030</a></span></div>
+      <div><b>Parallel work in fully working worktrees</b><span>Each issue in its own worktree with env, venv and local data copied in. <a data-adr="0013">0013</a></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ REMAINING ============================ -->
+<section id="remaining">
+  <div class="sec-head">
+    <div class="eyebrow">Not built yet</div>
+    <div class="title-row"><h2>What's left, and what already exists toward it</h2><span class="chip planned">planned</span></div>
+    <p class="goal">The brief's requirements that have no stage yet. Design is decided in an ADR when each is picked up; nothing here is a design.</p>
+  </div>
+  <div class="plans">
+    <div class="plan">
+      <div class="eyebrow">Brief: challenging</div>
+      <h3>Pick an embedding model with evidence</h3>
+      <p>Compare at least two models, one suited to scientific text; consider keyword search beside vectors; report Recall@5, MRR, cost and latency; recommend one.</p>
+      <p><b>Exists:</b> the embedder boundary, bge-small as one of the two, BM25 as the keyword side, the harness with latency and build time, and the numbers to beat.</p>
+      <p><a data-issue="31">Spec issue 31</a></p>
+    </div>
+    <div class="plan">
+      <div class="eyebrow">Brief: challenging</div>
+      <h3>Handle Versions and near-duplicates</h3>
+      <p>Stop versions, preprint-plus-venue pairs and Survey restatements crowding the top 5 without merging different papers. Show before and after, with the duplicate rate.</p>
+      <p><b>Exists:</b> every Edition carries its Version history and identifiers; Chunks carry their Edition; the "before" rate is 42–50%; the hand-checked Work groups are the test set.</p>
+      <p><a data-issue="31">Spec issue 31</a></p>
+    </div>
+    <div class="plan">
+      <div class="eyebrow">Brief: core</div>
+      <h3>A grounded chatbot</h3>
+      <p>Multi-turn, so "how does that compare with WordPiece?" resolves; every answer cites paper and Section; says plainly when the corpus does not support an answer. Measure grounding and the handling of unanswerable questions.</p>
+      <p><b>Exists:</b> citation anchors on every Chunk, 8 follow-up questions with histories and rewrites, 8 unanswerable questions with absence evidence.</p>
+    </div>
+    <div class="plan">
+      <div class="eyebrow">Brief: deliverables</div>
+      <h3>Write-up, transcript, failure analysis</h3>
+      <p>2–3 pages on design decisions with a results table; one conversation of at least five turns with a follow-up and an unanswerable; at least three questions the system still gets wrong, and why.</p>
+      <p><b>Exists:</b> this page and 47 ADRs as the source of the write-up; per-question rows in the eval report as the start of the failure analysis.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ EXAMPLE ============================ -->
+<section id="example">
+  <div class="sec-head">
+    <div class="eyebrow">Worked example</div>
+    <h2>One paper through every stage, and one question traced back</h2>
+    <p class="goal">SentencePiece (Kudo and Richardson, 2018) is a Seed with two Editions, so it exercises every noun on this page.</p>
+  </div>
+  <div class="two">
+    <div class="trace">
+      <h3>Forwards: SentencePiece, the Work</h3>
+      <div class="step"><div class="s">Scope<small>stage 0</small></div><div class="w"><p>Topic "subword algorithms". Picked as Seed <code>sentencepiece</code>: "the standard language-independent tokenizer library; cited by most tokenizer work since 2018".</p></div></div>
+      <div class="step"><div class="s">Discover<small>stage 1</small></div><div class="w"><p>Found by 20 Discovery channels: three arXiv queries, the OpenAlex query, three Semantic Scholar queries, the Seed itself, two Seeds' citation lists and eleven Seeds' reference lists. Two Editions: the arXiv preprint <code>1808.06226v1</code> (one Version, arXiv's non-exclusive licence) and the EMNLP demo paper <code>D18-2012</code> (CC BY 4.0), kept as separate rows.</p></div></div>
+      <div class="step"><div class="s">Judge<small>stage 2</small></div><div class="w"><p>Rules: pass (title contains "tokenizer" and "subword"). Judge: P(Yes) 0.9971 ≥ 0.8. Verdict: included, stage judge, on both Editions.</p></div></div>
+      <div class="step"><div class="s">Acquire &amp; parse<small>stage 3</small></div><div class="w"><p>Two pinned files, <code>1808.06226v1.pdf</code> (sha256 8a81eb…) and <code>D18-2012.pdf</code> (cf056a…). Both parsed: 12 Sections each; 24 Chunks (1 table, 3 captions) and 26 Chunks (0 tables, 4 captions). Docling had failed on this PDF in the spike; GROBID did not.</p></div></div>
+      <div class="step"><div class="s">Retrieve<small>stage 4</small></div><div class="w"><p>Both Editions indexed, so a SentencePiece query can return the same sentence twice. In the Work groups they are one Work, not a Survey, so the second copy counts as a duplicate slot.</p></div></div>
+      <div class="step"><div class="s">Evaluate<small>stage 5</small></div><div class="w"><p>Question <code>sentencepiece-whitespace</code> asks what the library does with spaces. Its Passage, checked by the developer, is in <code>1808.06226v1</code> § 3.1 Lossless Tokenization:</p><blockquote>SentencePiece first escapes the whitespace with a meta symbol _ (U+2581)</blockquote><p>BM25 does not find it in the top 10. Dense finds it at rank 4, with one duplicate slot above it.</p></div></div>
+    </div>
+    <div class="trace">
+      <h3>Backwards: two questions and what they test</h3>
+      <div class="step"><div class="s">Follow-up<small>canine-hashing</small></div><div class="w"><p>History: "What score does CANINE reach on Amharic named entities, a language it never saw in pre-training, and why can it read that script at all?" Follow-up: <em>"How does it give every possible character an embedding without an enormous table?"</em> Rewrite: "How does CANINE embed every Unicode codepoint without a vocabulary-sized embedding matrix?"</p><p>Passage in <code>2103.06874v4</code> § 3.1 Model. Asked alone, neither retriever finds it: "it" names nothing. With the rewrite, BM25 finds it at rank 2 and dense at rank 1. That gap is what the chatbot's query rewriting must close.</p></div></div>
+      <div class="step"><div class="s">Unanswerable<small>bpe-english-french</small></div><div class="w"><p><em>"What BLEU score did Sennrich et al.'s subword NMT paper report for English→French translation?"</em> The paper reports English→German and English→Russian only. The absence evidence lists the top 10 Chunks from both retrievers for the question and for probe queries; the first hits are the paper's own English→German results and other systems' French scores. The developer confirmed none answers it. The chatbot must say so rather than quote the German figure.</p></div></div>
+      <div class="step"><div class="s">Why trace<small>in this order</small></div><div class="w"><p>Reading the vocabulary forwards shows how a record becomes a citable Chunk. Reading a question backwards shows what the score actually rewards: a quote found in any copy of the paper, counted once.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>Hand-curated. Refreshed by the issue that changes a stage's status or a headline number, as ADR 0048 records. Sources: <a data-file="GLOSSARY.md">GLOSSARY.md</a>, <a data-file="docs/adr/README.md">the decision log</a>, <a data-file="data/report.md">data/report.md</a>, <a data-file="data/audit/report.md">data/audit/report.md</a>, <a data-file="data/parse-report.md">data/parse-report.md</a>, <a data-file="data/eval/eval-report.md">data/eval/eval-report.md</a>, <a data-file="docs/ASSIGNMENT.md">the brief</a>.</p>
+</footer>
+
+</div>
+<script>
+(function () {
+  var repo = "https://github.com/mudassirkhan19/chatbot_rag_tokenizers";
+  var adrs = {
+    "0001":"0001-python-3.12-with-uv","0002":"0002-no-pdfs-or-secrets-in-git","0003":"0003-commit-the-snapshot",
+    "0004":"0004-arxiv-keyword-queries","0005":"0005-rule-pre-filter","0006":"0006-arxiv-records-via-oai-pmh",
+    "0007":"0007-local-llm-judge","0008":"0008-semantic-scholar-keyword-discovery","0009":"0009-seeds-and-citation-expansion",
+    "0010":"0010-arxiv-records-for-rule-passes-only","0011":"0011-audit-set-and-relevance-metrics","0012":"0012-acl-anthology-venue-editions",
+    "0013":"0013-working-worktrees","0014":"0014-openalex-discovery-channel","0015":"0015-pdf-fetcher-pinned-files-and-hashes",
+    "0016":"0016-semantic-scholar-waits-out-long-throttles","0017":"0017-acl-volume-ids-count-as-no-paper","0018":"0018-judge-releases-mps-cache",
+    "0019":"0019-openalex-stays-on","0020":"0020-blind-agent-labels-checked-by-the-developer","0021":"0021-tev1-decision-model-judge",
+    "0022":"0022-uv-and-just-from-homebrew-docker-left-to-the-user","0023":"0023-grobid-crf-image-pinned-by-digest",
+    "0024":"0024-grobid-stays-the-parser-after-the-docling-spike","0025":"0025-judge-cuts-only-refused-inputs",
+    "0026":"0026-funnel-report-and-snapshot-checks","0027":"0027-parse-tracer-paragraph-packing-pinned-tokenizer-and-parse-cache",
+    "0028":"0028-element-rules-and-chunk-kinds","0029":"0029-parse-quality-gate-and-per-file-errors","0030":"0030-parse-cache-keys-and-determinism-checks",
+    "0031":"0031-parse-reads-the-full-text-record","0032":"0032-chunks-carry-their-edition-id","0033":"0033-cc-by-tei-fixtures-may-be-committed",
+    "0035":"0035-missed-table-cells-stay-in-text-chunks","0036":"0036-a-dropped-grobid-connection-stops-the-run","0037":"0037-withdrawn-preprints-are-excluded",
+    "0038":"0038-parse-only-the-files-of-included-editions","0039":"0039-retrieval-tracer-bm25-index-and-evaluate","0040":"0040-the-corpus-keeps-only-papers",
+    "0041":"0041-passage-matcher-eval-check-and-calibration","0042":"0042-dense-baseline-bge-small-behind-the-embedder-boundary",
+    "0043":"0043-recover-numbered-headings-grobid-left-in-paragraphs","0044":"0044-duplicate-rate-restatement-and-numeric-share-in-evaluate",
+    "0045":"0045-index-marks-editions-indexed-from-a-committed-record","0046":"0046-evaluation-set-quotes-checked-by-and-absence-evidence",
+    "0047":"0047-hand-checked-work-groups-are-the-duplicate-ground-truth"
+  };
+  document.querySelectorAll("a[data-adr]").forEach(function (a) {
+    var n = a.getAttribute("data-adr");
+    a.href = repo + "/blob/main/docs/adr/" + (adrs[n] || n) + ".md"; a.target = "_blank"; a.rel = "noopener";
+  });
+  document.querySelectorAll("a[data-issue]").forEach(function (a) {
+    a.href = repo + "/issues/" + a.getAttribute("data-issue"); a.target = "_blank"; a.rel = "noopener";
+  });
+  document.querySelectorAll("a[data-file]").forEach(function (a) {
+    var p = a.getAttribute("data-file");
+    a.href = p ? repo + "/blob/main/" + p : repo; a.target = "_blank"; a.rel = "noopener";
+  });
+})();
+</script>
+</body>
+</html>
