@@ -715,5 +715,5 @@ def test_the_report_records_the_pool_and_how_many_pools_held_fewer_works_than_as
     assert "- bm25+collapsed: bm25's index, collapsed to one Chunk per Work\n  - pool: `20`" in retrievers
     # The fixture corpus holds two Works, so no pool reaches the 10 Works a query asks for.
     crowded = report.split("### Crowding: bm25+collapsed\n", 1)[1].split("\n### ", 1)[0]
-    assert "- Pool: the top 20 raw Chunks held fewer than 10 Works, the depth each query asks for, for 4 of 4 questions." in crowded
+    assert "- Pool: the top 20 raw Chunks held fewer than 5 Works for 4 of 4 questions, and fewer than 10, the depth each query asks for, for 4." in crowded
     assert "- Pool:" not in report.split("### Crowding: bm25\n", 1)[1].split("\n### ", 1)[0]

@@ -36,12 +36,16 @@ class Merged:
 
 @dataclass(frozen=True)
 class Collapse:
+    """One query's Collapsed ranking, with what stands behind each of its Chunks."""
+
     ranking: list[tuple[str, float]]  # at most k, one Chunk per Work
     merged: dict[str, Merged]  # by the ranking's Chunk ids
     works: int  # the Works in the pool, which is fewer than k when the pool ran short
 
 
 class Collapsed:
+    """A retriever's Collapsed ranking, over the manifest's Works."""
+
     def __init__(self, retriever: Retriever, chunks: Mapping[str, Chunk], manifest: Iterable[Mapping[str, str]], pool: int) -> None:
         self.retriever = retriever
         self.chunks = chunks

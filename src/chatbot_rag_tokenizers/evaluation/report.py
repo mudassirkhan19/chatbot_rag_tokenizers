@@ -195,8 +195,9 @@ def _crowding(run: RetrieverRun, groups: Mapping[str, WorkGroup]) -> list[str]:
 
     queries = all_answerable(run.scored)
     short = [
-        f"- Pool: the top {run.pool} raw Chunks held fewer than {MRR_DEPTH} Works, the depth each query asks for, for"
-        f" {sum(1 for s in queries if (s.pool_works or 0) < MRR_DEPTH)} of {len(queries)} questions."
+        f"- Pool: the top {run.pool} raw Chunks held fewer than {CROWDING_DEPTH} Works for"
+        f" {sum(1 for s in queries if (s.pool_works or 0) < CROWDING_DEPTH)} of {len(queries)} questions, and fewer than"
+        f" {MRR_DEPTH}, the depth each query asks for, for {sum(1 for s in queries if (s.pool_works or 0) < MRR_DEPTH)}."
     ]
     return [
         f"### Crowding: {run.name}",
