@@ -124,7 +124,7 @@ This sends each PDF to the pinned GROBID service and cuts its text into Chunks t
 ```sh
 just index        # build BM25 and the dense baseline over the parsed Chunks (uv run chatbot-rag-tokenizers index)
 just eval-check   # check the Evaluation set's questions and quotes against the parsed text
-just evaluate     # score both retrievers on the Evaluation set and write the eval report
+just evaluate     # score the retrievers on the Evaluation set and write the eval report
 ```
 
 `index` builds the retrievers, `eval-check` checks the hand-checked Evaluation set, and `evaluate` scores the retrievers on it (ADRs 0039, 0041 and 0042). There are two retrievers, BM25 and the dense baseline, and the corpus is every file the committed parse report lists as parsed: 2,689 files of the full-corpus run.
@@ -200,15 +200,15 @@ The committed Evaluation set has 36 checked questions (ADR 0046), and the commit
 
 ## Reproduce the baseline
 
-The baseline eval report (`data/eval/eval-report.md`) gives the "before" numbers for both retrievers, BM25 and the dense baseline, on the full corpus and the 36-question Evaluation set. These numbers are Recall@5, MRR@10 and Hit@5 per question type and per follow-up mode, the duplicate, restatement and mostly-numeric shares of the top 5, and build time and latency. To reproduce it from a clone:
+The baseline eval report (`data/eval/eval-report.md`) gives the "before" numbers for BM25, the dense baseline and their hybrid (ADR 0055), each with its `+collapsed` twin, on the full corpus and the 36-question Evaluation set. These numbers are Recall@5, MRR@10 and Hit@5 per question type and per follow-up mode, the duplicate, restatement and mostly-numeric shares of the top 5, and build time and latency. To reproduce it from a clone:
 
 ```sh
 just init        # dependencies, the pinned GROBID image and the judge model
 just fetch       # the pinned PDFs, checked against their recorded hashes (about 3.5 GB, roughly 2 h)
 just grobid-up   # start GROBID on localhost
 just parse       # every recorded file into Chunks (about 1.5 h on an Apple-silicon laptop)
-just index       # BM25 (about 10 s) and the dense baseline (about 14 min on MPS)
-just evaluate    # scores both and rewrites data/eval/eval-report.md
+just index --retriever hybrid.bm25+bge-small   # BM25 (about 10 s), the dense baseline (14 to 22 min on MPS) and their hybrid
+just evaluate --retriever bm25 --retriever dense.bge-small --retriever hybrid.bm25+bge-small   # rewrites data/eval/eval-report.md
 git diff --stat data/   # only the report's Timings section differs
 ```
 
