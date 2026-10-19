@@ -236,7 +236,7 @@ def _grouping(grouping: GroupingScore | None, groups: Mapping[str, WorkGroup]) -
         " Survey flag differs from the rule's survey column on any of its Editions (blank reads as no).",
         "",
     ]
-    both = len(grouping.rule & grouping.checked)
+    both = len(grouping.rule_pairs & grouping.checked_pairs)
     without = (
         f"{len(grouping.without_work_id)} without a work_id in the manifest: {', '.join(grouping.without_work_id)}"
         if grouping.without_work_id
@@ -256,12 +256,12 @@ def _grouping(grouping: GroupingScore | None, groups: Mapping[str, WorkGroup]) -
 
     return [
         *lines,
-        f"- Editions: {grouping.editions} in the Work groups, {without}",
-        f"- Pairs the rule joins: {len(grouping.rule)}",
-        f"- Pairs the Work groups join: {len(grouping.checked)}",
+        f"- Editions: {len(grouping.titles)} in the Work groups, {without}",
+        f"- Pairs the rule joins: {len(grouping.rule_pairs)}",
+        f"- Pairs the Work groups join: {len(grouping.checked_pairs)}",
         f"- Pairs both join: {both}",
-        f"- Precision: {both}/{len(grouping.rule)} = {_share(both, len(grouping.rule))}",
-        f"- Recall: {both}/{len(grouping.checked)} = {_share(both, len(grouping.checked))}",
+        f"- Precision: {both}/{len(grouping.rule_pairs)} = {_share(both, len(grouping.rule_pairs))}",
+        f"- Recall: {both}/{len(grouping.checked_pairs)} = {_share(both, len(grouping.checked_pairs))}",
         "",
         "### Pairs the rule joins and the Work groups keep apart",
         "",
@@ -271,7 +271,7 @@ def _grouping(grouping: GroupingScore | None, groups: Mapping[str, WorkGroup]) -
         *pairs(grouping.missed),
         "### Surveys",
         "",
-        f"- Surveys: {grouping.surveys} of {grouping.works} Works in the Work groups, {grouping.flagged} flagged by the rule;"
+        f"- Surveys: {grouping.surveys} of {grouping.works} Works in the Work groups, {grouping.rule_surveys} flagged by the rule;"
         f" the two agree on {grouping.works - len(grouping.survey_disagreements)} of {grouping.works} Works",
         "",
         *(
@@ -279,7 +279,7 @@ def _grouping(grouping: GroupingScore | None, groups: Mapping[str, WorkGroup]) -
                 "| Work | Work groups | Rule | Editions |",
                 "|---|---|---|---|",
                 *[
-                    f"| {d.work_id} | {'yes' if d.checked else 'no'} | {', '.join(d.flagged)} | {', '.join(d.editions)} |"
+                    f"| {d.work_id} | {'yes' if d.survey else 'no'} | {', '.join(d.rule_flags)} | {', '.join(d.editions)} |"
                     for d in grouping.survey_disagreements
                 ],
             ]

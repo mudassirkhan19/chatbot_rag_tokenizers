@@ -12,37 +12,45 @@ from itertools import combinations
 
 from .work_groups import WorkGroup
 
+Pair = tuple[str, str]  # two Edition ids, in order
+
 
 @dataclass(frozen=True)
 class SurveyDisagreement:
+    """A Work of the Work groups whose Survey flag the rule does not give every one of its Editions."""
+
     work_id: str  # the Work groups' Work
-    checked: bool  # the Work groups' Survey flag
-    flagged: tuple[str, ...]  # the rule's survey column over its Editions, each value once, in order
+    survey: bool  # the Work groups' Survey flag
+    rule_flags: tuple[str, ...]  # the rule's survey column over its Editions, each value once, in order
     editions: tuple[str, ...]
 
 
 @dataclass(frozen=True)
 class GroupingScore:
-    editions: int  # in the Work groups
-    titles: dict[str, str]  # each of those Editions' title in the manifest, "" with no manifest row
+    """The rule's pairs and Survey flags against the Work groups'."""
+
+    titles: dict[str, str]  # each Edition in the Work groups, by id, with its title in the manifest ("" with no row)
     work_ids: dict[str, str]  # and its work_id there, "" when it has none
-    without_work_id: tuple[str, ...]  # the Editions the manifest gives no work_id
-    rule: frozenset[tuple[str, str]]  # each pair as its two Edition ids in order
-    checked: frozenset[tuple[str, str]]
+    rule_pairs: frozenset[Pair]
+    checked_pairs: frozenset[Pair]
     works: int  # in the Work groups
     surveys: int  # of those Works, the Surveys
-    flagged: int  # of those Works, the ones the rule flags on every Edition
+    rule_surveys: int  # of those Works, the ones the rule flags on every Edition
     survey_disagreements: tuple[SurveyDisagreement, ...]  # by work_id
 
     @property
-    def joined_apart(self) -> list[tuple[str, str]]:
-        """Pairs the rule joins and the Work groups keep apart."""
-        return sorted(self.rule - self.checked)
+    def without_work_id(self) -> list[str]:
+        return [edition_id for edition_id, work_id in self.work_ids.items() if not work_id]
 
     @property
-    def missed(self) -> list[tuple[str, str]]:
+    def joined_apart(self) -> list[Pair]:
+        """Pairs the rule joins and the Work groups keep apart."""
+        return sorted(self.rule_pairs - self.checked_pairs)
+
+    @property
+    def missed(self) -> list[Pair]:
         """Pairs the Work groups join and the rule misses."""
-        return sorted(self.checked - self.rule)
+        return sorted(self.checked_pairs - self.rule_pairs)
 
 
 def score_grouping(groups: Mapping[str, WorkGroup], manifest: Mapping[str, Mapping[str, str]]) -> GroupingScore | None:
@@ -51,33 +59,29 @@ def score_grouping(groups: Mapping[str, WorkGroup], manifest: Mapping[str, Mappi
         return None
     editions = sorted(groups)
 
-    def work_id(edition_id: str) -> str:
-        return manifest.get(edition_id, {}).get("work_id", "")
+    def column(edition_id: str, name: str) -> str:
+        return manifest.get(edition_id, {}).get(name, "")
 
-    def pairs(same: Callable[[str, str], bool]) -> frozenset[tuple[str, str]]:
+    def pairs(same: Callable[[str, str], bool]) -> frozenset[Pair]:
         return frozenset((first, second) for first, second in combinations(editions, 2) if same(first, second))
 
     works: dict[str, list[str]] = {}
     for edition_id in editions:
         works.setdefault(groups[edition_id].work_id, []).append(edition_id)
     disagreements = []
-    surveys = flagged = 0
-    for name, members in sorted(works.items()):
-        checked = groups[members[0]].survey
-        values = tuple(sorted({manifest.get(edition_id, {}).get("survey", "") or "no" for edition_id in members}))
-        surveys += checked
-        flagged += values == ("yes",)
-        if values != ("yes" if checked else "no",):
-            disagreements.append(SurveyDisagreement(name, checked, values, tuple(members)))
+    for work_id, members in sorted(works.items()):
+        survey = groups[members[0]].survey
+        flags = tuple(sorted({column(edition_id, "survey") or "no" for edition_id in members}))
+        if flags != ("yes" if survey else "no",):
+            disagreements.append(SurveyDisagreement(work_id, survey, flags, tuple(members)))
+    work_ids = {edition_id: column(edition_id, "work_id") for edition_id in editions}
     return GroupingScore(
-        editions=len(editions),
-        titles={edition_id: manifest.get(edition_id, {}).get("title", "") for edition_id in editions},
-        work_ids={edition_id: work_id(edition_id) for edition_id in editions},
-        without_work_id=tuple(edition_id for edition_id in editions if not work_id(edition_id)),
-        rule=pairs(lambda first, second: bool(work_id(first)) and work_id(first) == work_id(second)),
-        checked=pairs(lambda first, second: groups[first].work_id == groups[second].work_id),
+        titles={edition_id: column(edition_id, "title") for edition_id in editions},
+        work_ids=work_ids,
+        rule_pairs=pairs(lambda first, second: bool(work_ids[first]) and work_ids[first] == work_ids[second]),
+        checked_pairs=pairs(lambda first, second: groups[first].work_id == groups[second].work_id),
         works=len(works),
-        surveys=surveys,
-        flagged=flagged,
+        surveys=sum(1 for members in works.values() if groups[members[0]].survey),
+        rule_surveys=sum(1 for members in works.values() if all(column(edition_id, "survey") == "yes" for edition_id in members)),
         survey_disagreements=tuple(disagreements),
     )
