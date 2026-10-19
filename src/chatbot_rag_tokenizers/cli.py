@@ -4,6 +4,9 @@ import argparse
 import sys
 from pathlib import Path
 
+from .chat import page
+from .chat.config import load_chat_config
+from .chat.conversation import Chatbot
 from .collection import audit, audit_label, fulltext, indexed
 from .config import ConfigError
 from .collection.config import load_config
@@ -126,6 +129,7 @@ def main(argv: list[str] | None = None) -> None:
         help="score the retrievers on the Evaluation set and write the eval report",
         description=(
             "Runs every question of the Evaluation set through each retriever `index` built, scores the raw rankings"
+            " and their Collapsed rankings (`<retriever>+collapsed`, one Chunk per Work by the manifest's work_id)"
             " against the questions' Passages (Recall@5, MRR@10, Hit@5), measures what crowds the top 5 (duplicates"
             " of one Work and Survey restatement, against the Work groups, and mostly-numeric Chunks) and writes the"
             " committed eval report."
@@ -146,6 +150,21 @@ def main(argv: list[str] | None = None) -> None:
         metavar="CSV",
         help="also write every Edition in a top 5 with no Work group, with its title, authors, year and venue, for grouping",
     )
+
+    chat_cmd = commands.add_parser(
+        "chat",
+        help="serve the chat page on localhost: questions answered from retrieved Chunks, with Citations",
+        description=(
+            "Retrieves the top k Chunks for each question from the retriever the [chat] table of the retrieval config"
+            " names, and has the pinned answer model on Ollama answer from them with numbered Citations, or say the"
+            " corpus doesn't answer it. Needs that retriever's index (`just index`) and Ollama with the pinned model"
+            " (`just init`)."
+        ),
+    )
+    chat_cmd.add_argument("--config", type=Path, default=Path("config/retrieval.toml"), help="the [chat] table and the retrievers")
+    _add_chunk_arguments(chat_cmd)
+    chat_cmd.add_argument("--index-cache", type=Path, default=Path("data/index-cache"), help="the index cache (default data/index-cache)")
+    chat_cmd.add_argument("--port", type=int, default=8766, help="port on localhost (default 8766)")
 
     eval_check_cmd = commands.add_parser(
         "eval-check",
@@ -245,6 +264,7 @@ def main(argv: list[str] | None = None) -> None:
             print("index: the parse report comes from a `--files` run, so no Edition is marked indexed", file=sys.stderr)
     elif args.command == "evaluate":
         corpus, retrievers = _corpus_and_retrievers(args)
+        pool = load_retrieval_config(args.config).collapse_pool
         rule = _matching_rule(args)
         try:
             evaluation.evaluate(
@@ -256,10 +276,13 @@ def main(argv: list[str] | None = None) -> None:
                 rule,
                 read_manifest(args.manifest),
                 args.work_groups,
+                pool,
                 args.export_ungrouped,
             )
         except (EvaluationSetError, WorkGroupsError, index.IndexMissing) as error:
             sys.exit(f"evaluate: {error}")
+    elif args.command == "chat":
+        _chat(args)
     elif args.command == "eval-check":
         rule = _matching_rule(args)
         try:
@@ -278,6 +301,24 @@ def main(argv: list[str] | None = None) -> None:
         )
     elif args.command == "audit" and args.audit_command == "label":
         audit_label.serve(load_config(args.config), args.audit_set, args.port)
+
+
+def _chat(args: argparse.Namespace) -> None:
+    try:
+        config = load_chat_config(args.config)
+    except ConfigError as error:
+        sys.exit(f"chat: {error}")
+    corpus = _load_corpus(args)
+    try:
+        built = index.load(args.index_cache, corpus, config.retriever)
+    except index.IndexMissing as error:
+        sys.exit(f"chat: {error}")
+    chatbot = Chatbot(config, built.retriever, {chunk.chunk_id: chunk for chunk in corpus.chunks})
+    try:
+        server = page.make_server(chatbot, args.port)
+    except OSError as error:
+        sys.exit(f"chat: can't serve on port {args.port} ({error}); pass another with --port")
+    page.serve(chatbot, server)
 
 
 def _add_corpus_arguments(command: argparse.ArgumentParser) -> None:

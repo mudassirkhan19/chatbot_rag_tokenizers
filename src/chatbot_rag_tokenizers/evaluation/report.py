@@ -1,7 +1,8 @@
 """The eval report writer (ADR 0039): the committed Markdown record of an `evaluate` run, in the style of the parse report.
 
 It names what was scored (the Evaluation set, the chunking config and corpus, each retriever's settings),
-then gives a results table per retriever and question type, what crowds the top 5 (ADR 0044) and a line per
+then gives a results table per retriever and question type, each retriever's raw ranking followed by its
+Collapsed ranking (ADR 0053), what crowds the top 5 (ADR 0044) and a line per
 question. Everything above the timings, which come last, depends only on the inputs, so two runs on the same index give the same report
 up to that section.
 """
@@ -11,6 +12,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from ..retrieval.collapse import SUFFIX
 from ..retrieval.corpus import Corpus
 from ..retrieval.index import Index
 from ..retrieval.retriever import RetrieverConfig
@@ -43,6 +45,11 @@ class RetrieverRun:
     config: RetrieverConfig
     index: Index  # what was queried, with its build time and device
     scored: list[Scored]
+    pool: int | None = None  # for a Collapsed ranking, the raw Chunks it picked one per Work from
+
+    @property
+    def name(self) -> str:
+        return self.config.name + (SUFFIX if self.pool else "")
 
 
 def write_eval_report(
@@ -61,7 +68,8 @@ def write_eval_report(
         "# Eval report",
         "",
         "Written by `evaluate`. Each retriever ranks the Chunks for every question of the Evaluation set, and the raw"
-        " ranking is scored against the question's Passages.",
+        f" ranking and its Collapsed ranking (`<retriever>{SUFFIX}`, at most one Chunk per Work) are scored against the"
+        " question's Passages.",
         "",
         "## Evaluation set",
         "",
@@ -79,7 +87,7 @@ def write_eval_report(
         "",
         "## Retrievers",
         "",
-        *[line for run in runs for line in _retriever(run.config)],
+        *[line for run in runs for line in _retriever(run)],
         "",
         "## Metrics",
         "",
@@ -91,7 +99,11 @@ def write_eval_report(
         f" {MIN_BLOCK} words (a number may match alone) within twice the quote's length, and every number in the quote"
         f" matches (ADR 0041). A match running into the Chunk's first or last word counts only the quote's words on the"
         f" Chunk's side, and must cover at least {rule.edge_min_words} words. The Chunk may come from any Edition.",
-        "- The ranking is scored raw: duplicates of one Work all take their slots.",
+        "- A retriever's own ranking is scored raw: duplicates of one Work all take their slots.",
+        f"- Its `{SUFFIX}` twin is scored on the Collapsed ranking (ADR 0053) over the same index: from the raw top"
+        " *pool* Chunks it keeps one per Work, by the manifest's work_id (an Edition with none is its own Work), in the"
+        " raw order between Works. A Work shows its Canonical Edition's Chunk when one is in the pool, else a Chunk of"
+        " an Edition's latest file, else its best-ranked Chunk. Surveys are not demoted.",
         "- Unanswerable questions are run but left out of the metrics.",
         f"- A follow-up is run three ways: {FOLLOW_UP_ALONE}, {WITH_HISTORY} (its prior turns, then the follow-up, joined by"
         f" spaces) and {REWRITE}. The *all answerable* row takes each follow-up alone, as a user would ask it.",
@@ -102,7 +114,8 @@ def write_eval_report(
         "## Crowding",
         "",
         f"What takes the top {CROWDING_DEPTH} slots of each answerable question, as a user would ask it (the *all answerable*"
-        " row's queries), on the raw ranking (ADR 0044).",
+        f" row's queries), on the raw ranking and on the Collapsed ranking (ADR 0044). Both are measured against the same"
+        " Work groups, never the manifest's work_id the collapse uses.",
         "",
         f"- Work groups: `{groups.path}` (sha256 `{groups.sha256}`), {len(groups.editions)} Editions in"
         f" {len({group.work_id for group in groups.editions.values()})} Works, {groups.checked} of the Editions checked"
@@ -126,7 +139,9 @@ def write_eval_report(
         "",
         f"First hit is the rank of the first Chunk holding a Passage, within the top {MRR_DEPTH}; Passages found counts"
         f" those held in the top {RECALL_DEPTH}. The slot counts are within the top {CROWDING_DEPTH}; a question with an"
-        " Edition there that has no Work group has its duplicates and restatements marked ungrouped.",
+        " Edition there that has no Work group has its duplicates and restatements marked ungrouped. A Collapsed"
+        f" ranking's lines name the file of each top-{CROWDING_DEPTH} Chunk, with the other files of its Work in the pool"
+        " after a +.",
         "",
         *[line for run in runs for line in _questions(run, groups.editions)],
         "## Timings",
@@ -139,8 +154,10 @@ def write_eval_report(
     path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
-def _retriever(config: RetrieverConfig) -> list[str]:
-    return [f"- {config.name}: `{config.key}`", *[f"  - {name}: `{value}`" for name, value in config.describe().items()]]
+def _retriever(run: RetrieverRun) -> list[str]:
+    if run.pool:
+        return [f"- {run.name}: {run.config.name}'s index, collapsed to one Chunk per Work", f"  - pool: `{run.pool}`"]
+    return [f"- {run.name}: `{run.config.key}`", *[f"  - {name}: `{value}`" for name, value in run.config.describe().items()]]
 
 
 def _results(run: RetrieverRun) -> list[str]:
@@ -155,7 +172,7 @@ def _results(run: RetrieverRun) -> list[str]:
     ]
     unanswerable = sum(1 for s in run.scored if not s.question.answerable)
     lines = [
-        f"### Results: {run.config.name}",
+        f"### Results: {run.name}",
         "",
         f"| Question type | Query | Questions | Recall@{RECALL_DEPTH} | MRR@{MRR_DEPTH} | Hit@{HIT_DEPTH} |",
         "|---|---|---:|---:|---:|---:|",
@@ -176,8 +193,14 @@ def _crowding(run: RetrieverRun, groups: Mapping[str, WorkGroup]) -> list[str]:
         cells += [f"{share.questions}/{share.of_questions}", _share(share.questions, share.of_questions)]
         return f"| {measure} | {' | '.join(cells)} |"
 
+    queries = all_answerable(run.scored)
+    short = [
+        f"- Pool: the top {run.pool} raw Chunks held fewer than {CROWDING_DEPTH} Works for"
+        f" {sum(1 for s in queries if (s.pool_works or 0) < CROWDING_DEPTH)} of {len(queries)} questions, and fewer than"
+        f" {MRR_DEPTH}, the depth each query asks for, for {sum(1 for s in queries if (s.pool_works or 0) < MRR_DEPTH)}."
+    ]
     return [
-        f"### Crowding: {run.config.name}",
+        f"### Crowding: {run.name}",
         "",
         f"| Measure | Top-{CROWDING_DEPTH} slots | Share of slots | Questions | Share of questions |",
         "|---|---:|---:|---:|---:|",
@@ -187,6 +210,7 @@ def _crowding(run: RetrieverRun, groups: Mapping[str, WorkGroup]) -> list[str]:
         "",
         f"- Grouped: {total.grouped} of {total.queries} questions have a Work group for every Edition in their top {CROWDING_DEPTH}.",
         f"- Mostly-numeric slots holding a Passage: {total.numeric_holding} of {total.numeric.slots}",
+        *(short if run.pool else []),
         "",
     ]
 
@@ -196,11 +220,12 @@ def _share(count: int, of: int) -> str:
 
 
 def _questions(run: RetrieverRun, groups: Mapping[str, WorkGroup]) -> list[str]:
+    merged = [f"Top-{CROWDING_DEPTH} files + merged"] if run.pool else []
     lines = [
-        f"### Questions: {run.config.name}",
+        f"### Questions: {run.name}",
         "",
-        "| Question | Type | Query | First hit | Passages found | Duplicate slots | Restatement slots | Numeric slots |",
-        "|---|---|---|---:|---:|---:|---:|---:|",
+        "| " + " | ".join(["Question", "Type", "Query", "First hit", "Passages found", "Duplicate slots", "Restatement slots", "Numeric slots", *merged]) + " |",
+        "|---|---|---|---:|---:|---:|---:|---:|" + ("---|" if run.pool else ""),
     ]
     for s in run.scored:
         if s.question.answerable:
@@ -209,6 +234,8 @@ def _questions(run: RetrieverRun, groups: Mapping[str, WorkGroup]) -> list[str]:
             slots = [_count_or_ungrouped(crowded.duplicates), _count_or_ungrouped(crowded.restatements), str(crowded.numeric)]
         else:
             hit, found, slots = "left out", NONE, [NONE] * 3
+        if run.pool:
+            slots.append("; ".join(" + ".join([slot.pinned_id, *slot.merged]) for slot in s.top) or NONE)
         lines.append(f"| {s.question.id} | {s.question.type} | {s.query_kind} | {hit} | {found} | {' | '.join(slots)} |")
     return [*lines, ""]
 
@@ -221,6 +248,6 @@ def _timings(run: RetrieverRun) -> str:
     milliseconds = sorted(s.seconds * 1000 for s in run.scored)
     p95 = statistics.quantiles(milliseconds, n=20, method="inclusive")[-1] if len(milliseconds) > 1 else milliseconds[0]
     return (
-        f"- {run.config.name}: index built on {run.index.build_device} in {run.index.build_seconds:.2f} s; {len(milliseconds)}"
+        f"- {run.name}: index built on {run.index.build_device} in {run.index.build_seconds:.2f} s; {len(milliseconds)}"
         f" queries on {run.index.retriever.device}, latency p50 {statistics.median(milliseconds):.2f} ms, p95 {p95:.2f} ms"
     )

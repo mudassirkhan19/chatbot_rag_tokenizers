@@ -1,9 +1,12 @@
-"""The retrieval config file (ADRs 0039, 0042, 0050, 0052 and 0053): BM25's table, the named dense tables and the hybrids."""
+"""The retrieval config file (ADRs 0039, 0042, 0050, 0052, 0053, 0054 and 0055): BM25's table, the named dense tables, the
+hybrids, the Collapsed ranking's pool and the chat table."""
 
+import re
 from pathlib import Path
 
 import pytest
 
+from chatbot_rag_tokenizers.chat.config import AnswerModelConfig, load_chat_config
 from chatbot_rag_tokenizers.config import ConfigError
 from chatbot_rag_tokenizers.retrieval.config import load_retrieval_config
 
@@ -64,6 +67,16 @@ def test_a_bad_dense_table_stops_with_a_message_naming_the_table(tmp_path, old, 
         load_retrieval_config(with_bge_small(tmp_path, old, new))
 
 
+def test_the_collapse_pool_must_be_at_least_one_chunk(tmp_path):
+    config = RETRIEVAL_CONFIG.read_text()
+    assert load_retrieval_config(RETRIEVAL_CONFIG).collapse_pool == 50
+    path = tmp_path / "retrieval.toml"
+    path.write_text(config.replace("pool = 50", "pool = 0"))
+
+    with pytest.raises(ConfigError, match=r"\[collapse\] pool 0 must be at least 1"):
+        load_retrieval_config(path)
+
+
 def test_a_dense_table_written_the_old_way_is_named_and_told_how_to_change(tmp_path):
     path = with_bge_small(tmp_path, "[dense.bge-small]", "[dense]")
 
@@ -84,9 +97,29 @@ def test_the_repo_config_fuses_bm25_with_each_dense_table():
 
 def with_hybrid(tmp_path: Path, table: str) -> Path:
     """The repo's retrieval config with its hybrid tables replaced by this one."""
-    config = RETRIEVAL_CONFIG.read_text()
+    config = re.sub(r"\n\[hybrid\.[^\n]*\]\n(?:[a-z][^\n]*\n)*", "\n", RETRIEVAL_CONFIG.read_text())
+    assert "[hybrid." not in config
     path = tmp_path / "retrieval.toml"
-    path.write_text(config[: config.index("\n[hybrid.")] + "\n" + table)
+    path.write_text(config + "\n" + table)
+    return path
+
+
+def test_the_chatbot_asks_the_dense_baseline_for_five_chunks_and_answers_with_the_pinned_gemma():
+    chat = load_chat_config(RETRIEVAL_CONFIG)
+
+    assert (chat.retriever.name, chat.k) == ("dense.bge-small", 5)
+    assert chat.model == AnswerModelConfig(
+        "gemma4:e2b-mlx", "e98b54fe1913178321e1d9cd007d12a465de77a8f8eae37af69d2501ca03c6b5@0.40.5", think=False, temperature=0.0
+    )
+    # The prompt asks for the fixed Abstention sentence word for word.
+    assert chat.abstention in chat.system_prompt
+
+
+def with_chat_line(tmp_path: Path, old: str, new: str) -> Path:
+    config = RETRIEVAL_CONFIG.read_text()
+    assert config.count(old) == 1
+    path = tmp_path / "retrieval.toml"
+    path.write_text(config.replace(old, new))
     return path
 
 
@@ -108,3 +141,18 @@ def test_a_bad_hybrid_table_stops_with_a_message_naming_the_table(tmp_path, memb
 
     with pytest.raises(ConfigError, match=message):
         load_retrieval_config(with_hybrid(tmp_path, other + table))
+
+
+@pytest.mark.parametrize(
+    "old, new, message",
+    [
+        ('retriever = "dense.bge-small"', 'retriever = "dense.e5"', r"\[chat\] retriever 'dense.e5' is not a retriever .* configures: bm25, dense.bge-small"),
+        ("k = 5", "k = 0", r"\[chat\] k 0 must be at least 1"),
+        ('revision = "e98b54fe1913178321e1d9cd007d12a465de77a8f8eae37af69d2501ca03c6b5@0.40.5"', 'revision = "latest"', r"\[chat\] revision 'latest' is not pinned as <digest>@<Ollama version>"),
+        ("think = false", 'think = "no"', r"\[chat\] think 'no' is not a bool"),
+    ],
+    ids=["unknown-retriever", "no-chunks", "unpinned", "mistyped"],
+)
+def test_a_bad_chat_table_stops_with_a_message_naming_it(tmp_path, old, new, message):
+    with pytest.raises(ConfigError, match=message):
+        load_chat_config(with_chat_line(tmp_path, old, new))

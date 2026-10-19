@@ -1,4 +1,4 @@
-"""The retrieval config file: each retriever's settings (ADRs 0039, 0042, 0050 and 0053)."""
+"""The retrieval config file: each retriever's settings (ADRs 0039, 0042, 0050 and 0055) and the Collapsed ranking's pool (ADR 0053)."""
 
 import re
 import tomllib
@@ -26,6 +26,7 @@ class RetrievalConfig:
     bm25: BM25Config
     dense: list[DenseConfig]  # one per [dense.<name>] table, in the file's order
     hybrid: list[HybridConfig]  # one per [hybrid.<name>] table, in the file's order
+    collapse_pool: int  # the raw Chunks the Collapsed ranking picks one per Work from
 
     @property
     def retrievers(self) -> dict[str, RetrieverConfig]:
@@ -45,9 +46,12 @@ def load_retrieval_config(path: Path = DEFAULT_PATH) -> RetrievalConfig:
     tables = raw.get("dense", {})
     if not isinstance(tables, dict) or not tables:
         raise ConfigError(f"{path} has no [dense.<name>] table")
+    pool = read_table(raw, "collapse", {"pool": int}, path)["pool"]
+    if pool < 1:
+        raise ConfigError(f"[collapse] pool {pool} must be at least 1")
     dense = [_load_dense_table(raw, table, path) for table in tables]
     hybrid = [_load_hybrid_table(raw, table, path, bm25, dense) for table in raw.get("hybrid", {})]
-    return RetrievalConfig(bm25=bm25, dense=dense, hybrid=hybrid)
+    return RetrievalConfig(bm25=bm25, dense=dense, hybrid=hybrid, collapse_pool=pool)
 
 
 def _load_dense_table(raw: dict, table: str, path: Path) -> DenseConfig:

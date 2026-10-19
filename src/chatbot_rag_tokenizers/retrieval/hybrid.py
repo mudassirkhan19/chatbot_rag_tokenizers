@@ -1,4 +1,4 @@
-"""A hybrid retriever (ADR 0053): BM25 and one dense table, fused by reciprocal rank fusion.
+"""A hybrid retriever (ADR 0055): BM25 and one dense table, fused by reciprocal rank fusion.
 
 A query takes each member's top `pool` Chunks and scores each Chunk by the sum of 1 / (k + rank) over the
 members that ranked it, rank counting from 1, then ranks by that sum. A tie goes to the Chunk the member listed

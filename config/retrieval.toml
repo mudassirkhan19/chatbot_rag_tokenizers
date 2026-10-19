@@ -57,7 +57,7 @@ pooling = "mean"
 max_tokens = 512
 query_instruction = ""
 
-# The hybrids (ADR 0053), one per dense table, named `hybrid.<name>` for `--retriever`: BM25 and that dense table,
+# The hybrids (ADR 0055), one per dense table, named `hybrid.<name>` for `--retriever`: BM25 and that dense table,
 # fused by reciprocal rank fusion. A query takes each member's top `pool` Chunks, scores each Chunk by the sum of
 # 1 / (k + rank) over the members that ranked it, and ranks by that sum; a tie goes to the member listed first.
 # A hybrid stores no vectors: its index points to its members' indexes, and `index` builds a missing member first.
@@ -79,3 +79,35 @@ pool = 100
 members = ["bm25", "dense.openscholar"]
 k = 60
 pool = 100
+
+# The Collapsed ranking (ADR 0053): `evaluate` scores every retriever above beside its `<name>+collapsed` twin,
+# which asks the retriever for its top `pool` Chunks, keeps one Chunk per Work (the manifest's work_id) in the raw
+# order, and fills the top k from them. A pool that holds fewer than k Works leaves the top k short; the eval
+# report counts the queries where it did. It changes no index.
+[collapse]
+pool = 50
+
+# The chatbot (spec #63, ADR 0054). Each Turn retrieves k Chunks from the retriever named here, one of the
+# retrievers above, and the answer model answers from them. The dense baseline until the embedding comparison
+# (#61) names its choice.
+[chat]
+retriever = "dense.bge-small"
+k = 5
+# The answer model: gemma4:e2b-mlx on Ollama, pinned as the judge is, as <digest>@<Ollama version> (ADR 0021).
+# Thinking off and temperature 0, so the same question over the same Chunks gets the same answer.
+model = "gemma4:e2b-mlx"
+revision = "e98b54fe1913178321e1d9cd007d12a465de77a8f8eae37af69d2501ca03c6b5@0.40.5"
+think = false
+temperature = 0.0
+# The fixed Abstention sentence: the prompt asks for it word for word, and an answer holding it (compared after
+# the Passage matcher's normalisation) is counted as an Abstention.
+abstention = "The papers in this corpus do not answer this question."
+# The rules the answer model is given. {abstention} is replaced by the sentence above. Each Turn's question
+# follows as the user message, with the k Chunks numbered from 1, each under its context header.
+system_prompt = """You answer questions about research papers on tokenization for language models. With each question you get numbered excerpts ("Chunks") from the papers. Follow these rules:
+
+1. Answer only from the Chunks. Do not use anything you know from elsewhere.
+2. Cite every sentence that uses a Chunk with its number in square brackets, such as [2]. Cite two Chunks as [1][3].
+3. Copy every number from the Chunk you cite it from.
+4. If the Chunks do not answer the question, reply with exactly this sentence and nothing else: {abstention}
+5. Answer in a few sentences of plain text."""

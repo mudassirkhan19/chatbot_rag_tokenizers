@@ -1,0 +1,29 @@
+# 0053. The Collapsed ranking: one Chunk per Work, scored as a `+collapsed` twin of every retriever
+
+- **Date:** 2026-10-19
+- **Status:** Accepted. Amends [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) (metrics on the raw ranking only) and [0044](0044-duplicate-rate-restatement-and-numeric-share-in-evaluate.md) (crowding on the raw ranking only). Builds on [0051](0051-work-grouping-in-collect.md); measured against the Work groups of [0044](0044-duplicate-rate-restatement-and-numeric-share-in-evaluate.md) and [0047](0047-hand-checked-work-groups-are-the-duplicate-ground-truth.md).
+
+## Context
+The baseline eval report gives 59 of 140 top-5 slots for BM25 and 70 of 140 for the dense baseline to a Chunk from a Work already ranked higher ([0047](0047-hand-checked-work-groups-are-the-duplicate-ground-truth.md)), most of them another Chunk of the same file. `collect` now names each included Edition's Work and its Canonical Edition ([0051](0051-work-grouping-in-collect.md)). Spec #49 asks for a ranking that holds at most one Chunk per Work, over any retriever, measured before and after on one index (#52).
+
+## Decision
+- **A wrapper, not a retriever.** `retrieval/collapse.py`'s `Collapsed` satisfies the retriever interface over any retriever. No retriever's code or index changes, and `query` keeps the raw `(chunk_id, score)` shape. `collapse(text, k)` also returns a side table keyed by Chunk id: the Work id, the merged Editions (pinned ids, so with their Version) and the ids of the Work's other Chunks in the pool, for the chatbot to say "copies merged" and pull sibling context without a second query.
+- **A pool, then one Chunk per Work.** It asks the wrapped retriever for its top `pool` Chunks (`[collapse] pool = 50` in `config/retrieval.toml`), groups them by the manifest's `work_id`, and keeps the Works in the order their best-ranked Chunk came in, so it changes which Chunks show, never how papers rank against each other. The shown Chunk keeps its own raw score.
+- **Which Chunk stands for a Work**, by tier, then by raw rank: a Chunk of the Canonical Edition's own file; else a Chunk of any Edition's latest file (a preprint's Edition id names its latest Version, [0015](0015-pdf-fetcher-pinned-files-and-hashes.md)); else the best-ranked Chunk, such as a v1's. The spec named only the first and last; the middle tier is what makes "a stale v1 stands for a paper only when the latest Version was not retrieved" hold for a Work whose Canonical Edition is a venue Edition that was not retrieved.
+- **An Edition with no `work_id` is its own Work**, so the collapse never drops a Chunk it cannot place, and never joins it to another Edition by a rule of its own. The spec reads "a Chunk whose Edition has none is its own Work"; taking each such Chunk as a Work would let one ungrouped file fill the top 5, when its Chunks are certainly one Work.
+- **Surveys are not demoted.** A Survey's Work collapses like any other (restatement is 0–1 of 140 slots, 0051).
+- **`evaluate` scores a `<retriever>+collapsed` twin beside every retriever it loads**, with no new flag, in every table: Results, Crowding, Questions and Timings. The twin's duplicate rate and restatement are measured against the same hand-checked Work groups, never the `work_id` it collapses by. Its per-question lines add each top-5 Chunk's file with the merged files after a `+`. Its Crowding table adds how many questions' pools held fewer than 5 Works (the top 5 the slot measures and Recall@5 read) and fewer than 10 (the depth each query asks for, for MRR@10), over the same questions as the rest of the table. Its timings are the wrapper's, pool fetch included.
+- **The harness knows the wrapper by type** (`isinstance(retriever, Collapsed)`) to read the side table. The retriever interface stays `query` only, since a raw retriever has no extras to give.
+
+## Alternatives considered
+- **Collapse by Edition, or by file.** Most duplicate slots are another Chunk of the same file (41 of 59 for BM25), but a preprint and its venue Edition would still take two slots.
+- **Drop v1 or venue files at index time.** It loses the text a v1-only question needs, and it is a different index, so before and after would not be on one index.
+- **Canonical Edition, else best-ranked (the spec's wording).** A Work whose venue Edition was not retrieved would show v1 whenever v1 out-ranked the latest Version.
+- **Over-fetch k × a factor instead of a fixed pool.** A fixed pool is one number the report can name, and the shortfall count says whether it is deep enough.
+- **Prior work (research-bot):** it removes the `vN` suffix when it extracts references and stores one row per arXiv id, so it has one file per paper and no ranking to collapse.
+
+## Consequences
+- `evaluate` takes the pool from the retrieval config, and the eval report doubles its tables. The committed report is rerun with the twins in #54.
+- Collapsing costs Passages. A BM25 run on the real corpus (not committed) gives the raw ranking Hit@5 0.18 and MRR@10 0.118 on all answerable questions, as in the baseline, and the twin 0.04 and 0.042: single-paper Hit@5 falls from 0.33 to 0.08. The Chunk that holds a Passage is often not its Work's best-ranked one (`llama2-70b-vocabulary`: the paper's "Prediction for Llama3" Chunk is first, its Abstract, which holds the Passage, second), and the collapse moves it to the side table, where the metrics don't look. Five results are five papers, but the shown Chunk is not always the one that answers.
+- The fixture tests read `tests/fixtures/eval/manifest.csv`, the real manifest's rows for the fixture papers, instead of `data/manifest.csv`.
+- The grouping's score against the Work groups, which backs a zero duplicate rate, is #53.

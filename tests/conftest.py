@@ -9,6 +9,7 @@ import httpx
 import numpy as np
 import pytest
 
+from chatbot_rag_tokenizers.chat import model as answer_model
 from chatbot_rag_tokenizers.collection import judge
 from chatbot_rag_tokenizers.collection.snapshot import SnapshotStore
 from chatbot_rag_tokenizers.retrieval import embedder
@@ -221,3 +222,31 @@ def fake_embedder(monkeypatch: pytest.MonkeyPatch) -> list[FakeEmbedder]:
 
     monkeypatch.setattr(embedder, "load_embedder", load)
     return made
+
+
+class FakeAnswerModel:
+    """A scripted answer model in place of the pinned one: it replies with the script's answer for the first key
+    found in the chat's last user message, and records every chat it is given. An unscripted question fails the
+    test, so every answer a test sees is one it wrote."""
+
+    pin = "fake-answer-model"
+
+    def __init__(self) -> None:
+        self.script: dict[str, str] = {}
+        self.chats: list[list[dict[str, str]]] = []
+
+    def complete(self, messages: Sequence[dict[str, str]]) -> str:
+        self.chats.append(list(messages))
+        last = messages[-1]["content"]
+        for key, answer in self.script.items():
+            if key in last:
+                return answer
+        raise AssertionError(f"the fake answer model has no answer scripted for {last[:120]!r}")
+
+
+@pytest.fixture(autouse=True)
+def fake_answer_model(monkeypatch: pytest.MonkeyPatch) -> FakeAnswerModel:
+    """Every test answers with FakeAnswerModel, so none needs Ollama. Returns it, for the test to script."""
+    fake = FakeAnswerModel()
+    monkeypatch.setattr(answer_model, "load_answer_model", lambda settings: fake)
+    return fake
