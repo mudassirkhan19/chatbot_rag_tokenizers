@@ -7,7 +7,7 @@ rewriter works from the bot's own answers as it would on the page. Only the ques
 history's Turns are in the answers file and the latency.
 
 The answers file is JSON Lines, one Turn per line in the order asked, with what the report scored it on. It holds
-no timings, so two runs on the same index and model write the same file.
+no timings, so two runs that get the same replies write the same file.
 """
 
 import json

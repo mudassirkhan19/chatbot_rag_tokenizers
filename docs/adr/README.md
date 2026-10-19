@@ -61,6 +61,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0054](0054-pinned-local-answer-model-and-the-chat-page.md) | The pinned local answer model, the shared Ollama module and the chat page | Accepted, amended by 0056 |
 | [0055](0055-a-work-shows-its-best-ranked-section.md) | A collapsed Work shows its best-ranked Chunk's Section; the Canonical Edition only picks the copy | Accepted |
 | [0056](0056-follow-ups-the-conversation-and-the-rewrite.md) | Follow-ups: the Conversation and the Rewrite | Accepted |
+| [0058](0058-abstention-by-instruction-and-the-chat-report.md) | Abstention by instruction, and the chat report that measures it | Accepted |
 
 ## Template
 

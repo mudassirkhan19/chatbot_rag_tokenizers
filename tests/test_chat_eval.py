@@ -203,7 +203,7 @@ def test_a_question_line_names_its_invalid_citations_and_the_passages_in_its_chu
 
     freezing = questions(report)["freezing"]
     assert freezing[2:4] == ["no", "[7], [0]"]
-    assert freezing[5] == "1/1"  # its Passage's Section is retrieved
+    assert freezing[5] == "1/1: 1"  # its Passage's Section is retrieved
     assert questions(report)["vocabulary-sizes"][5].endswith("/2")
     [turn] = [turn for turn in turns if turn["question_id"] == "freezing"]
     assert turn["invalid"] == [7, 0] and turn["cited"] == [turn["retrieved"][0], turn["retrieved"][1]]

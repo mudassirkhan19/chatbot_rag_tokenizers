@@ -4,7 +4,8 @@ report's style.
 It names what was scored (the Evaluation set, the Chunks, the retriever, the answer model's pin and the prompts'
 hashes), then gives the grounded, abstention and false-abstention rates and Recall@k per question type, a line
 per question, and the timings last. Everything above the timings depends only on the inputs and the model's
-replies, so two runs on the same index and model give the same report up to that section.
+replies, so two runs that get the same replies give the same report up to that section (the pinned model
+varies a few replies between runs, ADR 0058).
 """
 
 import hashlib
@@ -89,7 +90,8 @@ def write_chat_report(
         "## Questions",
         "",
         f"Grounded is yes, no, or {NONE} for an Abstention. Passages in its Chunks counts the question's Passages held by"
-        f" one of its Turn's {k} Chunks; a follow-up's line is its own Turn, after its history.",
+        f" one of its Turn's {k} Chunks, then names them by their place in the question (`1/2: 1` found the first of two);"
+        " a follow-up's line is its own Turn, after its history.",
         "",
         "| Question | Type | Abstained | Grounded | Invalid Citations | Numbers not in cited Chunks | Passages in its Chunks |",
         "|---|---|---|---|---|---|---:|",
@@ -173,7 +175,9 @@ def _question(item: "Asked") -> str:
     grounded = NONE if grounding is None else ("yes" if grounding.grounded else "no")
     invalid = ", ".join(f"[{number}]" for number in item.turn.answer.invalid) or NONE
     missing = NONE if grounding is None else (", ".join(grounding.missing) or NONE)
-    found = f"{len(item.found)}/{len(item.question.passages)}" if item.question.answerable else NONE
+    found = NONE
+    if item.question.answerable:
+        found = f"{len(item.found)}/{len(item.question.passages)}" + (f": {', '.join(str(n) for n in item.found)}" if item.found else "")
     abstained = "yes" if item.turn.answer.abstention else "no"
     return f"| {item.question.id} | {item.question.type} | {abstained} | {grounded} | {invalid} | {missing} | {found} |"
 

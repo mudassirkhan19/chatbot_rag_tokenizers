@@ -96,6 +96,10 @@ _Avoid_: Audit set (that measures the relevance verdict), test set, gold set
 A verbatim quote from one Section of one Edition that answers an evaluation question. Any Chunk holding the quote answers it, whichever Edition of the Work that Chunk comes from.
 _Avoid_: Chunk (the retrieved unit, which may hold several Passages or part of one), answer, span
 
+**Unanswerable kind**:
+How far an unanswerable question is from the corpus: near-miss when the corpus holds the paper or the measure it asks about but not the answer, out-of-topic when it is about something else. Near-miss names a question here, never a Suspected pair.
+_Avoid_: Difficulty, category
+
 **Work groups**:
 The hand-checked assignment of Editions to Works, with each Work's Survey flag, that the top-5 duplicate rate is measured against.
 _Avoid_: Clusters, dedup output (the duplicate stage's own grouping is what the Work groups test)
@@ -125,7 +129,7 @@ A marker in an answer that names one retrieved Chunk by its Citation anchor, so 
 _Avoid_: Reference (that is a bibliography entry), source, link
 
 **Grounded**:
-An answer that cites at least one Chunk, every Citation of which resolves to a Chunk retrieved for its Turn, and every number of which appears in a cited Chunk. An Abstention is neither grounded nor not.
+An answer that cites at least one Chunk, every Citation of which resolves to a Chunk retrieved for its Turn, and every number of which (a word that starts with a digit, so "50k" but not "ByT5") appears in a cited Chunk's context header or text. An Abstention is neither grounded nor not.
 _Avoid_: Faithful, supported, hallucination-free
 
 **Abstention**:
