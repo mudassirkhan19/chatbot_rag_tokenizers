@@ -198,6 +198,21 @@ def test_a_decline_followed_by_an_answer_is_an_answer(chat, fake_answer_model):
     assert [reference["number"] for reference in turn["references"]] == [1]
 
 
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "The provided chunks do not state whether TransInner helps, but WECHSEL does not need freezing [1].",
+        "The chunks don't say; WECHSEL does not need freezing.",
+        "The provided chunks do not contain the full result, however WECHSEL does not need freezing.",
+    ],
+    ids=["cited-clause", "semicolon", "however"],
+)
+def test_a_one_sentence_decline_that_goes_on_to_answer_is_an_answer(chat, fake_answer_model, reply):
+    fake_answer_model.script[FREEZING] = reply
+
+    assert ask(chat, FREEZING)["abstention"] is False
+
+
 def test_a_decline_carrying_stray_markers_is_an_abstention_and_its_markers_are_kept(chat, fake_answer_model):
     # The markers stand before the decline and cite no sentence of it, as in the pinned model's byt5 reply.
     fake_answer_model.script[FREEZING] = "[3][7]\n\nThe provided chunks don't say whether WECHSEL freezes them."
