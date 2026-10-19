@@ -3,8 +3,8 @@
 It names what was scored (the Evaluation set, the chunking config and corpus, each retriever's settings),
 then gives a results table per retriever and question type, each retriever's raw ranking followed by its
 Collapsed ranking (ADR 0053), the Comparison against a baseline (ADR 0061), what crowds the top 5 (ADR 0044),
-the grouping rule scored against the Work groups (ADR 0060) and a line per question, then the Cost table. Everything
-above the Cost table, which comes last, depends only on the inputs, so two runs on the same index give the same
+the two rankings side by side (ADR 0062), the grouping rule scored against the Work groups (ADR 0060) and a line
+per question, then the Cost table. Everything above the Cost table, which comes last, depends only on the inputs, so two runs on the same index give the same
 report up to that section, and the Cost table differs only in its times.
 """
 
@@ -140,6 +140,7 @@ def write_eval_report(
         " report counts them (ADR 0035). It counts every question.",
         "",
         *[line for run in runs for line in _crowding(run, groups.editions)],
+        *_before_and_after(runs, groups.editions),
         *_grouping(grouping, groups.editions),
         "## Editions without a Work group",
         "",
@@ -299,6 +300,31 @@ def _crowding(run: RetrieverRun, groups: Mapping[str, WorkGroup]) -> list[str]:
         *(short if run.pool else []),
         "",
     ]
+
+
+def _before_and_after(runs: Sequence[RetrieverRun], groups: Mapping[str, WorkGroup]) -> list[str]:
+    """Each retriever's raw ranking beside its Collapsed ranking, with the duplicates and the metrics over the answerable
+    questions as a user asks them: the figures of its Crowding and Results tables, in one table."""
+    lines = [
+        "## Before and after",
+        "",
+        f"Each retriever's raw ranking and its Collapsed ranking, over the answerable questions as a user asks them: the"
+        f" duplicate slots in the top {CROWDING_DEPTH} as *Crowding* counts them, over the questions whose top"
+        f" {CROWDING_DEPTH} is grouped, and the *all answerable* row of *Results*.",
+        "",
+        f"| Retriever | Ranking | Duplicate | Another Edition or Version | Same file | Grouped questions | Recall@{RECALL_DEPTH} | MRR@{MRR_DEPTH} | Hit@{HIT_DEPTH} |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for run in runs:
+        scored = all_answerable(run.scored)
+        total, m = totals(scored, groups), metrics(scored)
+        cells = [
+            *(f"{share.slots}/{share.of_slots}" for share in (total.duplicate, total.other_file, total.same_file)),
+            f"{total.grouped}/{total.queries}",
+            *([f"{m.recall:.2f}", f"{m.mrr:.3f}", f"{m.hit:.2f}"] if m else [NONE] * 3),
+        ]
+        lines.append(f"| {run.config.name} | {'collapsed' if run.pool else 'raw'} | {' | '.join(cells)} |")
+    return [*lines, ""]
 
 
 def _grouping(grouping: GroupingScore | None, groups: Mapping[str, WorkGroup]) -> list[str]:

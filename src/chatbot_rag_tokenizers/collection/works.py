@@ -2,10 +2,10 @@
 a pure function of the Snapshot.
 
 Two included Editions are one Work when they share an identifier (arXiv id, DOI or ACL ID), a file's sha256 in
-the full-text record, or a normalised title together with the first author's surname. Two Works that share a
-title but not a first author are a Suspected pair: listed, never joined. Each Work has a Canonical Edition, the
-venue Edition when there is one and otherwise the latest Version of its preprint, and a readable `work_id` made
-from it. A Work is a Survey when the Canonical Edition's title says so; nothing is demoted for it.
+the full-text record, or a title (compared by `title_key`) together with the first author's surname. Two Works
+that share a title but not a first author are a Suspected pair: listed, never joined. Each Work has a Canonical
+Edition, the venue Edition when there is one and otherwise the latest Version of its preprint, and a readable
+`work_id` made from it. A Work is a Survey when the Canonical Edition's title says so; nothing is demoted for it.
 """
 
 import re
@@ -61,10 +61,17 @@ def file_hashes(row: Row) -> set[str]:
     return {f"sha256:{held.split(' ')[1]}" for held in row["pdf_files"].split("|") if held}
 
 
+def title_key(title: str) -> str:
+    """The title as two Editions of one paper are compared: normalised, a hyphen inside a word dropped rather than
+    made a space, and the words sorted, so "Robust End-to-End" and "End-to-End Robust" or "Pre-trained" and
+    "Pretrained" compare equal (ADR 0062)."""
+    return " ".join(sorted(normalise(re.sub(r"(?<=\w)-(?=\w)", "", title)).split()))
+
+
 def title_and_author(row: Row) -> set[str]:
-    """The normalised title with the first author's surname, as a name such as "title:kudo|subword regularization …".
+    """The title's key with the first author's surname, as a name such as "title:kudo|improving models …".
     A title alone never names a Work: two papers may share one."""
-    title, author = normalise(row["title"]), surname(row)
+    title, author = title_key(row["title"]), surname(row)
     return {f"title:{author}|{title}"} if title and author else set()
 
 
@@ -167,7 +174,7 @@ def _suspected(included: list[Row], works: list[int]) -> list[SuspectedPair]:
     """Every two Works holding Editions with the same title."""
     by_title: dict[str, dict[int, list[Row]]] = {}
     for row, work in zip(included, works, strict=True):
-        if title := normalise(row["title"]):
+        if title := title_key(row["title"]):
             by_title.setdefault(title, {}).setdefault(work, []).append(row)
     pairs = [
         SuspectedPair(first, second)

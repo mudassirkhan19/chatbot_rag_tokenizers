@@ -197,8 +197,8 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
   <h1>How the corpus is found, judged, parsed, searched and measured</h1>
   <p class="lede">One page for a project manager's view of the pipeline so far: five stages, the decisions behind each one, the numbers they produced, how each is checked, and what is still open. Every decision links to its record on GitHub. Software structure is deliberately left out.</p>
   <div class="asof">
-    <span>As of <b>2026-10-19</b></span>
-    <span>Commit <b class="mono">0477b0e</b> on <a data-file="">main</a></span>
+    <span>As of <b>2026-10-20</b></span>
+    <span>Commit <b class="mono">096cdda</b> on <a data-file="">main</a></span>
     <span>Snapshot date <b>2026-10-16</b> (judge and PDF hashes 2026-10-17)</span>
     <span>Status: <span class="chip done">done</span> <span class="chip partial">partial</span> <span class="chip planned">planned</span></span>
   </div>
@@ -269,9 +269,9 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <div class="stat"><div class="v">141,348</div><div class="k">Chunks in the index, from 2,689 files</div></div>
       <div class="stat"><div class="v">36</div><div class="k">Evaluation questions, every one checked by a person</div></div>
       <div class="stat"><div class="v">0.30</div><div class="k">Best baseline Recall@5 (dense, all answerable)</div></div>
-      <div class="stat"><div class="v">42–50%</div><div class="k">Top-5 slots wasted on duplicates, before any dedup</div></div>
+      <div class="stat"><div class="v">42–50% → 27–41%</div><div class="k">Top-5 slots holding a duplicate, raw and collapsed</div></div>
       <div class="stat"><div class="v">180</div><div class="k">Audit-set Candidates that chose the judge</div></div>
-      <div class="stat"><div class="v">47</div><div class="k">Decision records (ADRs)</div></div>
+      <div class="stat"><div class="v">62</div><div class="k">Decision records (ADRs)</div></div>
     </div>
   </div>
 
@@ -280,7 +280,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
     <a class="stage-card" href="#discover"><span class="n">Stage 1</span><span class="t">Discover</span><span class="d">Keyword queries on 3 sources, one citation hop from 21 Seeds, ACL venue rows</span></a>
     <a class="stage-card" href="#judge"><span class="n">Stage 2</span><span class="t">Judge relevance</span><span class="d">Rules, then a local LLM judge measured on an Audit set</span></a>
     <a class="stage-card" href="#parse"><span class="n">Stage 3</span><span class="t">Acquire &amp; parse</span><span class="d">Pinned PDFs, GROBID, Section-aware Chunks, quality gate</span></a>
-    <a class="stage-card" href="#retrieve"><span class="n">Stage 4</span><span class="t">Retrieve</span><span class="d">BM25 and a dense baseline; comparison and dedup still to come</span></a>
+    <a class="stage-card" href="#retrieve"><span class="n">Stage 4</span><span class="t">Retrieve</span><span class="d">BM25, a dense baseline, their hybrid and a Collapsed twin of each; the embedding comparison still to come</span></a>
     <a class="stage-card" href="#evaluate"><span class="n">Stage 5</span><span class="t">Evaluate</span><span class="d">36 questions, Recall@5, MRR, duplicate rate against checked Work groups</span></a>
     <a class="stage-card planned" href="#remaining"><span class="n">Next</span><span class="t">Chatbot</span><span class="d">Multi-turn, cited answers, grounding measured</span></a>
   </div>
@@ -638,7 +638,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
   <div class="sec-head">
     <div class="eyebrow">Stage 4</div>
     <div class="title-row"><h2>Retrieve: how a question finds Chunks</h2><span class="chip partial">partial</span></div>
-    <p class="goal">Rank the 141,348 Chunks for a question. Two baselines exist so every later choice has a number to beat. The embedding comparison, hybrid search and duplicate suppression are not built yet.</p>
+    <p class="goal">Rank the 141,348 Chunks for a question. Two baselines exist so every later choice has a number to beat, and every retriever has a Collapsed twin that merges copies of a passage across a Work's files. The embedding comparison is not finished yet.</p>
   </div>
   <div class="panel">
     <div class="block">
@@ -650,13 +650,12 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <ul class="plain">
         <li><b>BM25</b>, keyword search: lower-cased letter and digit runs, decimals kept whole, no stemming, no stop words, k1 1.2, b 0.75. Index built in 10 s; a query takes about 200 ms.</li>
         <li><b>Dense</b>, vector search: bge-small-en-v1.5 (33M parameters, 384 dimensions), exact dot product over float32 vectors, query prefixed with the model's search instruction. Index built in 14 minutes on the laptop GPU; a query takes about 30 ms.</li>
-        <li>Both embed the context header with the text. Neither suppresses duplicates: the raw ranking is what the evaluation scores.</li>
+        <li>Both embed the context header with the text.</li>
+        <li><b>Collapsed ranking</b> (<code>&lt;retriever&gt;+collapsed</code>): takes a retriever's raw top 50 and merges copies of a passage from a Work's other Versions and Editions into one slot, shown from the Canonical Edition's file. A Work's other passages keep their slots, and Surveys are marked, not demoted.</li>
       </ul>
       <h4>Not yet built</h4>
       <ul class="plain">
         <li>A second embedding model suited to scientific text, compared on Recall@5, MRR, cost and latency.</li>
-        <li>Keyword search beside vector search (hybrid), since terms like "SentencePiece" and "fertility" are exact.</li>
-        <li>Version and near-duplicate suppression, measured before and after against the Work groups.</li>
         <li>Optional: a reranker, year and venue filters.</li>
       </ul>
     </div>
@@ -671,13 +670,17 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
         <div class="body"><p>The dense retriever gets vectors only through one function, which tests replace with a hashed bag of words, so the default test suite never loads a model. bge-small shares BERT's vocabulary with the chunker's counter, so Chunks nearly always fit in 512 tokens (5 of 141,360 were cut).</p><p class="why"><b>Why:</b> swapping the model for the comparison must touch one place, and tests must stay offline. <a data-adr="0042">Read ADR 0042</a>.</p></div>
       </details>
       <details class="dec">
+        <summary>Works are grouped in collect; the collapse merges copies, not Works<span class="ref">ADR 0051, 0057, 0062</span></summary>
+        <div class="body"><p>collect joins two Editions into one Work when they share an arXiv id, DOI, ACL ID or file bytes, or a title (hyphens inside words dropped, word order ignored) and a first-author surname: 2,705 included Editions in 2,393 Works. The Collapsed ranking reads that grouping and merges a passage's copies into the best-ranked slot. On the Work groups the rule joins 30 of 30 pairs and nothing more.</p><p class="why"><b>Why:</b> one Chunk per Work dropped the passages that answered; merging only copies frees the slots copies took, and a title match with a different author is listed as a Suspected pair, never joined. <a data-adr="0051">ADR 0051</a>, <a data-adr="0057">ADR 0057</a>, <a data-adr="0062">ADR 0062</a>.</p></div>
+      </details>
+      <details class="dec">
         <summary>Index marks Editions indexed, from a record committed in the Snapshot<span class="ref">ADR 0045</span></summary>
         <div class="body"><p>The index step writes the list of indexed files into the Snapshot and marks the manifest, so the funnel's last row survives a collect rerun and a fresh clone. An Edition whose file failed the gate shows as "with full text, not indexed".</p><p class="why"><b>Why:</b> the manifest must show whether each paper made it into the index, and collect rebuilds the manifest from the Snapshot alone. <a data-adr="0045">Read ADR 0045</a>.</p></div>
       </details>
       <div class="risk"><b>What could be wrong</b>
         <ul>
           <li>Neither baseline handles follow-ups: asked alone, a follow-up finds its Passage 0% (BM25) and 12% (dense) of the time. Query rewriting is the chatbot's job and is not built.</li>
-          <li>Multi-paper questions score near zero on both: Recall@5 0.06. The top 5 is filled by one paper's duplicates before the second paper appears.</li>
+          <li>Multi-paper questions score near zero on both: Recall@5 0.06 raw and after collapsing. The collapse frees the slots copies took, but other passages of the papers already ranked mostly fill them.</li>
           <li>Exact search over 141k vectors is fine today but is not a production index.</li>
         </ul>
       </div>
@@ -703,7 +706,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <dl class="nouns">
         <dt>Evaluation set</dt><dd>36 questions: 12 single-paper lookups, 8 multi-paper, 8 follow-ups (each with its history and a reference rewrite), 8 unanswerable. About 25 grounded in Seeds, 10 in other papers.</dd>
         <dt>Passage</dt><dd>A verbatim quote of at most 300 characters from one Section of one Edition. Any Chunk holding it answers, whichever Edition or Version it comes from.</dd>
-        <dt>Work groups</dt><dd>154 Editions that either baseline put in a top 5, grouped by hand into 130 Works, 2 of them Surveys. The ground truth for the duplicate rate, and the future dedup stage's test set.</dd>
+        <dt>Work groups</dt><dd>209 Editions that a retriever or its Collapsed twin put in a top 5, grouped into 179 Works, 3 of them Surveys. The ground truth for the duplicate rate and the grouping rule's test set.</dd>
       </dl>
       <h4>The metrics</h4>
       <ul class="plain">
@@ -728,16 +731,19 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
         </tbody>
       </table></div>
       <div class="tbl"><table>
-        <caption>Crowding of the top 5, raw ranking, 140 slots per retriever.</caption>
+        <caption>Crowding of the top 5, raw → Collapsed ranking, 140 slots per retriever.</caption>
         <thead><tr><th>Measure</th><th class="n">BM25</th><th class="n">Dense</th></tr></thead>
         <tbody>
-          <tr><td>Duplicate slots</td><td class="n">59 / 140 (42%)</td><td class="n">70 / 140 (50%)</td></tr>
-          <tr><td>Questions with a duplicate</td><td class="n">27 / 28</td><td class="n">27 / 28</td></tr>
+          <tr><td>Duplicate slots</td><td class="n">59 → 38 / 140</td><td class="n">70 → 57 / 140</td></tr>
+          <tr><td>… another Edition or Version</td><td class="n">38 → 12</td><td class="n">33 → 13</td></tr>
+          <tr><td>… same file</td><td class="n">21 → 26</td><td class="n">37 → 44</td></tr>
+          <tr><td>Recall@5, all answerable</td><td class="n">0.16 → 0.20</td><td class="n">0.30 → 0.38</td></tr>
+          <tr><td>Questions with a duplicate</td><td class="n">27 → 19 / 28</td><td class="n">27 → 25 / 28</td></tr>
           <tr><td>Survey restatement slots</td><td class="n">0</td><td class="n">1</td></tr>
           <tr><td>Mostly-numeric slots</td><td class="n">1</td><td class="n">2</td></tr>
         </tbody>
       </table></div>
-      <p class="why">Reading: the dense baseline nearly doubles BM25 overall, BM25 wins once the question is rewritten to name its subject, and half of every top 5 is the same paper again. Those are the "before" numbers the brief's two challenging parts must improve on. Full report: <a data-file="data/eval/eval-report.md">data/eval/eval-report.md</a>.</p>
+      <p class="why">Reading: the dense baseline nearly doubles BM25 overall, BM25 wins once the question is rewritten to name its subject, and half of every top 5 is the same paper again. Collapsing removes about two thirds of the copies from other Editions and Versions and lifts Recall@5 for both; the freed slots go mostly to more of the same file. Full report: <a data-file="data/eval/eval-report.md">data/eval/eval-report.md</a>.</p>
 
       <h4>How the set itself is checked</h4>
       <ul class="plain">
@@ -745,7 +751,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
         <li><code>eval-check</code> finds every quote in the parsed text, in the named Section, before evaluate will run.</li>
         <li>The Passage matcher (65% of the quote's words in order, every number equal) was calibrated on 48 v1-versus-latest pairs so a reworded Version still counts.</li>
         <li>Each unanswerable question has absence evidence: the top 10 Chunks from both retrievers for the question and for probe queries, read and confirmed by the developer.</li>
-        <li>Work groups were drafted from shared identifiers and titles, then checked Work by Work on a local page; each row records who checked it.</li>
+        <li>Work groups were drafted from shared identifiers and titles, then checked Work by Work on a local page, or for the 55 Editions added in #54 by a blind agent that grouped them without seeing the draft; each row records who checked it.</li>
       </ul>
 
       <h4>Decisions</h4>
@@ -755,7 +761,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       </details>
       <details class="dec">
         <summary>Duplicate rate measured against Work groups given as input<span class="ref">ADR 0044, 0047</span></summary>
-        <div class="body"><p>The groups file is committed, drafted from manifest identifiers and matching titles, and checked by a person with a note on each row. 24 of 130 Works have more than one Edition. No Work was merged or split in the check.</p><p class="why"><b>Why:</b> a duplicate rate computed by the system being measured would measure nothing. <a data-adr="0044">ADR 0044</a>, <a data-adr="0047">ADR 0047</a>.</p></div>
+        <div class="body"><p>The groups file is committed, drafted from manifest identifiers and matching titles, and checked by a person with a note on each row. 30 of 179 Works have more than one Edition. No Work was merged or split in either check.</p><p class="why"><b>Why:</b> a duplicate rate computed by the system being measured would measure nothing. <a data-adr="0044">ADR 0044</a>, <a data-adr="0047">ADR 0047</a>.</p></div>
       </details>
       <details class="dec">
         <summary>Short quotes may be committed; every question names who checked it; absence is shown<span class="ref">ADR 0046</span></summary>
@@ -815,8 +821,8 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <div class="eyebrow">Brief: challenging</div>
       <h3>Handle Versions and near-duplicates</h3>
       <p>Stop versions, preprint-plus-venue pairs and Survey restatements crowding the top 5 without merging different papers. Show before and after, with the duplicate rate.</p>
-      <p><b>Exists:</b> every Edition carries its Version history and identifiers; Chunks carry their Edition; the "before" rate is 42–50%; the hand-checked Work groups are the test set.</p>
-      <p><a data-issue="31">Spec issue 31</a></p>
+      <p><b>Done:</b> collect groups Editions into Works (scored 30/30 against the Work groups), every retriever has a Collapsed twin, and the eval report's <i>Before and after</i> table gives the duplicate rate falling from 42–50% to 27–41% of top-5 slots with Recall@5 up for every retriever. Surveys are marked, not demoted: they take 0 or 1 of 140 slots.</p>
+      <p><a data-issue="49">Spec issue 49</a></p>
     </div>
     <div class="plan">
       <div class="eyebrow">Brief: core</div>
@@ -885,7 +891,22 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
     "0041":"0041-passage-matcher-eval-check-and-calibration","0042":"0042-dense-baseline-bge-small-behind-the-embedder-boundary",
     "0043":"0043-recover-numbered-headings-grobid-left-in-paragraphs","0044":"0044-duplicate-rate-restatement-and-numeric-share-in-evaluate",
     "0045":"0045-index-marks-editions-indexed-from-a-committed-record","0046":"0046-evaluation-set-quotes-checked-by-and-absence-evidence",
-    "0047":"0047-hand-checked-work-groups-are-the-duplicate-ground-truth"
+    "0047":"0047-hand-checked-work-groups-are-the-duplicate-ground-truth",
+    "0048":"0048-hand-curated-domain-model-page",
+    "0049":"0049-normalised-arxiv-ids-and-borrowed-files",
+    "0050":"0050-named-dense-tables-and-a-configurable-embedder",
+    "0051":"0051-work-grouping-in-collect",
+    "0052":"0052-bge-base-and-openscholar-pinned-and-verified",
+    "0053":"0053-collapsed-ranking-and-collapsed-twins",
+    "0054":"0054-pinned-local-answer-model-and-the-chat-page",
+    "0055":"0055-a-work-shows-its-best-ranked-section",
+    "0056":"0056-follow-ups-the-conversation-and-the-rewrite",
+    "0057":"0057-the-collapse-merges-copies-not-works",
+    "0058":"0058-bm25-dense-hybrids-by-reciprocal-rank-fusion",
+    "0059":"0059-abstention-by-instruction-and-the-chat-report",
+    "0060":"0060-the-grouping-rule-scored-against-the-work-groups",
+    "0061":"0061-the-comparison-paired-bootstrap-against-a-baseline",
+    "0062":"0062-versions-and-near-duplicates-measured-before-and-after"
   };
   document.querySelectorAll("a[data-adr]").forEach(function (a) {
     var n = a.getAttribute("data-adr");

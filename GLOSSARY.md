@@ -105,7 +105,7 @@ How far an unanswerable question is from the corpus: near-miss when the corpus h
 _Avoid_: Difficulty, category
 
 **Work groups**:
-The hand-checked assignment of Editions to Works, with each Work's Survey flag, that the top-5 duplicate rate is measured against.
+The checked assignment of Editions to Works, with each Work's Survey flag, that the top-5 duplicate rate and the grouping rule are measured against; each row names who checked it, a person or a blind agent.
 _Avoid_: Clusters, dedup output (the duplicate stage's own grouping is what the Work groups test)
 
 ### Retrieval
