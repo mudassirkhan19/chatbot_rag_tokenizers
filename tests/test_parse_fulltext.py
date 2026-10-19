@@ -67,7 +67,7 @@ def test_a_file_the_edition_is_no_longer_pinned_to_is_not_parsed(corpus, grobid)
     corpus.save()
     corpus.manifest.write_text(
         corpus.manifest.read_text()
-        .replace(f"2112.06598v2,,,,,,,,,,,,,,,,,,,,,,included,,,,,2112.06598v1.pdf {sha256(v1)}|2112.06598v2.pdf {sha256(old_latest)},full text,\n", "")
+        .replace(f"2112.06598v2,,,,,,,,,,,,,,,,,,,,,,included,,,,,2112.06598v1.pdf {sha256(v1)}|2112.06598v2.pdf {sha256(old_latest)},full text,,,\n", "")
         .replace("2112.06598v3.pdf", f"2112.06598v1.pdf {sha256(v1)}|2112.06598v3.pdf")
     )
 

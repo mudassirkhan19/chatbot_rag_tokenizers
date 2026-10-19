@@ -1,7 +1,7 @@
 # 0041. The Passage matcher, eval-check and the v1/vN calibration
 
 - **Date:** 2026-10-18
-- **Status:** Accepted
+- **Status:** Accepted. Since [0051](0051-work-grouping-in-collect.md), `eval-check` takes an Edition's Work from the manifest's `work_id`, and the identifier rule only where it is blank.
 
 ## Context
 Spec #31 scores a retriever by whether its top Chunks hold a question's Passages. A Passage is a verbatim quote from one Edition, but any Chunk holding its text answers it, whichever Edition the Chunk comes from. So a v1 Chunk counts for a quote taken from v5, as long as v1 says the same thing. The tracer ([0039](0039-retrieval-tracer-bm25-index-and-evaluate.md)) used a substring stand-in, which misses any reworded Version.
