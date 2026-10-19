@@ -1,26 +1,30 @@
-"""The chat report writer (spec #63, ADR 0059): the committed Markdown record of a `chat-eval` run, in the eval
-report's style.
+"""The chat report writer (spec #63, ADRs 0059 and 0062): the committed Markdown record of a `chat-eval` run, in the
+eval report's style.
 
 It names what was scored (the Evaluation set, the Chunks, the retriever, the answer model's pin and the prompts'
-hashes), then gives the grounded, abstention and false-abstention rates and Recall@k per question type, a line
-per question, and the timings last. Everything above the timings depends only on the inputs and the model's
-replies, so two runs that get the same replies give the same report up to that section (the pinned model
-varies a few replies between runs, ADR 0059).
+hashes), then gives the grounded, abstention and false-abstention rates with their Wilson intervals and Recall@k
+per question type, a line per question, the variation over the runs, the questions whose verdict changed from a
+baseline when one is given, and the timings last. Everything above the timings depends only on the inputs and the
+model's replies, so re-scoring the stored replies reproduces it exactly.
 """
 
 import hashlib
+import math
 import statistics
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from ..evaluation.evalset import QUESTION_TYPES, UNANSWERABLE_KINDS, Question
+from ..evaluation.comparison import CONFIDENCE
 from ..evaluation.report import NONE
 from ..retrieval.corpus import Corpus
+from .answers import Asked, Baseline, Run
 from .config import ChatConfig
+from .model import pin
 
-if TYPE_CHECKING:
-    from .chat_eval import Asked
+# The normal quantile of the Wilson interval: 1.96 for 95%.
+_Z = statistics.NormalDist().inv_cdf(1 - (1 - CONFIDENCE) / 2)
+
 
 def write_chat_report(
     path: Path,
@@ -28,10 +32,14 @@ def write_chat_report(
     questions: Sequence[Question],
     corpus: Corpus,
     config: ChatConfig,
-    model_pin: str,
-    asked: Sequence["Asked"],
+    runs: Sequence[Run],
+    baseline: Baseline | None,
+    rescored_from: Path | None,
 ) -> None:
+    """The report on runs[0], the run reported, against ``baseline`` when one is given. ``rescored_from`` names the answers file a re-scored report was
+    scored from, which holds no timings."""
     k = config.k
+    asked = runs[0]
     scored = [item for item in asked if item.scored]
     counts = ", ".join(f"{sum(1 for q in questions if q.type == kind)} {kind}" for kind in QUESTION_TYPES)
     unanswerable = ", ".join(f"{sum(1 for q in questions if q.unanswerable_kind == kind)} {kind}" for kind in UNANSWERABLE_KINDS)
@@ -58,7 +66,7 @@ def write_chat_report(
         "## Chatbot",
         "",
         f"- Retriever: {config.retriever.name} (`{config.retriever.key}`), {k} Chunks per Turn",
-        f"- Answer model: {model_pin}, thinking {'on' if config.model.think else 'off'}, temperature {config.model.temperature}",
+        f"- Answer model: {pin(config.model)}, thinking {'on' if config.model.think else 'off'}, temperature {config.model.temperature}",
         f"- System prompt sha256: `{_sha256(config.system_prompt)}` (with the Abstention sentence filled in)",
         f"- Rewrite prompt sha256: `{_sha256(config.rewrite_prompt)}`",
         f"- Abstention sentence: \"{config.abstention}\"",
@@ -78,11 +86,16 @@ def write_chat_report(
         " grounded. Abstentions are left out of the grounded rate.",
         f"- Recall@{k}: the share of a question's Passages held by one of the {k} Chunks its Turn retrieved, averaged over"
         " the answerable questions, with the Passage matcher of `evaluate` (ADR 0041).",
+        f"- Every rate has its {CONFIDENCE:.0%} Wilson interval, in the column beside it and in brackets in the lines below the table. It covers the"
+        " sampling of the questions, not the answer model's run-to-run variation, which the Variation section measures."
+        f" Recall@{k} is a mean of per-question shares, not a proportion, and has no interval here: it is the retriever's"
+        " measure, and the eval report gives its bootstrap interval (ADR 0061).",
         "",
         "## Results",
         "",
-        f"| Question type | Questions | Abstained | Abstention rate | Answers | Grounded | Grounded rate | Recall@{k} |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|",
+        f"| Question type | Questions | Abstained | Abstention rate | {CONFIDENCE:.0%} interval | Answers | Grounded | Grounded rate"
+        f" | {CONFIDENCE:.0%} interval | Recall@{k} |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         *[_row(name, chosen) for name, chosen in _groups(scored)],
         "",
         *_summary(scored),
@@ -97,15 +110,14 @@ def write_chat_report(
         "|---|---|---|---|---|---|---:|",
         *[_question(item) for item in scored],
         "",
+        *_variation(runs, k),
+        *([] if baseline is None else _against(scored, baseline)),
         "## Timings",
         "",
-        "These depend on the machine and change from run to run. They count every Turn asked, a follow-up's history"
-        " included; rewriting counts only the Turns that were rewritten, as a Conversation's first Turn is not.",
-        "",
-        "| Step | Turns | p50 | p95 |",
-        "|---|---:|---:|---:|",
-        *_timings(asked),
-    ]
+        *(_timings(asked) if rescored_from is None else [
+            f"Not measured: this report was re-scored from `{rescored_from}` (`chat-eval --from-answers`), which holds no timings."
+        ]),
+    ]  # fmt: skip
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
@@ -114,8 +126,8 @@ def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-def _groups(scored: Sequence["Asked"]) -> list[tuple[str, list["Asked"]]]:
-    def where(test: Callable[[Question], bool]) -> list["Asked"]:
+def _groups(scored: Sequence[Asked]) -> list[tuple[str, list[Asked]]]:
+    def where(test: Callable[[Question], bool]) -> list[Asked]:
         return [item for item in scored if test(item.question)]
 
     return [
@@ -135,42 +147,156 @@ def _of_kind(kind: str) -> Callable[[Question], bool]:
     return lambda question: question.unanswerable_kind == kind
 
 
-def _row(name: str, chosen: Sequence["Asked"]) -> str:
+def _row(name: str, chosen: Sequence[Asked]) -> str:
     abstained = sum(1 for item in chosen if item.turn.answer.abstention)
     answers = [item.grounding for item in chosen if item.grounding is not None]
     grounded = sum(1 for grounding in answers if grounding.grounded)
-    answerable = [item for item in chosen if item.question.answerable]
-    recall = (
-        f"{sum(len(item.found) / len(item.question.passages) for item in answerable) / len(answerable):.2f}" if answerable else NONE
-    )
-    cells = [len(chosen), abstained, _rate(abstained, len(chosen)), len(answers), grounded, _rate(grounded, len(answers)), recall]
+    recall = _recall(chosen)
+    cells = [
+        len(chosen), abstained, _rate(abstained, len(chosen)), _interval(abstained, len(chosen)),
+        len(answers), grounded, _rate(grounded, len(answers)), _interval(grounded, len(answers)),
+        NONE if recall is None else f"{recall:.2f}",
+    ]  # fmt: skip
     return f"| {name} | {' | '.join(str(cell) for cell in cells)} |"
+
+
+def _recall(chosen: Sequence[Asked]) -> float | None:
+    """Recall@k averaged over the answerable questions chosen, or None when there are none."""
+    answerable = [item for item in chosen if item.question.answerable]
+    return sum(len(item.found) / len(item.question.passages) for item in answerable) / len(answerable) if answerable else None
 
 
 def _rate(count: int, of: int) -> str:
     return f"{count / of:.2f}" if of else NONE
 
 
-def _summary(scored: Sequence["Asked"]) -> list[str]:
+def wilson(count: int, of: int) -> tuple[float, float]:
+    """The Wilson score interval on the proportion count/of, at the report's confidence."""
+    share, spread = count / of, _Z * _Z / of
+    centre = (share + spread / 2) / (1 + spread)
+    half = _Z * math.sqrt(share * (1 - share) / of + spread / (4 * of)) / (1 + spread)
+    return max(0.0, centre - half), min(1.0, centre + half)
+
+
+def _interval(count: int, of: int) -> str:
+    if not of:
+        return NONE
+    low, high = wilson(count, of)
+    return f"[{low:.2f}, {high:.2f}]"
+
+
+def _counted(count: int, of: int) -> str:
+    """A rate with its counts and interval, as the lines under the Results table give it."""
+    return f"{count}/{of} ({_rate(count, of)} {_interval(count, of)})" if of else f"0/0 ({NONE})"
+
+
+def _summary(scored: Sequence[Asked]) -> list[str]:
     def abstained(test: Callable[[Question], bool]) -> str:
-        chosen = [item for item in scored if test(item.question)]
-        count = sum(1 for item in chosen if item.turn.answer.abstention)
-        return f"{count}/{len(chosen)} ({_rate(count, len(chosen))})"
+        return _counted(*_abstained(scored, test))
 
     kinds = ", ".join(f"{kind} {abstained(_of_kind(kind))}" for kind in UNANSWERABLE_KINDS)
     answers = [item.grounding for item in scored if item.grounding is not None]
-    grounded = sum(1 for grounding in answers if grounding.grounded)
     return [
         f"- Abstention rate on the unanswerable questions: {abstained(lambda q: not q.answerable)}; {kinds}",
         f"- False-abstention rate on the answerable questions: {abstained(lambda q: q.answerable)}",
-        f"- Grounded rate over every answer that is not an Abstention: {grounded}/{len(answers)} ({_rate(grounded, len(answers))})",
+        f"- Grounded rate over every answer that is not an Abstention: {_counted(*_grounded(scored))}",
         f"- Not grounded: {sum(1 for g in answers if not g.cited)} uncited, {sum(1 for g in answers if g.invalid)} with an"
         f" invalid Citation, {sum(1 for g in answers if g.missing)} with a number in no cited Chunk (an answer may be counted"
         " under more than one)",
     ]
 
 
-def _question(item: "Asked") -> str:
+def _variation(runs: Sequence[Run], k: int) -> list[str]:
+    """How the runs after the first differ from it: each rate's range, the questions whose verdict changed, and the
+    Turns whose wording or retrieved Chunks changed."""
+    if len(runs) == 1:
+        return ["## Variation", "", "One run: `chat-eval --runs N` asks the whole set N times and measures how much the answers vary.", ""]
+    scored = [[item for item in run if item.scored] for run in runs]
+    rates: list[tuple[str, list[tuple[int, int]]]] = [
+        ("Abstention rate, unanswerable", [_abstained(run, lambda q: not q.answerable) for run in scored]),
+        *[(f"Abstention rate, {kind}", [_abstained(run, _of_kind(kind)) for run in scored]) for kind in UNANSWERABLE_KINDS],
+        ("False-abstention rate, answerable", [_abstained(run, lambda q: q.answerable) for run in scored]),
+        ("Grounded rate", [_grounded(run) for run in scored]),
+    ]
+    recalls = [_recall(run) for run in scored]
+    flaky = [items for items in zip(*scored) if len({item.verdict for item in items}) > 1]
+    first, later = runs[0], runs[1:]
+    worded = [item for place, item in enumerate(first) if any(run[place].turn.reply != item.turn.reply for run in later)]
+    moved = [item for place, item in enumerate(first) if any(run[place].turn.retrieved != item.turn.retrieved for run in later)]
+    return [
+        "## Variation",
+        "",
+        f"{len(runs)} runs of the whole set, one after another in one process; the report above is run 1's, and the"
+        " answers file's runs file holds the others. A range is the lowest and highest rate over the runs.",
+        "",
+        f"| Measure | {' | '.join(f'Run {number}' for number in range(1, len(runs) + 1))} | Range |",
+        f"|---|{'---:|' * len(runs)}---:|",
+        *[f"| {name} | {' | '.join(f'{count}/{of}' for count, of in values)} | {_range([count / of for count, of in values if of])} |" for name, values in rates],
+        f"| Recall@{k}, answerable | {' | '.join(NONE if r is None else f'{r:.2f}' for r in recalls)} | {_range([r for r in recalls if r is not None])} |",
+        "",
+        "### Questions whose verdict changed",
+        "",
+        f"{len(flaky)} of {len(scored[0])} questions; each count is out of the {len(runs)} runs, and the verdicts are in run order.",
+        "",
+        "| Question | Type | Abstained | Grounded | Verdicts |",
+        "|---|---|---:|---:|---|",
+        *[
+            f"| {items[0].question.id} | {items[0].question.type} | {sum(1 for item in items if item.turn.answer.abstention)}/{len(runs)}"
+            f" | {sum(1 for item in items if item.verdict == 'grounded')}/{len(runs)} | {', '.join(item.verdict for item in items)} |"
+            for items in flaky
+        ],
+        "",
+        f"- Turns whose reply changed wording from run 1: {_turns(worded, len(first))}",
+        f"- Turns whose retrieved Chunks changed from run 1: {_turns(moved, len(first))} (a follow-up's can move, as its"
+        " history's replies feed the rewriter)",
+        "",
+    ]
+
+
+def _against(scored: Sequence[Asked], baseline: Baseline) -> list[str]:
+    """The questions whose verdict differs from the baseline's run 1, each marked when the baseline's runs disagreed."""
+    changed = [item for item in scored if item.question.id in baseline.verdicts and item.verdict != baseline.verdicts[item.question.id][0]]
+    missing = [item.question.id for item in scored if item.question.id not in baseline.verdicts]
+    lines = [
+        "## Against the baseline",
+        "",
+        f"Baseline: `{baseline.path}`, {baseline.runs} run{'s' if baseline.runs > 1 else ''}, its verdicts as stored. Each question"
+        " whose verdict here differs from the baseline's run 1 is listed, marked flaky in the baseline when its runs"
+        " disagreed on it, so a change the baseline already varied on is not read as an effect.",
+        "",
+    ]
+    if missing:
+        lines += [f"Not in the baseline: {', '.join(missing)}.", ""]
+    if not changed:
+        return [*lines, "No question's verdict changed from the baseline's run 1.", ""]
+    rows = []
+    for item in changed:
+        verdicts = baseline.verdicts[item.question.id]
+        flaky = f"flaky in the baseline: {', '.join(verdicts)}" if len(set(verdicts)) > 1 else NONE
+        rows.append(f"| {item.question.id} | {item.question.type} | {verdicts[0]} | {item.verdict} | {flaky} |")
+    return [*lines, "| Question | Type | Baseline | Now | Note |", "|---|---|---|---|---|", *rows, ""]
+
+
+def _abstained(scored: Sequence[Asked], test: Callable[[Question], bool]) -> tuple[int, int]:
+    chosen = [item for item in scored if test(item.question)]
+    return sum(1 for item in chosen if item.turn.answer.abstention), len(chosen)
+
+
+def _grounded(scored: Sequence[Asked]) -> tuple[int, int]:
+    answers = [item.grounding for item in scored if item.grounding is not None]
+    return sum(1 for grounding in answers if grounding.grounded), len(answers)
+
+
+def _range(values: Sequence[float]) -> str:
+    return f"{min(values):.2f}–{max(values):.2f}" if values else NONE
+
+
+def _turns(changed: Sequence[Asked], of: int) -> str:
+    named = ", ".join(item.question.id if item.question.history == () else f"{item.question.id} Turn {item.number}" for item in changed)
+    return f"{len(changed)} of {of}" + (f" ({named})" if named else "")
+
+
+def _question(item: Asked) -> str:
     grounding = item.grounding
     grounded = NONE if grounding is None else ("yes" if grounding.grounded else "no")
     invalid = ", ".join(f"[{number}]" for number in item.turn.answer.invalid) or NONE
@@ -182,14 +308,21 @@ def _question(item: "Asked") -> str:
     return f"| {item.question.id} | {item.question.type} | {abstained} | {grounded} | {invalid} | {missing} | {found} |"
 
 
-def _timings(asked: Sequence["Asked"]) -> list[str]:
+def _timings(asked: Sequence[Asked]) -> list[str]:
     steps: list[tuple[str, list[float]]] = [
         ("retrieval", [item.turn.seconds["retrieval"] for item in asked]),
         ("rewriting", [item.turn.seconds["rewriting"] for item in asked if item.turn.rewrite is not None]),
         ("answering", [item.turn.seconds["answering"] for item in asked]),
         ("whole Turn", [sum(item.turn.seconds.values()) for item in asked]),
     ]
-    return [f"| {step} | {len(seconds)} | {_percentile(seconds, 50)} | {_percentile(seconds, 95)} |" for step, seconds in steps]
+    return [
+        "These depend on the machine and change from run to run. They count every Turn of the reported run, a follow-up's"
+        " history included; rewriting counts only the Turns that were rewritten, as a Conversation's first Turn is not.",
+        "",
+        "| Step | Turns | p50 | p95 |",
+        "|---|---:|---:|---:|",
+        *[f"| {step} | {len(seconds)} | {_percentile(seconds, 50)} | {_percentile(seconds, 95)} |" for step, seconds in steps],
+    ]
 
 
 def _percentile(seconds: Sequence[float], percent: int) -> str:

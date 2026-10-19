@@ -63,9 +63,10 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0056](0056-follow-ups-the-conversation-and-the-rewrite.md) | Follow-ups: the Conversation and the Rewrite | Accepted |
 | [0057](0057-the-collapse-merges-copies-not-works.md) | The collapse merges copies of a passage across a Work's files, not whole Works | Accepted |
 | [0058](0058-bm25-dense-hybrids-by-reciprocal-rank-fusion.md) | BM25 + dense hybrids by reciprocal rank fusion, stored as a record that points to their members | Accepted |
-| [0059](0059-abstention-by-instruction-and-the-chat-report.md) | Abstention by instruction, and the chat report that measures it | Accepted |
+| [0059](0059-abstention-by-instruction-and-the-chat-report.md) | Abstention by instruction, and the chat report that measures it | Accepted, reproducibility amended by 0062 |
 | [0060](0060-the-grouping-rule-scored-against-the-work-groups.md) | The grouping rule scored against the Work groups, pair by pair | Accepted |
 | [0061](0061-the-comparison-paired-bootstrap-against-a-baseline.md) | The Comparison: wins, ties, losses and paired bootstrap intervals against a baseline, and the Cost table | Accepted |
+| [0062](0062-re-scoring-run-to-run-variation-and-wilson-intervals.md) | `chat-eval` re-scores from the answers, measures run-to-run variation over `--runs`, compares with a baseline, and gives every rate a Wilson interval | Accepted |
 
 ## Template
 

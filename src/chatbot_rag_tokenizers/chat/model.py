@@ -12,7 +12,7 @@ from typing import Protocol
 
 import httpx
 
-from ..ollama import OLLAMA_URL, Ollama, OllamaModelError
+from ..ollama import OLLAMA_URL, Ollama, OllamaModelError, split_pin
 from .config import AnswerModelConfig
 
 Message = dict[str, str]  # {"role": "system" | "user" | "assistant", "content": ...}
@@ -33,6 +33,13 @@ class AnswerModel(Protocol):
         ...
 
 
+def pin(settings: AnswerModelConfig) -> str:
+    """The pinned model as the page and the reports name it, from its revision: what the live model was checked
+    against, so a report re-scored without Ollama names it the same."""
+    digest, version = split_pin(settings.revision)
+    return f"{settings.model}@{digest[:12]} on Ollama {version}"
+
+
 def load_answer_model(settings: AnswerModelConfig) -> AnswerModel:
     return OllamaAnswerModel(settings)
 
@@ -44,8 +51,8 @@ class OllamaAnswerModel:
         self.settings = settings
         self.ollama = ollama or Ollama()
         with _named_failures():
-            digest, version = self.ollama.check_pin(settings.model, settings.revision)
-        self.pin = f"{settings.model}@{digest[:12]} on Ollama {version}"
+            self.ollama.check_pin(settings.model, settings.revision)
+        self.pin = pin(settings)
 
     def complete(self, messages: Sequence[Message]) -> str:
         # A fixed seed as well as temperature 0, as the judge sends, so a rerun gives the same text.

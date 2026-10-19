@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from chatbot_rag_tokenizers.chat import model as answer_model
+from chatbot_rag_tokenizers.chat.chat_report import wilson
 from chatbot_rag_tokenizers.chat.config import load_chat_config
 from chatbot_rag_tokenizers.chat.model import AnswerModelUnavailable
 from chatbot_rag_tokenizers.cli import main
@@ -58,7 +59,7 @@ def corpus_arguments(tmp_path: Path) -> list[str]:
     ]  # fmt: skip
 
 
-def script(fake_answer_model, **answers: str) -> None:
+def script(fake_answer_model, **answers: str | list[str]) -> None:
     """Every fixture question answered, with ``answers`` in place of the defaults, keyed by the names below. The
     fake answers the first key found in the last message, and the rewriter's holds the earlier question too, so
     the follow-up's key goes before the history's."""
@@ -83,8 +84,9 @@ def script(fake_answer_model, **answers: str) -> None:
     fake_answer_model.script.update({keys[name]: reply for name, reply in replies.items()})
 
 
-def run_chat_eval(tmp_path: Path, evaluation_set: Path = EVALUATION_SET, name: str = "chat") -> tuple[str, list[dict]]:
-    """Run `chat-eval` on the corpus in tmp_path and return the chat report and the answers file's Turns."""
+def run_chat_eval(tmp_path: Path, evaluation_set: Path = EVALUATION_SET, name: str = "chat", *options: str) -> tuple[str, list[dict]]:
+    """Run `chat-eval` on the corpus in tmp_path and return the chat report and the answers file's Turns, without
+    its metadata line."""
     report, answers = tmp_path / f"{name}-report.md", tmp_path / f"{name}-answers.jsonl"
     main(
         [
@@ -94,9 +96,14 @@ def run_chat_eval(tmp_path: Path, evaluation_set: Path = EVALUATION_SET, name: s
             "--manifest", str(MANIFEST),
             "--report", str(report),
             "--answers", str(answers),
+            *options,
         ]
     )  # fmt: skip
-    return report.read_text(), [json.loads(line) for line in answers.read_text().splitlines()]
+    return report.read_text(), [json.loads(line) for line in answers.read_text().splitlines()[1:]]
+
+
+def before_timings(report: str) -> str:
+    return report.split("\n## Timings\n")[0]
 
 
 def test_a_follow_up_is_a_conversation_whose_history_is_answered_first_and_every_other_question_is_one_turn(indexed, fake_answer_model):
@@ -130,7 +137,8 @@ def table(report: str, heading: str) -> list[list[str]]:
 
 
 def results(report: str) -> dict[str, list[str]]:
-    """Question type to [questions, abstained, abstention rate, answers, grounded, grounded rate, Recall@5]."""
+    """Question type to [questions, abstained, abstention rate, its interval, answers, grounded, grounded rate, its
+    interval, Recall@5]."""
     return {row[0]: row[1:] for row in table(report, "## Results")}
 
 
@@ -158,7 +166,7 @@ def test_an_uncited_answer_and_one_with_a_number_no_cited_chunk_holds_are_not_gr
     assert lines["neighbours"][2] == "yes"
     assert lines["byt5-schedule"][1:3] == ["yes", "—"]
     # Four answers, the Abstention left out, of which the two above are grounded.
-    assert results(report)["all"][3:6] == ["4", "2", "0.50"]
+    assert results(report)["all"][4:7] == ["4", "2", "0.50"]
     assert "Not grounded: 1 uncited, 0 with an invalid Citation, 1 with a number in no cited Chunk" in report
     grounded = {turn["question_id"]: turn["grounded"] for turn in turns if turn["scored"]}
     assert grounded == {"freezing": True, "metrics-miss": False, "vocabulary-sizes": False, "neighbours": True, "byt5-schedule": None}
@@ -188,12 +196,12 @@ def test_abstention_is_rated_on_the_unanswerable_questions_by_kind_and_false_abs
     assert rows["unanswerable: near-miss"][:3] == ["1", "0", "0.00"]
     assert rows["unanswerable: out-of-topic"][:3] == ["1", "1", "1.00"]
     assert rows["all unanswerable"][:3] == ["2", "1", "0.50"]
-    assert "Abstention rate on the unanswerable questions: 1/2 (0.50); near-miss 0/1 (0.00), out-of-topic 1/1 (1.00)" in report
-    assert "False-abstention rate on the answerable questions: 1/4 (0.25)" in report
+    assert "Abstention rate on the unanswerable questions: 1/2 (0.50 [0.09, 0.91]); near-miss 0/1 (0.00 [0.00, 0.79]), out-of-topic 1/1 (1.00 [0.21, 1.00])" in report
+    assert "False-abstention rate on the answerable questions: 1/4 (0.25 [0.05, 0.70])" in report
     # A false Abstention is left out of the grounded rate, as a correct one is; the near-miss's answer is in it.
     assert questions(report)["freezing"][1:3] == ["yes", "—"]
     assert questions(report)["byt5-schedule"][1:3] == ["no", "yes"]
-    assert rows["all"][3] == "4"  # six questions, two of them Abstentions
+    assert rows["all"][4] == "4"  # six questions, two of them Abstentions
 
 
 def test_a_question_line_names_its_invalid_citations_and_the_passages_in_its_chunks(indexed, fake_answer_model):
@@ -216,10 +224,24 @@ def test_two_runs_give_the_same_report_apart_from_timings_and_the_same_answers(i
     first, first_turns = run_chat_eval(indexed, name="first")
     second, second_turns = run_chat_eval(indexed, name="second")
 
-    before_timings = first.split("\n## Timings\n")[0]
-    assert "## Questions" in before_timings
-    assert before_timings == second.split("\n## Timings\n")[0]
+    assert "## Questions" in before_timings(first)
+    assert before_timings(first) == before_timings(second)
     assert first_turns == second_turns
+
+
+def test_from_answers_reproduces_the_report_apart_from_timings_and_rewrites_the_answers_byte_identically(indexed, fake_answer_model):
+    script(fake_answer_model)
+    asked, _ = run_chat_eval(indexed)
+    answers = indexed / "chat-answers.jsonl"
+    written = answers.read_bytes()
+    fake_answer_model.chats.clear()
+
+    rescored, _ = run_chat_eval(indexed, EVALUATION_SET, "chat", "--from-answers")
+
+    assert fake_answer_model.chats == []
+    assert before_timings(rescored) == before_timings(asked)
+    assert "Not measured: this report was re-scored from" in rescored.split("\n## Timings\n")[1]
+    assert answers.read_bytes() == written
 
 
 def test_chat_eval_refuses_a_set_that_fails_eval_check_and_asks_nothing(indexed, fake_answer_model, tmp_path):
@@ -255,7 +277,130 @@ def test_the_report_names_the_retriever_the_model_pin_the_prompts_hashes_and_the
 
     assert f"- sha256: `{hashlib.sha256(EVALUATION_SET.read_bytes()).hexdigest()}`" in report
     assert f"- Retriever: dense.bge-small (`{config.retriever.key}`), 5 Chunks per Turn" in report
-    assert "- Answer model: fake-answer-model, thinking off, temperature 0.0" in report
+    # Built from the [chat] revision the model was checked against, so a re-scored report names it without Ollama.
+    assert "- Answer model: gemma4:e2b-mlx@e98b54fe1913 on Ollama 0.40.5, thinking off, temperature 0.0" in report
     assert f"`{hashlib.sha256(config.system_prompt.encode()).hexdigest()}`" in report
     assert f"`{hashlib.sha256(config.rewrite_prompt.encode()).hexdigest()}`" in report
     assert report.index("## Questions") < report.index("## Timings") and report.rstrip().endswith("s |")
+
+
+def edit_answers(path: Path, edit) -> None:
+    """Rewrite the answers file with ``edit`` applied to each Turn's record, its first line left as it is."""
+    first, *records = path.read_text(encoding="utf-8").splitlines()
+    path.write_text("".join(line + "\n" for line in [first, *(json.dumps(edit(json.loads(line)), ensure_ascii=False) for line in records)]), encoding="utf-8")
+
+
+def test_from_answers_scores_a_hand_edited_reply_and_rewrites_its_stored_verdicts(indexed, fake_answer_model):
+    script(fake_answer_model)
+    run_chat_eval(indexed)
+    answers = indexed / "chat-answers.jsonl"
+    # The freezing reply loses its Citation and the ByT5 Abstention becomes an answer citing a Chunk not retrieved.
+    replies = {"freezing": "WECHSEL does not need freezing.", "byt5-schedule": "ByT5 uses an inverse square root schedule [9]."}
+    edit_answers(answers, lambda record: {**record, "reply": replies.get(record["question_id"], record["reply"])})
+
+    report, turns = run_chat_eval(indexed, EVALUATION_SET, "chat", "--from-answers")
+
+    assert questions(report)["freezing"][1:3] == ["no", "no"]
+    assert questions(report)["byt5-schedule"][1:4] == ["no", "no", "[9]"]
+    rewritten = {turn["question_id"]: turn for turn in turns if turn["scored"]}
+    assert rewritten["freezing"]["grounded"] is False and rewritten["freezing"]["cited"] == []
+    assert rewritten["byt5-schedule"]["abstention"] is False and rewritten["byt5-schedule"]["invalid"] == [9]
+    assert rewritten["byt5-schedule"]["reply"] == replies["byt5-schedule"]
+
+
+def test_from_answers_refuses_answers_asked_over_other_chunks_or_naming_a_chunk_the_corpus_lacks(indexed, fake_answer_model):
+    script(fake_answer_model)
+    run_chat_eval(indexed)
+    answers = indexed / "chat-answers.jsonl"
+    written = answers.read_text(encoding="utf-8")
+    first, rest = written.split("\n", 1)
+    for key in ("parser", "chunking"):
+        answers.write_text(json.dumps({**json.loads(first), key: "other-key"}) + "\n" + rest, encoding="utf-8")
+
+        with pytest.raises(SystemExit) as stopped:
+            run_chat_eval(indexed, EVALUATION_SET, "chat", "--from-answers")
+
+        assert f"{key} 'other-key', not " in str(stopped.value.code)
+    answers.write_text(written, encoding="utf-8")
+    edit_answers(answers, lambda record: {**record, "retrieved": ["0123456789abcdef-0000", *record["retrieved"][1:]]})
+
+    with pytest.raises(SystemExit) as stopped:
+        run_chat_eval(indexed, EVALUATION_SET, "chat", "--from-answers")
+
+    assert "freezing Turn 1 retrieved 0123456789abcdef-0000, which this corpus lacks" in str(stopped.value.code)
+
+
+def test_runs_ask_the_set_again_and_report_each_rate_s_range_the_flaky_questions_and_the_changed_wording(indexed, fake_answer_model):
+    # Run 2 answers the freezing question uncited; runs 1 and 3 cite in different words.
+    freezing = ["WECHSEL does not need freezing [1].", "WECHSEL does not need freezing.", "No freezing is needed with WECHSEL [1]."]
+    script(fake_answer_model, freezing=list(freezing))
+
+    report, turns = run_chat_eval(indexed, EVALUATION_SET, "chat", "--runs", "3")
+
+    assert questions(report)["freezing"][2] == "yes"  # the report is run 1's
+    variation = report.split("\n## Variation\n", 1)[1].split("\n## ", 1)[0]
+    assert "3 runs of the whole set" in variation
+    rates = {row[0]: row[1:] for row in table(report, "## Variation")[:6]}
+    # Four answers, the ByT5 Abstention left out; freezing and neighbours are grounded by default.
+    assert rates["Grounded rate"] == ["2/4", "1/4", "2/4", "0.25–0.50"]
+    assert rates["False-abstention rate, answerable"] == ["0/4", "0/4", "0/4", "0.00–0.00"]
+    flaky = {row[0]: row[1:] for row in table(report, "### Questions whose verdict changed")}
+    assert flaky == {"freezing": ["single-paper", "0/3", "2/3", "grounded, not grounded, grounded"]}
+    assert "- Turns whose reply changed wording from run 1: 1 of 6 (freezing)" in variation
+    assert "- Turns whose retrieved Chunks changed from run 1: 0 of 6" in variation
+    stored = [json.loads(line) for line in (indexed / "chat-answers-runs.jsonl").read_text().splitlines()]
+    assert [record["run"] for record in stored] == [2] * 6 + [3] * 6
+    assert [record["reply"] for record in stored if record["question_id"] == "freezing"] == freezing[1:]
+    assert len(turns) == 6
+
+    # Re-scoring rebuilds the Variation section from the runs file.
+    rescored, _ = run_chat_eval(indexed, EVALUATION_SET, "chat", "--from-answers")
+
+    assert before_timings(rescored) == before_timings(report)
+
+
+def test_the_wilson_interval_matches_worked_values():
+    # 0 of n has the upper bound z²/(n + z²), n of n the lower bound n/(n + z²); 27/34 is ADR 0059's grounded rate.
+    assert [round(bound, 4) for bound in wilson(0, 28)] == [0.0, 0.1206]
+    assert [round(bound, 4) for bound in wilson(8, 8)] == [0.6756, 1.0]
+    assert [round(bound, 2) for bound in wilson(27, 34)] == [0.63, 0.90]
+
+
+def test_every_rate_in_the_results_has_a_95_percent_interval_and_an_empty_group_shows_a_dash(indexed, fake_answer_model):
+    script(fake_answer_model)
+
+    report, _ = run_chat_eval(indexed)
+
+    assert "| Question type | Questions | Abstained | Abstention rate | 95% interval | Answers | Grounded | Grounded rate | 95% interval | Recall@5 |" in report
+    rows = results(report)
+    assert rows["all"] == ["5", "1", "0.20", "[0.04, 0.62]", "4", "2", "0.50", "[0.15, 0.85]", rows["all"][-1]]
+    # The out-of-topic group has no question; the near miss abstained, so it has no answer to ground.
+    assert rows["unanswerable: out-of-topic"] == ["0", "0", "—", "—", "0", "0", "—", "—", "—"]
+    assert rows["unanswerable: near-miss"][4:8] == ["0", "0", "—", "—"]
+    assert "- Grounded rate over every answer that is not an Abstention: 2/4 (0.50 [0.15, 0.85])" in report
+    assert "Recall@5 is a mean of per-question shares, not a proportion, and has no interval here" in report
+
+
+def test_a_baseline_lists_the_questions_whose_verdict_changed_and_marks_those_flaky_in_it_even_when_it_is_the_file_overwritten(indexed, fake_answer_model):
+    # The baseline: three runs, the freezing question grounded in runs 1 and 3 only.
+    script(fake_answer_model, freezing=["WECHSEL does not need freezing [1].", "WECHSEL does not need freezing.", "No freezing [1]."])
+    run_chat_eval(indexed, EVALUATION_SET, "chat", "--runs", "3")
+    answers = indexed / "chat-answers.jsonl"
+    # Now freezing is never cited, and the ByT5 near miss is answered instead of abstained on.
+    fake_answer_model.script.clear()
+    script(fake_answer_model, freezing="WECHSEL does not need freezing.", byt5="ByT5 uses an inverse square root schedule [1].")
+
+    report, _ = run_chat_eval(indexed, EVALUATION_SET, "chat", "--baseline", str(answers))
+
+    assert f"Baseline: `{answers}`, 3 runs" in report
+    changed = {row[0]: row[1:] for row in table(report, "## Against the baseline")}
+    assert changed == {
+        "freezing": ["single-paper", "grounded", "not grounded", "flaky in the baseline: grounded, not grounded, grounded"],
+        "byt5-schedule": ["unanswerable", "abstained", "grounded", "—"],
+    }
+    assert report.index("## Against the baseline") < report.index("## Timings")
+
+    # Re-scored against itself, nothing changed.
+    rescored, _ = run_chat_eval(indexed, EVALUATION_SET, "chat", "--from-answers", "--baseline", str(answers))
+
+    assert "No question's verdict changed from the baseline's run 1." in rescored
