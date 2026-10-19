@@ -12,6 +12,7 @@ import hashlib
 import json
 import re
 import sys
+import unicodedata
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -20,6 +21,7 @@ from urllib.parse import urlsplit
 import httpx
 
 from . import indexed, report
+from .editions import bare_arxiv_id
 from .http import RateLimitedHttp
 from .manifest import read_manifest, write_manifest
 
@@ -203,6 +205,63 @@ def apply_record(rows: list[dict[str, str]], record: FulltextRecord) -> None:
             row["funnel_status"] = "full text"
         else:
             row["funnel_status"] = "relevant"
+    _exclude_borrowed_files(rows, record)
+
+
+BORROWED_FILE = "borrowed file"  # the relevance stage of an Edition whose only file belongs to another one
+
+
+def _exclude_borrowed_files(rows: list[dict[str, str]], record: FulltextRecord) -> None:
+    """Exclude each included Edition whose only file belongs to another Edition (#44).
+
+    The file is suspect when it came from an open-access location rather than the Edition's own
+    source (its ACL Anthology PDF, or arXiv for a preprint): an OpenAlex link can resolve to another
+    paper's PDF, as the CRAN `sentencepiece` package's did to an LREC paper. It is borrowed when
+    another Edition holds the same bytes and no identifier or title links the two. Editions of one
+    Work that hold the same bytes, such as a venue PDF that is the preprint's v1, stay included.
+    """
+    holders: dict[str, list[tuple[dict[str, str], str]]] = {}  # sha256 → (row, file) for every row holding it
+    for row in rows:
+        for held in row["pdf_files"].split("|"):
+            if held:
+                file, sha256 = held.split(" ")
+                holders.setdefault(sha256, []).append((row, file))
+    for row in rows:
+        files = [held.split(" ") for held in row["pdf_files"].split("|") if held]
+        if row["relevance_verdict"] != "included" or len(files) != 1:
+            continue
+        file, sha256 = files[0]
+        entry = record.get(file)
+        if entry is None or entry.url == row["pdf_link"] or _is_arxiv(entry.url):
+            continue
+        others = [(other, other_file) for other, other_file in holders[sha256] if other is not row]
+        if not others or any(_linked(row, other) for other, _ in others):
+            continue
+        other, other_file = others[0]
+        row["relevance_verdict"] = "excluded"
+        row["relevance_stage"] = BORROWED_FILE
+        row["relevance_reason"] = (
+            f"file belongs to another Edition: {file}, from {entry.url}, has the same bytes as {other_file}"
+            f" of {other['edition_id']}, and no identifier or title links the two"
+        )
+        row["funnel_status"] = "discovered"
+
+
+def _linked(row: dict[str, str], other: dict[str, str]) -> bool:
+    """Whether two rows share an arXiv id, DOI or ACL ID, or have the same title."""
+    return bool(_identifiers(row) & _identifiers(other)) or _title_key(row["title"]) == _title_key(other["title"])
+
+
+def _identifiers(row: dict[str, str]) -> set[str]:
+    """The row's arXiv id, DOI and ACL ID as comparable keys, such as "doi:10.18653/v1/p16-1162"."""
+    keys = {f"arxiv:{bare_arxiv_id(row['arxiv_id']).casefold()}"} if row["arxiv_id"] else set()
+    return keys |{f"{kind}:{row[kind].casefold()}" for kind in ("doi", "acl_id") if row[kind]}
+
+
+def _title_key(title: str) -> str:
+    """A title without case, accents, punctuation or extra whitespace."""
+    ascii_title = unicodedata.normalize("NFKD", title).encode("ascii", "ignore").decode().lower()
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", ascii_title).split())
 
 
 def _sha256(data: bytes) -> str:

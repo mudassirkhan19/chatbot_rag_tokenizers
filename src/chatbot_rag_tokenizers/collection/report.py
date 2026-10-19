@@ -95,6 +95,7 @@ class Funnel:
     rule_rejects: Counter[str]  # by the pattern that fired
     withdrawn: int
     not_a_paper: int
+    borrowed_file: int  # included by the judge, then excluded: the Edition's only file belongs to another one
     judge_included: int
     judge_excluded: int
     pending: int
@@ -108,9 +109,10 @@ class Funnel:
 def funnel(rows: list[Row]) -> Funnel:
     rejects = Counter(row["rule_pattern"] for row in rows if row["rule_outcome"] == "reject")
     stages = Counter(row["relevance_stage"] for row in rows)
-    before_judge = {"withdrawn", "not a paper"}  # stages that exclude a rule pass before the judge
+    # Stages that exclude a rule pass apart from the judge: before it, or, for a borrowed file, after it.
+    not_judged = {"withdrawn", "not a paper", "borrowed file"}
     judged = Counter(
-        row["relevance_verdict"] for row in rows if row["rule_outcome"] == "pass" and row["relevance_stage"] not in before_judge
+        row["relevance_verdict"] for row in rows if row["rule_outcome"] == "pass" and row["relevance_stage"] not in not_judged
     )
     included = [row for row in rows if row["relevance_verdict"] == "included"]
     status = Counter(row["funnel_status"] for row in included)
@@ -120,6 +122,7 @@ def funnel(rows: list[Row]) -> Funnel:
         Counter(dict(sorted(rejects.items()))),
         stages["withdrawn"],
         stages["not a paper"],
+        stages["borrowed file"],
         judged["included"],
         judged["excluded"],
         judged["pending"],
@@ -175,6 +178,7 @@ def summarise(rows: list[Row], threshold: float) -> None:
         print(f"  {pattern}: {count}", file=sys.stderr)
     print(f"withdrawn: {counts.withdrawn} excluded, the latest arXiv Version is a withdrawal", file=sys.stderr)
     print(f"not a paper: {counts.not_a_paper} excluded on their source metadata", file=sys.stderr)
+    print(f"borrowed file: {counts.borrowed_file} excluded, its only file belongs to another Edition", file=sys.stderr)
     print(
         f"judge: {counts.judge_included} included, {counts.judge_excluded} excluded, {counts.pending} pending"
         f" (threshold {threshold:g})",
@@ -227,6 +231,7 @@ def render(rows: list[Row]) -> str:
         f"| Withdrawn from arXiv | {counts.withdrawn} |",
         f"| Not a paper | {counts.not_a_paper} |",
         f"| Rejected by the judge | {counts.judge_excluded} |",
+        f"| File belongs to another Edition | {counts.borrowed_file} |",
         f"| Pending a judge verdict | {counts.pending} |",
         f"| Included | {counts.judge_included} |",
         f"| With full text | {counts.fulltext} |",

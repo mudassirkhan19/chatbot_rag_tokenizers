@@ -2,7 +2,9 @@
 
 import csv
 import gzip
+import hashlib
 import json
+import re
 import shutil
 import time
 from pathlib import Path
@@ -11,10 +13,10 @@ import httpx
 import pytest
 
 from chatbot_rag_tokenizers.cli import main
-from chatbot_rag_tokenizers.collection import judge, snapshot
+from chatbot_rag_tokenizers.collection import fulltext, judge, snapshot
 from chatbot_rag_tokenizers.collection.openalex import OpenAlexError
 from chatbot_rag_tokenizers.collection.snapshot import SnapshotStore
-from conftest import FIXTURES, acl_request, arxiv_record_request, openalex_request, s2_seed_request
+from conftest import FIXTURES, acl_request, arxiv_record_request, arxiv_request, openalex_request, s2_request, s2_seed_request
 
 
 def run_collect(snapshot: Path, manifest: Path, config: Path = FIXTURES / "scope.toml", *flags: str) -> None:
@@ -848,6 +850,125 @@ def test_report_counts_editions_that_are_not_papers_apart_from_judge_exclusions(
     assert "| Not a paper | 1 |" in report
     assert "| Included | 11 |" in report
     assert "not a paper: 1 excluded on their source metadata" in capsys.readouterr().err
+
+
+def prefix_arxiv_id(snapshot_dir: Path, source: str) -> None:
+    """Make every record ``source`` has for the BPE paper name its arXiv id with an `arXiv:` prefix, as
+    OpenAlex does for 2607.05691 (#44)."""
+    store = SnapshotStore(snapshot_dir)
+    pages = {
+        "openalex": [(openalex_request("*"), FIXTURES / "openalex" / "page-0.json")],
+        "semantic-scholar": [
+            (s2_request(None), FIXTURES / "semantic-scholar" / "page-0.json"),
+            (s2_seed_request("/citations", 1000), FIXTURES / "seeds" / "sentencepiece-citations-1.json"),
+        ],
+    }[source]
+    for request, page in pages:
+        body = page.read_text()
+        prefixed = re.sub(r'(oai:arXiv\.org:|arxiv\.org/abs/|"ArXiv": ")2004\.03720', r"\1arXiv:2004.03720", body)
+        assert prefixed != body
+        store.save(request, prefixed, collected_at="2026-10-18")
+
+
+@pytest.mark.parametrize("source", ["openalex", "semantic-scholar"])
+def test_arxiv_id_with_a_prefix_is_the_same_edition(fixture_snapshot, no_network, no_model, tmp_path, source):
+    prefix_arxiv_id(fixture_snapshot, source)
+    manifest = tmp_path / "manifest.csv"
+
+    run_collect(fixture_snapshot, manifest)
+
+    rows = read_manifest(manifest)
+    assert not [edition_id for edition_id in rows if "arxiv:" in edition_id.lower()]
+    bpe = rows["2004.03720v3"]
+    assert bpe["arxiv_id"] == "2004.03720"
+    assert bpe["discovery_channels"] == (
+        "arxiv:tokenizer-titles|openalex:keyword-phrases|seed-citations:sentencepiece|semantic-scholar:subword-phrases"
+    )
+
+
+MRT5_V3 = b"%PDF-1.5\n% MrT5 v3\n%%EOF\n"
+LRM_URL = "https://repo.example.edu/1234/lrm-7.pdf"  # the first of its open-access locations
+
+
+def record_lrm_file_as_mrt5s(snapshot_dir: Path) -> None:
+    """Record MrT5's two Versions as fetched from arXiv, and the Unigram paper's only file, fetched from an
+    open-access location, as the very bytes of MrT5's v3, as OpenAlex's link for the CRAN package served
+    the LREC paper's PDF (#44)."""
+    record = fulltext.FulltextRecord(snapshot_dir)
+    for edition_id, file, url, data in [
+        ("2410.20771v3", "2410.20771v1.pdf", "https://export.arxiv.org/pdf/2410.20771v1", b"%PDF-1.5\n% MrT5 v1\n%%EOF\n"),
+        ("2410.20771v3", "2410.20771v3.pdf", "https://export.arxiv.org/pdf/2410.20771v3", MRT5_V3),
+        ("10.5555/lrm.2022.7", "10.5555_lrm.2022.7.pdf", LRM_URL, MRT5_V3),
+    ]:
+        record.put(fulltext.FetchedFile(edition_id, file, url, hashlib.sha256(data).hexdigest(), len(data), "2026-10-19"))
+    record.save()
+
+
+def test_edition_holding_another_editions_file_is_excluded(fixture_snapshot, no_network, no_model, tmp_path, capsys):
+    record_lrm_file_as_mrt5s(fixture_snapshot)
+    manifest, report_path = tmp_path / "manifest.csv", tmp_path / "report.md"
+
+    run_collect(fixture_snapshot, manifest, FIXTURES / "scope.toml", "--report", str(report_path))
+
+    rows = read_manifest(manifest)
+    lrm = rows["10.5555/lrm.2022.7"]
+    assert lrm["relevance_verdict"] == "excluded"
+    assert lrm["relevance_stage"] == "borrowed file"
+    assert lrm["relevance_reason"] == (
+        f"file belongs to another Edition: 10.5555_lrm.2022.7.pdf, from {LRM_URL}, has the same bytes as"
+        " 2410.20771v3.pdf of 2410.20771v3, and no identifier or title links the two"
+    )
+    assert lrm["judge_probability"] == "0.8100"  # the judge had included it
+    assert lrm["funnel_status"] == "discovered"
+    mrt5 = rows["2410.20771v3"]
+    assert mrt5["relevance_verdict"] == "included"
+    assert mrt5["funnel_status"] == "full text"
+
+    # Counted apart from the judge's exclusions, like withdrawn and not-a-paper rows.
+    report = report_path.read_text()
+    assert "| Rejected by the judge | 1 |" in report
+    assert "| File belongs to another Edition | 1 |" in report
+    assert "| Included | 11 |" in report
+    assert "| With full text | 1 |" in report
+    assert "borrowed file: 1 excluded, its only file belongs to another Edition" in capsys.readouterr().err
+
+    # The exclusion comes from the Snapshot alone, so a rerun writes the same bytes.
+    first_manifest, first_report = manifest.read_bytes(), report_path.read_bytes()
+    run_collect(fixture_snapshot, manifest, FIXTURES / "scope.toml", "--report", str(report_path))
+    assert manifest.read_bytes() == first_manifest
+    assert report_path.read_bytes() == first_report
+
+
+def record_mrt5_as_a_preprint_of_lrm(snapshot_dir: Path) -> None:
+    """arXiv's search page records the Unigram paper's DOI for MrT5, as for a preprint of a venue Edition."""
+    body = (FIXTURES / "arxiv" / "page-1.xml").read_text()
+    entry = '<link title="pdf" href="http://arxiv.org/pdf/2410.20771v3" rel="related" type="application/pdf"/>\n'
+    assert entry in body
+    body = body.replace(entry, entry + "    <arxiv:doi>10.5555/LRM.2022.7</arxiv:doi>\n")
+    SnapshotStore(snapshot_dir).save(arxiv_request(4, 4), body, collected_at="2026-10-18")
+
+
+def give_lrm_the_title_of_mrt5(snapshot_dir: Path) -> None:
+    edit_openalex_page(
+        snapshot_dir,
+        "page-0.json",
+        ("Unigram Tokenization for Morphologically Rich Languages", "MrT5 - Dynamic Token Merging for Efficient Byte-Level Language Models"),
+    )
+
+
+@pytest.mark.parametrize("link", [record_mrt5_as_a_preprint_of_lrm, give_lrm_the_title_of_mrt5], ids=["identifier", "title"])
+def test_editions_of_one_work_may_hold_the_same_file(fixture_snapshot, no_network, no_model, tmp_path, link):
+    # A venue PDF that is its preprint's Version is expected, not borrowed (#44).
+    record_lrm_file_as_mrt5s(fixture_snapshot)
+    link(fixture_snapshot)
+    manifest = tmp_path / "manifest.csv"
+
+    run_collect(fixture_snapshot, manifest)
+
+    lrm = read_manifest(manifest)["10.5555/lrm.2022.7"]
+    assert lrm["relevance_verdict"] == "included"
+    assert lrm["relevance_stage"] == "judge"
+    assert lrm["funnel_status"] == "full text"
 
 
 def test_collect_writes_the_funnel_and_channel_report(fixture_snapshot, no_network, tmp_path):

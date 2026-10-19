@@ -6,15 +6,16 @@ Written by `collect`, `fetch` and `index` from the manifest: judge `tev1:4b@4d24
 
 | Stage | Editions |
 | --- | ---: |
-| Discovered | 26388 |
+| Discovered | 26386 |
 | Rejected by the rules | 19185 |
 | Withdrawn from arXiv | 15 |
 | Not a paper | 152 |
-| Rejected by the judge | 4330 |
+| Rejected by the judge | 4329 |
+| File belongs to another Edition | 0 |
 | Pending a judge verdict | 0 |
-| Included | 2706 |
-| With full text | 2068 |
-| Indexed | 2067 |
+| Included | 2705 |
+| With full text | 2067 |
+| Indexed | 2066 |
 | With full text, not indexed | 1 |
 | No open PDF | 636 |
 | Still to fetch | 2 |
@@ -42,7 +43,7 @@ A Seed and its citation hops count as the source `seeds`.
 | Source | Editions | Included | Found by no other | of those: pass the rules | included | pending |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | arxiv | 5640 | 1417 | 3594 | 1614 | 256 | 0 |
-| openalex | 1590 | 846 | 495 | 412 | 177 | 0 |
+| openalex | 1588 | 845 | 493 | 410 | 176 | 0 |
 | seeds | 17285 | 1842 | 14995 | 1322 | 430 | 0 |
 | semantic-scholar | 6648 | 1511 | 4169 | 1310 | 191 | 0 |
 
@@ -56,7 +57,7 @@ A Seed and its citation hops count as the source `seeds`.
 | arxiv:arxiv-subword-titles | 218 | 187 | 2 | 2 | 0 | 0 |
 | arxiv:arxiv-tokenizer-titles | 3383 | 638 | 2400 | 423 | 110 | 0 |
 | arxiv:arxiv-vocabulary-titles | 735 | 181 | 488 | 487 | 20 | 0 |
-| openalex:openalex-subword-phrases | 1590 | 846 | 495 | 412 | 177 | 0 |
+| openalex:openalex-subword-phrases | 1588 | 845 | 493 | 410 | 176 | 0 |
 | seed-citations:bpe-dropout | 425 | 211 | 77 | 4 | 0 | 0 |
 | seed-citations:bpe-suboptimal | 383 | 228 | 67 | 8 | 3 | 0 |
 | seed-citations:byt5 | 881 | 279 | 400 | 40 | 8 | 0 |
@@ -137,5 +138,5 @@ A Seed's own record counts as neither: it was picked by hand, not found.
 
 | Found by | Editions | Included | Found by no keyword query | of those: included |
 | --- | ---: | ---: | ---: | ---: |
-| Keyword search | 11393 | 2276 | | |
+| Keyword search | 11391 | 2275 | | |
 | Citation expansion | 17284 | 1841 | 14995 | 430 |

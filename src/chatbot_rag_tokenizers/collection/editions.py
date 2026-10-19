@@ -8,6 +8,13 @@ from dataclasses import dataclass, field
 # (2020.findings-emnlp.414) lower-case.
 ACL_DOI = re.compile(r"^10\.18653/v1/(.+)$", re.IGNORECASE)
 OLD_STYLE_ACL_ID = re.compile(r"^[a-z]\d{2}-\d{4}$", re.IGNORECASE)
+# Some records name an arXiv paper "arXiv:2607.05691", the citation form, where others say "2607.05691" (#44).
+ARXIV_PREFIX = re.compile(r"^arxiv:", re.IGNORECASE)
+
+
+def bare_arxiv_id(arxiv_id: str) -> str:
+    """An arXiv id as arXiv itself writes it, without the `arXiv:` prefix some sources put on it."""
+    return ARXIV_PREFIX.sub("", arxiv_id)
 
 
 @dataclass

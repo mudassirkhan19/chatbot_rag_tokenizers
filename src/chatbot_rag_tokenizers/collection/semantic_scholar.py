@@ -14,7 +14,7 @@ import sys
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from .editions import Edition
+from .editions import Edition, bare_arxiv_id
 from .http import RateLimitedHttp
 from .snapshot import SnapshotStore
 
@@ -47,9 +47,9 @@ def _clean(text: str | None) -> str:
 def _parse_paper(paper: dict) -> Edition:
     ids = paper.get("externalIds") or {}
     doi = ids.get("DOI") or ""
-    arxiv_id = ids.get("ArXiv") or ""
+    arxiv_id = bare_arxiv_id(ids.get("ArXiv") or "")
     if not arxiv_id and (match := ARXIV_DOI.match(doi)):
-        arxiv_id = match.group(1)
+        arxiv_id = bare_arxiv_id(match.group(1))
     acl_id = ids.get("ACL") or ""
     s2_id = paper["paperId"]
     common = dict(

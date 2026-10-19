@@ -223,42 +223,42 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
 <section id="overview">
   <div class="sec-head">
     <div class="eyebrow">Level 0 · one screen</div>
-    <h2>From 26,388 discovered records to 2,067 indexed papers and 36 checked questions</h2>
+    <h2>From 26,386 discovered records to 2,066 indexed papers and 36 checked questions</h2>
     <p class="goal">Each stage narrows the corpus and records why. The funnel counts Editions: one distinct publication of a paper, so a preprint and its conference paper are two rows.</p>
   </div>
 
   <div class="overview">
     <div>
-      <svg class="funnel" viewBox="0 0 640 330" role="img" aria-label="Funnel of Editions through the pipeline: 26,388 discovered, 7,203 pass the rules, 2,706 included, 2,068 with full text, 2,067 indexed">
-        <!-- scale: 26388 -> 400px, left edge 200 -->
+      <svg class="funnel" viewBox="0 0 640 330" role="img" aria-label="Funnel of Editions through the pipeline: 26,386 discovered, 7,201 pass the rules, 2,705 included, 2,067 with full text, 2,066 indexed">
+        <!-- scale: 26386 -> 400px, left edge 200 -->
         <g>
           <text x="0" y="36">Discovered</text>
           <rect class="bar" x="200" y="22" width="400" height="20" rx="2"/>
-          <text class="muted" x="606" y="36">26,388</text>
+          <text class="muted" x="606" y="36">26,386</text>
           <text class="muted" x="0" y="54">four sources + citation expansion</text>
         </g>
         <g>
           <text x="0" y="96">Pass the rules</text>
           <rect class="bar" x="200" y="82" width="109" height="20" rx="2"/>
-          <text class="muted" x="316" y="96">7,203 · 27%</text>
+          <text class="muted" x="316" y="96">7,201 · 27%</text>
           <text class="muted" x="0" y="114">19,185 rejected by regex rules on title and abstract</text>
         </g>
         <g>
           <text x="0" y="156">Included</text>
           <rect class="bar" x="200" y="142" width="41" height="20" rx="2"/>
-          <text class="muted" x="248" y="156">2,706 · 10%</text>
-          <text class="muted" x="0" y="174">judge P(Yes) ≥ 0.8; 4,330 judge rejects, 152 non-papers, 15 withdrawn</text>
+          <text class="muted" x="248" y="156">2,705 · 10%</text>
+          <text class="muted" x="0" y="174">judge P(Yes) ≥ 0.8; 4,329 judge rejects, 152 non-papers, 15 withdrawn</text>
         </g>
         <g>
           <text x="0" y="216">With full text</text>
           <rect class="bar" x="200" y="202" width="31" height="20" rx="2"/>
-          <text class="muted" x="238" y="216">2,068 · 8%</text>
+          <text class="muted" x="238" y="216">2,067 · 8%</text>
           <text class="muted" x="0" y="234">636 have no open-access PDF; 2 still to fetch</text>
         </g>
         <g>
           <text x="0" y="276">Indexed</text>
           <rect class="bar" x="200" y="262" width="31" height="20" rx="2"/>
-          <text class="muted" x="238" y="276">2,067 · 8%</text>
+          <text class="muted" x="238" y="276">2,066 · 8%</text>
           <text class="muted" x="0" y="294">2,691 pinned files parsed, 1 failed the quality gate</text>
         </g>
         <line class="drop" x1="200" y1="14" x2="200" y2="300"/>
@@ -295,7 +295,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <div class="ent"><b>Version</b><span>One numbered revision of an arXiv Edition</span><span class="ex">v1 … vN</span></div>
     </div>
     <div class="ent-row">
-      <div class="ent"><b>Candidate</b><span>Any Edition found, before a verdict. Carries its Discovery channels.</span><span class="ex">26,388</span></div>
+      <div class="ent"><b>Candidate</b><span>Any Edition found, before a verdict. Carries its Discovery channels.</span><span class="ex">26,386</span></div>
       <div class="arrow">→</div>
       <div class="ent"><b>Relevance verdict</b><span>Included or excluded, with the stage and reason</span><span class="ex">judge: P(Yes) 0.9971 ≥ 0.8</span></div>
       <div class="arrow">→</div>
@@ -373,7 +373,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
     <div class="block">
       <dl class="io">
         <dt>Input</dt><dd>19 keyword queries (6 arXiv, 12 Semantic Scholar, 1 OpenAlex) and 21 hand-picked Seed papers, each with a written reason.</dd>
-        <dt>Output</dt><dd>26,388 Candidate Editions with title, authors, year, venue, identifiers, links, licence and the list of Discovery channels that found each one. Every source response saved in the Snapshot.</dd>
+        <dt>Output</dt><dd>26,386 Candidate Editions with title, authors, year, venue, identifiers, links, licence and the list of Discovery channels that found each one. Every source response saved in the Snapshot.</dd>
       </dl>
       <h4>Nouns born here</h4>
       <dl class="nouns">
@@ -399,14 +399,14 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
           <tr><td>Seeds and citation hops</td><td class="n">17,285</td><td class="n">1,842</td><td class="n">14,995</td><td class="n">430</td></tr>
           <tr><td>Semantic Scholar</td><td class="n">6,648</td><td class="n">1,511</td><td class="n">4,169</td><td class="n">191</td></tr>
           <tr><td>arXiv</td><td class="n">5,640</td><td class="n">1,417</td><td class="n">3,594</td><td class="n">256</td></tr>
-          <tr><td>OpenAlex</td><td class="n">1,590</td><td class="n">846</td><td class="n">495</td><td class="n">177</td></tr>
+          <tr><td>OpenAlex</td><td class="n">1,588</td><td class="n">845</td><td class="n">493</td><td class="n">176</td></tr>
         </tbody>
       </table></div>
       <div class="tbl"><table>
         <caption>What citation expansion adds beyond keyword search.</caption>
         <thead><tr><th>Found by</th><th class="n">Editions</th><th class="n">Included</th><th class="n">By no keyword query</th><th class="n">of those included</th></tr></thead>
         <tbody>
-          <tr><td>Keyword search</td><td class="n">11,393</td><td class="n">2,276</td><td class="n">—</td><td class="n">—</td></tr>
+          <tr><td>Keyword search</td><td class="n">11,391</td><td class="n">2,275</td><td class="n">—</td><td class="n">—</td></tr>
           <tr><td>Citation expansion</td><td class="n">17,284</td><td class="n">1,841</td><td class="n">14,995</td><td class="n">430</td></tr>
         </tbody>
       </table></div>
@@ -459,20 +459,21 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
   <div class="panel">
     <div class="block">
       <dl class="io">
-        <dt>Input</dt><dd>26,388 Candidates with title and abstract.</dd>
-        <dt>Output</dt><dd>A Relevance verdict per Edition: included (2,706) or excluded, with the stage that decided and the reason, in the manifest.</dd>
+        <dt>Input</dt><dd>26,386 Candidates with title and abstract.</dd>
+        <dt>Output</dt><dd>A Relevance verdict per Edition: included (2,705) or excluded, with the stage that decided and the reason, in the manifest.</dd>
       </dl>
       <h4>Nouns born here</h4>
       <dl class="nouns">
         <dt>Relevance verdict</dt><dd>Included or excluded, plus the stage (rules, withdrawn, not-a-paper, judge) and a reason a reviewer can read.</dd>
         <dt>Audit set</dt><dd>180 hand-labelled Candidates used to choose and measure the verdict, never to train it. 60 from each stratum: rule-rejected, judge-excluded, judge-included.</dd>
       </dl>
-      <h4>The four gates, in order</h4>
+      <h4>The five gates, in order</h4>
       <ul class="plain">
         <li><b>Rules</b> (deterministic, free). A title with a strong on-topic term skips the exclusions. Otherwise an exclusion pattern on the title rejects with its name. Then title or abstract must contain a required term (tokeniz…, subword, byte-pair, WordPiece, SentencePiece, vocabulary, byte-level, character-level).</li>
         <li><b>Withdrawn</b>: an arXiv paper whose latest Version is a withdrawal is excluded; the bot must not cite retracted results.</li>
         <li><b>Not a paper</b>: manuals, proceedings front matter, textbooks and theses, by source type and page count.</li>
         <li><b>Judge</b>: a local decision model reads title and abstract and returns P(Yes) to the scope question. Included at P(Yes) ≥ 0.8. Every score is cached in the Snapshot, so replays need no model.</li>
+        <li><b>Borrowed file</b>: after the judge, an Edition whose only file came from an open-access link and is byte-identical to another Edition's, with no identifier or title linking the two, is excluded; the link resolved to someone else's paper.</li>
       </ul>
     </div>
     <div class="block">
@@ -484,8 +485,9 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
           <tr><td>Rules</td><td class="n">19,185</td><td>missing required term 18,616 · token reduction 341 · other-modality tokenizer 92 · crypto 87 · KV cache 49</td></tr>
           <tr><td>Withdrawn</td><td class="n">15</td><td>latest arXiv Version listed at 0 kB</td></tr>
           <tr><td>Not a paper</td><td class="n">152</td><td>manuals, volumes, theses, textbooks</td></tr>
-          <tr><td>Judge</td><td class="n">4,330</td><td>P(Yes) below 0.8</td></tr>
-          <tr class="sum"><td>Included</td><td class="n">2,706</td><td>10.3% of Candidates; 37.6% of rule passes</td></tr>
+          <tr><td>Judge</td><td class="n">4,329</td><td>P(Yes) below 0.8</td></tr>
+          <tr><td>Borrowed file</td><td class="n">0</td><td>the one known case, a CRAN manual, is already not a paper</td></tr>
+          <tr class="sum"><td>Included</td><td class="n">2,705</td><td>10.3% of Candidates; 37.6% of rule passes</td></tr>
         </tbody>
       </table></div>
 
@@ -549,7 +551,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
   <div class="panel">
     <div class="block">
       <dl class="io">
-        <dt>Input</dt><dd>2,706 included Editions.</dd>
+        <dt>Input</dt><dd>2,705 included Editions.</dd>
         <dt>Output</dt><dd>2,691 pinned PDF files (hashes in the Snapshot, files never committed) and 141,512 Chunks in a local parse cache, plus a committed parse report with one line per file.</dd>
       </dl>
       <h4>Nouns born here</h4>
@@ -577,7 +579,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <div class="tbl"><table>
         <thead><tr><th>Measure</th><th class="n">Count</th></tr></thead>
         <tbody>
-          <tr><td>Included Editions with full text</td><td class="n">2,068</td></tr>
+          <tr><td>Included Editions with full text</td><td class="n">2,067</td></tr>
           <tr><td>Included Editions with no open PDF</td><td class="n">636</td></tr>
           <tr><td>Pinned files parsed / failed the gate</td><td class="n">2,690 / 1</td></tr>
           <tr><td>Sections</td><td class="n">69,081</td></tr>
@@ -642,7 +644,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
     <div class="block">
       <dl class="io">
         <dt>Input</dt><dd>A question as text, and the parsed files the parse report lists.</dd>
-        <dt>Output</dt><dd>A ranked list of Chunks with scores; a local index cache keyed by chunking config and retriever settings; the manifest's "indexed" mark (2,067 Editions).</dd>
+        <dt>Output</dt><dd>A ranked list of Chunks with scores; a local index cache keyed by chunking config and retriever settings; the manifest's "indexed" mark (2,066 Editions).</dd>
       </dl>
       <h4>Two baselines, both on every Chunk</h4>
       <ul class="plain">
