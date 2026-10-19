@@ -1,15 +1,17 @@
-"""The Collapsed ranking (ADR 0053): at most one Chunk per Work, over any retriever.
+"""The Collapsed ranking (ADRs 0053 and 0055): at most one Chunk per Work, over any retriever.
 
 The wrapper asks the retriever it wraps for a pool of Chunks, maps each to its Work through the manifest's
 work_id, and keeps the Works in the order their best-ranked Chunk came in. A Chunk whose Edition has no
-work_id is its Edition's own Work, so nothing the collapse can't place is dropped. For each Work it shows,
-best first by tier, then by rank:
+work_id is its Edition's own Work, so nothing the collapse can't place is dropped.
 
-    1. a Chunk of the Canonical Edition's own file (for a preprint, its latest Version)
-    2. a Chunk of any Edition's latest file
-    3. any Chunk, such as a v1's
+Each Work shows its best-ranked Chunk's Section, which is what the retriever found. When the pool holds that
+Section from several of the Work's files, it shows the copy from the best file, best first by tier, then by rank:
 
-so a stale v1 stands for a paper only when no later file of it was retrieved. Surveys are not demoted: a
+    1. the Canonical Edition's own file (for a preprint, its latest Version)
+    2. any Edition's latest file
+    3. any file, such as a v1
+
+so a stale v1 stands for a paper only when no later copy of the Section was retrieved. Surveys are not demoted: a
 Survey's Work collapses like any other. No retriever's code or index changes, and `query` keeps the raw
 `(chunk_id, score)` shape; `collapse` also gives, by Chunk id, the Work, the merged Editions and the Work's
 other Chunks in the pool.
@@ -74,7 +76,9 @@ class Collapsed:
             members.setdefault(self.work_of(self.chunks[chunk_id]), []).append((chunk_id, score))
         ranking, merged = [], {}
         for work_id, ranked in list(members.items())[:k]:
-            shown = min(ranked, key=lambda hit: self._tier(self.chunks[hit[0]]))  # min keeps the best-ranked on a tie
+            section = self.chunks[ranked[0][0]].section_path
+            copies = [hit for hit in ranked if self.chunks[hit[0]].section_path == section]
+            shown = min(copies, key=lambda hit: self._tier(self.chunks[hit[0]]))  # min keeps the best-ranked on a tie
             pinned = self.chunks[shown[0]].pinned_id
             others = [chunk_id for chunk_id, _ in ranked if chunk_id != shown[0]]
             editions = dict.fromkeys(self.chunks[chunk_id].pinned_id for chunk_id in others if self.chunks[chunk_id].pinned_id != pinned)
