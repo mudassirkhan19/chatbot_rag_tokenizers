@@ -125,7 +125,7 @@ A marker in an answer that names one retrieved Chunk by its Citation anchor, so 
 _Avoid_: Reference (that is a bibliography entry), source, link
 
 **Grounded**:
-An answer every Citation of which resolves to a Chunk retrieved for its Turn, and every number of which appears in a cited Chunk.
+An answer that cites at least one Chunk, every Citation of which resolves to a Chunk retrieved for its Turn, and every number of which appears in a cited Chunk. An Abstention is neither grounded nor not.
 _Avoid_: Faithful, supported, hallucination-free
 
 **Abstention**:
