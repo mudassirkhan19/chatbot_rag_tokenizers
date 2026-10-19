@@ -191,18 +191,19 @@ just evaluate     # score the retrievers on the Evaluation set and write the eva
     - **mostly numeric**: a text Chunk with more than 35% of its words numbers, as the parse report counts them, with how many of these slots hold a Passage;
   - duplicates and restatement only over the questions whose top 5 Editions all have a Work group, and the list of Editions that have none;
   - one line per question: its type, the rank of its first hit, the Passages found in the top 5, and its duplicate, restatement and mostly-numeric slots (`ungrouped` when an Edition in its top 5 has no Work group);
-  - timings, last: each retriever's index build time and device, and its query latency (p50 and p95) and device.
+  - the Comparison (ADR 0060): each retriever against the baseline named in `[comparison]` of the retrieval config (`dense.bge-small`), each `+collapsed` twin against the baseline's twin, over the answerable questions as a user asks them. Per metric (Recall@5 and MRR@10), it gives the questions won, tied and lost, a 95% percentile bootstrap interval on the mean and on the paired difference from the baseline (10,000 resamples, seed 55, the same draws for every retriever), and "within noise" when the difference's interval holds 0. It also gives the rank of each question's first hit, one column per retriever. It names no winner. `evaluate` stops if the baseline isn't among the retrievers it scores;
+  - the Cost table, last: each retriever's parameters, vector dimension and index size on disk (a hybrid's are its members' summed), its index build time and device, and its query latency (p50 and p95) and device.
 - **Scoring rules.**
   - Each follow-up is scored three ways, in separate rows: alone, after its history, and as its reference rewrite.
   - Unanswerable questions are left out of the metrics.
   - A Chunk holds a Passage when at least 65% of the quote's words match the Chunk's in order, and every number in the quote matches (ADR 0041), whichever Edition the Chunk comes from. Before matching, unicode, case, whitespace and hyphenation are normalised and citations are dropped. The 65% was calibrated on three CC BY Seeds with several Versions; `hack/calibrate_matcher.py` reruns the sweep from `data/eval/calibration.jsonl`.
-- **Reproducible.** Two runs on the same index give the same report apart from the timings section.
+- **Reproducible.** Two runs on the same index give the same report apart from the times in the Cost table.
 
 The committed Evaluation set has 36 checked questions (ADR 0046), and the committed eval report is the baseline over the full corpus.
 
 ## Reproduce the baseline
 
-The baseline eval report (`data/eval/eval-report.md`) gives the "before" numbers for BM25, the dense baseline and their hybrid (ADR 0058), each with its `+collapsed` twin, on the full corpus and the 36-question Evaluation set. These numbers are Recall@5, MRR@10 and Hit@5 per question type and per follow-up mode, the duplicate, restatement and mostly-numeric shares of the top 5, and build time and latency. To reproduce it from a clone:
+The baseline eval report (`data/eval/eval-report.md`) gives the "before" numbers for BM25, the dense baseline and their hybrid (ADR 0058), each with its `+collapsed` twin, on the full corpus and the 36-question Evaluation set. These numbers are Recall@5, MRR@10 and Hit@5 per question type and per follow-up mode, the duplicate, restatement and mostly-numeric shares of the top 5, the Comparison with bge-small (wins, ties, losses and paired bootstrap intervals), and each retriever's size, build time and latency. To reproduce it from a clone:
 
 ```sh
 just init        # dependencies, the pinned GROBID image and the judge model
@@ -211,10 +212,10 @@ just grobid-up   # start GROBID on localhost
 just parse       # every recorded file into Chunks (about 1.5 h on an Apple-silicon laptop)
 just index --retriever hybrid.bm25+bge-small   # BM25 (about 10 s), the dense baseline (14 to 22 min on MPS) and their hybrid
 just evaluate --retriever bm25 --retriever dense.bge-small --retriever hybrid.bm25+bge-small   # rewrites data/eval/eval-report.md
-git diff --stat data/   # only the report's Timings section differs
+git diff --stat data/   # only the times in the report's Cost table differ
 ```
 
-`evaluate` reads the committed Evaluation set and Work groups. On an unchanged index it writes the same report every time apart from the timings, and `git diff` shows only the latency and build-time lines. The parse report and index record are committed, so `parse` and `index` also show whether the corpus you rebuilt matches the committed one.
+`evaluate` reads the committed Evaluation set and Work groups. On an unchanged index it writes the same report every time apart from the timings, and `git diff` shows only the latency cells of the Cost table. The parse report and index record are committed, so `parse` and `index` also show whether the corpus you rebuilt matches the committed one.
 
 ## Chat with the corpus
 
