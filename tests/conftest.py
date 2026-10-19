@@ -200,6 +200,7 @@ class FakeEmbedder:
         self.model = model
         self.revision = revision
         self.device = "cpu"
+        self.parameters = self.DIMENSIONS * 30522  # as if it had a weight per dimension per word of BERT's vocabulary
 
     def embed(self, texts: Sequence[str]) -> np.ndarray:
         vectors = np.zeros((len(texts), self.DIMENSIONS), dtype=np.float32)

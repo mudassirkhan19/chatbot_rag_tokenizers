@@ -132,6 +132,106 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | all answerable | as asked, follow-ups alone | 28 | 0.39 | 0.277 | 0.43 |
 | unanswerable | left out | 8 | — | — | — |
 
+## Comparison
+
+Each retriever against the baseline, dense.bge-small, and each `+collapsed` twin against dense.bge-small+collapsed, on the 28 answerable questions as a user asks them (the *all answerable* row's queries). The report names no winner: the decision rule of spec #55 is applied in an ADR.
+
+- Wins, ties and losses count the questions where the retriever's Recall@5 (or reciprocal rank, for MRR@10) is higher than the baseline's, the same, or lower.
+- The intervals are 95% percentile bootstrap intervals: the questions drawn with replacement, 10000 times, by NumPy's default generator seeded with 55. Every retriever is scored on the same draws, so a difference is paired question by question.
+- A difference whose interval holds 0 is within noise.
+
+### Comparison: Recall@5
+
+| Retriever | Baseline | Recall@5 | 95% interval | Difference | Difference's 95% interval | Noise | Wins | Ties | Losses |
+|---|---|---:|---:|---:|---:|---|---:|---:|---:|
+| bm25 | dense.bge-small | 0.16 | [0.04, 0.30] | -0.14 | [-0.32, +0.02] | within noise | 2 | 20 | 6 |
+| bm25+collapsed | dense.bge-small+collapsed | 0.20 | [0.07, 0.34] | -0.18 | [-0.36, +0.00] | within noise | 2 | 19 | 7 |
+| dense.bge-small | dense.bge-small | 0.30 | [0.14, 0.48] | +0.00 | [+0.00, +0.00] | within noise | 0 | 28 | 0 |
+| dense.bge-small+collapsed | dense.bge-small+collapsed | 0.38 | [0.20, 0.55] | +0.00 | [+0.00, +0.00] | within noise | 0 | 28 | 0 |
+| hybrid.bm25+bge-small | dense.bge-small | 0.34 | [0.18, 0.52] | +0.04 | [-0.09, +0.16] | within noise | 3 | 23 | 2 |
+| hybrid.bm25+bge-small+collapsed | dense.bge-small+collapsed | 0.39 | [0.21, 0.57] | +0.01 | [-0.14, +0.16] | within noise | 4 | 21 | 3 |
+
+### Comparison: MRR@10
+
+| Retriever | Baseline | MRR@10 | 95% interval | Difference | Difference's 95% interval | Noise | Wins | Ties | Losses |
+|---|---|---:|---:|---:|---:|---|---:|---:|---:|
+| bm25 | dense.bge-small | 0.118 | [0.033, 0.228] | -0.126 | [-0.284, +0.025] | within noise | 4 | 13 | 11 |
+| bm25+collapsed | dense.bge-small+collapsed | 0.138 | [0.048, 0.250] | -0.133 | [-0.286, +0.015] | within noise | 4 | 11 | 13 |
+| dense.bge-small | dense.bge-small | 0.244 | [0.114, 0.393] | +0.000 | [+0.000, +0.000] | within noise | 0 | 28 | 0 |
+| dense.bge-small+collapsed | dense.bge-small+collapsed | 0.271 | [0.142, 0.418] | +0.000 | [+0.000, +0.000] | within noise | 0 | 28 | 0 |
+| hybrid.bm25+bge-small | dense.bge-small | 0.257 | [0.127, 0.400] | +0.013 | [-0.091, +0.111] | within noise | 6 | 17 | 5 |
+| hybrid.bm25+bge-small+collapsed | dense.bge-small+collapsed | 0.277 | [0.146, 0.421] | +0.005 | [-0.099, +0.105] | within noise | 7 | 14 | 7 |
+
+### First hit: raw ranking
+
+The rank of each question's first hit within the top 10, by retriever.
+
+| Question | Type | bm25 | dense.bge-small | hybrid.bm25+bge-small |
+|---|---|---:|---:|---:|
+| wechsel-freezing | single-paper | 5 | 2 | 1 |
+| sentencepiece-whitespace | single-paper | none | 4 | none |
+| bpe-dropout-rate | single-paper | 8 | 2 | 1 |
+| bpe-cyrillic | single-paper | none | 1 | 4 |
+| canine-amharic | single-paper | 1 | 1 | 1 |
+| byt5-span-length | single-paper | none | 6 | 6 |
+| digits-right-to-left | single-paper | none | none | none |
+| llama2-70b-vocabulary | single-paper | 2 | none | 2 |
+| xlm-r-tokens-per-language | single-paper | none | 1 | 3 |
+| magikarp-verified-share | single-paper | none | none | none |
+| superbpe-curriculum | single-paper | none | 8 | 5 |
+| fast-wordpiece-speed | single-paper | 4 | 1 | 1 |
+| bpe-and-wechsel-vocabularies | multi-paper | 10 | none | 2 |
+| compression-and-accuracy | multi-paper | none | none | none |
+| one-sided-regularization | multi-paper | 8 | none | 7 |
+| tokenizer-swap-budget | multi-paper | 1 | none | none |
+| megabyte-and-blt-patches | multi-paper | none | 10 | none |
+| api-cost-by-language | multi-paper | none | 5 | 9 |
+| renyi-efficiency | multi-paper | none | none | none |
+| gpt-4-number-tokens | multi-paper | none | none | none |
+| wechsel-neighbours | follow-up | none | none | none |
+| canine-hashing | follow-up | none | none | none |
+| digits-fourth-digit | follow-up | none | none | none |
+| vocabulary-with-scarce-data | follow-up | none | none | none |
+| code-tokenizer-initialisation | follow-up | none | none | none |
+| magikarp-norm-indicator | follow-up | none | none | none |
+| superbpe-mmlu | follow-up | none | none | none |
+| tokenization-latency | follow-up | none | 1 | 1 |
+
+### First hit: Collapsed ranking
+
+The rank of each question's first hit within the top 10, by retriever.
+
+| Question | Type | bm25+collapsed | dense.bge-small+collapsed | hybrid.bm25+bge-small+collapsed |
+|---|---|---:|---:|---:|
+| wechsel-freezing | single-paper | 3 | 2 | 1 |
+| sentencepiece-whitespace | single-paper | none | 3 | none |
+| bpe-dropout-rate | single-paper | 5 | 2 | 1 |
+| bpe-cyrillic | single-paper | none | 1 | 4 |
+| canine-amharic | single-paper | 1 | 1 | 1 |
+| byt5-span-length | single-paper | none | 3 | 3 |
+| digits-right-to-left | single-paper | none | none | none |
+| llama2-70b-vocabulary | single-paper | 2 | none | 2 |
+| xlm-r-tokens-per-language | single-paper | none | 1 | 2 |
+| magikarp-verified-share | single-paper | none | 3 | none |
+| superbpe-curriculum | single-paper | none | 7 | 5 |
+| fast-wordpiece-speed | single-paper | 2 | 1 | 1 |
+| bpe-and-wechsel-vocabularies | multi-paper | 6 | none | 2 |
+| compression-and-accuracy | multi-paper | none | 8 | none |
+| one-sided-regularization | multi-paper | 6 | none | 4 |
+| tokenizer-swap-budget | multi-paper | 1 | none | 10 |
+| megabyte-and-blt-patches | multi-paper | none | 8 | none |
+| api-cost-by-language | multi-paper | none | 5 | 9 |
+| renyi-efficiency | multi-paper | none | none | none |
+| gpt-4-number-tokens | multi-paper | none | none | none |
+| wechsel-neighbours | follow-up | none | none | none |
+| canine-hashing | follow-up | none | none | none |
+| digits-fourth-digit | follow-up | none | none | none |
+| vocabulary-with-scarce-data | follow-up | none | none | none |
+| code-tokenizer-initialisation | follow-up | none | none | none |
+| magikarp-norm-indicator | follow-up | none | none | none |
+| superbpe-mmlu | follow-up | none | none | none |
+| tokenization-latency | follow-up | none | 1 | 1 |
+
 ## Crowding
 
 What takes the top 5 slots of each answerable question, as a user would ask it (the *all answerable* row's queries), on the raw ranking and on the Collapsed ranking (ADR 0044). Both are measured against the same Work groups, never the manifest's work_id the collapse uses.
@@ -660,13 +760,15 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | vitamin-d | unanswerable | as asked | left out | — | — | — | — | 2510.15346v2 + 2510.15346v1; 2510.15346v2 + 2510.15346v1; 2502.03275v2 + 2502.03275v1; 2510.15346v2 + 2510.15346v1; 2510.15346v2 + 2510.15346v1 |
 | world-cup-2018 | unanswerable | as asked | left out | — | — | — | — | 2408.07065v1; 2106.06297v1; 2205.05093v1; 2607.17689v1; 2205.05093v1 |
 
-## Timings
+## Cost
 
-These depend on the machine and change from run to run.
+Each retriever's model and index, with how long the index took to build and each query took. A hybrid's parameters, dimension and index are its members' summed (BM25 has no model and no vectors), and its build time is theirs; a `+collapsed` twin uses its retriever's index. The times depend on the machine and change from run to run.
 
-- bm25: index built on cpu in 9.35 s; 52 queries on cpu, latency p50 199.47 ms, p95 301.20 ms
-- bm25+collapsed: index built on cpu in 9.35 s; 52 queries on cpu, latency p50 197.44 ms, p95 301.91 ms
-- dense.bge-small: index built on mps in 1318.64 s; 52 queries on mps, latency p50 28.50 ms, p95 34.16 ms
-- dense.bge-small+collapsed: index built on mps in 1318.64 s; 52 queries on mps, latency p50 28.27 ms, p95 29.79 ms
-- hybrid.bm25+bge-small: index built on cpu+mps in 1327.99 s; 52 queries on cpu+mps, latency p50 230.88 ms, p95 347.29 ms
-- hybrid.bm25+bge-small+collapsed: index built on cpu+mps in 1327.99 s; 52 queries on cpu+mps, latency p50 228.16 ms, p95 353.16 ms
+| Retriever | Parameters | Dimension | Index on disk | Built on | Build time | Queries | Queried on | Latency p50 | Latency p95 |
+|---|---:|---:|---:|---|---:|---:|---|---:|---:|
+| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 199.89 ms | 302.49 ms |
+| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 200.64 ms | 293.33 ms |
+| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 27.91 ms | 30.13 ms |
+| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 27.49 ms | 29.72 ms |
+| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 227.30 ms | 337.43 ms |
+| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 224.83 ms | 337.58 ms |

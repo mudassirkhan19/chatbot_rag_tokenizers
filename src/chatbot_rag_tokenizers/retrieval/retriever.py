@@ -22,6 +22,16 @@ class Retriever(Protocol):
         """Where it computes: "cpu", or "mps" for a model on Apple silicon."""
         ...
 
+    @property
+    def parameters(self) -> int | None:
+        """Its model's parameter count; None for BM25, which has no model."""
+        ...
+
+    @property
+    def dimension(self) -> int | None:
+        """The length of its vectors; None for BM25, which has none."""
+        ...
+
     def query(self, text: str, k: int) -> list[tuple[str, float]]:
         """The ids of at most k Chunks for the text, best first, with their scores."""
         ...

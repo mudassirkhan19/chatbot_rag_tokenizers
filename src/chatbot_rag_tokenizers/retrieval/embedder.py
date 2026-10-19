@@ -46,6 +46,7 @@ class Embedder(Protocol):
     model: str
     revision: str
     device: str  # "mps" or "cpu"
+    parameters: int  # the model's, as the eval report gives its size
 
     def embed(self, texts: Sequence[str]) -> np.ndarray:
         """One L2-normalised float32 row per text, in the texts' order."""
@@ -82,6 +83,7 @@ class TransformersEmbedder:
             settings.model, revision=settings.revision, dtype=torch.float32, use_safetensors=weights.name == WEIGHTS[0], output_loading_info=True
         )
         check_loading(settings.model, loading)
+        self.parameters = sum(parameter.numel() for parameter in network.parameters())
         # transformers types .to() as taking a model, not a device.
         self._network = network.to(device).eval()  # type: ignore[arg-type]
         # The first pass on MPS compiles its kernels; doing it here keeps that out of the first query's latency.

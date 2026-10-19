@@ -8,9 +8,11 @@ from pathlib import Path
 
 from ..retrieval import index
 from ..retrieval.collapse import Collapsed
+from ..retrieval.config import ComparisonConfig
 from ..retrieval.corpus import Corpus
 from ..retrieval.retriever import RetrieverConfig
 from .check import check
+from .comparison import check_baseline
 from .crowding import ungrouped
 from .evalset import EvaluationSetError, Question, load_evaluation_set
 from .grouping import score_grouping
@@ -43,11 +45,14 @@ def evaluate(
     manifest: Iterable[Mapping[str, str]],
     work_groups: Path,
     pool: int,
+    comparison: ComparisonConfig,
     export: Path | None = None,
 ) -> None:
     """Raises EvaluationSetError for a set that fails `eval-check` (ADR 0041), WorkGroupsError for a malformed Work
-    groups file and index.IndexMissing when a retriever isn't built. `pool` is the raw Chunks each Collapsed ranking
+    groups file, BaselineMissing when the Comparison's baseline isn't one of `configs` and index.IndexMissing when a
+    retriever isn't built. `pool` is the raw Chunks each Collapsed ranking
     merges copies in. With `export`, also writes there every Edition in a top 5 that has no Work group."""
+    check_baseline(comparison.baseline, [config.name for config in configs])
     rows = {row["edition_id"]: row for row in manifest}
     works = Works(rows.values())
     groups = load_work_groups(work_groups)
@@ -78,5 +83,5 @@ def evaluate(
         print(f"evaluate: {editions} without a Work group exported to {export}")
     digest = hashlib.sha256(evaluation_set.read_bytes()).hexdigest()
     grouping = score_grouping(groups.editions, rows)
-    write_eval_report(report, evaluation_set, digest, questions, corpus, runs, rule, groups, grouping, missing)
+    write_eval_report(report, evaluation_set, digest, questions, corpus, runs, rule, groups, grouping, missing, comparison)
     print(f"evaluate: {len(questions)} questions; report in {report}")

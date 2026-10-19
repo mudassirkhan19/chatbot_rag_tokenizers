@@ -79,6 +79,14 @@ class Dense:
     def device(self) -> str:
         return self._embedder.device
 
+    @property
+    def parameters(self) -> int:
+        return self._embedder.parameters
+
+    @property
+    def dimension(self) -> int:
+        return self.vectors.shape[1]
+
     def save(self, directory: Path) -> None:
         directory.mkdir(parents=True, exist_ok=True)
         partial = directory / (_VECTORS + ".partial")

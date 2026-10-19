@@ -2,9 +2,10 @@
 
 It names what was scored (the Evaluation set, the chunking config and corpus, each retriever's settings),
 then gives a results table per retriever and question type, each retriever's raw ranking followed by its
-Collapsed ranking (ADR 0053), what crowds the top 5 (ADR 0044), the grouping rule scored against the Work
-groups (ADR 0060) and a line per question. Everything above the timings, which come last, depends only on the inputs, so two runs on the same index give the same report
-up to that section.
+Collapsed ranking (ADR 0053), the Comparison against a baseline (ADR 0061), what crowds the top 5 (ADR 0044),
+the grouping rule scored against the Work groups (ADR 0060) and a line per question, then the Cost table. Everything
+above the Cost table, which comes last, depends only on the inputs, so two runs on the same index give the same
+report up to that section, and the Cost table differs only in its times.
 """
 
 import statistics
@@ -13,10 +14,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..retrieval.collapse import SUFFIX
+from ..retrieval.config import ComparisonConfig
 from ..retrieval.corpus import Corpus
 from ..retrieval.index import Index
 from ..retrieval.retriever import RetrieverConfig
 from ..parsing.report import NUMERIC_SHARE
+from .comparison import CONFIDENCE, compare, draws
 from .crowding import Share, crowding, totals
 from .evalset import QUESTION_TYPES, Question
 from .grouping import GroupingScore
@@ -34,6 +37,8 @@ from .harness import (
     Scored,
     all_answerable,
     metrics,
+    recall,
+    reciprocal_rank,
 )
 from .work_groups import WorkGroup, WorkGroups
 
@@ -64,6 +69,7 @@ def write_eval_report(
     groups: WorkGroups,
     grouping: GroupingScore | None,
     ungrouped: Sequence[str],
+    comparison: ComparisonConfig,
 ) -> None:
     counts = ", ".join(f"{sum(1 for q in questions if q.type == kind)} {kind}" for kind in QUESTION_TYPES)
     lines = [
@@ -115,6 +121,7 @@ def write_eval_report(
         "## Results",
         "",
         *[line for run in runs for line in _results(run)],
+        *_comparison(runs, comparison),
         "## Crowding",
         "",
         f"What takes the top {CROWDING_DEPTH} slots of each answerable question, as a user would ask it (the *all answerable*"
@@ -150,11 +157,16 @@ def write_eval_report(
         " after a +.",
         "",
         *[line for run in runs for line in _questions(run, groups.editions)],
-        "## Timings",
+        "## Cost",
         "",
-        "These depend on the machine and change from run to run.",
+        "Each retriever's model and index, with how long the index took to build and each query took. A hybrid's"
+        " parameters, dimension and index are its members' summed (BM25 has no model and no vectors), and its build"
+        f" time is theirs; a `{SUFFIX}` twin uses its retriever's index. The times depend on the machine and change"
+        " from run to run.",
         "",
-        *[_timings(run) for run in runs],
+        "| Retriever | Parameters | Dimension | Index on disk | Built on | Build time | Queries | Queried on | Latency p50 | Latency p95 |",
+        "|---|---:|---:|---:|---|---:|---:|---|---:|---:|",
+        *[_cost(run) for run in runs],
     ]
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
@@ -189,6 +201,72 @@ def _results(run: RetrieverRun) -> list[str]:
         lines.append(f"| {kind} | {query} | {len(scored)} | {' | '.join(cells)} |")
     lines.append(f"| unanswerable | left out | {unanswerable} | {NONE} | {NONE} | {NONE} |")
     return [*lines, ""]
+
+
+def _comparison(runs: Sequence[RetrieverRun], config: ComparisonConfig) -> list[str]:
+    by_name = {run.name: run for run in runs}
+
+    def baseline(run: RetrieverRun) -> RetrieverRun:
+        return by_name[config.baseline + (SUFFIX if run.pool else "")]
+
+    questions = len(all_answerable(by_name[config.baseline].scored))
+    lines = [
+        "## Comparison",
+        "",
+        f"Each retriever against the baseline, {config.baseline}, and each `{SUFFIX}` twin against {config.baseline}{SUFFIX},"
+        f" on the {questions} answerable questions as a user asks them (the *all answerable* row's queries). The report"
+        " names no winner: the decision rule of spec #55 is applied in an ADR.",
+        "",
+        "- Wins, ties and losses count the questions where the retriever's Recall@5 (or reciprocal rank, for MRR@10) is"
+        " higher than the baseline's, the same, or lower.",
+        f"- The intervals are {CONFIDENCE:.0%} percentile bootstrap intervals: the questions drawn with replacement,"
+        f" {config.resamples} times, by NumPy's default generator seeded with {config.seed}. Every retriever is scored on the"
+        " same draws, so a difference is paired question by question.",
+        "- A difference whose interval holds 0 is within noise.",
+        "",
+    ]
+    if not questions:
+        return [*lines, "No answerable questions to compare on.", ""]
+    drawn = draws(questions, config.resamples, config.seed)
+    for metric, measure, digits in ((f"Recall@{RECALL_DEPTH}", recall, 2), (f"MRR@{MRR_DEPTH}", reciprocal_rank, 3)):
+        lines += [
+            f"### Comparison: {metric}",
+            "",
+            f"| Retriever | Baseline | {metric} | {CONFIDENCE:.0%} interval | Difference | Difference's {CONFIDENCE:.0%} interval | Noise | Wins | Ties | Losses |",
+            "|---|---|---:|---:|---:|---:|---|---:|---:|---:|",
+        ]
+        for run in runs:
+            compared = compare(run.scored, baseline(run).scored, measure, drawn)
+            low, high = compared.difference_interval.low, compared.difference_interval.high
+            cells = [
+                baseline(run).name,
+                f"{compared.mean:.{digits}f}",
+                f"[{compared.interval.low:.{digits}f}, {compared.interval.high:.{digits}f}]",
+                f"{compared.difference:+.{digits}f}",
+                f"[{low:+.{digits}f}, {high:+.{digits}f}]",
+                "within noise" if compared.within_noise else "beyond noise",
+                str(compared.wins),
+                str(compared.ties),
+                str(compared.losses),
+            ]
+            lines.append(f"| {run.name} | {' | '.join(cells)} |")
+        lines.append("")
+    for ranking, chosen in (("raw ranking", [run for run in runs if not run.pool]), ("Collapsed ranking", [run for run in runs if run.pool])):
+        columns = [all_answerable(run.scored) for run in chosen]
+        lines += [
+            f"### First hit: {ranking}",
+            "",
+            f"The rank of each question's first hit within the top {MRR_DEPTH}, by retriever.",
+            "",
+            "| " + " | ".join(["Question", "Type", *(run.name for run in chosen)]) + " |",
+            "|---|---|" + "---:|" * len(chosen),
+            *[
+                f"| {row[0].question.id} | {row[0].question.type} | {' | '.join(str(s.first_hit or 'none') for s in row)} |"
+                for row in zip(*columns)
+            ],
+            "",
+        ]
+    return lines
 
 
 def _crowding(run: RetrieverRun, groups: Mapping[str, WorkGroup]) -> list[str]:
@@ -319,10 +397,23 @@ def _count_or_ungrouped(count: int | None) -> str:
     return "ungrouped" if count is None else str(count)
 
 
-def _timings(run: RetrieverRun) -> str:
+def _cost(run: RetrieverRun) -> str:
+    retriever = run.index.retriever
     milliseconds = sorted(s.seconds * 1000 for s in run.scored)
     p95 = statistics.quantiles(milliseconds, n=20, method="inclusive")[-1] if len(milliseconds) > 1 else milliseconds[0]
-    return (
-        f"- {run.name}: index built on {run.index.build_device} in {run.index.build_seconds:.2f} s; {len(milliseconds)}"
-        f" queries on {run.index.retriever.device}, latency p50 {statistics.median(milliseconds):.2f} ms, p95 {p95:.2f} ms"
-    )
+    cells = [
+        NONE if retriever.parameters is None else f"{retriever.parameters / 1e6:.1f}M",
+        NONE if retriever.dimension is None else str(retriever.dimension),
+        _size(run.index.disk_bytes),
+        run.index.build_device,
+        f"{run.index.build_seconds:.2f} s",
+        str(len(milliseconds)),
+        retriever.device,
+        f"{statistics.median(milliseconds):.2f} ms",
+        f"{p95:.2f} ms",
+    ]
+    return f"| {run.name} | {' | '.join(cells)} |"
+
+
+def _size(count: int) -> str:
+    return f"{count / 1e6:.1f} MB" if count >= 1e6 else f"{count / 1e3:.1f} kB"

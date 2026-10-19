@@ -170,7 +170,9 @@ def test_retriever_names_one_dense_model_and_only_that_one_is_built_and_scored(c
     run_index(corpus, options=("--retriever", name))
 
     assert list(index_folders(corpus)) == [name]
-    report = run_evaluate(corpus, options=("--retriever", name))
+    # The Comparison's baseline is scored too, so it is built too.
+    run_index(corpus, options=("--retriever", "dense.bge-small"))
+    report = run_evaluate(corpus, options=("--retriever", "dense.bge-small", "--retriever", name))
     assert f"### Results: {name}" in report and "### Results: bm25" not in report
 
 
@@ -326,6 +328,12 @@ def crowding(report: str) -> dict[str, list[str]]:
     return {row[0]: row[1:] for row in table(report, "### Crowding: bm25")}
 
 
+def cost(report: str) -> dict[str, list[str]]:
+    """The Cost table: retriever to [parameters, dimension, index on disk, built on, build time, queries, queried on,
+    latency p50, latency p95]."""
+    return {row[0]: row[1:] for row in table(report, "## Cost")}
+
+
 def listed(report: str, heading: str) -> list[str]:
     """The last paragraph of a section: its list, or "None."."""
     return report.split(f"\n{heading}\n", 1)[1].split("\n## ", 1)[0].strip().split("\n\n")[-1].splitlines()
@@ -389,8 +397,12 @@ def test_two_runs_give_the_same_report_apart_from_timings(indexed):
     first = run_evaluate(indexed, report="first.md")
     second = run_evaluate(indexed, report="second.md")
 
-    assert "## Timings" in first and "## Grouping" in first.split("## Timings")[0]
-    assert first.split("## Timings")[0] == second.split("## Timings")[0]
+    # The Comparison's intervals are drawn from a seeded generator, so they are the same too.
+    assert "## Comparison" in first.split("## Cost")[0] and "## Grouping" in first.split("## Cost")[0]
+    assert first.split("## Cost")[0] == second.split("## Cost")[0]
+    # The Cost table differs only in its times.
+    untimed = {name: row[:4] + row[5:7] for name, row in cost(first).items()}
+    assert untimed == {name: row[:4] + row[5:7] for name, row in cost(second).items()}
 
 
 def test_evaluate_says_when_the_index_has_not_been_built(corpus):
@@ -407,11 +419,10 @@ def test_the_report_records_the_dense_model_pin_and_each_retrievers_device(index
     assert "  - model: `BAAI/bge-small-en-v1.5`" in retrievers
     assert "  - revision: `5c38ec7c405ec4b44b94cc5a9bb96e735b38267a`" in retrievers
     assert "  - model_sha256: `3c9f31665447c8911517620762200d2245a2518d6e7208acc78cd9db317e21ad`" in retrievers
-    timings = report.split("## Timings\n", 1)[1]
     # The fake embedder runs on the CPU, as BM25 does.
     for name in ("bm25", "dense.bge-small"):
-        [line] = [line for line in timings.splitlines() if line.startswith(f"- {name}:")]
-        assert "index built on cpu in " in line and " queries on cpu, latency p50 " in line and ", p95 " in line
+        row = cost(report)[name]
+        assert (row[3], row[6]) == ("cpu", "cpu")
 
 
 # BM25's top 5 for vocabulary-sizes: the BPE paper, the BPE paper, WECHSEL, then two mostly-numeric BPE Chunks
@@ -741,7 +752,7 @@ def test_evaluate_scores_a_hybrid_in_every_table_and_records_its_members_k_and_p
     run_index(corpus, options=("--retriever", name))
     folders = index_folders(corpus)
 
-    report = run_evaluate(corpus, options=("--retriever", name))
+    report = run_evaluate(corpus, options=("--retriever", "dense.bge-small", "--retriever", name))
 
     for heading in ("Results", "Crowding", "Questions"):
         assert len(table(report, f"### {heading}: {name}")) > 1
@@ -750,8 +761,8 @@ def test_evaluate_scores_a_hybrid_in_every_table_and_records_its_members_k_and_p
     assert f"- {name}: `{folders[name].name}`" in retrievers
     assert f"  - members: `bm25 ({bm25}), dense.bge-small ({bge_small})`" in retrievers
     assert "  - k: `60`" in retrievers and "  - pool: `100`" in retrievers
-    [timing] = [line for line in report.split("## Timings\n", 1)[1].splitlines() if line.startswith(f"- {name}:")]
-    assert "index built on cpu in " in timing and " queries on cpu, latency p50 " in timing
+    row = cost(report)[name]
+    assert (row[3], row[6]) == ("cpu", "cpu") and row[7].endswith(" ms")
 
 
 def test_evaluate_says_when_a_member_of_a_hybrid_has_no_index(corpus):
@@ -759,7 +770,7 @@ def test_evaluate_says_when_a_member_of_a_hybrid_has_no_index(corpus):
     shutil.rmtree(index_folders(corpus)["dense.bge-small"])
 
     with pytest.raises(SystemExit) as stopped:
-        run_evaluate(corpus, options=("--retriever", "hybrid.bm25+bge-small"))
+        run_evaluate(corpus, options=("--retriever", "dense.bge-small", "--retriever", "hybrid.bm25+bge-small"))
 
     assert "no dense.bge-small index" in str(stopped.value) and "just index" in str(stopped.value)
 
@@ -781,10 +792,10 @@ def test_every_retriever_gets_a_collapsed_twin_in_every_table(indexed):
             f"### {section}: {name}{twin}" for name in names for twin in ("", "+collapsed")
         ]
     retrievers = report.split("## Retrievers\n", 1)[1].split("\n## ", 1)[0]
-    timings = report.split("## Timings\n", 1)[1]
+    assert list(cost(report)) == [f"{name}{twin}" for name in names for twin in ("", "+collapsed")]
     for name in names:
         assert f"- {name}+collapsed: {name}'s index, with copies from other files of a Work merged" in retrievers
-        assert f"- {name}+collapsed: index built on cpu" in timings
+        assert cost(report)[f"{name}+collapsed"][3] == "cpu"
 
 
 def collapsed_lines(report: str, retriever: str = "bm25") -> dict[tuple[str, str], list[str]]:
@@ -939,11 +950,10 @@ def test_a_hybrids_build_time_is_its_members_build_time_now_not_when_its_record_
     record = index_folders(corpus)["dense.bge-small"] / "index.json"
     record.write_text(json.dumps({**json.loads(record.read_text()), "build_seconds": 1000.0}))
 
-    report = run_evaluate(corpus, options=("--retriever", name))
+    report = run_evaluate(corpus, options=("--retriever", "dense.bge-small", "--retriever", name))
 
     bm25 = json.loads((index_folders(corpus)["bm25"] / "index.json").read_text())["build_seconds"]
-    [timing] = [line for line in report.split("## Timings\n", 1)[1].splitlines() if line.startswith(f"- {name}:")]
-    assert f"index built on cpu in {bm25 + 1000:.2f} s;" in timing
+    assert cost(report)[name][3:5] == ["cpu", f"{bm25 + 1000:.2f} s"]
 
 
 @pytest.fixture
@@ -977,3 +987,138 @@ def test_a_canonical_editions_other_text_never_stands_in_for_a_retrieved_chunk(w
     [line] = [row for row in table(report, "### Questions: bm25+collapsed") if row[0] == "f1-differences"]
     assert line[3] == "1"
     assert line[8].startswith("1508.07909v5; ") and "+" not in line[8].split(";")[0]
+
+
+# The Comparison (#59): every retriever against the baseline, with wins, ties, losses and paired bootstrap intervals.
+
+
+def test_evaluate_stops_when_the_baseline_is_not_among_the_retrievers_it_scores(corpus):
+    run_index(corpus, options=("--retriever", "bm25"))
+
+    with pytest.raises(SystemExit) as stopped:
+        run_evaluate(corpus, options=("--retriever", "bm25"))
+
+    assert str(stopped.value) == (
+        "evaluate: the Comparison's baseline, dense.bge-small, is not among the retrievers scored (bm25); add"
+        " `--retriever dense.bge-small`, or name another baseline in [comparison] of the retrieval config"
+    )
+
+
+@pytest.fixture
+def two_dense(corpus: Path, tmp_path: Path) -> Path:
+    """Every retriever of the repo config plus [dense.other], indexed over the corpus; returns that config."""
+    config = with_two_dense_tables(tmp_path)
+    run_index(corpus, retrieval_config=config)
+    return config
+
+
+def comparison(report: str, metric: str) -> dict[str, list[str]]:
+    """A Comparison table: retriever to [baseline, mean, its interval, difference, its interval, noise, wins, ties, losses]."""
+    return {row[0]: row[1:] for row in table(report, f"### Comparison: {metric}")}
+
+
+def per_question(report: str, name: str, column: int) -> list[str]:
+    """One column of a retriever's line per question, over the answerable questions as a user asks them."""
+    rows = table(report, f"### Questions: {name}")
+    return [row[column] for row in rows if row[2] in ("as asked", "follow-up alone") and row[3] != "left out"]
+
+
+def recall(found: str) -> float:
+    held, of = found.split("/")
+    return int(held) / int(of)
+
+
+def reciprocal_rank(first_hit: str) -> float:
+    return 0.0 if first_hit == "none" else 1 / int(first_hit)
+
+
+def test_the_comparison_counts_wins_ties_and_losses_against_the_baseline_as_the_question_lines_do(corpus, two_dense):
+    report = run_evaluate(corpus, retrieval_config=two_dense)
+
+    runs = [line.removeprefix("### Results: ") for line in headings(report) if line.startswith("### Results: ")]
+    for metric, column, value in (("Recall@5", 4, recall), ("MRR@10", 3, reciprocal_rank)):
+        rows = comparison(report, metric)
+        assert list(rows) == runs
+        for name in runs:
+            baseline = "dense.bge-small+collapsed" if name.endswith("+collapsed") else "dense.bge-small"
+            assert rows[name][0] == baseline
+            pairs = list(zip(map(value, per_question(report, name, column)), map(value, per_question(report, baseline, column))))
+            counts = [sum(1 for ours, theirs in pairs if test(ours, theirs)) for test in (float.__gt__, float.__eq__, float.__lt__)]
+            assert rows[name][-3:] == [str(count) for count in counts], (metric, name)
+    # The fake embedder ranks the fixture differently for each model, so some retriever wins or loses a question.
+    assert any(row[-3] != "0" or row[-1] != "0" for row in comparison(report, "Recall@5").values())
+
+
+def interval(cell: str) -> tuple[float, float]:
+    low, high = cell.strip("[]").split(", ")
+    return float(low), float(high)
+
+
+def test_the_baseline_against_itself_differs_by_exactly_zero_and_is_within_noise(indexed):
+    report = run_evaluate(indexed)
+
+    for metric in ("Recall@5", "MRR@10"):
+        rows = comparison(report, metric)
+        for name in ("dense.bge-small", "dense.bge-small+collapsed"):
+            assert rows[name][3:6] == (["+0.00", "[+0.00, +0.00]", "within noise"] if metric == "Recall@5" else ["+0.000", "[+0.000, +0.000]", "within noise"])
+            assert rows[name][6:] == ["0", "4", "0"]
+        for name, row in rows.items():
+            low, high = interval(row[2])
+            assert low <= float(row[1]) <= high, (metric, name)
+            low, high = interval(row[4])
+            assert row[5] == ("within noise" if low <= 0 <= high else "beyond noise"), (metric, name)
+
+
+def test_the_report_gives_the_bootstrap_seed_and_resample_count_and_another_seed_draws_other_intervals(indexed, tmp_path):
+    other = tmp_path / "retrieval-other-seed.toml"
+    other.write_text(RETRIEVAL_CONFIG.read_text().replace("seed = 55", "seed = 56").replace("resamples = 10000", "resamples = 2000"))
+
+    report = run_evaluate(indexed)
+    reseeded = run_evaluate(indexed, report="reseeded.md", retrieval_config=other)
+
+    assert "10000 times, by NumPy's default generator seeded with 55" in report
+    assert "2000 times, by NumPy's default generator seeded with 56" in reseeded
+    # The means and the counts don't depend on the draws; some interval does.
+    for metric in ("Recall@5", "MRR@10"):
+        ours, theirs = comparison(report, metric), comparison(reseeded, metric)
+        assert {name: row[1:2] + row[3:4] + row[6:] for name, row in ours.items()} == {name: row[1:2] + row[3:4] + row[6:] for name, row in theirs.items()}
+    assert any(ours[name][2] != theirs[name][2] for name in ours)
+
+
+def test_the_first_hit_table_has_a_row_per_answerable_question_and_a_column_per_retriever(corpus, two_dense):
+    report = run_evaluate(corpus, retrieval_config=two_dense)
+
+    runs = [line.removeprefix("### Results: ") for line in headings(report) if line.startswith("### Results: ")]
+    for ranking, names in (("raw ranking", [n for n in runs if not n.endswith("+collapsed")]), ("Collapsed ranking", [n for n in runs if n.endswith("+collapsed")])):
+        heading = f"### First hit: {ranking}"
+        header = next(line for line in report.split(f"\n{heading}\n", 1)[1].splitlines() if line.startswith("|"))
+        assert header == "| " + " | ".join(["Question", "Type", *names]) + " |"
+        rows = table(report, heading)
+        # The four answerable questions, the follow-up alone, as a user asks it; the unanswerable one is left out.
+        assert [row[:2] for row in rows] == [["freezing", "single-paper"], ["metrics-miss", "single-paper"], ["vocabulary-sizes", "multi-paper"], ["neighbours", "follow-up"]]
+        for column, name in enumerate(names, start=2):
+            assert [row[column] for row in rows] == per_question(report, name, 3), name
+
+
+def on_disk(folder: Path) -> int:
+    """The bytes of an index's own files, without its record."""
+    return sum(path.stat().st_size for path in folder.iterdir() if path.is_file() and path.name != "index.json")
+
+
+def test_the_cost_table_gives_each_retrievers_parameters_dimension_and_index_size_next_to_its_timings(indexed):
+    report = run_evaluate(indexed)
+
+    rows = cost(report)
+    folders = index_folders(indexed)
+    bm25, bge_small = on_disk(folders["bm25"]), on_disk(folders["dense.bge-small"])
+    # The fake embedder has 64 × 30522 parameters, one per dimension per word of a BERT vocabulary, and 64 dimensions.
+    assert rows["bm25"][:3] == ["—", "—", f"{bm25 / 1000:.1f} kB"]
+    assert rows["dense.bge-small"][:3] == ["2.0M", "64", f"{bge_small / 1000:.1f} kB"]
+    # A hybrid's are its members' summed; BM25 adds an index and no parameters or dimensions.
+    assert rows["hybrid.bm25+bge-small"][:3] == ["2.0M", "64", f"{(bm25 + bge_small) / 1000:.1f} kB"]
+    # A Collapsed ranking is its retriever's index, timed on its own queries.
+    assert rows["dense.bge-small+collapsed"][:5] == rows["dense.bge-small"][:5]
+    built_on, build, queries, queried_on, p50, p95 = rows["dense.bge-small"][3:]
+    # Four questions as asked and one follow-up three ways.
+    assert (built_on, queries, queried_on) == ("cpu", "7", "cpu")
+    assert build.endswith(" s") and p50.endswith(" ms") and p95.endswith(" ms")

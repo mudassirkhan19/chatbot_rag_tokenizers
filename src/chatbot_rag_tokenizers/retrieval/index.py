@@ -40,6 +40,7 @@ class Index:
     retriever: Retriever
     build_seconds: float
     build_device: str
+    disk_bytes: int  # the retriever's files in the cache, without the record; a hybrid's members' summed
 
 
 def directory(root: Path, corpus: Corpus, config: RetrieverConfig) -> Path:
@@ -89,9 +90,15 @@ def load(root: Path, corpus: Corpus, config: RetrieverConfig) -> Index:
     if members:
         # The members as they are now: one rebuilt since the hybrid's record was written keeps that record up to date.
         seconds = sum(member["build_seconds"] for member in members)
-        return Index(config.load(folder), seconds, hybrid.devices(member.get("device", "cpu") for member in members))
+        size = sum(_disk_bytes(directory(root, corpus, member)) for member in _members(config))
+        return Index(config.load(folder), seconds, hybrid.devices(member.get("device", "cpu") for member in members), size)
     # A BM25 index built before records named their device was built in plain Python, on the CPU.
-    return Index(config.load(folder), record["build_seconds"], record.get("device", "cpu"))
+    return Index(config.load(folder), record["build_seconds"], record.get("device", "cpu"), _disk_bytes(folder))
+
+
+def _disk_bytes(folder: Path) -> int:
+    """The size of an index's own files, without its record."""
+    return sum(path.stat().st_size for path in folder.iterdir() if path.is_file() and path.name != _RECORD)
 
 
 def _built(root: Path, corpus: Corpus, config: RetrieverConfig) -> dict[str, Any]:

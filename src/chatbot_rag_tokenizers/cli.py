@@ -16,6 +16,7 @@ from .collection.manifest import read_manifest
 from .collection.pipeline import collect
 from .evaluation import pipeline as evaluation
 from .evaluation.check import check, describe
+from .evaluation.comparison import BaselineMissing
 from .evaluation.config import load_matching_rule
 from .evaluation.evalset import EvaluationSetError, load_evaluation_set
 from .evaluation.matching import MatchingRule
@@ -286,7 +287,7 @@ def main(argv: list[str] | None = None) -> None:
             print("index: the parse report comes from a `--files` run, so no Edition is marked indexed", file=sys.stderr)
     elif args.command == "evaluate":
         corpus, retrievers = _corpus_and_retrievers(args)
-        pool = load_retrieval_config(args.config).collapse_pool
+        retrieval = load_retrieval_config(args.config)
         rule = _matching_rule(args)
         try:
             evaluation.evaluate(
@@ -298,10 +299,11 @@ def main(argv: list[str] | None = None) -> None:
                 rule,
                 read_manifest(args.manifest),
                 args.work_groups,
-                pool,
+                retrieval.collapse_pool,
+                retrieval.comparison,
                 args.export_ungrouped,
             )
-        except (EvaluationSetError, WorkGroupsError, index.IndexMissing) as error:
+        except (EvaluationSetError, WorkGroupsError, index.IndexMissing, BaselineMissing) as error:
             sys.exit(f"evaluate: {error}")
     elif args.command == "chat":
         _chat(args)
