@@ -132,7 +132,7 @@ just evaluate     # score both retrievers on the Evaluation set and write the ev
 - **`index` inputs.**
   - The parse report (`data/parse-report.md`, `--parse-report`) decides which files make up the corpus: every file it lists as parsed.
   - Their Chunks come from the parse cache (`--cache`), under the chunking config in `config/parse.toml` (`--parse-config`).
-  - Each retriever's settings are in `config/retrieval.toml` (`--config`). `--retriever bm25` or `--retriever dense.bge-small` builds only the retrievers named; the default is all of them.
+  - Each retriever's settings are in `config/retrieval.toml` (`--config`). `--retriever bm25` or `--retriever dense.bge-small` builds only the retrievers named, and a hybrid's members with it; the default is all of them.
   - `index` stops with a pointer to `just parse` when the report is missing, when the report was written with another GROBID image or chunking config, when the cache holds no Chunks for the report's files, or when it holds them only under another chunking config.
 - **`index` outputs.** Each index goes to the index cache (`data/index-cache/<chunking key>/<retriever key>/`, `--index-cache`, never committed) with a record of:
   - its settings;
@@ -156,6 +156,10 @@ just evaluate     # score both retrievers on the Evaluation set and write the ev
   - Each query gets the model card's instruction in front ("Represent this sentence for searching relevant passages: "); Chunks don't.
   - A query is scored against every Chunk by exact dot product over the normalised float32 vectors (about 220 MB for the full corpus), with no vector database.
   - **Device.** It runs on MPS when the machine has it, otherwise on the CPU. The two agree to within 1×10⁻⁶ per dimension for each model (2×10⁻⁷ for bge-small, 4×10⁻⁷ for bge-base, 7×10⁻⁷ for OpenScholar), and give the same top 10. The index record and the eval report's timings name the device. On an M1 Max the full corpus embeds at about 200 Chunks/s on MPS against about 50 on the CPU.
+- **The hybrids** answer "should keyword search sit beside vector search?" (ADR 0055). Each `[hybrid.<name>]` table fuses BM25 with one dense table by reciprocal rank fusion, and there is one per dense table: `hybrid.bm25+bge-small`, `hybrid.bm25+bge-base` and `hybrid.bm25+openscholar`.
+  - A table names its `members` (`bm25` and one dense table), the RRF constant `k` (60) and a `pool` (100). A query takes each member's top `pool` Chunks, gives each Chunk the sum of 1 / (`k` + rank) over the members that ranked it, and ranks by that sum. A tie goes to the Chunk the member listed first ranks higher.
+  - A hybrid stores no vectors. Its folder in the index cache holds only its record, which names its members' keys; `index --retriever hybrid.bm25+bge-small` builds any member that is missing first. Its build time is its members' and its latency covers both members' queries and the fusion.
+  - A member that isn't configured, a member that isn't BM25 or a dense table, anything but BM25 plus one dense table, or a `k` or `pool` below 1 stops loading with a message naming the table.
 - **The Evaluation set** (`data/eval/evaluation-set.jsonl`, `--evaluation-set`) has one JSON question per line:
   - its `id`, its `type` (`single-paper`, `multi-paper`, `follow-up` or `unanswerable`), the `question` and its `passages`;
   - each Passage has the pinned `edition_id` of the file it quotes (such as `2112.06598v2`), its `section` as the context header gives it (`5 Results › 5.3 Is freezing necessary?`) and a verbatim `quote`;

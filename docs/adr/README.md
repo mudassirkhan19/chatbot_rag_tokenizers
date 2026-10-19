@@ -59,6 +59,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0052](0052-bge-base-and-openscholar-pinned-and-verified.md) | bge-base and OpenScholar_Retriever pinned, and checked by the opt-in model test | Accepted |
 | [0053](0053-collapsed-ranking-and-collapsed-twins.md) | The Collapsed ranking: one Chunk per Work, scored as a `+collapsed` twin of every retriever | Accepted |
 | [0054](0054-pinned-local-answer-model-and-the-chat-page.md) | The pinned local answer model, the shared Ollama module and the chat page | Accepted |
+| [0055](0055-bm25-dense-hybrids-by-reciprocal-rank-fusion.md) | BM25 + dense hybrids by reciprocal rank fusion, stored as a record that points to their members | Accepted |
 
 ## Template
 
