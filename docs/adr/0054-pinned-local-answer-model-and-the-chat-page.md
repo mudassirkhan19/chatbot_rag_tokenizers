@@ -1,7 +1,7 @@
 # 0054. The pinned local answer model, the shared Ollama module and the chat page
 
 - **Date:** 2026-10-19
-- **Status:** Accepted. Amends [0021](0021-tev1-decision-model-judge.md) (the judge's Ollama code moves to a shared module). Amended by [0055](0055-follow-ups-the-conversation-and-the-rewrite.md): a Turn after the first is a follow-up, retrieved with its Rewrite.
+- **Status:** Accepted. Amends [0021](0021-tev1-decision-model-judge.md) (the judge's Ollama code moves to a shared module). Amended by [0056](0056-follow-ups-the-conversation-and-the-rewrite.md): a Turn after the first is a follow-up, retrieved with its Rewrite.
 
 ## Context
 Spec #63 asks for a grounded chatbot: a question is answered from retrieved Chunks, with Citations to paper and Section, and the bot says so when the corpus doesn't answer. Issue #64 is its first slice: one question to a cited answer on a local page. It needs an answer model, a way to run it that a reviewer can reproduce, and a page.

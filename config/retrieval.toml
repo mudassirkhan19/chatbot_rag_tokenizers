@@ -79,14 +79,14 @@ temperature = 0.0
 # The fixed Abstention sentence: the prompt asks for it word for word, and an answer holding it (compared after
 # the Passage matcher's normalisation) is counted as an Abstention.
 abstention = "The papers in this corpus do not answer this question."
-# Follow-ups (#65, ADR 0055): the answer model is shown the last `history` Turns of the Conversation before this
+# Follow-ups (#65, ADR 0056): the answer model is shown the last `history` Turns of the Conversation before this
 # Turn's question, each as its question and its answer's text without the markers, and the rewriter sees the same
 # Turns. The first Turn of a Conversation skips the rewriter.
 history = 3
 # The rules the answer model is given. {abstention} is replaced by the sentence above. The earlier Turns follow
 # as messages without Chunks, then this Turn's question (its Rewrite on a follow-up) as the user message, with the
 # k Chunks numbered from 1, each under its context header. Wording that names the earlier Turns made the reply
-# vary between identical requests (ADR 0055), so the rules are as ADR 0054 left them.
+# vary between identical requests (ADR 0056), so the rules are as ADR 0054 left them.
 system_prompt = """You answer questions about research papers on tokenization for language models. With each question you get numbered excerpts ("Chunks") from the papers. Follow these rules:
 
 1. Answer only from the Chunks. Do not use anything you know from elsewhere.

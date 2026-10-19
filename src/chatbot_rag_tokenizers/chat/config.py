@@ -1,4 +1,4 @@
-"""The chatbot's config: the `[chat]` table of the retrieval config (ADRs 0054 and 0055).
+"""The chatbot's config: the `[chat]` table of the retrieval config (ADRs 0054 and 0056).
 
 It names the retriever the chatbot asks, out of the retrievers the same file configures, how many Chunks a Turn
 retrieves, the pinned answer model and how it is run, the system prompt and the fixed Abstention sentence, how

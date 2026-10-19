@@ -1,4 +1,4 @@
-# 0055. Follow-ups: the Conversation and the Rewrite
+# 0056. Follow-ups: the Conversation and the Rewrite
 
 - **Date:** 2026-10-19
 - **Status:** Accepted. Amends [0054](0054-pinned-local-answer-model-and-the-chat-page.md) (a Turn after the first is a follow-up).

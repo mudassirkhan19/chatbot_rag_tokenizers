@@ -1,4 +1,4 @@
-"""The rewriter (ADR 0055): a follow-up question made standalone from the Conversation before it, for retrieval.
+"""The rewriter (ADR 0056): a follow-up question made standalone from the Conversation before it, for retrieval.
 
 The answer model gets the config's rewrite prompt, then one user message holding the earlier Turns' questions and
 answer texts, never their Chunks, and the follow-up. Its reply, cut to its first line without quotes, is the

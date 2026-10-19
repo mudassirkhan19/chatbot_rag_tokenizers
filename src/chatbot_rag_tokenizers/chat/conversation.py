@@ -1,5 +1,5 @@
 """A Conversation: the Turns asked on the chat page since `chat` started or the page was reset, and the chatbot
-that answers each (ADRs 0054 and 0055).
+that answers each (ADRs 0054 and 0056).
 
 A Turn retrieves k Chunks from the configured retriever, sends them to the answer model and reads its reply. The
 first Turn of a Conversation retrieves its question as asked. A later Turn is a follow-up: the answer model first
