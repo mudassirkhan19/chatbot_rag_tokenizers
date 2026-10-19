@@ -14,7 +14,9 @@ import pytest
 
 from chatbot_rag_tokenizers.cli import main
 from chatbot_rag_tokenizers.parsing.config import load_parse_config
+from chatbot_rag_tokenizers.retrieval import index
 from chatbot_rag_tokenizers.retrieval.config import load_retrieval_config
+from chatbot_rag_tokenizers.retrieval.corpus import load_corpus
 from parse_support import REPO_CONFIG, FakeGrobid, config_with_budget, run_parse, seed_pdf
 
 ROOT = Path(__file__).parents[1]
@@ -65,7 +67,7 @@ def test_index_builds_bm25_and_dense_and_a_rerun_with_nothing_changed_does_not_r
     built = cache_files(corpus)
     [chunking] = {path.parent.parent.name for path in built}
     assert chunking.startswith("chunking-")
-    assert sorted(path.parent.name.split("-")[0] for path in built if path.name == "index.json") == ["bm25", "dense", "dense", "dense"]
+    assert sorted(path.parent.name.split("-")[0] for path in built if path.name == "index.json") == ["bm25", "dense", "dense", "dense", "hybrid", "hybrid", "hybrid"]
 
     run_index(corpus)
 
@@ -92,9 +94,12 @@ def test_a_model_revision_change_rebuilds_that_dense_index_and_leaves_the_others
     out = capsys.readouterr().out
     assert "bm25 is up to date" in out and "built dense.bge-small" in out
     assert "dense.bge-base is up to date" in out and "dense.openscholar is up to date" in out
+    # bge-small's key is part of its hybrid's, so that hybrid gets a new folder too; the other hybrids don't.
+    assert "built hybrid.bm25+bge-small" in out and "hybrid.bm25+bge-base is up to date" in out
     after = cache_files(corpus)
     assert {path: after[path] for path in before} == before
-    assert len({path.parent for path in after} - {path.parent for path in before}) == 1
+    new = {path.parent for path in after} - {path.parent for path in before}
+    assert sorted(folder.name.split("-")[0] for folder in new) == ["dense", "hybrid"]
 
 
 # A second dense table beside bge-small, as the embedding comparison adds them (ADR 0050).
@@ -125,8 +130,9 @@ def index_folders(tmp_path: Path) -> dict[str, Path]:
 def test_each_dense_table_gets_its_own_index_and_a_revision_change_rebuilds_only_that_table(corpus, tmp_path, capsys):
     run_index(corpus, retrieval_config=with_two_dense_tables(tmp_path))
     first = index_folders(corpus)
-    assert sorted(first) == ["bm25", "dense.bge-base", "dense.bge-small", "dense.openscholar", "dense.other"]
-    assert len(set(first.values())) == 5
+    dense = ["bm25", "dense.bge-base", "dense.bge-small", "dense.openscholar", "dense.other"]
+    assert sorted(name for name in first if not name.startswith("hybrid.")) == dense
+    assert len(set(first.values())) == len(first)
     before = cache_files(corpus)
     capsys.readouterr()
 
@@ -161,6 +167,27 @@ def test_retriever_names_one_dense_model_and_only_that_one_is_built_and_scored(c
     assert list(index_folders(corpus)) == [name]
     report = run_evaluate(corpus, options=("--retriever", name))
     assert f"### Results: {name}" in report and "### Results: bm25" not in report
+
+
+def test_building_a_hybrid_alone_builds_its_members_first_and_stores_no_vectors(corpus, capsys):
+    run_index(corpus, options=("--retriever", "hybrid.bm25+bge-small"))
+
+    out = capsys.readouterr().out
+    assert out.index("built bm25") < out.index("built dense.bge-small") < out.index("built hybrid.bm25+bge-small")
+    folders = index_folders(corpus)
+    assert sorted(folders) == ["bm25", "dense.bge-small", "hybrid.bm25+bge-small"]
+    hybrid = folders["hybrid.bm25+bge-small"]
+    assert [path.name for path in hybrid.iterdir()] == ["index.json"]
+    record = json.loads((hybrid / "index.json").read_text())
+    assert record["members"] == {name: folders[name].name for name in ("bm25", "dense.bge-small")}
+    members = [json.loads((folders[name] / "index.json").read_text()) for name in ("bm25", "dense.bge-small")]
+    assert record["build_seconds"] == round(sum(member["build_seconds"] for member in members), 3)
+    built = cache_files(corpus)
+
+    run_index(corpus, options=("--retriever", "hybrid.bm25+bge-small"))
+
+    assert cache_files(corpus) == built
+    assert "built" not in capsys.readouterr().out
 
 
 def test_a_chunking_config_change_builds_a_new_index_and_leaves_the_old_one(corpus, tmp_path):
@@ -557,3 +584,64 @@ def test_evaluate_stops_on_a_malformed_work_groups_file(indexed, tmp_path):
         run_evaluate(indexed, work_groups=groups)
 
     assert str(groups) in str(stopped.value) and "survey" in str(stopped.value)
+
+
+# A hybrid small enough to fuse by hand: each member's top 3, and k = 1, so ranks 1, 2 and 3 score 1/2, 1/3 and 1/4.
+TINY_HYBRID = """
+[hybrid.tiny]
+members = ["bm25", "dense.bge-small"]
+k = 1
+pool = 3
+"""
+
+
+def test_a_hybrid_ranks_by_the_sum_of_its_members_reciprocal_ranks(indexed, tmp_path):
+    config = tmp_path / "retrieval-tiny.toml"
+    config.write_text(RETRIEVAL_CONFIG.read_text() + TINY_HYBRID)
+    run_index(indexed, retrieval_config=config, options=("--retriever", "hybrid.tiny"))
+    corpus = load_corpus(load_parse_config(REPO_CONFIG), indexed / "cache", indexed / "parse-report.md")
+    retrievers = load_retrieval_config(config).retrievers
+
+    query = "byte pair encoding merges"
+
+    def ranking(name: str) -> list[tuple[str, float]]:
+        return index.load(indexed / "index-cache", corpus, retrievers[name]).retriever.query(query, 10)
+
+    bpe, wechsel = "ca5dde4cb76ce13c", "6ac34dd4fce57e87"
+    # The members disagree: they share only BPE's first Chunk, at rank 1 in BM25 and rank 3 in the dense model.
+    assert [chunk_id for chunk_id, _ in ranking("bm25")[:3]] == [f"{bpe}-0000", f"{bpe}-0006", f"{wechsel}-0018"]
+    assert [chunk_id for chunk_id, _ in ranking("dense.bge-small")[:3]] == [f"{wechsel}-0023", f"{wechsel}-0031", f"{bpe}-0000"]
+    # 1/2 + 1/4 for the shared Chunk; 1/2 for the dense model's first; 1/3 for each member's second, BM25's first as
+    # it is listed first; 1/4 for BM25's third. Each member's other Chunks are outside its pool of 3.
+    expected = [(f"{bpe}-0000", 0.75), (f"{wechsel}-0023", 0.5), (f"{bpe}-0006", 1 / 3), (f"{wechsel}-0031", 1 / 3), (f"{wechsel}-0018", 0.25)]
+    assert ranking("hybrid.tiny") == pytest.approx(expected)
+    # Built in memory over the Chunks, as from the index cache.
+    assert retrievers["hybrid.tiny"].build(corpus.chunks).query(query, 10) == ranking("hybrid.tiny")
+
+
+def test_evaluate_scores_a_hybrid_in_every_table_and_records_its_members_k_and_pool(corpus):
+    name = "hybrid.bm25+bge-small"
+    run_index(corpus, options=("--retriever", name))
+    folders = index_folders(corpus)
+
+    report = run_evaluate(corpus, options=("--retriever", name))
+
+    for heading in ("Results", "Crowding", "Questions"):
+        assert len(table(report, f"### {heading}: {name}")) > 1
+    retrievers = report.split("## Retrievers\n", 1)[1].split("\n## ", 1)[0]
+    bm25, bge_small = folders["bm25"].name, folders["dense.bge-small"].name
+    assert f"- {name}: `{folders[name].name}`" in retrievers
+    assert f"  - members: `bm25 ({bm25}), dense.bge-small ({bge_small})`" in retrievers
+    assert "  - k: `60`" in retrievers and "  - pool: `100`" in retrievers
+    [timing] = [line for line in report.split("## Timings\n", 1)[1].splitlines() if line.startswith(f"- {name}:")]
+    assert "index built on cpu in " in timing and " queries on cpu, latency p50 " in timing
+
+
+def test_evaluate_says_when_a_member_of_a_hybrid_has_no_index(corpus):
+    run_index(corpus, options=("--retriever", "hybrid.bm25+bge-small"))
+    shutil.rmtree(index_folders(corpus)["dense.bge-small"])
+
+    with pytest.raises(SystemExit) as stopped:
+        run_evaluate(corpus, options=("--retriever", "hybrid.bm25+bge-small"))
+
+    assert "no dense.bge-small index" in str(stopped.value) and "just index" in str(stopped.value)

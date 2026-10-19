@@ -1,4 +1,4 @@
-"""The retrieval config file: each retriever's settings (ADRs 0039, 0042 and 0050)."""
+"""The retrieval config file: each retriever's settings (ADRs 0039, 0042, 0050 and 0053)."""
 
 import re
 import tomllib
@@ -11,11 +11,13 @@ from chatbot_rag_tokenizers.parsing.config import SHA256
 from .bm25 import BM25Config
 from .dense import DenseConfig
 from .embedder import POOLINGS
+from .hybrid import HybridConfig
 from .retriever import RetrieverConfig
 
 DEFAULT_PATH = Path("config/retrieval.toml")
 COMMIT = re.compile(r"[0-9a-f]{40}")
 TABLE_NAME = re.compile(r"[a-z0-9][a-z0-9-]*")  # the part of a retriever's name after "dense."
+HYBRID_NAME = re.compile(r"[a-z0-9][a-z0-9+-]*")  # after "hybrid.", e.g. "bm25+bge-small"
 _DENSE_FIELDS = {"model": str, "revision": str, "model_sha256": str, "pooling": str, "max_tokens": int, "query_instruction": str}
 
 
@@ -23,11 +25,12 @@ _DENSE_FIELDS = {"model": str, "revision": str, "model_sha256": str, "pooling": 
 class RetrievalConfig:
     bm25: BM25Config
     dense: list[DenseConfig]  # one per [dense.<name>] table, in the file's order
+    hybrid: list[HybridConfig]  # one per [hybrid.<name>] table, in the file's order
 
     @property
     def retrievers(self) -> dict[str, RetrieverConfig]:
         """Every configured retriever, by the name `--retriever` takes."""
-        configs: list[RetrieverConfig] = [self.bm25, *self.dense]
+        configs: list[RetrieverConfig] = [self.bm25, *self.dense, *self.hybrid]
         return {config.name: config for config in configs}
 
 
@@ -42,7 +45,9 @@ def load_retrieval_config(path: Path = DEFAULT_PATH) -> RetrievalConfig:
     tables = raw.get("dense", {})
     if not isinstance(tables, dict) or not tables:
         raise ConfigError(f"{path} has no [dense.<name>] table")
-    return RetrievalConfig(bm25=bm25, dense=[_load_dense_table(raw, table, path) for table in tables])
+    dense = [_load_dense_table(raw, table, path) for table in tables]
+    hybrid = [_load_hybrid_table(raw, table, path, bm25, dense) for table in raw.get("hybrid", {})]
+    return RetrievalConfig(bm25=bm25, dense=dense, hybrid=hybrid)
 
 
 def _load_dense_table(raw: dict, table: str, path: Path) -> DenseConfig:
@@ -61,3 +66,24 @@ def _load_dense_table(raw: dict, table: str, path: Path) -> DenseConfig:
     if dense.max_tokens < 1:
         raise ConfigError(f"[{name}] max_tokens {dense.max_tokens} must be at least 1")
     return dense
+
+
+def _load_hybrid_table(raw: dict, table: str, path: Path, bm25: BM25Config, dense: list[DenseConfig]) -> HybridConfig:
+    name = f"hybrid.{table}"
+    if not HYBRID_NAME.fullmatch(table):
+        raise ConfigError(f"[{name}] in {path}: a hybrid table's name is lower-case letters, digits, dashes and pluses")
+    fields = read_table(raw, name, {"members": list, "k": int, "pool": int}, path)
+    fusable: dict[str, RetrieverConfig] = {bm25.name: bm25, **{config.name: config for config in dense}}
+    configured = [bm25.name, *(config.name for config in dense), *(f"hybrid.{other}" for other in raw["hybrid"])]
+    for member in fields["members"]:
+        if member not in configured:
+            raise ConfigError(f"[{name}] member {member!r} is not a retriever in {path}; it configures {', '.join(configured)}")
+        if member not in fusable:
+            raise ConfigError(f"[{name}] member {member!r} is not bm25 or a dense table")
+    members = tuple(fusable[member] for member in fields["members"])
+    if sorted(type(member) is BM25Config for member in members) != [False, True]:
+        raise ConfigError(f"[{name}] fuses bm25 with one dense table, not {' and '.join(fields['members'])}")
+    for field in ("k", "pool"):
+        if fields[field] < 1:
+            raise ConfigError(f"[{name}] {field} {fields[field]} must be positive")
+    return HybridConfig(table=table, members=members, k=fields["k"], pool=fields["pool"])
