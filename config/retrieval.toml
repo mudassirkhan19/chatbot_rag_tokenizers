@@ -13,7 +13,8 @@ b = 0.75  # how much a long Chunk's counts are discounted
 # The dense retrievers (ADRs 0042 and 0050), one table each, named `dense.<name>` for `--retriever`. Each embeds
 # every Chunk's context header plus its text once, and a query is scored against every Chunk by exact dot
 # product. A table pins its model, as the chunking tokenizer is pinned: the repo, its revision and the sha256
-# of its model.safetensors. It also says how the model is used:
+# of its weights file, model.safetensors or, in a repo without one, pytorch_model.bin (ADR 0051). It also says
+# how the model is used:
 #   pooling            "cls" (the last layer's [CLS] vector) or "mean" (the last layer's mean over the
 #                      tokens that aren't padding), L2-normalised either way
 #   max_tokens         a longer text is cut to its first max_tokens tokens
@@ -31,3 +32,27 @@ model_sha256 = "3c9f31665447c8911517620762200d2245a2518d6e7208acc78cd9db317e21ad
 pooling = "cls"
 max_tokens = 512
 query_instruction = "Represent this sentence for searching relevant passages: "
+
+# The size control: BAAI/bge-base-en-v1.5, bge-small's larger sibling (110M parameters, 768 dimensions, 512
+# tokens, the same vocabulary), used as its model card specifies, as bge-small is. A gain over bge-small is
+# what size alone buys (spec #55).
+[dense.bge-base]
+model = "BAAI/bge-base-en-v1.5"
+revision = "a5beb1e3e68b9ab74eb54cfd186867f64f240e1a"
+model_sha256 = "c7c1988aae201f80cf91a5dbbd5866409503b89dcaba877ca6dba7dd0a5167d7"
+pooling = "cls"
+max_tokens = 512
+query_instruction = "Represent this sentence for searching relevant passages: "
+
+# The scientific candidate: OpenScholar/OpenScholar_Retriever, Contriever-base (110M parameters, 768
+# dimensions, the same vocabulary) trained further on peS2o's scientific papers. Pooled as Contriever's
+# reference code pools, the mean over non-padding tokens, with no query instruction. Contriever scores by raw
+# inner product; normalised here like the others, which changes the top 10 of every fixture question in the
+# opt-in test (ADR 0051). Its repo holds only pytorch_model.bin, which is what the sha256 is of.
+[dense.openscholar]
+model = "OpenScholar/OpenScholar_Retriever"
+revision = "ef4f3120d33b3ca57e12fce2b369f5982a7bb929"
+model_sha256 = "fb5226976e362e070ad5b3f6c5bd38ed03a770b7d349b9334e4db8d61cc5f8fa"
+pooling = "mean"
+max_tokens = 512
+query_instruction = ""

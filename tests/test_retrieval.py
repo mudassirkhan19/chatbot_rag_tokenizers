@@ -65,7 +65,7 @@ def test_index_builds_bm25_and_dense_and_a_rerun_with_nothing_changed_does_not_r
     built = cache_files(corpus)
     [chunking] = {path.parent.parent.name for path in built}
     assert chunking.startswith("chunking-")
-    assert sorted(path.parent.name.split("-")[0] for path in built if path.name == "index.json") == ["bm25", "dense"]
+    assert sorted(path.parent.name.split("-")[0] for path in built if path.name == "index.json") == ["bm25", "dense", "dense", "dense"]
 
     run_index(corpus)
 
@@ -74,16 +74,15 @@ def test_index_builds_bm25_and_dense_and_a_rerun_with_nothing_changed_does_not_r
 
 
 def with_revision(tmp_path: Path, revision: str) -> Path:
-    """The repo's retrieval config with the dense model at another revision."""
+    """The repo's retrieval config with dense.bge-small at another revision."""
     config = RETRIEVAL_CONFIG.read_text()
-    [dense] = load_retrieval_config(RETRIEVAL_CONFIG).dense
-    pinned = dense.revision
+    pinned = load_retrieval_config(RETRIEVAL_CONFIG).dense[0].revision
     other = tmp_path / "retrieval-other-revision.toml"
     other.write_text(config.replace(pinned, revision))
     return other
 
 
-def test_a_model_revision_change_rebuilds_the_dense_index_and_leaves_bm25_alone(corpus, tmp_path, capsys):
+def test_a_model_revision_change_rebuilds_that_dense_index_and_leaves_the_others_alone(corpus, tmp_path, capsys):
     run_index(corpus)
     before = cache_files(corpus)
     capsys.readouterr()
@@ -92,6 +91,7 @@ def test_a_model_revision_change_rebuilds_the_dense_index_and_leaves_bm25_alone(
 
     out = capsys.readouterr().out
     assert "bm25 is up to date" in out and "built dense.bge-small" in out
+    assert "dense.bge-base is up to date" in out and "dense.openscholar is up to date" in out
     after = cache_files(corpus)
     assert {path: after[path] for path in before} == before
     assert len({path.parent for path in after} - {path.parent for path in before}) == 1
@@ -125,15 +125,17 @@ def index_folders(tmp_path: Path) -> dict[str, Path]:
 def test_each_dense_table_gets_its_own_index_and_a_revision_change_rebuilds_only_that_table(corpus, tmp_path, capsys):
     run_index(corpus, retrieval_config=with_two_dense_tables(tmp_path))
     first = index_folders(corpus)
-    assert sorted(first) == ["bm25", "dense.bge-small", "dense.other"]
-    assert len(set(first.values())) == 3
+    assert sorted(first) == ["bm25", "dense.bge-base", "dense.bge-small", "dense.openscholar", "dense.other"]
+    assert len(set(first.values())) == 5
     before = cache_files(corpus)
     capsys.readouterr()
 
     run_index(corpus, retrieval_config=with_two_dense_tables(tmp_path, other_revision="3" * 40))
 
     out = capsys.readouterr().out
-    assert "bm25 is up to date" in out and "dense.bge-small is up to date" in out and "built dense.other" in out
+    for name in ("bm25", "dense.bge-small", "dense.bge-base", "dense.openscholar"):
+        assert f"{name} is up to date" in out
+    assert "built dense.other" in out
     after = cache_files(corpus)
     assert {path: after[path] for path in before} == before
     [new] = {path.parent for path in after} - {path.parent for path in before}
@@ -152,12 +154,13 @@ def test_two_dense_models_rank_the_fixture_differently(corpus, tmp_path):
     assert bge_small != other
 
 
-def test_retriever_dense_bge_small_builds_and_scores_only_that_retriever(corpus):
-    run_index(corpus, options=("--retriever", "dense.bge-small"))
+@pytest.mark.parametrize("name", ["dense.bge-small", "dense.bge-base", "dense.openscholar"])
+def test_retriever_names_one_dense_model_and_only_that_one_is_built_and_scored(corpus, name):
+    run_index(corpus, options=("--retriever", name))
 
-    assert list(index_folders(corpus)) == ["dense.bge-small"]
-    report = run_evaluate(corpus, options=("--retriever", "dense.bge-small"))
-    assert "### Results: dense.bge-small" in report and "### Results: bm25" not in report
+    assert list(index_folders(corpus)) == [name]
+    report = run_evaluate(corpus, options=("--retriever", name))
+    assert f"### Results: {name}" in report and "### Results: bm25" not in report
 
 
 def test_a_chunking_config_change_builds_a_new_index_and_leaves_the_old_one(corpus, tmp_path):
