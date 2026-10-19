@@ -1,4 +1,4 @@
-# 0055. BM25 + dense hybrids by reciprocal rank fusion, stored as a record that points to their members
+# 0058. BM25 + dense hybrids by reciprocal rank fusion, stored as a record that points to their members
 
 - **Date:** 2026-10-19
 - **Status:** Accepted. Amends [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md): a hybrid's index record names its members' keys and its folder holds nothing else.

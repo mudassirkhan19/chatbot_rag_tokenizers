@@ -10,7 +10,7 @@ Chunks too, so an index built before the parse report gained or lost files, or b
 differently (a TEI reader or Chunker change, ADR 0043), is rebuilt. The record is written last: an interrupted
 build leaves no record, and the next run builds again.
 
-A hybrid's folder holds only its record (ADR 0055). The record names its members' keys, their folders beside it,
+A hybrid's folder holds only its record (ADR 0058). The record names its members' keys, their folders beside it,
 and its build time and device are theirs. Building a hybrid builds any member that is missing first, and loading
 it needs every member's index.
 """

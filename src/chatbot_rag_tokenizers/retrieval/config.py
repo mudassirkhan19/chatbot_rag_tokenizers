@@ -1,4 +1,4 @@
-"""The retrieval config file: each retriever's settings (ADRs 0039, 0042, 0050 and 0055) and the Collapsed ranking's pool (ADR 0053)."""
+"""The retrieval config file: each retriever's settings (ADRs 0039, 0042, 0050 and 0058) and the Collapsed ranking's pool (ADR 0053)."""
 
 import re
 import tomllib
@@ -26,7 +26,7 @@ class RetrievalConfig:
     bm25: BM25Config
     dense: list[DenseConfig]  # one per [dense.<name>] table, in the file's order
     hybrid: list[HybridConfig]  # one per [hybrid.<name>] table, in the file's order
-    collapse_pool: int  # the raw Chunks the Collapsed ranking picks one per Work from
+    collapse_pool: int  # the raw Chunks the Collapsed ranking merges copies in
 
     @property
     def retrievers(self) -> dict[str, RetrieverConfig]:

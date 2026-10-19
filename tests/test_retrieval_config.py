@@ -1,4 +1,4 @@
-"""The retrieval config file (ADRs 0039, 0042, 0050, 0052, 0053, 0054 and 0055): BM25's table, the named dense tables, the
+"""The retrieval config file (ADRs 0039, 0042, 0050, 0052, 0053, 0054 and 0058): BM25's table, the named dense tables, the
 hybrids, the Collapsed ranking's pool and the chat table."""
 
 import re
@@ -150,8 +150,9 @@ def test_a_bad_hybrid_table_stops_with_a_message_naming_the_table(tmp_path, memb
         ("k = 5", "k = 0", r"\[chat\] k 0 must be at least 1"),
         ('revision = "e98b54fe1913178321e1d9cd007d12a465de77a8f8eae37af69d2501ca03c6b5@0.40.5"', 'revision = "latest"', r"\[chat\] revision 'latest' is not pinned as <digest>@<Ollama version>"),
         ("think = false", 'think = "no"', r"\[chat\] think 'no' is not a bool"),
+        ("history = 3", "history = 0", r"\[chat\] history 0 must be at least 1"),
     ],
-    ids=["unknown-retriever", "no-chunks", "unpinned", "mistyped"],
+    ids=["unknown-retriever", "no-chunks", "unpinned", "mistyped", "no-history"],
 )
 def test_a_bad_chat_table_stops_with_a_message_naming_it(tmp_path, old, new, message):
     with pytest.raises(ConfigError, match=message):

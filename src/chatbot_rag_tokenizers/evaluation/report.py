@@ -45,7 +45,7 @@ class RetrieverRun:
     config: RetrieverConfig
     index: Index  # what was queried, with its build time and device
     scored: list[Scored]
-    pool: int | None = None  # for a Collapsed ranking, the raw Chunks it picked one per Work from
+    pool: int | None = None  # for a Collapsed ranking, the raw Chunks it merged copies in
 
     @property
     def name(self) -> str:
@@ -68,7 +68,7 @@ def write_eval_report(
         "# Eval report",
         "",
         "Written by `evaluate`. Each retriever ranks the Chunks for every question of the Evaluation set, and the raw"
-        f" ranking and its Collapsed ranking (`<retriever>{SUFFIX}`, at most one Chunk per Work) are scored against the"
+        f" ranking and its Collapsed ranking (`<retriever>{SUFFIX}`, each passage once across a Work's files) are scored against the"
         " question's Passages.",
         "",
         "## Evaluation set",
@@ -100,10 +100,12 @@ def write_eval_report(
         f" matches (ADR 0041). A match running into the Chunk's first or last word counts only the quote's words on the"
         f" Chunk's side, and must cover at least {rule.edge_min_words} words. The Chunk may come from any Edition.",
         "- A retriever's own ranking is scored raw: duplicates of one Work all take their slots.",
-        f"- Its `{SUFFIX}` twin is scored on the Collapsed ranking (ADR 0053) over the same index: from the raw top"
-        " *pool* Chunks it keeps one per Work, by the manifest's work_id (an Edition with none is its own Work), in the"
-        " raw order between Works. A Work shows its Canonical Edition's Chunk when one is in the pool, else a Chunk of"
-        " an Edition's latest file, else its best-ranked Chunk. Surveys are not demoted.",
+        f"- Its `{SUFFIX}` twin is scored on the Collapsed ranking (ADRs 0053 and 0057) over the same index: from the"
+        " raw top *pool* Chunks, with Works from the manifest's work_id (an Edition with none is its own Work), in the"
+        " raw order, it merges copies: the Chunks of a Work from different files at the same place in the same Section"
+        " (another Version's or Edition's copy of the passage), into the slot of the best-ranked one, shown from the"
+        " Canonical Edition's file when the pool holds a copy from it, else from an Edition's latest file, else as"
+        " ranked. A Work's other Chunks keep their slots. Surveys are not demoted.",
         "- Unanswerable questions are run but left out of the metrics.",
         f"- A follow-up is run three ways: {FOLLOW_UP_ALONE}, {WITH_HISTORY} (its prior turns, then the follow-up, joined by"
         f" spaces) and {REWRITE}. The *all answerable* row takes each follow-up alone, as a user would ask it.",
@@ -121,7 +123,8 @@ def write_eval_report(
         f" {len({group.work_id for group in groups.editions.values()})} Works, {groups.checked} of the Editions checked"
         " (who checked each is in checked_by), never computed by the system being measured.",
         "- A duplicate slot holds a Chunk from a Work already ranked higher: another Edition or Version of it, or another"
-        " Chunk of the same file.",
+        " Chunk of the same file. The two are counted apart too: the first repeats a paper, the second is more of it."
+        " A Collapsed ranking merges only copies, the first kind.",
         "- A restatement slot holds a Chunk from a Survey. A Survey is always its own Work, and its Chunks are never duplicates.",
         "- Duplicates and restatement count only the questions whose top 5 Editions all have a Work group.",
         f"- A mostly-numeric slot holds a text Chunk with more than {NUMERIC_SHARE:.0%} of its words numbers, as the parse"
@@ -156,7 +159,7 @@ def write_eval_report(
 
 def _retriever(run: RetrieverRun) -> list[str]:
     if run.pool:
-        return [f"- {run.name}: {run.config.name}'s index, collapsed to one Chunk per Work", f"  - pool: `{run.pool}`"]
+        return [f"- {run.name}: {run.config.name}'s index, with copies from other files of a Work merged", f"  - pool: `{run.pool}`"]
     return [f"- {run.name}: `{run.config.key}`", *[f"  - {name}: `{value}`" for name, value in run.config.describe().items()]]
 
 
@@ -195,9 +198,9 @@ def _crowding(run: RetrieverRun, groups: Mapping[str, WorkGroup]) -> list[str]:
 
     queries = all_answerable(run.scored)
     short = [
-        f"- Pool: the top {run.pool} raw Chunks held fewer than {CROWDING_DEPTH} Works for"
-        f" {sum(1 for s in queries if (s.pool_works or 0) < CROWDING_DEPTH)} of {len(queries)} questions, and fewer than"
-        f" {MRR_DEPTH}, the depth each query asks for, for {sum(1 for s in queries if (s.pool_works or 0) < MRR_DEPTH)}."
+        f"- Pool: the top {run.pool} raw Chunks held fewer than {CROWDING_DEPTH} distinct Chunks, once copies were merged,"
+        f" for {sum(1 for s in queries if (s.pool_distinct or 0) < CROWDING_DEPTH)} of {len(queries)} questions, and fewer than"
+        f" {MRR_DEPTH}, the depth each query asks for, for {sum(1 for s in queries if (s.pool_distinct or 0) < MRR_DEPTH)}."
     ]
     return [
         f"### Crowding: {run.name}",
@@ -205,6 +208,8 @@ def _crowding(run: RetrieverRun, groups: Mapping[str, WorkGroup]) -> list[str]:
         f"| Measure | Top-{CROWDING_DEPTH} slots | Share of slots | Questions | Share of questions |",
         "|---|---:|---:|---:|---:|",
         row("duplicate", total.duplicate),
+        row("duplicate: another Edition or Version", total.other_file),
+        row("duplicate: same file", total.same_file),
         row("restatement", total.restatement),
         row("mostly numeric", total.numeric),
         "",

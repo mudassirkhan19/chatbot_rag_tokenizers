@@ -156,7 +156,7 @@ just evaluate     # score the retrievers on the Evaluation set and write the eva
   - Each query gets the model card's instruction in front ("Represent this sentence for searching relevant passages: "); Chunks don't.
   - A query is scored against every Chunk by exact dot product over the normalised float32 vectors (about 220 MB for the full corpus), with no vector database.
   - **Device.** It runs on MPS when the machine has it, otherwise on the CPU. The two agree to within 1×10⁻⁶ per dimension for each model (2×10⁻⁷ for bge-small, 4×10⁻⁷ for bge-base, 7×10⁻⁷ for OpenScholar), and give the same top 10. The index record and the eval report's timings name the device. On an M1 Max the full corpus embeds at about 200 Chunks/s on MPS against about 50 on the CPU.
-- **The hybrids** answer "should keyword search sit beside vector search?" (ADR 0055). Each `[hybrid.<name>]` table fuses BM25 with one dense table by reciprocal rank fusion, and there is one per dense table: `hybrid.bm25+bge-small`, `hybrid.bm25+bge-base` and `hybrid.bm25+openscholar`.
+- **The hybrids** answer "should keyword search sit beside vector search?" (ADR 0058). Each `[hybrid.<name>]` table fuses BM25 with one dense table by reciprocal rank fusion, and there is one per dense table: `hybrid.bm25+bge-small`, `hybrid.bm25+bge-base` and `hybrid.bm25+openscholar`.
   - A table names its `members` (`bm25` and one dense table), the RRF constant `k` (60) and a `pool` (100). A query takes each member's top `pool` Chunks, gives each Chunk the sum of 1 / (`k` + rank) over the members that ranked it, and ranks by that sum. A tie goes to the Chunk the member listed first ranks higher.
   - A hybrid stores no vectors. Its folder in the index cache holds only its record, which names its members' keys; `index --retriever hybrid.bm25+bge-small` builds any member that is missing first. Its build time is its members' and its latency covers both members' queries and the fusion.
   - A member that isn't configured, a member that isn't BM25 or a dense table, anything but BM25 plus one dense table, or a `k` or `pool` below 1 stops loading with a message naming the table.
@@ -200,7 +200,7 @@ The committed Evaluation set has 36 checked questions (ADR 0046), and the commit
 
 ## Reproduce the baseline
 
-The baseline eval report (`data/eval/eval-report.md`) gives the "before" numbers for BM25, the dense baseline and their hybrid (ADR 0055), each with its `+collapsed` twin, on the full corpus and the 36-question Evaluation set. These numbers are Recall@5, MRR@10 and Hit@5 per question type and per follow-up mode, the duplicate, restatement and mostly-numeric shares of the top 5, and build time and latency. To reproduce it from a clone:
+The baseline eval report (`data/eval/eval-report.md`) gives the "before" numbers for BM25, the dense baseline and their hybrid (ADR 0058), each with its `+collapsed` twin, on the full corpus and the 36-question Evaluation set. These numbers are Recall@5, MRR@10 and Hit@5 per question type and per follow-up mode, the duplicate, restatement and mostly-numeric shares of the top 5, and build time and latency. To reproduce it from a clone:
 
 ```sh
 just init        # dependencies, the pinned GROBID image and the judge model
@@ -220,12 +220,13 @@ git diff --stat data/   # only the report's Timings section differs
 just chat        # serves the chat page and prints its URL, http://localhost:8766 (--port sets another)
 ```
 
-Type a question and the page answers it from the papers. Each question retrieves the top 5 Chunks from the retriever the `[chat]` table of `config/retrieval.toml` names, which is the dense baseline (`dense.bge-small`) until the embedding comparison names its choice. The pinned answer model, `gemma4:e2b-mlx` on Ollama with thinking off and temperature 0, answers from those Chunks only (ADR 0054). An answer takes one to three seconds on an Apple-silicon laptop.
+Type a question and the page answers it from the papers. Each question retrieves the top 5 Chunks from the retriever the `[chat]` table of `config/retrieval.toml` names, which is the dense baseline (`dense.bge-small`) until the embedding comparison names its choice. The pinned answer model, `gemma4:e2b-mlx` on Ollama with thinking off and temperature 0, answers from those Chunks only (ADR 0054). An answer takes one to three seconds on an Apple-silicon laptop, and a follow-up a second or two more for its Rewrite.
 
 - **The answer** carries a numbered marker such as `[2]` for each Chunk it uses. A marker that names no retrieved Chunk is struck through as invalid, never dropped.
 - **The references** under the answer give, for each cited Chunk, the paper's title, its pinned Edition id with Version, the Section number and title, and the pages.
 - **The panel** beside the answer shows each cited Chunk's text and Citation anchor. The retrieved Chunks the answer didn't cite are folded away under it.
 - **An Abstention** is the fixed sentence "The papers in this corpus do not answer this question.", which the model is told to write when the Chunks don't answer. The retrieved Chunks are still shown.
+- **A follow-up** such as "how much did that help on MMLU?" is understood from the Conversation so far. On every question after the first, the answer model first rewrites it as a standalone question from the earlier questions and answers, and retrieval uses that Rewrite, shown under the question as "Searched as:". The answer model then sees the last three Turns before the Rewrite and its Chunks (`history` in `[chat]`, ADR 0056). **New conversation** forgets the Turns so far, as reloading the page does.
 
 `chat` needs the retriever's index (`just index --retriever dense.bge-small`) and Ollama running with the pinned model (`just init`). When Ollama is stopped, runs another version or lacks the model, `chat` says so in the terminal and on the page, and the next question tries again once Ollama is started.
 
