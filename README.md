@@ -216,12 +216,13 @@ git diff --stat data/   # only the report's Timings section differs
 just chat        # serves the chat page and prints its URL, http://localhost:8766 (--port sets another)
 ```
 
-Type a question and the page answers it from the papers. Each question retrieves the top 5 Chunks from the retriever the `[chat]` table of `config/retrieval.toml` names, which is the dense baseline (`dense.bge-small`) until the embedding comparison names its choice. The pinned answer model, `gemma4:e2b-mlx` on Ollama with thinking off and temperature 0, answers from those Chunks only (ADR 0054). An answer takes one to three seconds on an Apple-silicon laptop.
+Type a question and the page answers it from the papers. Each question retrieves the top 5 Chunks from the retriever the `[chat]` table of `config/retrieval.toml` names, which is the dense baseline (`dense.bge-small`) until the embedding comparison names its choice. The pinned answer model, `gemma4:e2b-mlx` on Ollama with thinking off and temperature 0, answers from those Chunks only (ADR 0054). An answer takes one to three seconds on an Apple-silicon laptop, and a follow-up a second or two more for its Rewrite.
 
 - **The answer** carries a numbered marker such as `[2]` for each Chunk it uses. A marker that names no retrieved Chunk is struck through as invalid, never dropped.
 - **The references** under the answer give, for each cited Chunk, the paper's title, its pinned Edition id with Version, the Section number and title, and the pages.
 - **The panel** beside the answer shows each cited Chunk's text and Citation anchor. The retrieved Chunks the answer didn't cite are folded away under it.
 - **An Abstention** is the fixed sentence "The papers in this corpus do not answer this question.", which the model is told to write when the Chunks don't answer. The retrieved Chunks are still shown.
+- **A follow-up** such as "how much did that help on MMLU?" is understood from the Conversation so far. On every question after the first, the answer model first rewrites it as a standalone question from the earlier questions and answers, and retrieval uses that Rewrite, shown under the question as "Searched as:". The answer model then sees the last three Turns before the Rewrite and its Chunks (`history` in `[chat]`, ADR 0055). **New conversation** forgets the Turns so far, as reloading the page does.
 
 `chat` needs the retriever's index (`just index --retriever dense.bge-small`) and Ollama running with the pinned model (`just init`). When Ollama is stopped, runs another version or lacks the model, `chat` says so in the terminal and on the page, and the next question tries again once Ollama is started.
 

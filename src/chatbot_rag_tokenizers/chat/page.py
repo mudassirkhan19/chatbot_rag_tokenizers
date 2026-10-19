@@ -1,13 +1,15 @@
-"""The chat page (ADR 0054): `chat` serves it on localhost with the standard library's threading HTTP server, as
-`audit label` serves its page.
+"""The chat page (ADRs 0054 and 0055): `chat` serves it on localhost with the standard library's threading HTTP
+server, as `audit label` serves its page. The server holds one Conversation.
 
     GET  /        the page
     GET  /status  the retriever and the answer model, or why the model can't answer
-    POST /turn    {"question": ...}: the Turn, or a 503 saying why the model can't answer
+    POST /turn    {"question": ...}: the next Turn of the Conversation, or a 503 saying why the model can't answer
+    POST /reset   starts a new Conversation
 
-A Turn comes back as its answer, cut into text and markers (each marker valid or not), a reference per cited
-Chunk from its Citation anchor, and every retrieved Chunk in rank order, numbered as the model saw it and marked
-cited or not. The page folds the uncited ones away.
+A Turn comes back as its question and its Rewrite (null on the first Turn), its answer, cut into text and markers
+(each marker valid or not), a reference per cited Chunk from its Citation anchor, every retrieved Chunk in rank
+order, numbered as the model saw it and marked cited or not, the model's raw reply, and the seconds spent
+retrieving, rewriting and answering. The page folds the uncited Chunks away.
 """
 
 import json
@@ -45,11 +47,16 @@ def make_server(chatbot: Chatbot, port: int = 8766) -> ThreadingHTTPServer:
                 self._send(page, "text/html; charset=utf-8")
 
         def do_POST(self) -> None:
+            body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            if self.path == "/reset":
+                chatbot.reset()
+                self._json({"turns": len(chatbot.turns)})
+                return
             if self.path != "/turn":
                 self._json({"error": f"no such action: {self.path}"}, HTTPStatus.NOT_FOUND)
                 return
             try:
-                payload = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+                payload = json.loads(body or b"{}")
             except ValueError:
                 payload = None
             question = str(payload.get("question", "")).strip() if isinstance(payload, dict) else ""
@@ -99,6 +106,9 @@ def turn_json(turn: Turn) -> dict[str, Any]:
     cited = turn.answer.cited
     return {
         "question": turn.question,
+        "rewrite": turn.rewrite,
+        "retrieved": [chunk.chunk_id for chunk in turn.retrieved],
+        "reply": turn.reply,
         "answer": [{"marker": part.number, "valid": part.valid} if isinstance(part, Marker) else {"text": part} for part in turn.answer.parts],
         "abstention": turn.answer.abstention,
         "invalid": turn.answer.invalid,

@@ -267,14 +267,106 @@ def test_chat_started_while_ollama_is_stopped_says_so_and_still_serves_the_page(
     assert "chat: the page is at http://localhost:" in captured.out
 
 
-@pytest.mark.skipif(os.environ.get("RUN_OLLAMA_TESTS") != "1", reason="asks the pinned model on Ollama; set RUN_OLLAMA_TESTS=1")
+# Follow-ups (#65): a Turn after the first is retrieved with the Rewrite the answer model writes from the Conversation.
+MMLU = "How much did that help on MMLU?"
+REWRITTEN = "How much did freezing the non-embedding parameters help WECHSEL on MMLU?"
+
+
+def post(chat: Chat, action: str) -> dict:
+    request = urllib.request.Request(f"{chat.url}/{action}", b"{}", {"Content-Type": "application/json"})
+    with urllib.request.urlopen(request) as response:
+        return json.loads(response.read())
+
+
+def test_the_first_turn_has_no_rewrite_costs_one_model_call_and_carries_its_timings_and_retrieved_ids(chat, fake_answer_model):
+    fake_answer_model.script[FREEZING] = "WECHSEL does not need freezing [1]."
+
+    turn = ask(chat, FREEZING)
+
+    assert turn["rewrite"] is None
+    assert len(fake_answer_model.chats) == 1
+    assert set(turn["seconds"]) == {"retrieval", "rewriting", "answering"} and turn["seconds"]["rewriting"] == 0
+    assert turn["retrieved"] == [chunk["chunk_id"] for chunk in turn["chunks"]] and len(turn["retrieved"]) == 5
+    assert turn["reply"] == "WECHSEL does not need freezing [1]."
+
+
+def script_follow_up(fake_answer_model) -> None:
+    # The fake answers the first key found in the last message, and the rewriter's holds the earlier questions
+    # too, so the follow-up's key goes first.
+    fake_answer_model.script[MMLU] = REWRITTEN
+    fake_answer_model.script[REWRITTEN] = "Freezing gave no gain on MMLU [2]."
+    fake_answer_model.script[FREEZING] = "WECHSEL does not need freezing [1]."
+
+
+def test_a_follow_up_is_retrieved_with_the_rewrite_and_shows_it(chat, fake_answer_model):
+    script_follow_up(fake_answer_model)
+    ask(chat, FREEZING)
+
+    follow_up = ask(chat, MMLU)
+
+    assert follow_up["question"] == MMLU and follow_up["rewrite"] == REWRITTEN
+    assert len(fake_answer_model.chats) == 3  # the first answer, then the Rewrite and the follow-up's answer
+    assert set(follow_up["seconds"]) == {"retrieval", "rewriting", "answering"}
+    *_, answering = fake_answer_model.chats
+    assert f"Question: {REWRITTEN}" in answering[-1]["content"] and MMLU not in answering[-1]["content"]
+    # Retrieval saw the Rewrite: the follow-up has the Chunks the Rewrite gets when asked as a first question.
+    post(chat, "reset")
+    assert ask(chat, REWRITTEN)["retrieved"] == follow_up["retrieved"]
+
+
+def test_the_rewriter_sees_the_earlier_questions_and_answer_texts_and_no_chunk_text(chat, fake_answer_model):
+    script_follow_up(fake_answer_model)
+    first = ask(chat, FREEZING)
+
+    ask(chat, MMLU)
+
+    rewriting = "\n".join(message["content"] for message in fake_answer_model.chats[1])
+    assert FREEZING in rewriting and MMLU in rewriting
+    assert "WECHSEL does not need freezing." in rewriting  # the answer's text, its markers taken out
+    assert "[1]" not in rewriting
+    for chunk in first["chunks"]:
+        assert chunk["text"] not in rewriting
+
+
+def test_the_answer_model_sees_the_earlier_turns_before_the_rewrite_and_this_turns_chunks(chat, fake_answer_model):
+    script_follow_up(fake_answer_model)
+    ask(chat, FREEZING)
+
+    follow_up = ask(chat, MMLU)
+
+    system, earlier_question, earlier_answer, this_turn = fake_answer_model.chats[2]
+    assert system["role"] == "system"
+    assert earlier_question == {"role": "user", "content": f"Question: {FREEZING}"}
+    assert earlier_answer == {"role": "assistant", "content": "WECHSEL does not need freezing."}
+    assert this_turn["role"] == "user"
+    for chunk in follow_up["chunks"]:
+        assert f"[{chunk['number']}] {chunk['header']}\n{chunk['text']}" in this_turn["content"]
+
+
+def test_reset_empties_the_conversation_so_the_next_question_is_a_first_turn(chat, fake_answer_model):
+    script_follow_up(fake_answer_model)
+    ask(chat, FREEZING)
+    ask(chat, MMLU)
+
+    assert post(chat, "reset") == {"turns": 0}
+    fake_answer_model.chats.clear()
+    again = ask(chat, FREEZING)
+
+    assert again["rewrite"] is None
+    assert len(fake_answer_model.chats) == 1 and len(fake_answer_model.chats[0]) == 2
+
+
+@pytest.mark.skipif(os.environ.get("RUN_OLLAMA_TESTS") != "1",reason="asks the pinned model on Ollama; set RUN_OLLAMA_TESTS=1")
 def test_the_real_pinned_model_cites_a_retrieved_chunk_and_abstains_off_topic(start_chat, monkeypatch):
     monkeypatch.setattr(answer_model, "load_answer_model", REAL_LOAD)
     monkeypatch.setattr(httpx.HTTPTransport, "handle_request", REAL_TRANSPORT)
     chat = start_chat()
 
+    # Each a first Turn, so none is rewritten.
     answered = ask(chat, FREEZING)
+    post(chat, "reset")
     again = ask(chat, FREEZING)
+    post(chat, "reset")
     off_topic = ask(chat, "What is the capital of France?")
 
     print("answer:", "".join(part.get("text", f"[{part.get('marker')}]") for part in answered["answer"]))
