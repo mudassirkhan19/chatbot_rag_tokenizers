@@ -6,7 +6,7 @@ set positional-arguments := true
 grobid_container := "chatbot-rag-tokenizers-grobid"
 
 # The start of every bash recipe, after it sets $recipe: strict mode and the shared helpers.
-# load_grobid and load_judge use `uv run --no-sync` so reading a pin never syncs or creates .venv:
+# load_grobid, load_judge and load_chat use `uv run --no-sync` so reading a pin never syncs or creates .venv:
 # init has just synced every group, and the GROBID recipes need init to have run.
 _bash_prelude := '''
     set -euo pipefail
@@ -27,6 +27,32 @@ _bash_prelude := '''
             || fail "could not read the judge pin in config/scope.toml"
         eval "$settings"
     }
+    load_chat() {
+        local settings
+        settings=$(uv run --no-sync python -m chatbot_rag_tokenizers.chat.chat_env) \
+            || fail "could not read the chat model's pin in config/retrieval.toml"
+        eval "$settings"
+    }
+    # Check that Ollama runs the version a model is pinned to, pull the model unless Ollama has it, and check its
+    # digest against the pin. Arguments: the model's role, name, digest, Ollama version and config file.
+    ensure_ollama_model() {
+        local role=$1 model=$2 digest=$3 version=$4 config=$5 running installed
+        local install="Install Ollama $version from https://github.com/ollama/ollama/releases/tag/v$version"
+        command -v ollama >/dev/null 2>&1 || fail "Ollama is not installed. $install (see Prerequisites in the README)."
+        running=$(curl -fsS --max-time 5 "$OLLAMA_URL/api/version" 2>/dev/null | sed -n 's/.*"version":"\([^"]*\)".*/\1/p') || true
+        [ -n "$running" ] || fail "Ollama is not answering at $OLLAMA_URL. Start the Ollama app or run: ollama serve"
+        [ "$running" = "$version" ] || fail "Ollama $running is running, but the $role is pinned to $version. $install"
+        installed=$(ollama_digest "$model")
+        if [ -z "$installed" ]; then
+            echo "Pulling the $role model $model"
+            ollama pull "$model" || fail "could not pull $model. Check the network, then rerun just init."
+            installed=$(ollama_digest "$model")
+        else
+            echo "The $role model $model is already pulled."
+        fi
+        [ "$installed" = "$digest" ] \
+            || fail "$model in Ollama has digest ${installed:0:12}, not the pinned ${digest:0:12} in $config. Remove it with: ollama rm $model, then rerun just init (the registry may no longer serve the pinned weights)."
+    }
     # The digest Ollama has for model $1, or nothing (also when Ollama doesn't answer). /api/tags lists each model as one object whose
     # name and digest come before its nested "details", so splitting on "{" keeps them together.
     ollama_digest() {
@@ -39,7 +65,7 @@ _bash_prelude := '''
 default:
     @just --list --unsorted
 
-# Check uv, Docker and Ollama, install every dependency group and pull the pinned images and judge model (safe to rerun)
+# Check uv, Docker and Ollama, install every dependency group and pull the pinned images, judge and chat model (safe to rerun)
 init:
     #!/usr/bin/env bash
     recipe=init
@@ -68,28 +94,17 @@ init:
         docker pull "$GROBID_REFERENCE" || fail "could not pull $GROBID_REFERENCE. Check the network, then rerun just init."
     fi
 
-    # The judge's runtime and weights are both pinned (ADR 0021): a different Ollama version or
-    # model digest changes the scores, so init stops rather than fixing either behind your back.
+    # The runtime and weights of the judge and the chat model are both pinned (ADRs 0021 and 0053): a different
+    # Ollama version or model digest changes the scores and answers, so init stops rather than fixing either
+    # behind your back.
     load_judge
     judge_summary="the judge does not run on Ollama"
     if [ -n "$OLLAMA_MODEL" ]; then
-        install="Install Ollama $OLLAMA_VERSION from https://github.com/ollama/ollama/releases/tag/v$OLLAMA_VERSION"
-        command -v ollama >/dev/null 2>&1 || fail "Ollama is not installed. $install (see Prerequisites in the README)."
-        running=$(curl -fsS --max-time 5 "$OLLAMA_URL/api/version" 2>/dev/null | sed -n 's/.*"version":"\([^"]*\)".*/\1/p') || true
-        [ -n "$running" ] || fail "Ollama is not answering at $OLLAMA_URL. Start the Ollama app or run: ollama serve"
-        [ "$running" = "$OLLAMA_VERSION" ] || fail "Ollama $running is running, but the judge is pinned to $OLLAMA_VERSION. $install"
-        installed=$(ollama_digest "$OLLAMA_MODEL")
-        if [ -z "$installed" ]; then
-            echo "Pulling the judge model $OLLAMA_MODEL"
-            ollama pull "$OLLAMA_MODEL" || fail "could not pull $OLLAMA_MODEL. Check the network, then rerun just init."
-            installed=$(ollama_digest "$OLLAMA_MODEL")
-        else
-            echo "The judge model $OLLAMA_MODEL is already pulled."
-        fi
-        [ "$installed" = "$OLLAMA_DIGEST" ] \
-            || fail "$OLLAMA_MODEL in Ollama has digest ${installed:0:12}, not the pinned ${OLLAMA_DIGEST:0:12} in config/scope.toml. Remove it with: ollama rm $OLLAMA_MODEL, then rerun just init (the registry may no longer serve the pinned weights)."
-        judge_summary="Ollama $running with the judge model $OLLAMA_MODEL, pinned by digest"
+        ensure_ollama_model judge "$OLLAMA_MODEL" "$OLLAMA_DIGEST" "$OLLAMA_VERSION" config/scope.toml
+        judge_summary="Ollama $OLLAMA_VERSION with the judge model $OLLAMA_MODEL, pinned by digest"
     fi
+    load_chat
+    ensure_ollama_model chat "$CHAT_MODEL" "$CHAT_DIGEST" "$CHAT_VERSION" config/retrieval.toml
 
     echo
     echo "Ready:"
@@ -98,6 +113,7 @@ init:
     echo "  Docker daemon $(docker info --format '{{{{.ServerVersion}}')"
     echo "  GROBID $GROBID_TAG, pinned by digest (start it with: just grobid-up)"
     echo "  $judge_summary"
+    echo "  Ollama $CHAT_VERSION with the chat model $CHAT_MODEL, pinned by digest"
 
 # Start the pinned GROBID service on localhost and wait until it answers (safe to rerun)
 grobid-up timeout="180":
@@ -187,3 +203,7 @@ eval-check *args:
 # Score the retrievers on the Evaluation set and write the eval report; extra arguments go to the CLI
 evaluate *args:
     uv run chatbot-rag-tokenizers evaluate "$@"
+
+# Serve the chat page on localhost and print its URL; extra arguments go to the CLI
+chat *args:
+    uv run chatbot-rag-tokenizers chat "$@"

@@ -28,6 +28,7 @@ from typing import Any, Protocol, cast
 
 import httpx
 
+from ..ollama import OLLAMA_URL, Ollama, OllamaModelError, response_json
 from .config import JudgeConfig
 from .editions import Edition
 
@@ -187,47 +188,16 @@ class TransformersJudge:
         return scores
 
 
-OLLAMA_URL = "http://localhost:11434"
-
-
-class OllamaModelError(ValueError):
-    pass
-
-
-def split_pin(revision: str) -> tuple[str, str]:
-    """An Ollama pin ``<digest>@<Ollama version>`` as (digest, version); version is "" for any other revision."""
-    digest, _, version = revision.partition("@")
-    return digest, version
-
-
 class _Ollama:
-    """A model served by a local Ollama, pinned as ``<digest>@<Ollama version>``.
-
-    The digest pins the weights and the version pins the runtime that runs them: upgrading Ollama
-    moved some P("Yes") scores by 0.16 (ADR 0021). The judge refuses to start unless both match.
-    """
+    """A model served by a local Ollama, pinned as ``<digest>@<Ollama version>``: the judge refuses to start
+    unless the server runs both (the shared Ollama module, ADRs 0021 and 0053)."""
 
     def __init__(self, config: JudgeConfig, client: httpx.Client | None = None) -> None:
         self.config = config
-        self.client = client or httpx.Client(base_url=OLLAMA_URL, timeout=120.0)
-        digest, version = split_pin(config.revision)
-        if not version:
-            raise OllamaModelError(f"pin {config.model} as <digest>@<Ollama version>, not {config.revision!r}")
+        self.ollama = Ollama(client)
+        self.client = self.ollama.client
+        digest, version = self.ollama.check_pin(config.model, config.revision)
         print(f"judge: using {config.model}@{digest[:12]} from Ollama {version}", file=sys.stderr)
-        running = self._get("/api/version")["version"]
-        if running != version:
-            raise OllamaModelError(f"Ollama {running} is running, not the pinned {version}")
-        installed = {model["name"]: model["digest"] for model in self._get("/api/tags")["models"]}
-        if config.model not in installed:
-            raise OllamaModelError(f"{config.model} is not installed in Ollama; run `ollama pull {config.model}`")
-        if installed[config.model] != digest:
-            raise OllamaModelError(f"{config.model} in Ollama has digest {installed[config.model]}, not the pinned {digest}")
-
-    def _get(self, path: str) -> dict[str, Any]:
-        return _json(self.client.get(path))
-
-    def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
-        return _json(self.client.post(path, json=body))
 
     def _p_yes(self, edition: Edition) -> float:
         raise NotImplementedError
@@ -242,17 +212,13 @@ class OllamaJudge(_Ollama):
 
     def _p_yes(self, edition: Edition) -> float:
         content = self.config.prompt.format(title=edition.title, abstract=edition.abstract)
-        response = self._post(
-            "/api/chat",
-            {
-                "model": self.config.model,
-                "messages": [{"role": "user", "content": content}],
-                "think": False,
-                "stream": False,
-                "logprobs": True,
-                "top_logprobs": 20,
-                "options": {"num_predict": 1, "temperature": 0, "seed": 0},
-            },
+        response = self.ollama.chat(
+            self.config.model,
+            [{"role": "user", "content": content}],
+            think=False,
+            options={"num_predict": 1, "temperature": 0, "seed": 0},
+            logprobs=True,
+            top_logprobs=20,
         )
         return p_yes_from_logprobs(response["logprobs"][0]["top_logprobs"])
 
@@ -282,14 +248,9 @@ class OllamaDecisionJudge(_Ollama):
             )
             too_long = _TOO_LONG.search(response.text) if response.status_code == 400 else None
             if too_long is None:
-                return float(_json(response)["answers"]["in_scope"]["noul"])
+                return float(response_json(response)["answers"]["in_scope"]["noul"])
             abstract = _shorten(abstract, int(too_long["tokens"]), int(too_long["limit"]))
             print(f"judge: {edition.edition_id} is too long for the model; abstract cut to {len(abstract)} characters", file=sys.stderr)
-
-
-def _json(response: httpx.Response) -> dict[str, Any]:
-    response.raise_for_status()
-    return response.json()
 
 
 def _shorten(abstract: str, tokens: int, limit: int) -> str:

@@ -114,10 +114,11 @@ case "$*" in
     if [ -f "$state/healthy" ] && [ -f "$state/container" ]; then echo true; else exit 7; fi ;;
 esac
 """
-# ollama only pulls: it installs the model at FAKE_OLLAMA_PULLED_DIGEST, or the pinned digest.
+# ollama only pulls: it installs the model at FAKE_OLLAMA_PULLED_DIGEST, or at its pinned digest in $FAKE_STATE/pins.
 FAKE_OLLAMA = r"""#!/bin/bash
 echo "$*" >> "$FAKE_STATE/ollama"
-[ "$1" = pull ] && echo "$2 ${FAKE_OLLAMA_PULLED_DIGEST:-$PINNED_DIGEST}" >> "$FAKE_STATE/models"
+pinned=$(grep -F "$2 " "$FAKE_STATE/pins" | cut -d' ' -f2)
+[ "$1" = pull ] && echo "$2 ${FAKE_OLLAMA_PULLED_DIGEST:-$pinned}" >> "$FAKE_STATE/models"
 exit 0
 """
 # uv answers --version and sync itself, so no test changes .venv, and hands run to the real uv.
@@ -131,6 +132,8 @@ esac
 REFERENCE = "grobid/grobid@sha256:223957791ac2bbe48609dcc58a689b16b60baeae13a8734ef440ae6bfb38f4cd"
 JUDGE_MODEL = "tev1:4b"
 JUDGE_DIGEST = "4d24c6f6d61a48d9b72902f4805c5f1da53010736b834b0372377fb4bb7e53d3"
+CHAT_MODEL = "gemma4:e2b-mlx"
+CHAT_DIGEST = "e98b54fe1913178321e1d9cd007d12a465de77a8f8eae37af69d2501ca03c6b5"
 
 
 class FakeTools:
@@ -147,7 +150,8 @@ class FakeTools:
         real_uv = shutil.which("uv")
         assert real_uv is not None
         self.env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "FAKE_STATE": str(self.state), "REAL_UV": real_uv,
-                    "PINNED_DIGEST": JUDGE_DIGEST}
+}
+        (self.state / "pins").write_text(f"{JUDGE_MODEL} {JUDGE_DIGEST}\n{CHAT_MODEL} {CHAT_DIGEST}\n")
 
     def just(self, *args: str, justfile: Path = ROOT / "justfile") -> subprocess.CompletedProcess[str]:
         return just(*args, env=self.env, justfile=justfile)
@@ -162,7 +166,12 @@ class FakeTools:
         return path.read_text().splitlines() if path.exists() else []
 
     def has_judge_model(self, digest: str = JUDGE_DIGEST) -> None:
-        (self.state / "models").write_text(f"{JUDGE_MODEL} {digest}\n")
+        with (self.state / "models").open("a") as models:
+            models.write(f"{JUDGE_MODEL} {digest}\n")
+
+    def has_chat_model(self, digest: str = CHAT_DIGEST) -> None:
+        with (self.state / "models").open("a") as models:
+            models.write(f"{CHAT_MODEL} {digest}\n")
 
     def has_image(self) -> None:
         (self.state / "images").write_text(REFERENCE + "\n")
@@ -240,17 +249,42 @@ def test_init_pulls_the_judge_model_when_ollama_lacks_it(fake_tools):
     result = fake_tools.just("init")
 
     assert result.returncode == 0, result.stderr
-    assert fake_tools.ollama_calls() == [f"pull {JUDGE_MODEL}"]
+    assert fake_tools.ollama_calls() == [f"pull {JUDGE_MODEL}", f"pull {CHAT_MODEL}"]
     assert f"{JUDGE_MODEL}" in result.stdout
 
 
 @needs_just
 def test_init_skips_the_pull_when_the_judge_model_is_present(fake_tools):
     fake_tools.has_judge_model()
+    fake_tools.has_chat_model()
 
     result = fake_tools.just("init")
 
     assert result.returncode == 0, result.stderr
+    assert fake_tools.ollama_calls() == []
+    assert f"Ollama 0.40.5 with the chat model {CHAT_MODEL}, pinned by digest" in result.stdout
+
+
+@needs_just
+def test_init_pulls_the_chat_model_when_ollama_lacks_it(fake_tools):
+    fake_tools.has_judge_model()
+
+    result = fake_tools.just("init")
+
+    assert result.returncode == 0, result.stderr
+    assert fake_tools.ollama_calls() == [f"pull {CHAT_MODEL}"]
+    assert f"Pulling the chat model {CHAT_MODEL}" in result.stdout
+
+
+@needs_just
+def test_init_stops_when_the_chat_model_has_another_digest(fake_tools):
+    fake_tools.has_judge_model()
+    fake_tools.has_chat_model("0" * 64)
+
+    result = fake_tools.just("init")
+
+    assert result.returncode != 0
+    assert f"{CHAT_MODEL} in Ollama has digest 000000000000, not the pinned e98b54fe1913 in config/retrieval.toml" in result.stderr
     assert fake_tools.ollama_calls() == []
 
 

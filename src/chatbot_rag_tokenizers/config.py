@@ -21,6 +21,6 @@ def read_table(raw: dict, name: str, expected: dict[str, type], path: Path) -> d
         if field not in fields:
             raise ConfigError(f"[{name}] in {path} has no {field}")
         # bool is a subclass of int, so `port = true` would otherwise pass.
-        if not isinstance(fields[field], kind) or isinstance(fields[field], bool):
+        if not isinstance(fields[field], kind) or (isinstance(fields[field], bool) and kind is not bool):
             raise ConfigError(f"[{name}] {field} {fields[field]!r} is not a {kind.__name__}")
     return fields

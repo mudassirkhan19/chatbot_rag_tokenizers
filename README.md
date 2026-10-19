@@ -8,7 +8,7 @@ Setup is supported on **macOS only**. Install these yourself; the repo installs 
 
 - **uv and just:** `brew install uv just`.
 - **A Docker daemon,** such as Docker Desktop, OrbStack or Colima. It must be running for `just init`.
-- **[Ollama](https://ollama.com) 0.40.5 exactly,** from its [release page](https://github.com/ollama/ollama/releases/tag/v0.40.5), for the relevance judge. Another version changes the judge's scores, so the judge refuses to run on it (ADR 0021). It must be running for `just init`.
+- **[Ollama](https://ollama.com) 0.40.5 exactly,** from its [release page](https://github.com/ollama/ollama/releases/tag/v0.40.5), for the relevance judge and the chatbot's answer model. Another version changes the judge's scores and the chatbot's answers, so both refuse to run on it (ADRs 0021 and 0053). It must be running for `just init`.
 
 Tested with macOS 26.6, uv 0.10.8, just 1.46.0, Docker 29.2.1 and Ollama 0.40.5. `pyproject.toml` sets the oldest uv the repo accepts (`[tool.uv] required-version`); `uv.lock` pins Python 3.12 and every package.
 
@@ -18,7 +18,7 @@ Tested with macOS 26.6, uv 0.10.8, just 1.46.0, Docker 29.2.1 and Ollama 0.40.5.
 just init
 ```
 
-This checks that uv is recent enough, that Docker is installed and that its daemon answers, and says what to install or start if not. Then it installs every dependency group into `.venv` (`uv sync --all-groups --locked`) and pulls the pinned GROBID image unless Docker already has it. Last, it checks that Ollama answers at the version the judge is pinned to, pulls the judge model (`tev1:4b`) unless Ollama already has it, and checks its digest against the pin in `config/scope.toml`. It prints what is ready. It installs nothing system-wide outside Docker's image store and Ollama's model store, and running it again changes nothing.
+This checks that uv is recent enough, that Docker is installed and that its daemon answers, and says what to install or start if not. Then it installs every dependency group into `.venv` (`uv sync --all-groups --locked`) and pulls the pinned GROBID image unless Docker already has it. Last, it checks that Ollama answers at the version the judge is pinned to, pulls the judge model (`tev1:4b`) unless Ollama already has it, and checks its digest against the pin in `config/scope.toml`. It does the same for the chat model (`gemma4:e2b-mlx`, about 6.5 GB), pinned in the `[chat]` table of `config/retrieval.toml`. It prints what is ready. It installs nothing system-wide outside Docker's image store and Ollama's model store, and running it again changes nothing.
 
 Run `just` to list every recipe. Each pipeline recipe forwards extra arguments to the CLI, so `just collect --no-judge` is `uv run chatbot-rag-tokenizers collect --no-judge`.
 
@@ -210,6 +210,21 @@ git diff --stat data/   # only the report's Timings section differs
 
 `evaluate` reads the committed Evaluation set and Work groups. On an unchanged index it writes the same report every time apart from the timings, and `git diff` shows only the latency and build-time lines. The parse report and index record are committed, so `parse` and `index` also show whether the corpus you rebuilt matches the committed one.
 
+## Chat with the corpus
+
+```sh
+just chat        # serves the chat page and prints its URL, http://localhost:8766 (--port sets another)
+```
+
+Type a question and the page answers it from the papers. Each question retrieves the top 5 Chunks from the retriever the `[chat]` table of `config/retrieval.toml` names, which is the dense baseline (`dense.bge-small`) until the embedding comparison names its choice. The pinned answer model, `gemma4:e2b-mlx` on Ollama with thinking off and temperature 0, answers from those Chunks only (ADR 0053). An answer takes one to three seconds on an Apple-silicon laptop.
+
+- **The answer** carries a numbered marker such as `[2]` for each Chunk it uses. A marker that names no retrieved Chunk is struck through as invalid, never dropped.
+- **The references** under the answer give, for each cited Chunk, the paper's title, its pinned Edition id with Version, the Section number and title, and the pages.
+- **The panel** beside the answer shows each cited Chunk's text and Citation anchor. The retrieved Chunks the answer didn't cite are folded away under it.
+- **An Abstention** is the fixed sentence "The papers in this corpus do not answer this question.", which the model is told to write when the Chunks don't answer. The retrieved Chunks are still shown.
+
+`chat` needs the retriever's index (`just index --retriever dense.bge-small`) and Ollama running with the pinned model (`just init`). When Ollama is stopped, runs another version or lacks the model, `chat` says so in the terminal and on the page, and the next question tries again once Ollama is started.
+
 ## Measure the Relevance verdict
 
 The Audit set (`data/audit/audit-set.csv`) is a hand-labelled, stratified sample of Candidates used to choose the judge model and threshold and to report precision and recall. See ADR 0011.
@@ -252,4 +267,10 @@ The test of the real embedder is opt-in too. For every dense table it downloads 
 RUN_EMBEDDER_TESTS=1 just test tests/test_embedder.py -s
 ```
 
-`tests/test_retrieval.py` runs `index` and `evaluate` on Chunks parsed from the CC BY TEI fixtures through the fake GROBID service, with a fixture Evaluation set that has a question of each type and fixture Work groups that join each paper with its venue Edition (`tests/fixtures/eval/`). `tests/test_eval_check.py` runs `eval-check` on the same papers plus a v1 of the BPE paper edited by hand (a reworded sentence, a changed number, a re-dated citation), and checks that `evaluate` refuses a set that fails it. The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model: the dense retriever embeds with a hashed bag of words in their place. `tests/test_dev_setup.py` also runs `just` to check the recipes, that `init` stops when Docker is missing, and, with a fake `docker` and `curl` on PATH, that `init` pulls GROBID by digest and that `grobid-up` and `grobid-down` behave; it skips without just.
+The test of the real answer model is opt-in as well. It needs Ollama with the pinned chat model (`just init`). It asks a fixture question through the chat page and checks that the answer cites a retrieved Chunk with no invalid marker and is the same when asked twice, and that an off-topic question gets the Abstention:
+
+```sh
+RUN_OLLAMA_TESTS=1 just test tests/test_chat_page.py -k real -s
+```
+
+`tests/test_retrieval.py` runs `index` and `evaluate` on Chunks parsed from the CC BY TEI fixtures through the fake GROBID service, with a fixture Evaluation set that has a question of each type and fixture Work groups that join each paper with its venue Edition (`tests/fixtures/eval/`). `tests/test_eval_check.py` runs `eval-check` on the same papers plus a v1 of the BPE paper edited by hand (a reworded sentence, a changed number, a re-dated citation), and checks that `evaluate` refuses a set that fails it. The tests run `collect`, `fetch` (against an in-memory web) and `audit export` offline against a small hand-built fixture Snapshot with cached judge verdicts, and `audit report` against a tiny labelled Audit set with fixture verdicts for two models (`tests/fixtures/`). They fail if anything touches the network, and they never load a model: the dense retriever embeds with a hashed bag of words in their place, and the chatbot answers with a scripted fake model. `tests/test_chat_page.py` runs `chat` over the same fixture papers and posts questions to the page. `tests/test_ollama.py` checks the answer model's requests and pin against a stand-in Ollama server, as `tests/test_ollama_judge.py` does for the judge. `tests/test_dev_setup.py` also runs `just` to check the recipes, that `init` stops when Docker is missing, and, with a fake `docker` and `curl` on PATH, that `init` pulls GROBID by digest and that `grobid-up` and `grobid-down` behave; it skips without just.

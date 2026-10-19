@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from chatbot_rag_tokenizers.chat.config import AnswerModelConfig, load_chat_config
 from chatbot_rag_tokenizers.config import ConfigError
 from chatbot_rag_tokenizers.retrieval.config import load_retrieval_config
 
@@ -69,3 +70,37 @@ def test_a_dense_table_written_the_old_way_is_named_and_told_how_to_change(tmp_p
 
     with pytest.raises(ConfigError, match=r"\[dense\] model .* is not a table; give each dense model its own \[dense.<name>\] table"):
         load_retrieval_config(path)
+
+
+def test_the_chatbot_asks_the_dense_baseline_for_five_chunks_and_answers_with_the_pinned_gemma():
+    chat = load_chat_config(RETRIEVAL_CONFIG)
+
+    assert (chat.retriever.name, chat.k) == ("dense.bge-small", 5)
+    assert chat.model == AnswerModelConfig(
+        "gemma4:e2b-mlx", "e98b54fe1913178321e1d9cd007d12a465de77a8f8eae37af69d2501ca03c6b5@0.40.5", think=False, temperature=0.0
+    )
+    # The prompt asks for the fixed Abstention sentence word for word.
+    assert chat.abstention in chat.system_prompt
+
+
+def with_chat_line(tmp_path: Path, old: str, new: str) -> Path:
+    config = RETRIEVAL_CONFIG.read_text()
+    assert config.count(old) == 1
+    path = tmp_path / "retrieval.toml"
+    path.write_text(config.replace(old, new))
+    return path
+
+
+@pytest.mark.parametrize(
+    "old, new, message",
+    [
+        ('retriever = "dense.bge-small"', 'retriever = "dense.e5"', r"\[chat\] retriever 'dense.e5' is not a retriever .* configures: bm25, dense.bge-small"),
+        ("k = 5", "k = 0", r"\[chat\] k 0 must be at least 1"),
+        ('revision = "e98b54fe1913178321e1d9cd007d12a465de77a8f8eae37af69d2501ca03c6b5@0.40.5"', 'revision = "latest"', r"\[chat\] revision 'latest' is not pinned as <digest>@<Ollama version>"),
+        ("think = false", 'think = "no"', r"\[chat\] think 'no' is not a bool"),
+    ],
+    ids=["unknown-retriever", "no-chunks", "unpinned", "mistyped"],
+)
+def test_a_bad_chat_table_stops_with_a_message_naming_it(tmp_path, old, new, message):
+    with pytest.raises(ConfigError, match=message):
+        load_chat_config(with_chat_line(tmp_path, old, new))

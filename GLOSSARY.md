@@ -105,3 +105,29 @@ _Avoid_: Clusters, dedup output (the duplicate stage's own grouping is what the 
 **Collapsed ranking**:
 A ranking that holds at most one Chunk per Work; the Chunk shown is from the Work's Canonical Edition when one was retrieved, and the merged Editions are named beside it.
 _Avoid_: Deduplicated results, merged results, filtered ranking
+
+### Chat
+
+**Conversation**:
+One user's sequence of Turns with the chatbot, from the first question until the page is reset; the unit the transcript records and the chat evaluation replays.
+_Avoid_: Session, chat, thread
+
+**Turn**:
+One question and the answer it gets, with the Chunks retrieved for it. A follow-up Turn is resolved against the Conversation before it.
+_Avoid_: Message, exchange, query
+
+**Rewrite**:
+The standalone question the chatbot forms from a follow-up Turn and the Conversation before it, which is what retrieval sees. The Evaluation set's hand-written reference rewrite is the ceiling it is measured against.
+_Avoid_: Reformulation, expanded query, reference rewrite (that is the Evaluation set's)
+
+**Citation**:
+A marker in an answer that names one retrieved Chunk by its Citation anchor, so a reader can open the paper and Section it came from. An answer may cite only Chunks retrieved for its Turn.
+_Avoid_: Reference (that is a bibliography entry), source, link
+
+**Grounded**:
+An answer every Citation of which resolves to a Chunk retrieved for its Turn, and every number of which appears in a cited Chunk.
+_Avoid_: Faithful, supported, hallucination-free
+
+**Abstention**:
+An answer that says plainly the corpus does not support an answer to the question, instead of answering it. A correct Abstention answers an unanswerable question; a false one refuses an answerable question.
+_Avoid_: Refusal, "I don't know", fallback
