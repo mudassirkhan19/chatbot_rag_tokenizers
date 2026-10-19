@@ -229,7 +229,7 @@ Type a question and the page answers it from the papers. Each question retrieves
 - **The answer** carries a numbered marker such as `[2]` for each Chunk it uses. A marker that names no retrieved Chunk is struck through as invalid, never dropped.
 - **The references** under the answer give, for each cited Chunk, the paper's title, its pinned Edition id with Version, the Section number and title, and the pages.
 - **The panel** beside the answer shows each cited Chunk's text and Citation anchor. The retrieved Chunks the answer didn't cite are folded away under it.
-- **An Abstention** is the fixed sentence "The papers in this corpus do not answer this question.", which the model is told to write when the Chunks don't answer. The retrieved Chunks are still shown.
+- **An Abstention** is an answer that declines instead of answering. The model is told to write the fixed sentence "The papers in this corpus do not answer this question." when the Chunks don't answer, but it often declines in its own words, as in "The provided chunks do not contain the specific BLEU score …". A reply holding the fixed sentence is an Abstention, and so is one whose text is a single sentence declining in that way (ADR 0063). A decline followed by an answer is an answer. The retrieved Chunks are still shown.
 - **A follow-up** such as "how much did that help on MMLU?" is understood from the Conversation so far. On every question after the first, the answer model first rewrites it as a standalone question from the earlier questions and answers, and retrieval uses that Rewrite, shown under the question as "Searched as:". The answer model then sees the last three Turns before the Rewrite and its Chunks (`history` in `[chat]`, ADR 0056). **New conversation** forgets the Turns so far, as reloading the page does.
 
 `chat` needs the retriever's index (`just index --retriever dense.bge-small`) and Ollama running with the pinned model (`just init`). When Ollama is stopped, runs another version or lacks the model, `chat` says so in the terminal and on the page, and the next question tries again once Ollama is started.
@@ -252,13 +252,13 @@ The pinned model is not quite deterministic run to run, even at temperature 0 wi
 
 How to read the numbers:
 
-- Every rate (abstention, false-abstention, grounded), in each row of the Results table and in the lines below it, has its **95% Wilson interval**. It covers the sampling of the questions: with 34 answers, the committed grounded rate of 0.82 is [0.66, 0.92], against the 0.03 one flipped verdict moves it. It does not cover the model's run-to-run variation, which the Variation section measures. An empty group shows `—`.
+- Every rate (abstention, false-abstention, grounded), in each row of the Results table and in the lines below it, has its **95% Wilson interval**. It covers the sampling of the questions: with 6 questions, the committed near-miss abstention rate of 5/6 (0.83) is [0.44, 0.97], against the 0.17 one changed verdict moves it. It does not cover the model's run-to-run variation, which the Variation section measures. An empty group shows `—`.
 - **Recall@5 has no interval here.** It is a mean of per-question shares, not a proportion, so the Wilson interval doesn't apply, and it is the retriever's measure: `evaluate`'s eval report gives its bootstrap interval (ADR 0061).
 
 What it writes:
 
 - **The chat report** (`data/eval/chat-report.md`, `--report`, committed) names the Evaluation set's sha256, the corpus, the retriever, the answer model's pin and settings, and the sha256 of the system prompt and of the rewrite prompt. Then it gives, per question type and overall:
-  - the **abstention rate**: on the unanswerable questions, the share answered with the Abstention sentence, split into near-miss and out-of-topic; on the answerable ones, the false-abstention rate;
+  - the **abstention rate**: on the unanswerable questions, the share answered with an Abstention (the fixed sentence or a one-sentence decline in the model's words, as on the page), split into near-miss and out-of-topic; on the answerable ones, the false-abstention rate;
   - the **grounded rate** over the answers that are not Abstentions. An answer is grounded when it cites at least one retrieved Chunk, every marker names a Chunk retrieved for its Turn, and every number in it (a word that starts with a digit, cut and normalised as the Passage matcher cuts words) appears in a cited Chunk's context header or text. An uncited answer is not grounded;
   - **Recall@5** of the Chunks each question's Turn actually retrieved, with the Passage matcher;
   - one line per question: its type, whether it abstained, whether it is grounded, its invalid Citations, its numbers that no cited Chunk holds, and the Passages in its Chunks;
@@ -309,7 +309,7 @@ The test of the real embedder is opt-in too. For every dense table it downloads 
 RUN_EMBEDDER_TESTS=1 just test tests/test_embedder.py -s
 ```
 
-The test of the real answer model is opt-in as well. It needs Ollama with the pinned chat model (`just init`). It asks a fixture question through the chat page and checks that the answer cites a retrieved Chunk with no invalid marker and is the same when asked twice, and that an off-topic question gets the Abstention:
+The test of the real answer model is opt-in as well. It needs Ollama with the pinned chat model (`just init`). It asks a fixture question through the chat page and checks that the answer cites a retrieved Chunk with no invalid marker and is the same when asked twice, that an off-topic question gets the Abstention, and that a near miss (an English→French BLEU score the BPE paper doesn't report) is an Abstention in whatever words the model declines:
 
 ```sh
 RUN_OLLAMA_TESTS=1 just test tests/test_chat_page.py -k real -s
