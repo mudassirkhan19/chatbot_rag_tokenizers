@@ -228,21 +228,22 @@ def _comparison(runs: Sequence[RetrieverRun], config: ComparisonConfig) -> list[
         lines += [
             f"### Comparison: {metric}",
             "",
-            f"| Retriever | Baseline | {metric} | {CONFIDENCE:.0%} interval | Difference | {CONFIDENCE:.0%} interval | Noise | Wins | Ties | Losses |",
+            f"| Retriever | Baseline | {metric} | {CONFIDENCE:.0%} interval | Difference | Difference's {CONFIDENCE:.0%} interval | Noise | Wins | Ties | Losses |",
             "|---|---|---:|---:|---:|---:|---|---:|---:|---:|",
         ]
         for run in runs:
-            c = compare(run.scored, baseline(run).scored, measure, drawn)
+            compared = compare(run.scored, baseline(run).scored, measure, drawn)
+            low, high = compared.difference_interval.low, compared.difference_interval.high
             cells = [
                 baseline(run).name,
-                f"{c.mean:.{digits}f}",
-                f"[{c.interval.low:.{digits}f}, {c.interval.high:.{digits}f}]",
-                f"{c.difference:+.{digits}f}",
-                f"[{c.difference_interval.low:+.{digits}f}, {c.difference_interval.high:+.{digits}f}]",
-                "within noise" if c.within_noise else "beyond noise",
-                str(c.wins),
-                str(c.ties),
-                str(c.losses),
+                f"{compared.mean:.{digits}f}",
+                f"[{compared.interval.low:.{digits}f}, {compared.interval.high:.{digits}f}]",
+                f"{compared.difference:+.{digits}f}",
+                f"[{low:+.{digits}f}, {high:+.{digits}f}]",
+                "within noise" if compared.within_noise else "beyond noise",
+                str(compared.wins),
+                str(compared.ties),
+                str(compared.losses),
             ]
             lines.append(f"| {run.name} | {' | '.join(cells)} |")
         lines.append("")

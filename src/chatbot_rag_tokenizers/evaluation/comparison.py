@@ -26,6 +26,7 @@ class BaselineMissing(ValueError):
 
 
 def check_baseline(baseline: str, scored: Sequence[str]) -> None:
+    """Raises BaselineMissing unless the baseline is one of the retrievers to be scored, named as `--retriever` takes them."""
     if baseline not in scored:
         raise BaselineMissing(
             f"the Comparison's baseline, {baseline}, is not among the retrievers scored ({', '.join(scored)}); add"

@@ -96,12 +96,8 @@ _Avoid_: Audit set (that measures the relevance verdict), test set, gold set
 A verbatim quote from one Section of one Edition that answers an evaluation question. Any Chunk holding the quote answers it, whichever Edition of the Work that Chunk comes from.
 _Avoid_: Chunk (the retrieved unit, which may hold several Passages or part of one), answer, span
 
-**Baseline**:
-The retriever every other is compared with in the Comparison, named in the retrieval config: `dense.bge-small`, and its `+collapsed` twin for the twins.
-_Avoid_: Control, reference retriever
-
 **Comparison**:
-Each retriever against the Baseline, question by question, over the answerable questions as a user asks them: the questions it wins, ties and loses, and paired bootstrap intervals on its metrics and on its difference from the Baseline. A difference whose interval holds 0 is within noise. It names no winner.
+Each retriever against a baseline retriever named in the retrieval config (`dense.bge-small`, and its `+collapsed` twin for the twins), question by question, over the answerable questions as a user asks them: the questions it wins, ties and loses, and paired bootstrap intervals on its metrics and on its difference from the baseline. A difference whose interval holds 0 is within noise. It names no winner.
 _Avoid_: Significance test, ranking of retrievers
 
 **Unanswerable kind**:

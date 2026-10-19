@@ -142,7 +142,7 @@ Each retriever against the baseline, dense.bge-small, and each `+collapsed` twin
 
 ### Comparison: Recall@5
 
-| Retriever | Baseline | Recall@5 | 95% interval | Difference | 95% interval | Noise | Wins | Ties | Losses |
+| Retriever | Baseline | Recall@5 | 95% interval | Difference | Difference's 95% interval | Noise | Wins | Ties | Losses |
 |---|---|---:|---:|---:|---:|---|---:|---:|---:|
 | bm25 | dense.bge-small | 0.16 | [0.04, 0.30] | -0.14 | [-0.32, +0.02] | within noise | 2 | 20 | 6 |
 | bm25+collapsed | dense.bge-small+collapsed | 0.20 | [0.07, 0.34] | -0.18 | [-0.36, +0.00] | within noise | 2 | 19 | 7 |
@@ -153,7 +153,7 @@ Each retriever against the baseline, dense.bge-small, and each `+collapsed` twin
 
 ### Comparison: MRR@10
 
-| Retriever | Baseline | MRR@10 | 95% interval | Difference | 95% interval | Noise | Wins | Ties | Losses |
+| Retriever | Baseline | MRR@10 | 95% interval | Difference | Difference's 95% interval | Noise | Wins | Ties | Losses |
 |---|---|---:|---:|---:|---:|---|---:|---:|---:|
 | bm25 | dense.bge-small | 0.118 | [0.033, 0.228] | -0.126 | [-0.284, +0.025] | within noise | 4 | 13 | 11 |
 | bm25+collapsed | dense.bge-small+collapsed | 0.138 | [0.048, 0.250] | -0.133 | [-0.286, +0.015] | within noise | 4 | 11 | 13 |
@@ -735,9 +735,9 @@ Each retriever's model and index, with how long the index took to build and each
 
 | Retriever | Parameters | Dimension | Index on disk | Built on | Build time | Queries | Queried on | Latency p50 | Latency p95 |
 |---|---:|---:|---:|---|---:|---:|---|---:|---:|
-| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 198.08 ms | 305.30 ms |
-| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 217.82 ms | 319.10 ms |
-| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 29.10 ms | 38.85 ms |
-| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 29.29 ms | 33.38 ms |
-| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 254.63 ms | 391.21 ms |
-| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 238.98 ms | 348.55 ms |
+| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 199.08 ms | 297.03 ms |
+| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 190.90 ms | 293.67 ms |
+| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 26.64 ms | 30.69 ms |
+| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 28.37 ms | 29.73 ms |
+| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 225.84 ms | 340.74 ms |
+| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 228.37 ms | 333.10 ms |

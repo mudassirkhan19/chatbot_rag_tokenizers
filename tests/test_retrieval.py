@@ -991,7 +991,7 @@ def test_the_first_hit_table_has_a_row_per_answerable_question_and_a_column_per_
 
 def on_disk(folder: Path) -> int:
     """The bytes of an index's own files, without its record."""
-    return sum(path.stat().st_size for path in folder.iterdir() if path.name != "index.json")
+    return sum(path.stat().st_size for path in folder.iterdir() if path.is_file() and path.name != "index.json")
 
 
 def test_the_cost_table_gives_each_retrievers_parameters_dimension_and_index_size_next_to_its_timings(indexed):

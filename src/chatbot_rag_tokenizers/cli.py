@@ -287,7 +287,7 @@ def main(argv: list[str] | None = None) -> None:
             print("index: the parse report comes from a `--files` run, so no Edition is marked indexed", file=sys.stderr)
     elif args.command == "evaluate":
         corpus, retrievers = _corpus_and_retrievers(args)
-        configured = load_retrieval_config(args.config)
+        retrieval = load_retrieval_config(args.config)
         rule = _matching_rule(args)
         try:
             evaluation.evaluate(
@@ -299,8 +299,8 @@ def main(argv: list[str] | None = None) -> None:
                 rule,
                 read_manifest(args.manifest),
                 args.work_groups,
-                configured.collapse_pool,
-                configured.comparison,
+                retrieval.collapse_pool,
+                retrieval.comparison,
                 args.export_ungrouped,
             )
         except (EvaluationSetError, WorkGroupsError, index.IndexMissing, BaselineMissing) as error:
