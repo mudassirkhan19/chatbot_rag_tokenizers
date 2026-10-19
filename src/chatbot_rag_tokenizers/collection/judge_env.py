@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from chatbot_rag_tokenizers.collection.config import load_config
-from chatbot_rag_tokenizers.collection.judge import OLLAMA_URL, split_pin
+from chatbot_rag_tokenizers.ollama import OLLAMA_URL, split_pin
 
 DEFAULT_PATH = Path("config/scope.toml")
 

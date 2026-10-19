@@ -25,7 +25,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0018](0018-judge-releases-mps-cache.md) | The judge releases the MPS allocator cache after every batch | Accepted |
 | [0019](0019-openalex-stays-on.md) | OpenAlex stays on | Accepted |
 | [0020](0020-blind-agent-labels-checked-by-the-developer.md) | Audit set labels from blind agents, checked by the developer | Accepted |
-| [0021](0021-tev1-decision-model-judge.md) | Tev1 4B as the judge, served by Ollama and pinned with its runtime | Accepted, amended by 0025 |
+| [0021](0021-tev1-decision-model-judge.md) | Tev1 4B as the judge, served by Ollama and pinned with its runtime | Accepted, amended by 0025 and 0054 |
 | [0022](0022-uv-and-just-from-homebrew-docker-left-to-the-user.md) | uv and just from Homebrew, Docker and Ollama left to the user | Accepted |
 | [0023](0023-grobid-crf-image-pinned-by-digest.md) | GROBID's CRF image, pinned by digest in config/parse.toml | Accepted |
 | [0024](0024-grobid-stays-the-parser-after-the-docling-spike.md) | GROBID stays the parser after the spike against Docling | Accepted |
@@ -58,6 +58,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0051](0051-work-grouping-in-collect.md) | Work grouping in `collect`: work_id, Canonical Edition, Survey flag and Suspected pairs | Accepted |
 | [0052](0052-bge-base-and-openscholar-pinned-and-verified.md) | bge-base and OpenScholar_Retriever pinned, and checked by the opt-in model test | Accepted |
 | [0053](0053-collapsed-ranking-and-collapsed-twins.md) | The Collapsed ranking: one Chunk per Work, scored as a `+collapsed` twin of every retriever | Accepted |
+| [0054](0054-pinned-local-answer-model-and-the-chat-page.md) | The pinned local answer model, the shared Ollama module and the chat page | Accepted |
 
 ## Template
 

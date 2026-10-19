@@ -29,7 +29,8 @@ from pathlib import Path
 from . import judge
 from .config import AuditModel, JudgeConfig, ScopeConfig
 from .editions import Edition
-from .judge import question_hash, split_pin
+from ..ollama import split_pin
+from .judge import question_hash
 from .manifest import judge_includes
 from .pipeline import SAVE_VERDICTS_EVERY, Assessed, assess
 from .rules import RuleFilter

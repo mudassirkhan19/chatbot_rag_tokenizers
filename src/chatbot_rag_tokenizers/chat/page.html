@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tokenization Chat</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #fff; --ink: #1c1c1a; --muted: #6b6b66; --line: #e2e2dc;
+    --bad: #a8322d; --bad-bg: #f8e4e2; --warn-bg: #fff4d6; --accent: #2f5fd0; --accent-bg: #e6ecfb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161615; --card: #20201e; --ink: #ecece8; --muted: #9a9a93; --line: #34342f;
+      --bad: #f0807a; --bad-bg: #3d1d1b; --warn-bg: #3a3218; --accent: #8aa8ff; --accent-bg: #222b45; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 -apple-system, system-ui, sans-serif; }
+  header { position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--line); padding: 10px 16px; z-index: 1; }
+  header .row { max-width: 1100px; margin: 0 auto; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  header strong { font-size: 16px; }
+  .help { color: var(--muted); font-size: 13px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  .banner { background: var(--bad-bg); color: var(--bad); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; }
+  .banner:empty { display: none; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
+  .question { font-weight: 600; margin-bottom: 10px; }
+  .turn { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 18px; }
+  @media (max-width: 760px) { .turn { grid-template-columns: minmax(0, 1fr); } }
+  .answer { white-space: pre-wrap; }
+  .abstained { background: var(--warn-bg); border-radius: 8px; padding: 8px 12px; }
+  .marker { color: var(--accent); background: var(--accent-bg); border-radius: 4px; padding: 0 3px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .marker.invalid { color: var(--bad); background: var(--bad-bg); text-decoration: line-through; cursor: help; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 14px 0 6px; }
+  ol.refs { margin: 0; padding-left: 0; list-style: none; }
+  ol.refs li { margin-bottom: 6px; }
+  .num { display: inline-block; min-width: 2.2em; color: var(--accent); font-weight: 600; }
+  .chunk { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; font-size: 14px; }
+  .chunk.flash { outline: 2px solid var(--accent); }
+  .chunk .anchor { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+  .chunk .text { white-space: pre-wrap; max-height: 16em; overflow: auto; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  form { display: flex; gap: 10px; position: sticky; bottom: 0; background: var(--bg); padding: 12px 0; }
+  textarea { flex: 1; min-height: 48px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: inherit; font: inherit; resize: vertical; }
+  button { font: inherit; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: wait; }
+  .working { color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+<header><div class="row">
+  <strong>Ask the tokenization papers</strong>
+  <span class="help" id="setup"></span>
+</div></header>
+<main>
+  <div class="banner" id="banner"></div>
+  <div id="turns"></div>
+  <form id="ask">
+    <textarea id="question" placeholder="Ask about the papers, e.g. Does WECHSEL need to freeze parameters during training?" required></textarea>
+    <button id="send">Ask</button>
+  </form>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+
+async function loadStatus() {
+  const status = await (await fetch("/status")).json();
+  $("setup").textContent = `${status.k} Chunks per question from ${status.retriever} · answered by ${status.model}`;
+  $("banner").textContent = status.error || "";
+}
+
+function chunkCard(turnId, chunk) {
+  const card = el("div", "chunk");
+  card.id = `${turnId}-chunk-${chunk.number}`;
+  card.append(el("div", "anchor", `[${chunk.number}] ${chunk.title} · ${chunk.anchor}`), el("div", "text", chunk.text));
+  return card;
+}
+
+function render(turn, turnId) {
+  const card = el("div", "card");
+  card.append(el("div", "question", turn.question));
+  const grid = el("div", "turn");
+  const left = el("div"), right = el("div");
+
+  const answer = el("div", turn.abstention ? "answer abstained" : "answer");
+  for (const part of turn.answer) {
+    if (part.text !== undefined) { answer.append(part.text); continue; }
+    const marker = el("span", part.valid ? "marker" : "marker invalid", `[${part.marker}]`);
+    if (part.valid) {
+      marker.title = "Show the cited Chunk";
+      marker.onclick = () => { const target = $(`${turnId}-chunk-${part.marker}`); target.scrollIntoView({ behavior: "smooth", block: "center" }); target.classList.add("flash"); setTimeout(() => target.classList.remove("flash"), 1200); };
+    } else {
+      marker.title = `No Chunk numbered ${part.marker} was retrieved for this question: an invalid Citation`;
+    }
+    answer.append(marker);
+  }
+  left.append(answer);
+
+  if (turn.references.length) {
+    left.append(el("h2", null, "References"));
+    const refs = el("ol", "refs");
+    for (const ref of turn.references) {
+      const item = el("li");
+      const section = [ref.section_number, ref.section_title].filter(Boolean).join(" ");
+      item.append(el("span", "num", `[${ref.number}]`), `${ref.title}. ${ref.edition}, ${section}` + (ref.pages ? `, ${ref.pages}` : "") + ".");
+      refs.append(item);
+    }
+    left.append(refs);
+  }
+  if (turn.invalid.length) {
+    left.append(el("p", "help", `Invalid Citations: ${turn.invalid.map((n) => `[${n}]`).join(" ")} name no retrieved Chunk.`));
+  }
+
+  const cited = turn.chunks.filter((c) => c.cited), uncited = turn.chunks.filter((c) => !c.cited);
+  right.append(el("h2", null, cited.length ? "Cited Chunks" : "No Chunk cited"));
+  for (const chunk of cited) right.append(chunkCard(turnId, chunk));
+  if (uncited.length) {
+    const folded = el("details");
+    folded.append(el("summary", null, `${uncited.length} retrieved Chunk${uncited.length === 1 ? "" : "s"} not cited`));
+    for (const chunk of uncited) folded.append(chunkCard(turnId, chunk));
+    right.append(folded);
+  }
+  right.append(el("p", "help", `Retrieval ${turn.seconds.retrieval.toFixed(2)} s · answer ${turn.seconds.answering.toFixed(1)} s`));
+  grid.append(left, right);
+  card.append(grid);
+  return card;
+}
+
+let turns = 0;
+$("ask").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const question = $("question").value.trim();
+  if (!question) return;
+  $("send").disabled = true;
+  const pending = el("div", "card working", `Retrieving and answering: ${question}`);
+  $("turns").append(pending);
+  pending.scrollIntoView({ behavior: "smooth" });
+  try {
+    const response = await fetch("/turn", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question }) });
+    const body = await response.json();
+    if (!response.ok) { pending.remove(); $("banner").textContent = body.error; return; }
+    $("banner").textContent = "";
+    pending.replaceWith(render(body, `turn-${++turns}`));
+    $("question").value = "";
+  } catch (error) {
+    pending.remove();
+    $("banner").textContent = `The chat server is not answering (${error.message}). Is \`just chat\` still running?`;
+  } finally {
+    $("send").disabled = false;
+    $("question").focus();
+  }
+});
+$("question").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); $("ask").requestSubmit(); }
+});
+loadStatus();
+</script>
+</body>
+</html>
