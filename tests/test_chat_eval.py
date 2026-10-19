@@ -399,8 +399,22 @@ def test_a_baseline_lists_the_questions_whose_verdict_changed_and_marks_those_fl
         "byt5-schedule": ["unanswerable", "abstained", "grounded", "—"],
     }
     assert report.index("## Against the baseline") < report.index("## Timings")
+    assert "asked over other settings" not in report
 
     # Re-scored against itself, nothing changed.
     rescored, _ = run_chat_eval(indexed, EVALUATION_SET, "chat", "--from-answers", "--baseline", str(answers))
 
     assert "No question's verdict changed from the baseline's run 1." in rescored
+
+
+def test_a_baseline_asked_over_another_chatbot_is_compared_and_the_settings_that_differ_are_named(indexed, fake_answer_model):
+    script(fake_answer_model)
+    run_chat_eval(indexed)
+    baseline = indexed / "baseline-answers.jsonl"
+    first, rest = (indexed / "chat-answers.jsonl").read_text(encoding="utf-8").split("\n", 1)
+    baseline.write_text(json.dumps({**json.loads(first), "k": 3}) + "\n" + rest, encoding="utf-8")
+
+    report, _ = run_chat_eval(indexed, EVALUATION_SET, "chat", "--from-answers", "--baseline", str(baseline))
+
+    assert "The baseline was asked over other settings: k 3, here 5." in report
+    assert "No question's verdict changed from the baseline's run 1." in report

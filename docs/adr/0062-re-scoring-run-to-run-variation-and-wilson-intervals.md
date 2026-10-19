@@ -1,7 +1,7 @@
 # 0062. Re-scoring from the answers, run-to-run variation, and Wilson intervals on the chat report's rates
 
 - **Date:** 2026-10-20
-- **Status:** Accepted; amends 0059's reproducibility consequence
+- **Status:** Accepted; amends [0059](0059-abstention-by-instruction-and-the-chat-report.md)'s reproducibility consequence
 
 ## Context
 ADR 0059 found the pinned answer model (gemma4:e2b-mlx at temperature 0, seed 0) not run-to-run deterministic. Three separate `chat-eval` runs on one index retrieved the same Chunks and gave the same Abstentions, but 14 of the 44 replies changed wording and one grounded verdict flipped (gpt-4-number-tokens), so the grounded rate was 27 or 28 of 34. #67's criterion, "two runs give the same report apart from timings", therefore holds only for a deterministic model, as the tests' fake is.
@@ -19,7 +19,7 @@ Forcing the model to be deterministic isn't worth it. The variation comes from t
 
 **Every proportion has a 95% Wilson interval**: the abstention, false-abstention and grounded rates, in each row of the Results table and in the summary lines. An empty group shows `—`. The Wilson interval keeps inside [0, 1] and stays sensible at 0/n and n/n, which this report has many of (no false Abstention on 28, both out-of-topic questions abstained on). The interval covers the sampling of the questions, not the model's run-to-run variation, which the Variation section measures. **Recall@k gets no interval.** It is a mean of per-question shares, not a proportion, and it is the retriever's measure, whose paired bootstrap interval the eval report already gives (ADR 0061).
 
-**`chat-eval --baseline <answers>` compares question by question.** It reads the baseline's answers and runs file whole before anything is written, so it may name the file the run is about to overwrite, and it works with `--from-answers`. Its verdicts are taken as stored, not re-scored: re-scoring them would erase the very scoring change being measured. The report's *Against the baseline* section lists each question whose verdict (abstained, grounded or not grounded) differs from the baseline's run 1, marked *flaky in the baseline* when the baseline's runs disagreed on it. #73 and #72 commit their reports with this section against the committed run.
+**`chat-eval --baseline <answers>` compares question by question.** It reads the baseline's answers and runs file whole before anything is written, so it may name the file the run is about to overwrite, and it works with `--from-answers`. Its verdicts are taken as stored, not re-scored: re-scoring them would erase the very scoring change being measured. A baseline asked over other Chunks or another chatbot is still compared, as a change to the prompt or the retriever is what it is for, and the section names each setting that differs. The report's *Against the baseline* section lists each question whose verdict (abstained, grounded or not grounded) differs from the baseline's run 1, marked *flaky in the baseline* when the baseline's runs disagreed on it. #73 and #72 commit their reports with this section against the committed run.
 
 ## Alternatives considered
 - **Making the model deterministic**, by pinning the runtime's threads or batch size or turning off its prompt cache. The variation lives in Ollama's MLX numerics and caching, below anything the request controls, and a run that did repeat would still be one sample of 36 questions. The interval from the sample size is about ten times the variation (below).

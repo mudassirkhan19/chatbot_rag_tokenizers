@@ -59,13 +59,13 @@ Run = Sequence[Asked]  # every Turn of one pass over the Evaluation set, in the 
 
 
 def score(question: Question, number: int, turn: Turn, rule: MatchingRule) -> Asked:
-    own = number == len(question.history) + 1
+    unfound = Asked(question, number, turn, ground(turn.answer, turn.retrieved), ())
+    if not unfound.scored:
+        return unfound
     found = tuple(
-        place
-        for place, passage in enumerate(question.passages, start=1)
-        if own and any(holds(chunk.text, passage.quote, rule) for chunk in turn.retrieved)
+        place for place, passage in enumerate(question.passages, start=1) if any(holds(chunk.text, passage.quote, rule) for chunk in turn.retrieved)
     )
-    return Asked(question, number, turn, ground(turn.answer, turn.retrieved), found)
+    return Asked(question, number, turn, unfound.grounding, found)
 
 
 def runs_path(answers: Path) -> Path:
@@ -120,17 +120,18 @@ class Baseline:
     path: Path
     runs: int
     verdicts: dict[str, list[str]]  # question id to its scored Turn's verdict in each run, run 1 first
+    asked_over: dict[str, Any]  # its first line
 
 
 def read_baseline(answers: Path) -> Baseline:
     """The answers file and its runs file read whole, so a run may overwrite the file it is compared with."""
-    _, runs = read_answers(answers)
+    stored, runs = read_answers(answers)
     verdicts: dict[str, list[str]] = {}
     for records in runs:
         for record in records:
             if record["scored"]:
                 verdicts.setdefault(record["question_id"], []).append(verdict(record["abstention"], record["grounded"]))
-    return Baseline(answers, len(runs), verdicts)
+    return Baseline(answers, len(runs), verdicts, stored)
 
 
 def rescore(answers: Path, questions: Sequence[Question], corpus: Corpus, config: ChatConfig, rule: MatchingRule) -> list[list[Asked]]:
@@ -144,8 +145,8 @@ def rescore(answers: Path, questions: Sequence[Question], corpus: Corpus, config
     asked = [(question, number, text) for question in questions for number, text in enumerate([*question.history, question.question], start=1)]
     rescored = []
     for run, records in enumerate(runs, start=1):
-        found = [(record["question_id"], record["turn"], record["question"]) for record in records]
-        if found != [(question.id, number, text) for question, number, text in asked]:
+        turns = [(record["question_id"], record["turn"], record["question"]) for record in records]
+        if turns != [(question.id, number, text) for question, number, text in asked]:
             raise AnswersMismatch(f"run {run} of {answers} does not ask the Evaluation set's questions in its order")
         rescored.append([_rebuilt(record, question, number, chunks, config, rule, answers) for record, (question, number, _) in zip(records, asked)])
     return rescored

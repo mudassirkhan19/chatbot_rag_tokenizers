@@ -66,7 +66,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0059](0059-abstention-by-instruction-and-the-chat-report.md) | Abstention by instruction, and the chat report that measures it | Accepted, reproducibility amended by 0062 |
 | [0060](0060-the-grouping-rule-scored-against-the-work-groups.md) | The grouping rule scored against the Work groups, pair by pair | Accepted |
 | [0061](0061-the-comparison-paired-bootstrap-against-a-baseline.md) | The Comparison: wins, ties, losses and paired bootstrap intervals against a baseline, and the Cost table | Accepted |
-| [0062](0062-re-scoring-run-to-run-variation-and-wilson-intervals.md) | `chat-eval` re-scores from the answers, measures run-to-run variation over `--runs`, compares with a baseline, and gives every rate a Wilson interval | Accepted |
+| [0062](0062-re-scoring-run-to-run-variation-and-wilson-intervals.md) | Re-scoring from the answers, run-to-run variation, and Wilson intervals on the chat report's rates | Accepted |
 
 ## Template
 

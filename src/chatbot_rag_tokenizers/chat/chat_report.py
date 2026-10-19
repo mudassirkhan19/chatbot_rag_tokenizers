@@ -13,12 +13,13 @@ import math
 import statistics
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import Any
 
 from ..evaluation.evalset import QUESTION_TYPES, UNANSWERABLE_KINDS, Question
 from ..evaluation.comparison import CONFIDENCE
 from ..evaluation.report import NONE
 from ..retrieval.corpus import Corpus
-from .answers import Asked, Baseline, Run
+from .answers import Asked, Baseline, Run, asked_over
 from .config import ChatConfig
 from .model import pin
 
@@ -111,7 +112,7 @@ def write_chat_report(
         *[_question(item) for item in scored],
         "",
         *_variation(runs, k),
-        *([] if baseline is None else _against(scored, baseline)),
+        *([] if baseline is None else _against(scored, baseline, asked_over(corpus, config))),
         "## Timings",
         "",
         *(_timings(asked) if rescored_from is None else [
@@ -253,8 +254,9 @@ def _variation(runs: Sequence[Run], k: int) -> list[str]:
     ]
 
 
-def _against(scored: Sequence[Asked], baseline: Baseline) -> list[str]:
-    """The questions whose verdict differs from the baseline's run 1, each marked when the baseline's runs disagreed."""
+def _against(scored: Sequence[Asked], baseline: Baseline, here: dict[str, Any]) -> list[str]:
+    """The questions whose verdict differs from the baseline's run 1, each marked when the baseline's runs disagreed,
+    after the settings the baseline was asked over that differ from this run's."""
     changed = [item for item in scored if item.question.id in baseline.verdicts and item.verdict != baseline.verdicts[item.question.id][0]]
     missing = [item.question.id for item in scored if item.question.id not in baseline.verdicts]
     lines = [
@@ -265,6 +267,9 @@ def _against(scored: Sequence[Asked], baseline: Baseline) -> list[str]:
         " disagreed on it, so a change the baseline already varied on is not read as an effect.",
         "",
     ]
+    differ = [f"{key} {baseline.asked_over.get(key)!r}, here {value!r}" for key, value in here.items() if baseline.asked_over.get(key) != value]
+    if differ:
+        lines += [f"The baseline was asked over other settings: {'; '.join(differ)}.", ""]
     if missing:
         lines += [f"Not in the baseline: {', '.join(missing)}.", ""]
     if not changed:
