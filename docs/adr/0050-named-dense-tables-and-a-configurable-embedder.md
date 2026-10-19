@@ -1,7 +1,7 @@
 # 0050. Named dense tables and a configurable embedder; `dense` becomes `dense.bge-small`
 
 - **Date:** 2026-10-19
-- **Status:** Accepted. Amends [0042](0042-dense-baseline-bge-small-behind-the-embedder-boundary.md). Amended by [0051](0051-bge-base-and-openscholar-pinned-and-verified.md): the pin is of `pytorch_model.bin` in a repo without `model.safetensors`.
+- **Status:** Accepted. Amends [0042](0042-dense-baseline-bge-small-behind-the-embedder-boundary.md). Amended by [0052](0052-bge-base-and-openscholar-pinned-and-verified.md): the pin is of `pytorch_model.bin` in a repo without `model.safetensors`.
 
 ## Context
 Spec #55 picks an embedding model with evidence, so it scores several dense models on the Evaluation set. In [0042](0042-dense-baseline-bge-small-behind-the-embedder-boundary.md) there is one `[dense]` table, and the embedder's pooling ([CLS]) and token limit (512) are constants in code. Adding a model would mean changing code, and a second model could not sit next to the first. Slice #56 is the prefactor: after it, adding a model is only a config change.

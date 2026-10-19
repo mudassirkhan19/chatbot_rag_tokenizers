@@ -13,7 +13,7 @@ b = 0.75  # how much a long Chunk's counts are discounted
 # The dense retrievers (ADRs 0042 and 0050), one table each, named `dense.<name>` for `--retriever`. Each embeds
 # every Chunk's context header plus its text once, and a query is scored against every Chunk by exact dot
 # product. A table pins its model, as the chunking tokenizer is pinned: the repo, its revision and the sha256
-# of its weights file, model.safetensors or, in a repo without one, pytorch_model.bin (ADR 0051). It also says
+# of its weights file, model.safetensors or, in a repo without one, pytorch_model.bin (ADR 0052). It also says
 # how the model is used:
 #   pooling            "cls" (the last layer's [CLS] vector) or "mean" (the last layer's mean over the
 #                      tokens that aren't padding), L2-normalised either way
@@ -48,7 +48,7 @@ query_instruction = "Represent this sentence for searching relevant passages: "
 # dimensions, the same vocabulary) trained further on peS2o's scientific papers. Pooled as Contriever's
 # reference code pools, the mean over non-padding tokens, with no query instruction. Contriever scores by raw
 # inner product; normalised here like the others, which changes the top 10 of every fixture question in the
-# opt-in test (ADR 0051). Its repo holds only pytorch_model.bin, which is what the sha256 is of.
+# opt-in test (ADR 0052). Its repo holds only pytorch_model.bin, which is what the sha256 is of.
 [dense.openscholar]
 model = "OpenScholar/OpenScholar_Retriever"
 revision = "ef4f3120d33b3ca57e12fce2b369f5982a7bb929"

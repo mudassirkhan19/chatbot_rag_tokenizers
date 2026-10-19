@@ -22,6 +22,14 @@ _Avoid_: Revision, release
 A Work that reviews or restates other Works' findings; it is always its own Work, never an Edition of the Works it covers.
 _Avoid_: Review paper, overview
 
+**Canonical Edition**:
+The Edition that stands for a Work when its copies are merged: the venue Edition when there is one, otherwise the latest Version of its preprint. A v1 with a later Version is never canonical.
+_Avoid_: Primary, main copy, latest (alone)
+
+**Suspected pair**:
+Two Editions that one signal links (such as a shared title) but that the grouping rule declines to join; they are listed so a reader can see what was not merged, and why.
+_Avoid_: Near-miss, false positive, conflict
+
 ### Collection
 
 **Candidate**:
@@ -91,3 +99,9 @@ _Avoid_: Chunk (the retrieved unit, which may hold several Passages or part of o
 **Work groups**:
 The hand-checked assignment of Editions to Works, with each Work's Survey flag, that the top-5 duplicate rate is measured against.
 _Avoid_: Clusters, dedup output (the duplicate stage's own grouping is what the Work groups test)
+
+### Retrieval
+
+**Collapsed ranking**:
+A ranking that holds at most one Chunk per Work; the Chunk shown is from the Work's Canonical Edition when one was retrieved, and the merged Editions are named beside it.
+_Avoid_: Deduplicated results, merged results, filtered ranking

@@ -107,7 +107,7 @@ def test_manifest_has_one_row_per_edition(fixture_snapshot, no_network, tmp_path
     assert bpe["rule_outcome"] == "pass"
     assert bpe["relevance_verdict"] == "included"
     assert bpe["funnel_status"] == "relevant"
-    assert bpe["work_id"] == ""
+    assert bpe["work_id"] == "bostrom-2020-byte-pair-encoding"
 
     spm = rows["1808.06226v2"]
     assert spm["arxiv_comments"] == "Accepted as a demo paper at EMNLP 2018"
@@ -188,7 +188,7 @@ def test_preprint_and_its_acl_edition_are_two_rows(fixture_snapshot, no_network,
     assert venue["arxiv_id"] == ""
     assert venue["s2_id"] == ""
     assert venue["versions"] == ""
-    assert venue["work_id"] == preprint["work_id"] == ""
+    assert venue["work_id"] == preprint["work_id"] == "sennrich-2016-neural-machine-translation"  # two rows, one Work
     # Found through the preprint, so by the query and the Seed hop that found the preprint.
     assert venue["discovery_channels"] == "seed-references:sentencepiece|semantic-scholar:subword-phrases"
 
@@ -347,7 +347,7 @@ def test_same_edition_from_two_channels_is_one_row_with_both_identifiers(fixture
     # The preprints that arXiv and the Seed record found reported this Edition's DOI or ACL ID,
     # so those channels found it too.
     assert venue["discovery_channels"] == "arxiv:tokenizer-titles|seed:sentencepiece|semantic-scholar:subword-phrases"
-    assert venue["work_id"] == ""
+    assert venue["work_id"] == "kudo-2018-sentencepiece-simple-language"
 
     # Venue Editions without an ACL ID are named by their DOI, else by their Semantic Scholar id.
     journal = rows["10.1162/TACL_A_00999"]
@@ -510,12 +510,14 @@ def test_rule_rejected_candidates_keep_their_row(fixture_snapshot, no_network, t
 
 
 def test_rerun_from_snapshot_is_byte_identical(fixture_snapshot, no_network, no_model, tmp_path):
+    record_kudo_v1_as_mrt5s_bytes(fixture_snapshot)  # Work grouping reads the full-text record too
     before = snapshot_files(fixture_snapshot)
 
     first, second = tmp_path / "first.csv", tmp_path / "second.csv"
     run_collect(fixture_snapshot, first)
     run_collect(fixture_snapshot, second)
 
+    assert read_manifest(first)["2410.20771v3"]["work_id"] == "kudo-2018-subword-regularization-improving"
     assert first.read_bytes() == second.read_bytes()
     assert snapshot_files(fixture_snapshot) == before
 
@@ -1031,3 +1033,212 @@ def test_collect_refuses_a_snapshot_that_contains_an_api_key(fixture_snapshot, n
     assert "OPENALEX_API_KEY" in message
     assert "responses/openalex/" in message
     assert "secret-openalex-key-123" not in message
+
+
+def works_of(rows: dict[str, dict[str, str]]) -> dict[str, tuple[str, str, str]]:
+    """Each Edition's (work_id, canonical, survey)."""
+    return {edition_id: (row["work_id"], row["canonical"], row["survey"]) for edition_id, row in rows.items()}
+
+
+def test_editions_sharing_an_identifier_are_one_work(fixture_snapshot, no_network, no_model, tmp_path):
+    manifest = tmp_path / "manifest.csv"
+    run_collect(fixture_snapshot, manifest)
+
+    works = works_of(read_manifest(manifest))
+    # A preprint and the venue Edition it records are one Work, and the venue Edition stands for it. The slug is
+    # the Canonical Edition's first-author surname, year and first three title words, short words dropped.
+    assert works["1508.07909v5"] == ("sennrich-2016-neural-machine-translation", "no", "no")
+    assert works["P16-1162"] == ("sennrich-2016-neural-machine-translation", "yes", "no")
+    assert works["1804.10959v1"] == ("kudo-2018-subword-regularization-improving", "no", "no")
+    assert works["P18-1007"] == ("kudo-2018-subword-regularization-improving", "yes", "no")
+    assert works["1808.06226v2"] == ("kudo-2018-sentencepiece-simple-language", "no", "no")
+    assert works["D18-2012"] == ("kudo-2018-sentencepiece-simple-language", "yes", "no")
+    assert works["2004.03720v3"] == ("bostrom-2020-byte-pair-encoding", "no", "no")  # its DOI's case differs
+    assert works["2020.findings-emnlp.414"] == ("bostrom-2020-byte-pair-encoding", "yes", "no")
+    # A Work of one Edition: that Edition is canonical, preprint or not. Accents and a dotless i are spelled out.
+    assert works["2410.20771v3"] == ("kallini-2024-mrt5-dynamic-token", "yes", "no")
+    assert works["10.5555/lrm.2022.7"] == ("yilmaz-2022-unigram-tokenization-morphologically", "yes", "no")
+    assert works["10.1162/TACL_A_00999"] == ("linguist-2023-subword-vocabularies-across", "yes", "no")
+    assert works["2022.findings-acl.99"] == ("example-2022-subword-segmentation-morphologically", "yes", "no")
+    # Excluded Editions are in no Work.
+    for edition_id in ["2210.09461v3", "2301.00001", "2402.00001v1", "2403.00002v2", "hep-th/9901001v1", "W4400000103"]:
+        assert works[edition_id] == ("", "", ""), edition_id
+
+
+def exclude_p18_1007(snapshot_dir: Path) -> None:
+    """Make the judge exclude Subword Regularization's ACL Edition, leaving its preprint as the only Edition."""
+    verdicts = snapshot_dir / "verdicts" / "judge.jsonl"
+    lines = verdicts.read_text().splitlines(keepends=True)
+    verdicts.write_text("".join(line.replace('"p_yes":0.95', '"p_yes":0.1') if '"P18-1007"' in line else line for line in lines))
+
+
+def record_kudo_v1_as_mrt5s_bytes(snapshot_dir: Path) -> None:
+    """Record Subword Regularization's v1 and MrT5's v3 as the same bytes, both fetched from arXiv, as when one
+    paper was submitted twice under two arXiv ids."""
+    record = fulltext.FulltextRecord(snapshot_dir)
+    for edition_id, file in [("1804.10959v1", "1804.10959v1.pdf"), ("2410.20771v3", "2410.20771v3.pdf")]:
+        url = f"https://export.arxiv.org/pdf/{file.removesuffix('.pdf')}"
+        record.put(fulltext.FetchedFile(edition_id, file, url, hashlib.sha256(MRT5_V3).hexdigest(), len(MRT5_V3), "2026-10-19"))
+    record.save()
+
+
+def test_editions_sharing_a_file_are_one_work(fixture_snapshot, no_network, no_model, tmp_path):
+    exclude_p18_1007(fixture_snapshot)
+    record_kudo_v1_as_mrt5s_bytes(fixture_snapshot)
+    manifest = tmp_path / "manifest.csv"
+
+    run_collect(fixture_snapshot, manifest)
+
+    works = works_of(read_manifest(manifest))
+    assert works["P18-1007"] == ("", "", "")
+    # Two preprints and no venue Edition: the one whose latest Version is the most recent stands for the Work.
+    assert works["2410.20771v3"] == ("kallini-2024-mrt5-dynamic-token", "yes", "no")
+    assert works["1804.10959v1"] == ("kallini-2024-mrt5-dynamic-token", "no", "no")
+
+
+def give_lrm_the_first_author_of_mrt5(snapshot_dir: Path) -> None:
+    edit_openalex_page(
+        snapshot_dir,
+        "page-0.json",
+        ("Unigram Tokenization for Morphologically Rich Languages", "MrT5 - Dynamic Token Merging for Efficient Byte-Level Language Models"),
+        ('"display_name": "Ayşe Yılmaz"', '"display_name": "Kallini, Julie"'),
+    )
+
+
+def test_editions_sharing_a_title_and_first_author_are_one_work(fixture_snapshot, no_network, no_model, tmp_path):
+    # The Unigram paper's venue Edition becomes MrT5's: no identifier or file links them, only the title (as
+    # punctuated and cased by another source) and the first author's surname, written surname first.
+    give_lrm_the_first_author_of_mrt5(fixture_snapshot)
+    manifest = tmp_path / "manifest.csv"
+
+    run_collect(fixture_snapshot, manifest)
+
+    works = works_of(read_manifest(manifest))
+    assert works["10.5555/lrm.2022.7"] == ("kallini-2022-mrt5-dynamic-token", "yes", "no")
+    assert works["2410.20771v3"] == ("kallini-2022-mrt5-dynamic-token", "no", "no")
+
+
+def test_the_venue_edition_with_the_latest_year_stands_for_the_work(fixture_snapshot, no_network, no_model, tmp_path):
+    # The Unigram paper (2022) becomes an earlier venue Edition of the TACL paper (2023).
+    edit_openalex_page(
+        fixture_snapshot,
+        "page-0.json",
+        ("Unigram Tokenization for Morphologically Rich Languages", "Subword vocabularies across languages"),
+        ('"display_name": "Ayşe Yılmaz"', '"display_name": "Anne Linguist"'),
+    )
+    manifest = tmp_path / "manifest.csv"
+
+    run_collect(fixture_snapshot, manifest)
+
+    works = works_of(read_manifest(manifest))
+    assert works["10.1162/TACL_A_00999"] == ("linguist-2023-subword-vocabularies-across", "yes", "no")
+    assert works["10.5555/lrm.2022.7"] == ("linguist-2023-subword-vocabularies-across", "no", "no")
+
+
+def test_works_with_the_same_slug_are_numbered_in_edition_id_order(fixture_snapshot, no_network, no_model, tmp_path):
+    # Ada Example's Findings paper (2022.findings-acl.99) gets a 2022 namesake with a shorter title.
+    edit_openalex_page(
+        fixture_snapshot,
+        "page-0.json",
+        ("Unigram Tokenization for Morphologically Rich Languages", "Subword Segmentation for Morphologically Rich Languages"),
+        ('"display_name": "Ayşe Yılmaz"', '"display_name": "Ada Example"'),
+    )
+    manifest = tmp_path / "manifest.csv"
+
+    run_collect(fixture_snapshot, manifest)
+
+    works = works_of(read_manifest(manifest))
+    assert works["10.5555/lrm.2022.7"] == ("example-2022-subword-segmentation-morphologically", "yes", "no")
+    assert works["2022.findings-acl.99"] == ("example-2022-subword-segmentation-morphologically-2", "yes", "no")
+
+
+def edit_acl_page(snapshot_dir: Path, acl_id: str, old: str, new: str) -> None:
+    """Replace an ACL Anthology fixture page in the Snapshot with an edited copy."""
+    page = (FIXTURES / "acl-anthology" / f"{acl_id}.html").read_text()
+    assert old in page
+    SnapshotStore(snapshot_dir).save(acl_request(acl_id), page.replace(old, new), collected_at="2026-10-18")
+
+
+def test_a_survey_title_flags_every_edition_of_the_work(fixture_snapshot, no_network, no_model, tmp_path):
+    # Only the Canonical Edition's title counts, and only whole words: "Reviewed" is not "review".
+    title = "Neural Machine Translation of Rare Words with Subword Units"
+    edit_acl_page(fixture_snapshot, "P16-1162", f'content="{title}"', f'content="{title}: A Survey"')
+    title = "Subword Regularization: Improving Neural Network Translation Models with Multiple Subword Candidates"
+    edit_acl_page(fixture_snapshot, "P18-1007", f'content="{title}"', 'content="Subword Regularization Reviewed"')
+    manifest = tmp_path / "manifest.csv"
+
+    run_collect(fixture_snapshot, manifest)
+
+    rows = read_manifest(manifest)
+    works = works_of(rows)
+    assert works["P16-1162"] == ("sennrich-2016-neural-machine-translation", "yes", "yes")
+    assert works["1508.07909v5"] == ("sennrich-2016-neural-machine-translation", "no", "yes")
+    assert works["P18-1007"][2] == works["1804.10959v1"][2] == "no"
+    # Marked, not demoted: the Survey keeps its verdict.
+    assert rows["P16-1162"]["relevance_verdict"] == rows["1508.07909v5"]["relevance_verdict"] == "included"
+
+
+def test_editions_sharing_only_a_title_are_a_suspected_pair(fixture_snapshot, no_network, no_model, tmp_path, capsys):
+    # Two papers with one title, as Ling et al. and Costa-jussà & Fonollosa's "Character-based Neural Machine
+    # Translation" in the corpus: the first authors differ, so they stay apart and the report lists them.
+    give_lrm_the_title_of_mrt5(fixture_snapshot)
+    manifest, report_path = tmp_path / "manifest.csv", tmp_path / "report.md"
+
+    run_collect(fixture_snapshot, manifest, FIXTURES / "scope.toml", "--report", str(report_path))
+
+    works = works_of(read_manifest(manifest))
+    assert works["10.5555/lrm.2022.7"] == ("yilmaz-2022-mrt5-dynamic-token", "yes", "no")
+    assert works["2410.20771v3"] == ("kallini-2024-mrt5-dynamic-token", "yes", "no")
+    report = report_path.read_text()
+    assert "| Works | 8 |" in report
+    assert "| Suspected pairs | 1 |" in report
+    assert (
+        "| `10.5555/lrm.2022.7` | MrT5 - Dynamic Token Merging for Efficient Byte-Level Language Models | Ayşe Yılmaz"
+        " | `2410.20771v3` | MrT5: Dynamic Token Merging for Efficient Byte-level Language Models | Julie Kallini |"
+    ) in report
+    assert "works: 8 Works from 12 included Editions, 0 Surveys, 1 Suspected pair" in capsys.readouterr().err
+
+
+def test_report_counts_works_by_the_signal_that_joined_them(fixture_snapshot, no_network, no_model, tmp_path):
+    report_path = tmp_path / "report.md"
+    run_collect(fixture_snapshot, tmp_path / "manifest.csv", FIXTURES / "scope.toml", "--report", str(report_path))
+    report = report_path.read_text()
+
+    assert "| Included Editions | 12 |" in report
+    assert "| Works | 8 |" in report
+    assert "| Works of several Editions, joined by an identifier | 4 |" in report
+    assert "| Works of several Editions, joined by file bytes | 0 |" in report
+    assert "| Works of several Editions, joined by title and first author | 0 |" in report
+    assert "| Canonical Edition is a venue Edition | 7 |" in report
+    assert "| Canonical Edition is a preprint | 1 |" in report
+    assert "| Surveys | 0 |" in report
+    assert "| Suspected pairs | 0 |" in report
+    assert "No two Works share a title." in report
+
+    # Subword Regularization's preprint joins MrT5 by bytes only; its venue Edition is gone.
+    exclude_p18_1007(fixture_snapshot)
+    record_kudo_v1_as_mrt5s_bytes(fixture_snapshot)
+    run_collect(fixture_snapshot, tmp_path / "manifest.csv", FIXTURES / "scope.toml", "--report", str(report_path))
+    report = report_path.read_text()
+
+    assert "| Included Editions | 11 |" in report
+    assert "| Works | 7 |" in report
+    assert "| Works of several Editions, joined by an identifier | 3 |" in report
+    assert "| Works of several Editions, joined by file bytes | 1 |" in report
+    assert "| Canonical Edition is a venue Edition | 6 |" in report
+    assert "| Canonical Edition is a preprint | 1 |" in report
+
+
+def test_a_title_and_author_join_counts_as_its_weakest_signal(fixture_snapshot, no_network, no_model, tmp_path):
+    # MrT5 and the Unigram paper's Edition are joined by title and first author, and MrT5 and Subword
+    # Regularization's preprint by bytes: the Work needed the title to hold together.
+    give_lrm_the_first_author_of_mrt5(fixture_snapshot)
+    exclude_p18_1007(fixture_snapshot)
+    record_kudo_v1_as_mrt5s_bytes(fixture_snapshot)
+    report_path = tmp_path / "report.md"
+
+    run_collect(fixture_snapshot, tmp_path / "manifest.csv", FIXTURES / "scope.toml", "--report", str(report_path))
+
+    report = report_path.read_text()
+    assert "| Works of several Editions, joined by file bytes | 0 |" in report
+    assert "| Works of several Editions, joined by title and first author | 1 |" in report

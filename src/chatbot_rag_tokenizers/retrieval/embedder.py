@@ -27,7 +27,7 @@ POOLINGS = {
     "mean": "mean of the last layer over non-padding tokens, L2-normalised",
 }
 # The files a pin's sha256 can be checked against, in the order they are looked for: a repo without
-# model.safetensors (OpenScholar_Retriever has only pytorch_model.bin) is checked on the file it has (ADR 0051).
+# model.safetensors (OpenScholar_Retriever has only pytorch_model.bin) is checked on the file it has (ADR 0052).
 WEIGHTS = ("model.safetensors", "pytorch_model.bin")
 _BATCH = 32
 _PROGRESS_EVERY = 100  # batches

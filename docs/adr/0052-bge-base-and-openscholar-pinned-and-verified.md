@@ -1,4 +1,4 @@
-# 0051. bge-base and OpenScholar_Retriever pinned, and checked by the opt-in model test
+# 0052. bge-base and OpenScholar_Retriever pinned, and checked by the opt-in model test
 
 - **Date:** 2026-10-19
 - **Status:** Accepted. Amends [0050](0050-named-dense-tables-and-a-configurable-embedder.md).

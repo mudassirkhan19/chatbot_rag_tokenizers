@@ -26,6 +26,34 @@ A file failed the parse quality gate (see the parse report), or `index` hasn't r
 
 - `2508.13058v1`
 
+## Works
+
+Included Editions are one Work when they share an identifier (arXiv id, DOI, ACL ID), a file's bytes, or a title and first-author surname. A Work of several Editions is counted by the weakest signal it needed.
+
+| | Editions or Works |
+| --- | ---: |
+| Included Editions | 2705 |
+| Works | 2395 |
+| Works of several Editions, joined by an identifier | 260 |
+| Works of several Editions, joined by file bytes | 0 |
+| Works of several Editions, joined by title and first author | 48 |
+| Canonical Edition is a venue Edition | 1174 |
+| Canonical Edition is a preprint | 1221 |
+| Surveys | 15 |
+| Suspected pairs | 5 |
+
+### Suspected pairs
+
+Works with the same title whose first authors differ, or are missing on one side. They are never joined.
+
+| Editions | Title | First author | Editions | Title | First author |
+| --- | --- | --- | --- | --- | --- |
+| `10.5281/zenodo.17945025` | When Multilingual Evaluation Assumptions Fail: Tokenization Effects Across Scripts | K H, Manodnya | `2026.loreslm-1.4` | When Multilingual Evaluation Assumptions Fail: Tokenization Effects Across Scripts | Manodyna K H |
+| `10.5281/zenodo.18148445` | Racka: Efficient Hungarian LLM Adaptation on Academic Infrastructure | Dávid Márk Nemeskey | `2601.01244v2` | Racka: Efficient Hungarian LLM Adaptation on Academic Infrastructure | Zsolt Csibi |
+| `1511.04586v1` | Character-based Neural Machine Translation | Wang Ling | `1603.00810v3`, `P16-2058` | Character-based Neural Machine Translation | M. Costa-jussà |
+| `2202.13590v2` | LCP-dropout: Compression-based Multiple Subword Segmentation for Neural Machine Translation | Keita Nonaka | `6acddaf40e5cf53e1612bf8ce2c34bb0c997f169` | LCP-dropout: Compression-based Multiple Subword Segmentation for Neural Machine Translation | Kazutaka Yamanouchi |
+| `2608.18062v3` | TokEval: A Tokenizer Evaluation Suite | Clara Meister | `ba0a8743d2dc10a09f5425953deaa0d3677afadc` | TokEval: A Tokenizer Evaluation Suite |  |
+
 ## Rule rejections by pattern
 
 | Pattern | Editions |

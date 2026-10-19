@@ -5,6 +5,7 @@ v1 made from it by hand, with a reworded sentence, a changed number and a remove
 (fixtures/tei/missed-table-v1.tei.xml). Each test writes its own Evaluation set.
 """
 
+import csv
 import json
 import re
 from pathlib import Path
@@ -12,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from chatbot_rag_tokenizers.cli import main
+from chatbot_rag_tokenizers.collection.manifest import COLUMNS
 from parse_support import REPO_CONFIG, FakeGrobid, run_parse, seed_pdf
 
 UNIGRAM = "5.1 Unigram accuracy"
@@ -56,14 +58,14 @@ def corpus_arguments(tmp_path: Path) -> list[str]:
     ]  # fmt: skip
 
 
-def run_eval_check(tmp_path: Path, evaluation_set: Path) -> None:
+def run_eval_check(tmp_path: Path, evaluation_set: Path, manifest: Path = MANIFEST) -> None:
     """Run `eval-check` on the corpus in tmp_path; it prints its report."""
     main(
         [
             "eval-check",
             *corpus_arguments(tmp_path)[:6],
             "--evaluation-set", str(evaluation_set),
-            "--manifest", str(MANIFEST),
+            "--manifest", str(manifest),
         ]
     )  # fmt: skip
 
@@ -254,6 +256,38 @@ def test_eval_check_fails_a_multi_paper_question_whose_passages_come_from_one_wo
     assert "two-versions: a multi-paper question needs Passages from at least two Works" in out
     assert "two-editions: a multi-paper question needs Passages from at least two Works" in out
     assert "two-works" not in out
+
+
+def manifest_of(tmp_path: Path, **work_ids: str) -> Path:
+    """The repo manifest's rows for the BPE paper's two Editions and WECHSEL, with no identifier linking any two
+    of them and each Edition's work_id as given (blank when not)."""
+    with MANIFEST.open(newline="", encoding="utf-8") as f:
+        rows = [row for row in csv.DictReader(f) if row["edition_id"] in ("1508.07909v5", "P16-1162", "2112.06598v2")]
+    for row in rows:
+        row |= {"arxiv_id": "", "doi": "", "acl_id": "", "work_id": work_ids.get(row["edition_id"], "")}
+    path = tmp_path / "work-manifest.csv"
+    with path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=COLUMNS, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows({column: row.get(column, "") for column in COLUMNS} for row in rows)
+    return path
+
+
+def test_eval_check_takes_an_editions_work_from_its_work_id(corpus, grobid, tmp_path):
+    venue = seed_pdf(tmp_path, grobid, "P16-1162.pdf", "missed-table.tei.xml")
+    run_parse(tmp_path, *sorted((tmp_path / "pdfs").iterdir()))
+    unchanged = "Figure 2 shows results for the English-German ensemble systems on newstest2015."
+    two_editions = question("two-editions", passage(unchanged), passage(unchanged, edition_id=venue.stem), type="multi-paper")
+    evaluation_set = write_set(tmp_path, GOOD, two_editions)
+
+    # No identifier links them, but work_id says they are one Work.
+    one_work = manifest_of(tmp_path, **{"1508.07909v5": "sennrich-2016-neural", "P16-1162": "sennrich-2016-neural"})
+    with pytest.raises(SystemExit) as stopped:
+        run_eval_check(tmp_path, evaluation_set, one_work)
+    assert "two-editions: a multi-paper question needs Passages from at least two Works" in str(stopped.value.code)
+
+    # With work_id blank, only the identifiers are left, and they link nothing.
+    run_eval_check(tmp_path, evaluation_set, manifest_of(tmp_path))
 
 
 def test_evaluate_refuses_a_set_that_fails_eval_check(corpus):

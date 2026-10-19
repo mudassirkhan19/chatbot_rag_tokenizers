@@ -1,4 +1,4 @@
-"""The opt-in test of the real embedder (#35, #57, ADRs 0042, 0050 and 0051): every dense table's model on the CPU and on MPS.
+"""The opt-in test of the real embedder (#35, #57, ADRs 0042, 0050 and 0052): every dense table's model on the CPU and on MPS.
 
 Skipped unless RUN_EMBEDDER_TESTS=1. The first run downloads the pinned models (~1 GB) from Hugging Face:
 

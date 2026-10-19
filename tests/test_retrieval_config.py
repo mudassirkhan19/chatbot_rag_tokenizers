@@ -1,4 +1,4 @@
-"""The retrieval config file (ADRs 0039, 0042, 0050 and 0051): BM25's table and the named dense tables."""
+"""The retrieval config file (ADRs 0039, 0042, 0050 and 0052): BM25's table and the named dense tables."""
 
 from pathlib import Path
 

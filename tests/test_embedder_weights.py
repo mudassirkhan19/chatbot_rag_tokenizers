@@ -1,4 +1,4 @@
-"""The real embedder's checks on a model's files, offline (#57, ADR 0051): which weights file the pin's
+"""The real embedder's checks on a model's files, offline (#57, ADR 0052): which weights file the pin's
 sha256 is checked against, and refusing a checkpoint that leaves part of the encoder untrained."""
 
 from pathlib import Path
