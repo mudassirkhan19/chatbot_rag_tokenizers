@@ -10,6 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from . import works
 from .config import is_citation_channel, is_keyword_channel
 
 Row = dict[str, str]
@@ -185,6 +186,68 @@ def summarise(rows: list[Row], threshold: float) -> None:
         file=sys.stderr,
     )
     summarise_fulltext(rows)
+    grouping = works.group(rows)
+    suspected = len(grouping.suspected)
+    print(
+        f"works: {len(grouping.works)} Works from {_included(rows)} included Editions, {_surveys(grouping)} Surveys,"
+        f" {suspected} Suspected {'pair' if suspected == 1 else 'pairs'}",
+        file=sys.stderr,
+    )
+
+
+def _included(rows: list[Row]) -> int:
+    return sum(row["relevance_verdict"] == "included" for row in rows)
+
+
+def _surveys(grouping: works.Grouping) -> int:
+    return sum(work.survey for work in grouping.works)
+
+
+def _cell(text: str) -> str:
+    """Text for a Markdown table cell."""
+    return text.replace("|", "\\|")
+
+
+def _works(rows: list[Row]) -> list[str]:
+    """The Works section: what Work grouping made of the included Editions, and the Suspected pairs it declined."""
+    grouping = works.group(rows)
+    joined = Counter(work.signal for work in grouping.works)
+    canonical = Counter(work.canonical["edition_kind"] for work in grouping.works)
+    lines = [
+        "## Works",
+        "",
+        "Included Editions are one Work when they share an identifier (arXiv id, DOI, ACL ID), a file's bytes, or a"
+        " title and first-author surname. A Work of several Editions is counted by the weakest signal it needed.",
+        "",
+        "| | Editions or Works |",
+        "| --- | ---: |",
+        f"| Included Editions | {_included(rows)} |",
+        f"| Works | {len(grouping.works)} |",
+        *(f"| Works of several Editions, joined by {signal} | {joined[signal]} |" for signal, _ in works.SIGNALS),
+        f"| Canonical Edition is a venue Edition | {canonical['venue']} |",
+        f"| Canonical Edition is a preprint | {canonical['arxiv-preprint']} |",
+        f"| Surveys | {_surveys(grouping)} |",
+        f"| Suspected pairs | {len(grouping.suspected)} |",
+        "",
+        "### Suspected pairs",
+        "",
+    ]
+    if not grouping.suspected:
+        return [*lines, "No two Works share a title.", ""]
+
+    def side(editions: list[Row]) -> str:
+        ids = ", ".join(f"`{row['edition_id']}`" for row in editions)
+        return f"{ids} | {_cell(editions[0]['title'])} | {_cell(works.first_author(editions[0]))}"
+
+    return [
+        *lines,
+        "Works with the same title but different first authors. They are never joined.",
+        "",
+        "| Editions | Title | First author | Editions | Title | First author |",
+        "| --- | --- | --- | --- | --- | --- |",
+        *(f"| {side(pair.first)} | {side(pair.second)} |" for pair in grouping.suspected),
+        "",
+    ]
 
 
 def _found_table(heading: str, found: dict[str, Found]) -> list[str]:
@@ -241,6 +304,7 @@ def render(rows: list[Row]) -> str:
         f"| Still to fetch | {counts.to_fetch} |",
         "",
         *_not_indexed(counts.not_indexed),
+        *_works(rows),
         "## Rule rejections by pattern",
         "",
         "| Pattern | Editions |",

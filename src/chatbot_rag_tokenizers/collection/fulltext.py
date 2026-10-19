@@ -12,7 +12,6 @@ import hashlib
 import json
 import re
 import sys
-import unicodedata
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -20,8 +19,7 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from . import indexed, report
-from .editions import bare_arxiv_id
+from . import indexed, report, works
 from .http import RateLimitedHttp
 from .manifest import read_manifest, write_manifest
 
@@ -190,7 +188,8 @@ def apply_record(rows: list[dict[str, str]], record: FulltextRecord) -> None:
     """Fill in each row's fetched files and, for included rows, its funnel status from the record.
 
     An included row reaches "full text" once every file it is pinned to is recorded, and is
-    ``no_fulltext`` when it has no open PDF source or none of its sources served a PDF.
+    ``no_fulltext`` when it has no open PDF source or none of its sources served a PDF. Work
+    grouping comes last, as it reads the files' hashes and only included rows are grouped.
     """
     for row in rows:
         pinned = pinned_files(row)
@@ -206,6 +205,7 @@ def apply_record(rows: list[dict[str, str]], record: FulltextRecord) -> None:
         else:
             row["funnel_status"] = "relevant"
     _exclude_borrowed_files(rows, record)
+    works.apply(rows)
 
 
 BORROWED_FILE = "borrowed file"  # the relevance stage of an Edition whose only file belongs to another one
@@ -249,19 +249,7 @@ def _exclude_borrowed_files(rows: list[dict[str, str]], record: FulltextRecord) 
 
 def _linked(row: dict[str, str], other: dict[str, str]) -> bool:
     """Whether two rows share an arXiv id, DOI or ACL ID, or have the same title."""
-    return bool(_identifiers(row) & _identifiers(other)) or _title_key(row["title"]) == _title_key(other["title"])
-
-
-def _identifiers(row: dict[str, str]) -> set[str]:
-    """The row's arXiv id, DOI and ACL ID as comparable keys, such as "doi:10.18653/v1/p16-1162"."""
-    keys = {f"arxiv:{bare_arxiv_id(row['arxiv_id']).casefold()}"} if row["arxiv_id"] else set()
-    return keys |{f"{kind}:{row[kind].casefold()}" for kind in ("doi", "acl_id") if row[kind]}
-
-
-def _title_key(title: str) -> str:
-    """A title without case, accents, punctuation or extra whitespace."""
-    ascii_title = unicodedata.normalize("NFKD", title).encode("ascii", "ignore").decode().lower()
-    return " ".join(re.sub(r"[^a-z0-9]+", " ", ascii_title).split())
+    return bool(works.identifiers(row) & works.identifiers(other)) or works.normalise(row["title"]) == works.normalise(other["title"])
 
 
 def _sha256(data: bytes) -> str:

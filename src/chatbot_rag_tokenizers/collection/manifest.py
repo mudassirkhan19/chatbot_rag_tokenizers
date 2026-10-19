@@ -39,6 +39,8 @@ COLUMNS = [
     "pdf_files",
     "funnel_status",
     "work_id",
+    "canonical",
+    "survey",
 ]
 
 
@@ -113,7 +115,10 @@ def manifest_row(
         "pdf_files": "",  # filled in from the Fetcher's record
         # The furthest funnel stage reached: discovered → relevant → full text (or no_fulltext) → indexed.
         "funnel_status": "relevant" if relevance["relevance_verdict"] == "included" else "discovered",
-        "work_id": "",  # filled in by the dedup stage
+        # Filled in by Work grouping (works.apply), from the full-text record's hashes among other things.
+        "work_id": "",
+        "canonical": "",
+        "survey": "",
     }
 
 
