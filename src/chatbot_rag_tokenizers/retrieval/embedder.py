@@ -4,8 +4,9 @@ An embedder turns texts into L2-normalised float32 vectors, one row per text, an
 device it runs with. `load_embedder` makes the real one; the tests put a hashed bag of words in its place,
 so they never download or load a model.
 
-The real one runs BAAI/bge-small-en-v1.5 at a pinned revision, with its weights checked against a pinned
-sha256, as the model card specifies: the [CLS] vector of the last layer, normalised, at most 512 tokens.
+The real one runs a Hugging Face model at a pinned revision, with its weights checked against a pinned
+sha256, pooled and cut as its table in the retrieval config says (ADR 0050). For BAAI/bge-small-en-v1.5
+that is what its model card specifies: the [CLS] vector of the last layer, normalised, at most 512 tokens.
 torch and transformers are imported only when it is made.
 """
 
@@ -20,18 +21,23 @@ import numpy as np
 
 from ..config import ConfigError
 
-MAX_TOKENS = 512  # bge-small's position limit; a longer text is cut to its first 512 tokens
-POOLING = "[CLS] vector of the last layer, L2-normalised"
+# Each pooling a dense table can name, worded as the eval report and the index key give it.
+POOLINGS = {
+    "cls": "[CLS] vector of the last layer, L2-normalised",
+    "mean": "mean of the last layer over non-padding tokens, L2-normalised",
+}
 WEIGHTS = "model.safetensors"  # the file the pin's sha256 is checked against
 _BATCH = 32
 _PROGRESS_EVERY = 100  # batches
 
 
 @dataclass(frozen=True)
-class ModelPin:
+class EmbeddingModel:
     model: str  # the Hugging Face repo
     revision: str  # the commit of that repo
     sha256: str  # of its weights file
+    pooling: str  # a key of POOLINGS
+    max_tokens: int  # a longer text is cut to its first max_tokens tokens
 
 
 class Embedder(Protocol):
@@ -51,24 +57,25 @@ def default_device() -> str:
     return "mps" if torch.backends.mps.is_available() else "cpu"
 
 
-def load_embedder(pin: ModelPin, device: str | None = None) -> Embedder:
-    return BgeEmbedder(pin, device or default_device())
+def load_embedder(settings: EmbeddingModel, device: str | None = None) -> Embedder:
+    return TransformersEmbedder(settings, device or default_device())
 
 
-class BgeEmbedder:
-    def __init__(self, pin: ModelPin, device: str) -> None:
+class TransformersEmbedder:
+    def __init__(self, settings: EmbeddingModel, device: str) -> None:
         import torch
         from huggingface_hub import hf_hub_download
         from transformers import AutoModel, AutoTokenizer
 
         self._torch = torch
-        self.model, self.revision, self.device = pin.model, pin.revision, device
-        weights = Path(hf_hub_download(pin.model, WEIGHTS, revision=pin.revision))
-        if (found := _sha256(weights)) != pin.sha256:
-            raise ConfigError(f"the weights of {pin.model}@{pin.revision} have sha256 {found[:12]}, not the pinned {pin.sha256[:12]}")
-        print(f"embedder: loading {pin.model}@{pin.revision[:12]} on {device}", file=sys.stderr)
-        self.tokenizer = AutoTokenizer.from_pretrained(pin.model, revision=pin.revision)
-        network = AutoModel.from_pretrained(pin.model, revision=pin.revision, dtype=torch.float32)
+        self.model, self.revision, self.device = settings.model, settings.revision, device
+        self._pooling, self._max_tokens = settings.pooling, settings.max_tokens
+        weights = Path(hf_hub_download(settings.model, WEIGHTS, revision=settings.revision))
+        if (found := _sha256(weights)) != settings.sha256:
+            raise ConfigError(f"the weights of {settings.model}@{settings.revision} have sha256 {found[:12]}, not the pinned {settings.sha256[:12]}")
+        print(f"embedder: loading {settings.model}@{settings.revision[:12]} on {device}", file=sys.stderr)
+        self.tokenizer = AutoTokenizer.from_pretrained(settings.model, revision=settings.revision)
+        network = AutoModel.from_pretrained(settings.model, revision=settings.revision, dtype=torch.float32)
         # transformers types .to() as taking a model, not a device.
         self._network = network.to(device).eval()  # type: ignore[arg-type]
         # The first pass on MPS compiles its kernels; doing it here keeps that out of the first query's latency.
@@ -85,14 +92,20 @@ class BgeEmbedder:
             for number, start in enumerate(batches, start=1):
                 rows = order[start : start + _BATCH]
                 batch = [texts[i] for i in rows]
-                cut += sum(len(ids) > MAX_TOKENS for ids in self.tokenizer(batch)["input_ids"])
-                encoded = self.tokenizer(batch, padding=True, truncation=True, max_length=MAX_TOKENS, return_tensors="pt").to(self.device)
-                cls = self._network(**encoded).last_hidden_state[:, 0]
-                vectors[rows] = torch.nn.functional.normalize(cls, dim=-1).cpu().numpy()
+                cut += sum(len(ids) > self._max_tokens for ids in self.tokenizer(batch)["input_ids"])
+                encoded = self.tokenizer(batch, padding=True, truncation=True, max_length=self._max_tokens, return_tensors="pt").to(self.device)
+                hidden = self._network(**encoded).last_hidden_state
+                if self._pooling == "cls":
+                    pooled = hidden[:, 0]
+                else:
+                    # Padding positions are masked out, so a text's vector doesn't depend on its batch.
+                    mask = encoded["attention_mask"].unsqueeze(-1).to(hidden.dtype)
+                    pooled = (hidden * mask).sum(dim=1) / mask.sum(dim=1)
+                vectors[rows] = torch.nn.functional.normalize(pooled, dim=-1).cpu().numpy()
                 if number % _PROGRESS_EVERY == 0:
                     print(f"embedder: {min(start + _BATCH, len(texts))}/{len(texts)} texts", file=sys.stderr)
         if cut:
-            print(f"embedder: {cut} of {len(texts)} texts were cut to their first {MAX_TOKENS} tokens", file=sys.stderr)
+            print(f"embedder: {cut} of {len(texts)} texts were cut to their first {self._max_tokens} tokens", file=sys.stderr)
         return vectors
 
 
