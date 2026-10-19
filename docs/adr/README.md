@@ -51,11 +51,11 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0044](0044-duplicate-rate-restatement-and-numeric-share-in-evaluate.md) | Duplicate rate, Survey restatement and the numeric-Chunk share in evaluate | Accepted, Work groups filled by 0047; amended by 0053 |
 | [0045](0045-index-marks-editions-indexed-from-a-committed-record.md) | `index` marks Editions indexed, from a record committed in the Snapshot | Accepted |
 | [0046](0046-evaluation-set-quotes-checked-by-and-absence-evidence.md) | The Evaluation set: short quotes committed, a check per question, and absence evidence | Accepted |
-| [0047](0047-hand-checked-work-groups-are-the-duplicate-ground-truth.md) | Hand-checked Work groups are the ground truth for the duplicate rate | Accepted, a blind agent check added by 0062 |
+| [0047](0047-hand-checked-work-groups-are-the-duplicate-ground-truth.md) | Hand-checked Work groups are the ground truth for the duplicate rate | Accepted, a blind agent check added by 0063 |
 | [0048](0048-hand-curated-domain-model-page.md) | A hand-curated domain model page, refreshed by the issue that changes a number | Accepted |
 | [0049](0049-normalised-arxiv-ids-and-borrowed-files.md) | Normalised arXiv ids, and Editions that hold another Edition's file | Accepted |
 | [0050](0050-named-dense-tables-and-a-configurable-embedder.md) | Named dense tables and a configurable embedder; `dense` becomes `dense.bge-small` | Accepted, amended by 0052 |
-| [0051](0051-work-grouping-in-collect.md) | Work grouping in `collect`: work_id, Canonical Edition, Survey flag and Suspected pairs | Accepted, title comparison amended by 0062 |
+| [0051](0051-work-grouping-in-collect.md) | Work grouping in `collect`: work_id, Canonical Edition, Survey flag and Suspected pairs | Accepted, title comparison amended by 0063 |
 | [0052](0052-bge-base-and-openscholar-pinned-and-verified.md) | bge-base and OpenScholar_Retriever pinned, and checked by the opt-in model test | Accepted |
 | [0053](0053-collapsed-ranking-and-collapsed-twins.md) | The Collapsed ranking: one Chunk per Work, scored as a `+collapsed` twin of every retriever | Accepted, the Chunk a Work shows superseded by 0055, one Chunk per Work by 0057 |
 | [0054](0054-pinned-local-answer-model-and-the-chat-page.md) | The pinned local answer model, the shared Ollama module and the chat page | Accepted, amended by 0056 |
@@ -63,10 +63,11 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0056](0056-follow-ups-the-conversation-and-the-rewrite.md) | Follow-ups: the Conversation and the Rewrite | Accepted |
 | [0057](0057-the-collapse-merges-copies-not-works.md) | The collapse merges copies of a passage across a Work's files, not whole Works | Accepted |
 | [0058](0058-bm25-dense-hybrids-by-reciprocal-rank-fusion.md) | BM25 + dense hybrids by reciprocal rank fusion, stored as a record that points to their members | Accepted |
-| [0059](0059-abstention-by-instruction-and-the-chat-report.md) | Abstention by instruction, and the chat report that measures it | Accepted |
+| [0059](0059-abstention-by-instruction-and-the-chat-report.md) | Abstention by instruction, and the chat report that measures it | Accepted, reproducibility amended by 0063 |
 | [0060](0060-the-grouping-rule-scored-against-the-work-groups.md) | The grouping rule scored against the Work groups, pair by pair | Accepted |
 | [0061](0061-the-comparison-paired-bootstrap-against-a-baseline.md) | The Comparison: wins, ties, losses and paired bootstrap intervals against a baseline, and the Cost table | Accepted |
-| [0062](0062-versions-and-near-duplicates-measured-before-and-after.md) | Versions and near-duplicates, measured before and after | Accepted |
+| [0062](0062-re-scoring-run-to-run-variation-and-wilson-intervals.md) | Re-scoring from the answers, run-to-run variation, and Wilson intervals on the chat report's rates | Accepted |
+| [0063](0063-versions-and-near-duplicates-measured-before-and-after.md) | Versions and near-duplicates, measured before and after | Accepted |
 
 ## Template
 

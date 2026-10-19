@@ -227,13 +227,14 @@ def fake_embedder(monkeypatch: pytest.MonkeyPatch) -> list[FakeEmbedder]:
 
 class FakeAnswerModel:
     """A scripted answer model in place of the pinned one: it replies with the script's answer for the first key
-    found in the chat's last user message, and records every chat it is given. An unscripted question fails the
-    test, so every answer a test sees is one it wrote."""
+    found in the chat's last user message, and records every chat it is given. A key scripted with a list of
+    answers gives the next one each time it is asked, then keeps giving the last, as a model whose reply varies
+    between runs. An unscripted question fails the test, so every answer a test sees is one it wrote."""
 
     pin = "fake-answer-model"
 
     def __init__(self) -> None:
-        self.script: dict[str, str] = {}
+        self.script: dict[str, str | list[str]] = {}
         self.chats: list[list[dict[str, str]]] = []
 
     def complete(self, messages: Sequence[dict[str, str]]) -> str:
@@ -241,6 +242,8 @@ class FakeAnswerModel:
         last = messages[-1]["content"]
         for key, answer in self.script.items():
             if key in last:
+                if isinstance(answer, list):
+                    return answer.pop(0) if len(answer) > 1 else answer[0]
                 return answer
         raise AssertionError(f"the fake answer model has no answer scripted for {last[:120]!r}")
 

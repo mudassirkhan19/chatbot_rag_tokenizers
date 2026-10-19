@@ -1,7 +1,7 @@
 # 0051. Work grouping in `collect`: work_id, Canonical Edition, Survey flag and Suspected pairs
 
 - **Date:** 2026-10-19
-- **Status:** Accepted. Amends [0041](0041-passage-matcher-eval-check-and-calibration.md): `eval-check` reads the `work_id` this fills, and 0041's identifier rule is only the fallback. Amended by [0062](0062-versions-and-near-duplicates-measured-before-and-after.md): titles are compared without hyphens inside words or word order.
+- **Status:** Accepted. Amends [0041](0041-passage-matcher-eval-check-and-calibration.md): `eval-check` reads the `work_id` this fills, and 0041's identifier rule is only the fallback. Amended by [0063](0063-versions-and-near-duplicates-measured-before-and-after.md): titles are compared without hyphens inside words or word order.
 
 ## Context
 The index holds the same paper several times on purpose: v1 and the latest Version of a preprint, a preprint and its venue Edition, and every Chunk of each file. The baseline eval report counts what that costs: 59 of 140 top-5 slots for BM25 and 70 of 140 for the dense baseline hold a Chunk from a Work already ranked higher ([0047](0047-hand-checked-work-groups-are-the-duplicate-ground-truth.md)). Spec #49 handles it in two steps: `collect` says which Editions are one Work (#51, this record), and a Collapsed ranking keeps one Chunk per Work (#52). The manifest had a `work_id` column that nothing filled, and `eval-check` grouped Editions by shared identifiers only, which the hand check showed misses four preprint–venue pairs.

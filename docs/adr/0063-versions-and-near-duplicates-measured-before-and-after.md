@@ -1,4 +1,4 @@
-# 0062. Versions and near-duplicates, measured before and after
+# 0063. Versions and near-duplicates, measured before and after
 
 - **Date:** 2026-10-20
 - **Status:** Accepted. Amends [0051](0051-work-grouping-in-collect.md): titles are compared by `title_key`. Amends [0047](0047-hand-checked-work-groups-are-the-duplicate-ground-truth.md): rows may be checked by a blind agent.

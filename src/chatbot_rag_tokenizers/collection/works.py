@@ -64,7 +64,7 @@ def file_hashes(row: Row) -> set[str]:
 def title_key(title: str) -> str:
     """The title as two Editions of one paper are compared: normalised, a hyphen inside a word dropped rather than
     made a space, and the words sorted, so "Robust End-to-End" and "End-to-End Robust" or "Pre-trained" and
-    "Pretrained" compare equal (ADR 0062)."""
+    "Pretrained" compare equal (ADR 0063)."""
     return " ".join(sorted(normalise(re.sub(r"(?<=\w)-(?=\w)", "", title)).split()))
 
 

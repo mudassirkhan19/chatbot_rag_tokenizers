@@ -3,7 +3,7 @@
 It names what was scored (the Evaluation set, the chunking config and corpus, each retriever's settings),
 then gives a results table per retriever and question type, each retriever's raw ranking followed by its
 Collapsed ranking (ADR 0053), the Comparison against a baseline (ADR 0061), what crowds the top 5 (ADR 0044),
-the two rankings side by side (ADR 0062), the grouping rule scored against the Work groups (ADR 0060) and a line
+the two rankings side by side (ADR 0063), the grouping rule scored against the Work groups (ADR 0060) and a line
 per question, then the Cost table. Everything above the Cost table, which comes last, depends only on the inputs, so two runs on the same index give the same
 report up to that section, and the Cost table differs only in its times.
 """
