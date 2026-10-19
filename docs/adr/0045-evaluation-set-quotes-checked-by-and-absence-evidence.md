@@ -20,6 +20,7 @@ Issue #37 drafts the real Evaluation set: 36 questions in `data/eval/evaluation-
 **Every question records who checked it, and `eval-check` fails any question that nobody has checked.**
 - A question's `checked_by` names the person who checked it by hand. An empty or missing value fails `eval-check` with "nobody has checked this question (checked_by is empty)". `evaluate` refuses any set that fails `eval-check`, so nothing is scored until every question has been checked.
 - The agent commits the drafted set with every `checked_by` empty. The developer reads each question and its Passages, edits what needs it, and fills in `checked_by`.
+- `hack/check_evalset.py` serves a local page for this: each quote marked in its whole Section, the absence evidence with each Chunk in full, and eval-check rerun on every save. An edit saved there clears the question's `checked_by`.
 
 **Absence is shown by searching every Chunk with both retrievers, and the evidence is committed.**
 - `hack/absence_search.py` runs each unanswerable question through BM25 and the dense baseline, together with two probe queries per question worded the way an answer would read. It writes each top 10 to `data/eval/absence-evidence.md`, with the drafter's reading of the nearest miss.
