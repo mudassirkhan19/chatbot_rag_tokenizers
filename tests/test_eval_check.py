@@ -211,7 +211,7 @@ def test_eval_check_fails_a_malformed_follow_up_and_an_answerable_question_witho
         question("no-history", found, type="follow-up", rewrite="What does the BPE paper say about F 1?"),
         question("history-but-not-follow-up", found, history=["What does the BPE paper report?"]),
         question("no-passages", type="single-paper"),
-        question("unanswerable-with-passage", found, type="unanswerable"),
+        question("unanswerable-with-passage", found, type="unanswerable", unanswerable_kind="near-miss"),
         question(
             "well-formed", found, type="follow-up", history=["What does the BPE paper report?"], rewrite="What does the BPE paper say about F 1?"
         ),
@@ -225,10 +225,27 @@ def test_eval_check_fails_a_malformed_follow_up_and_an_answerable_question_witho
     assert "well-formed" not in out
 
 
+def test_eval_check_fails_an_unanswerable_question_without_a_known_unanswerable_kind_and_an_answerable_one_with_any(corpus):
+    out = failures(
+        corpus,
+        GOOD,
+        question("no-kind", type="unanswerable"),
+        question("other-kind", type="unanswerable", unanswerable_kind="hard"),
+        question("answerable-with-kind", *GOOD["passages"], unanswerable_kind="near-miss"),
+        question("near", type="unanswerable", unanswerable_kind="near-miss"),
+        question("far", type="unanswerable", unanswerable_kind="out-of-topic"),
+    )
+
+    assert "no-kind: an unanswerable question needs an unanswerable_kind: near-miss or out-of-topic" in out
+    assert "other-kind: an unanswerable question needs an unanswerable_kind: near-miss or out-of-topic" in out
+    assert "answerable-with-kind: only an unanswerable question has an unanswerable_kind" in out
+    assert "near:" not in out and "far:" not in out
+
+
 def test_eval_check_fails_a_question_nobody_has_checked(corpus):
     unchecked, blank = question("unchecked", *GOOD["passages"]), question("blank", *GOOD["passages"], checked_by=" ")
     del unchecked["checked_by"]
-    out = failures(corpus, GOOD, unchecked, blank, question("abstains", type="unanswerable", checked_by=""))
+    out = failures(corpus, GOOD, unchecked, blank, question("abstains", type="unanswerable", unanswerable_kind="out-of-topic", checked_by=""))
 
     assert "unchecked: nobody has checked this question (checked_by is empty)" in out
     assert "blank: nobody has checked this question (checked_by is empty)" in out

@@ -5,7 +5,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 ## Evaluation set
 
 - File: `data/eval/evaluation-set.jsonl`
-- sha256: `091b160499444e92c384d4ff741242032a75ef25f76c02d8524a9f6b25ac7f59`
+- sha256: `19bd5da54270b0c4998294ca275394ea9bc2f70ffd2443f3fda489057d44c5b7`
 - Questions: 36 (12 single-paper, 8 multi-paper, 8 follow-up, 8 unanswerable)
 
 ## Chunks
@@ -664,9 +664,9 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 
 These depend on the machine and change from run to run.
 
-- bm25: index built on cpu in 9.35 s; 52 queries on cpu, latency p50 208.80 ms, p95 322.03 ms
-- bm25+collapsed: index built on cpu in 9.35 s; 52 queries on cpu, latency p50 211.63 ms, p95 313.20 ms
-- dense.bge-small: index built on mps in 1318.64 s; 52 queries on mps, latency p50 28.77 ms, p95 30.65 ms
-- dense.bge-small+collapsed: index built on mps in 1318.64 s; 52 queries on mps, latency p50 28.65 ms, p95 29.96 ms
-- hybrid.bm25+bge-small: index built on cpu+mps in 1327.99 s; 52 queries on cpu+mps, latency p50 234.38 ms, p95 350.96 ms
-- hybrid.bm25+bge-small+collapsed: index built on cpu+mps in 1327.99 s; 52 queries on cpu+mps, latency p50 232.33 ms, p95 362.17 ms
+- bm25: index built on cpu in 9.35 s; 52 queries on cpu, latency p50 199.47 ms, p95 301.20 ms
+- bm25+collapsed: index built on cpu in 9.35 s; 52 queries on cpu, latency p50 197.44 ms, p95 301.91 ms
+- dense.bge-small: index built on mps in 1318.64 s; 52 queries on mps, latency p50 28.50 ms, p95 34.16 ms
+- dense.bge-small+collapsed: index built on mps in 1318.64 s; 52 queries on mps, latency p50 28.27 ms, p95 29.79 ms
+- hybrid.bm25+bge-small: index built on cpu+mps in 1327.99 s; 52 queries on cpu+mps, latency p50 230.88 ms, p95 347.29 ms
+- hybrid.bm25+bge-small+collapsed: index built on cpu+mps in 1327.99 s; 52 queries on cpu+mps, latency p50 228.16 ms, p95 353.16 ms

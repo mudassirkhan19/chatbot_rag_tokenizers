@@ -12,13 +12,25 @@ from ..retrieval.corpus import Corpus
 from ..retrieval.retriever import RetrieverConfig
 from .check import check
 from .crowding import ungrouped
-from .evalset import EvaluationSetError, load_evaluation_set
+from .evalset import EvaluationSetError, Question, load_evaluation_set
 from .grouping import score_grouping
 from .harness import CROWDING_DEPTH, all_answerable, metrics, score
 from .matching import MatchingRule
 from .report import RetrieverRun, write_eval_report
 from .work_groups import load_work_groups, write_export
 from .works import Works
+
+
+def checked_questions(evaluation_set: Path, corpus: Corpus, rule: MatchingRule, works: Works) -> list[Question]:
+    """The Evaluation set's questions. Raises EvaluationSetError for an empty set or one that fails `eval-check`
+    (ADR 0041), so nothing is scored on a broken set."""
+    questions = load_evaluation_set(evaluation_set)
+    if not questions:
+        raise EvaluationSetError(f"{evaluation_set} holds no questions")
+    checked = check(questions, corpus, rule, works)
+    if checked.problems:
+        raise EvaluationSetError(f"{checked.failure(evaluation_set)}\nFix the set; `just eval-check` gives every Passage's matches too.")
+    return questions
 
 
 def evaluate(
@@ -39,12 +51,7 @@ def evaluate(
     rows = {row["edition_id"]: row for row in manifest}
     works = Works(rows.values())
     groups = load_work_groups(work_groups)
-    questions = load_evaluation_set(evaluation_set)
-    if not questions:
-        raise EvaluationSetError(f"{evaluation_set} holds no questions")
-    checked = check(questions, corpus, rule, works)
-    if checked.problems:
-        raise EvaluationSetError(f"{checked.failure(evaluation_set)}\nFix the set; `just eval-check` gives every Passage's matches too.")
+    questions = checked_questions(evaluation_set, corpus, rule, works)
     indexes = [(config, index.load(index_root, corpus, config)) for config in configs]
     chunks = {chunk.chunk_id: chunk for chunk in corpus.chunks}
     runs = []
