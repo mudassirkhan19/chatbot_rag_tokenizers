@@ -1,9 +1,11 @@
-"""The answer step (ADR 0054): what the answer model is sent for a Turn, and how its reply is read.
+"""The answer step (ADRs 0054 and 0056): what the answer model is sent for a Turn, and how its reply is read.
 
-The model gets the config's system prompt, then the question with the retrieved Chunks numbered from 1, each
-under its context header. It cites by number. The reply is cut into text and markers: a marker naming a
-retrieved Chunk is a Citation, and any other number is kept as an invalid marker, never dropped. A reply holding
-the fixed Abstention sentence, compared after the Passage matcher's normalisation, is an Abstention.
+The model gets the config's system prompt, then the earlier Turns of the Conversation, each as its question and
+its answer's text without the markers (which numbered that Turn's Chunks, not this one's), then the question with
+the retrieved Chunks numbered from 1, each under its context header. It cites by number. The reply is cut into
+text and markers: a marker naming a retrieved Chunk is a Citation, and any other number is kept as an invalid
+marker, never dropped. A reply holding the fixed Abstention sentence, compared after the Passage matcher's
+normalisation, is an Abstention.
 """
 
 import re
@@ -16,6 +18,8 @@ from .model import Message
 
 # "[2]", and "[1, 3]" read as two markers.
 _MARKER = re.compile(r"\[\s*(\d+(?:\s*,\s*\d+)*)\s*\]")
+# The space a marker leaves before the punctuation that followed it: "freezing [1]." reads "freezing .".
+_BEFORE_PUNCTUATION = re.compile(r" +([.,;:!?)])")
 
 
 @dataclass(frozen=True)
@@ -38,11 +42,24 @@ class Answer:
     def invalid(self) -> list[int]:
         return list(dict.fromkeys(part.number for part in self.parts if isinstance(part, Marker) and not part.valid))
 
+    @property
+    def text(self) -> str:
+        """The answer without its markers, as a later Turn is shown it."""
+        text = "".join(part for part in self.parts if isinstance(part, str))
+        return _BEFORE_PUNCTUATION.sub(r"\1", re.sub(r"[ \t]+", " ", text)).strip()
 
-def messages(system_prompt: str, question: str, chunks: Sequence[Chunk]) -> list[Message]:
+
+Earlier = Sequence[tuple[str, str]]  # the Conversation's earlier Turns, oldest first, as (question, answer text)
+
+
+def messages(system_prompt: str, question: str, chunks: Sequence[Chunk], earlier: Earlier = ()) -> list[Message]:
     numbered = "\n\n".join(f"[{number}] {chunk.header}\n{chunk.text}" for number, chunk in enumerate(chunks, start=1))
+    history: list[Message] = []
+    for asked, answered in earlier:
+        history += [{"role": "user", "content": f"Question: {asked}"}, {"role": "assistant", "content": answered}]
     return [
         {"role": "system", "content": system_prompt},
+        *history,
         {"role": "user", "content": f"Question: {question}\n\nChunks:\n\n{numbered}"},
     ]
 

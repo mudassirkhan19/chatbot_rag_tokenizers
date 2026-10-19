@@ -79,8 +79,14 @@ temperature = 0.0
 # The fixed Abstention sentence: the prompt asks for it word for word, and an answer holding it (compared after
 # the Passage matcher's normalisation) is counted as an Abstention.
 abstention = "The papers in this corpus do not answer this question."
-# The rules the answer model is given. {abstention} is replaced by the sentence above. Each Turn's question
-# follows as the user message, with the k Chunks numbered from 1, each under its context header.
+# Follow-ups (#65, ADR 0056): the answer model is shown the last `history` Turns of the Conversation before this
+# Turn's question, each as its question and its answer's text without the markers, and the rewriter sees the same
+# Turns. The first Turn of a Conversation skips the rewriter.
+history = 3
+# The rules the answer model is given. {abstention} is replaced by the sentence above. The earlier Turns follow
+# as messages without Chunks, then this Turn's question (its Rewrite on a follow-up) as the user message, with the
+# k Chunks numbered from 1, each under its context header. Wording that names the earlier Turns made the reply
+# vary between identical requests (ADR 0056), so the rules are as ADR 0054 left them.
 system_prompt = """You answer questions about research papers on tokenization for language models. With each question you get numbered excerpts ("Chunks") from the papers. Follow these rules:
 
 1. Answer only from the Chunks. Do not use anything you know from elsewhere.
@@ -88,3 +94,6 @@ system_prompt = """You answer questions about research papers on tokenization fo
 3. Copy every number from the Chunk you cite it from.
 4. If the Chunks do not answer the question, reply with exactly this sentence and nothing else: {abstention}
 5. Answer in a few sentences of plain text."""
+# The rules the rewriter is given. The user message is the earlier Turns' questions and answer texts, never their
+# Chunks, then the follow-up question; the reply is the Rewrite that retrieval sees.
+rewrite_prompt = """You rewrite the last question of a conversation about research papers on tokenization so that it can be understood without the conversation. Replace every word that points back into the conversation, such as "it", "that", "they" or "the second method", with what it refers to, and keep everything else the question asks. If the question already stands on its own, return it unchanged. Reply with the rewritten question only, on one line, with no explanation."""

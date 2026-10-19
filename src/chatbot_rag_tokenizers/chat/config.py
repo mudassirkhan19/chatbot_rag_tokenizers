@@ -1,7 +1,8 @@
-"""The chatbot's config: the `[chat]` table of the retrieval config (ADR 0054).
+"""The chatbot's config: the `[chat]` table of the retrieval config (ADRs 0054 and 0056).
 
 It names the retriever the chatbot asks, out of the retrievers the same file configures, how many Chunks a Turn
-retrieves, the pinned answer model and how it is run, the system prompt and the fixed Abstention sentence.
+retrieves, the pinned answer model and how it is run, the system prompt and the fixed Abstention sentence, how
+many earlier Turns a follow-up is shown, and the rewriter's prompt.
 """
 
 import tomllib
@@ -22,7 +23,9 @@ _FIELDS = {
     "think": bool,
     "temperature": float,
     "abstention": str,
+    "history": int,
     "system_prompt": str,
+    "rewrite_prompt": str,
 }
 
 
@@ -41,6 +44,8 @@ class ChatConfig:
     model: AnswerModelConfig
     abstention: str  # the fixed sentence the model writes when the Chunks don't answer the question
     system_prompt: str  # with the Abstention sentence filled in
+    history: int  # the earlier Turns the answer model and the rewriter are shown on a follow-up
+    rewrite_prompt: str
 
 
 def load_chat_config(path: Path = DEFAULT_PATH) -> ChatConfig:
@@ -50,6 +55,8 @@ def load_chat_config(path: Path = DEFAULT_PATH) -> ChatConfig:
         raise ConfigError(f"[chat] retriever {fields['retriever']!r} is not a retriever {path} configures: {', '.join(retrievers)}")
     if fields["k"] < 1:
         raise ConfigError(f"[chat] k {fields['k']} must be at least 1")
+    if fields["history"] < 1:
+        raise ConfigError(f"[chat] history {fields['history']} must be at least 1, or a follow-up has nothing to resolve against")
     if not PIN.fullmatch(fields["revision"]):
         raise ConfigError(f"[chat] revision {fields['revision']!r} is not pinned as <digest>@<Ollama version>")
     if "{abstention}" not in fields["system_prompt"]:
@@ -61,4 +68,6 @@ def load_chat_config(path: Path = DEFAULT_PATH) -> ChatConfig:
         model=model,
         abstention=fields["abstention"],
         system_prompt=fields["system_prompt"].replace("{abstention}", fields["abstention"]),
+        history=fields["history"],
+        rewrite_prompt=fields["rewrite_prompt"],
     )
