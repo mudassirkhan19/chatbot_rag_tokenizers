@@ -23,7 +23,7 @@ _DENSE_FIELDS = {"model": str, "revision": str, "model_sha256": str, "pooling": 
 class RetrievalConfig:
     bm25: BM25Config
     dense: list[DenseConfig]  # one per [dense.<name>] table, in the file's order
-    collapse_pool: int  # the raw Chunks the Collapsed ranking picks one per Work from
+    collapse_pool: int  # the raw Chunks the Collapsed ranking merges copies in
 
     @property
     def retrievers(self) -> dict[str, RetrieverConfig]:

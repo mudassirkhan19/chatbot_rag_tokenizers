@@ -103,7 +103,7 @@ _Avoid_: Clusters, dedup output (the duplicate stage's own grouping is what the 
 ### Retrieval
 
 **Collapsed ranking**:
-A ranking that holds at most one Chunk per Work, in the place of the Work's best-ranked Chunk; the Chunk shown is that Chunk's Section, from the Work's Canonical Edition when that Section of it was retrieved, and the merged Editions are named beside it.
+A ranking in which each passage appears once, however many files of its Work hold a copy: copies of a Chunk from a Work's other Editions and Versions are merged into the slot of the best-ranked one, shown from the Canonical Edition when its copy was retrieved, with the merged Editions named beside it. A Work's other passages keep their own slots.
 _Avoid_: Deduplicated results, merged results, filtered ranking
 
 ### Chat

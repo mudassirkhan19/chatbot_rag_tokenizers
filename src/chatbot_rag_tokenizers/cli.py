@@ -129,7 +129,7 @@ def main(argv: list[str] | None = None) -> None:
         help="score the retrievers on the Evaluation set and write the eval report",
         description=(
             "Runs every question of the Evaluation set through each retriever `index` built, scores the raw rankings"
-            " and their Collapsed rankings (`<retriever>+collapsed`, one Chunk per Work by the manifest's work_id)"
+            " and their Collapsed rankings (`<retriever>+collapsed`, copies from a Work's other files merged)"
             " against the questions' Passages (Recall@5, MRR@10, Hit@5), measures what crowds the top 5 (duplicates"
             " of one Work and Survey restatement, against the Work groups, and mostly-numeric Chunks) and writes the"
             " committed eval report."

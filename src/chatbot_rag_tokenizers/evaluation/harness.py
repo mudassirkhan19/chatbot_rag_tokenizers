@@ -7,7 +7,7 @@
 Unanswerable questions are run, so they get a line and a latency, but are left out of the metrics. A
 follow-up is run three ways: alone, after its history, and as its reference rewrite. Each query keeps its
 top 5, for measuring what crowds it (crowding.py). A Collapsed ranking (ADR 0053) is scored the same way, and
-its query also keeps the Editions merged into each slot and how many Works its pool held.
+its query also keeps the Editions merged into each slot and how many distinct Chunks its pool held.
 """
 
 import time
@@ -53,7 +53,7 @@ class Scored:
     found: int  # the Passages held by a Chunk in the top 5
     top: tuple[Slot, ...]  # the top 5, best first; fewer when the retriever ranked fewer Chunks
     seconds: float  # how long the retriever took to answer
-    pool_works: int | None = None  # in a Collapsed ranking, the Works its pool held
+    pool_distinct: int | None = None  # in a Collapsed ranking, its pool's Chunks once copies are merged
 
 
 @dataclass(frozen=True)
@@ -82,9 +82,9 @@ def score(questions: Sequence[Question], retriever: Retriever, chunks: Mapping[s
             started = time.perf_counter()
             if isinstance(retriever, Collapsed):
                 collapse = retriever.collapse(text, MRR_DEPTH)
-                hits, merged, pool_works = collapse.ranking, {i: m.editions for i, m in collapse.merged.items()}, collapse.works
+                hits, merged, pool_distinct = collapse.ranking, {i: m.editions for i, m in collapse.merged.items()}, collapse.distinct
             else:
-                hits, merged, pool_works = retriever.query(text, MRR_DEPTH), {}, None
+                hits, merged, pool_distinct = retriever.query(text, MRR_DEPTH), {}, None
             seconds = time.perf_counter() - started
             ranking = [chunks[chunk_id] for chunk_id, _ in hits]
             held = [[holds(chunk.text, passage.quote, rule) for passage in question.passages] for chunk in ranking]
@@ -94,7 +94,7 @@ def score(questions: Sequence[Question], retriever: Retriever, chunks: Mapping[s
                 Slot(chunk.edition_id, chunk.pinned_id, is_mostly_numeric(chunk), any(row), merged.get(chunk.chunk_id, ()))
                 for chunk, row in zip(ranking[:CROWDING_DEPTH], held)
             )
-            scored.append(Scored(question, query_kind, first_hit, found, top, seconds, pool_works))
+            scored.append(Scored(question, query_kind, first_hit, found, top, seconds, pool_distinct))
     return scored
 
 

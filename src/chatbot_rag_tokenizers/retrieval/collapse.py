@@ -1,20 +1,21 @@
-"""The Collapsed ranking (ADRs 0053 and 0055): at most one Chunk per Work, over any retriever.
+"""The Collapsed ranking (ADRs 0053 and 0057): each Chunk once, however many files of its Work hold a copy.
 
-The wrapper asks the retriever it wraps for a pool of Chunks, maps each to its Work through the manifest's
-work_id, and keeps the Works in the order their best-ranked Chunk came in. A Chunk whose Edition has no
-work_id is its Edition's own Work, so nothing the collapse can't place is dropped.
+The wrapper asks the retriever it wraps for a pool of Chunks and merges copies: Chunks of one Work, through the
+manifest's work_id, from different files, at the same place in the same Section (the same Section path, and the
+same count of Chunks before it in that Section). That is what a paper's arXiv Versions and its preprint and venue
+Editions repeat. A Chunk whose Edition has no work_id is its Edition's own Work, so nothing the collapse can't
+place is dropped. A Work's other Chunks are other text and keep their own slots, as the raw ranking gave them.
 
-Each Work shows its best-ranked Chunk's Section, which is what the retriever found. When the pool holds that
-Section from several of the Work's files, it shows the copy from the best file, best first by tier, then by rank:
+Each slot takes the place of its best-ranked copy, and shows the copy from the best file, best first by tier, then
+by rank:
 
     1. the Canonical Edition's own file (for a preprint, its latest Version)
     2. any Edition's latest file
     3. any file, such as a v1
 
-so a stale v1 stands for a paper only when no later copy of the Section was retrieved. Surveys are not demoted: a
-Survey's Work collapses like any other. No retriever's code or index changes, and `query` keeps the raw
-`(chunk_id, score)` shape; `collapse` also gives, by Chunk id, the Work, the merged Editions and the Work's
-other Chunks in the pool.
+so a stale v1 stands for a passage only when no later copy of it was retrieved. Surveys are not demoted. No
+retriever's code or index changes, and `query` keeps the raw `(chunk_id, score)` shape; `collapse` also gives,
+by Chunk id, the Work, the merged Editions and the merged copies.
 """
 
 from collections.abc import Iterable, Mapping
@@ -32,21 +33,21 @@ class Merged:
     """What stands behind one Chunk of a Collapsed ranking."""
 
     work_id: str  # the manifest's work_id, or "edition:<id>" for an Edition with none
-    editions: tuple[str, ...]  # the pinned ids (ids with Version) of the Work's other files in the pool, best first
-    siblings: tuple[str, ...]  # the ids of the Work's other Chunks in the pool, best first
+    editions: tuple[str, ...]  # the pinned ids (ids with Version) of the files of the copies merged into it, best first
+    copies: tuple[str, ...]  # the ids of the copies merged into it, best first
 
 
 @dataclass(frozen=True)
 class Collapse:
     """One query's Collapsed ranking, with what stands behind each of its Chunks."""
 
-    ranking: list[tuple[str, float]]  # at most k, one Chunk per Work
+    ranking: list[tuple[str, float]]  # at most k, each with its copies merged
     merged: dict[str, Merged]  # by the ranking's Chunk ids
-    works: int  # the Works in the pool, which is fewer than k when the pool ran short
+    distinct: int  # the pool's Chunks once copies are merged, which is fewer than k when the pool ran short
 
 
 class Collapsed:
-    """A retriever's Collapsed ranking, over the manifest's Works."""
+    """A retriever's Collapsed ranking, over the manifest's Works and the Chunks' places in their Sections."""
 
     def __init__(self, retriever: Retriever, chunks: Mapping[str, Chunk], manifest: Iterable[Mapping[str, str]], pool: int) -> None:
         self.retriever = retriever
@@ -59,6 +60,12 @@ class Collapsed:
                 self._work[row["edition_id"]] = row["work_id"]
                 if row["canonical"] == "yes":
                     self._canonical.add(row["edition_id"])
+        self._place: dict[str, int] = {}  # each Chunk's count of Chunks before it in its Section, in its file
+        before: dict[tuple[str, tuple[str, ...]], int] = {}
+        for chunk in chunks.values():
+            section = (chunk.file_sha256, chunk.section_path)
+            self._place[chunk.chunk_id] = before.get(section, 0)
+            before[section] = self._place[chunk.chunk_id] + 1
 
     @property
     def device(self) -> str:
@@ -71,20 +78,17 @@ class Collapsed:
         return self.collapse(text, k).ranking
 
     def collapse(self, text: str, k: int) -> Collapse:
-        members: dict[str, list[tuple[str, float]]] = {}  # each Work's Chunks in the pool, in raw order
+        slots: dict[tuple[str, tuple[str, ...], int], list[tuple[str, float]]] = {}  # each passage's copies, in raw order
         for chunk_id, score in self.retriever.query(text, max(self.pool, k)):
-            members.setdefault(self.work_of(self.chunks[chunk_id]), []).append((chunk_id, score))
+            chunk = self.chunks[chunk_id]
+            slots.setdefault((self.work_of(chunk), chunk.section_path, self._place[chunk_id]), []).append((chunk_id, score))
         ranking, merged = [], {}
-        for work_id, ranked in list(members.items())[:k]:
-            section = self.chunks[ranked[0][0]].section_path
-            copies = [hit for hit in ranked if self.chunks[hit[0]].section_path == section]
+        for (work_id, _, _), copies in list(slots.items())[:k]:
             shown = min(copies, key=lambda hit: self._tier(self.chunks[hit[0]]))  # min keeps the best-ranked on a tie
-            pinned = self.chunks[shown[0]].pinned_id
-            others = [chunk_id for chunk_id, _ in ranked if chunk_id != shown[0]]
-            editions = dict.fromkeys(self.chunks[chunk_id].pinned_id for chunk_id in others if self.chunks[chunk_id].pinned_id != pinned)
+            others = [chunk_id for chunk_id, _ in copies if chunk_id != shown[0]]
             ranking.append(shown)
-            merged[shown[0]] = Merged(work_id, tuple(editions), tuple(others))
-        return Collapse(ranking, merged, len(members))
+            merged[shown[0]] = Merged(work_id, tuple(dict.fromkeys(self.chunks[c].pinned_id for c in others)), tuple(others))
+        return Collapse(ranking, merged, len(slots))
 
     def work_of(self, chunk: Chunk) -> str:
         return self._work.get(chunk.edition_id, f"edition:{chunk.edition_id}")
