@@ -77,6 +77,14 @@ class BM25:
     def device(self) -> str:
         return "cpu"  # plain Python
 
+    @property
+    def parameters(self) -> None:
+        return None  # no model
+
+    @property
+    def dimension(self) -> None:
+        return None  # no vectors
+
     def save(self, directory: Path) -> None:
         stored = {"chunk_ids": self.chunk_ids, "lengths": self.lengths, "postings": self.postings}
         write_atomically(directory / _FILE, json.dumps(stored, sort_keys=True, ensure_ascii=False, separators=(",", ":")) + "\n")

@@ -1,4 +1,5 @@
-"""The retrieval config file: each retriever's settings (ADRs 0039, 0042, 0050 and 0058) and the Collapsed ranking's pool (ADR 0053)."""
+"""The retrieval config file: each retriever's settings (ADRs 0039, 0042, 0050 and 0058), the Collapsed ranking's pool (ADR 0053)
+and the eval report's Comparison (ADR 0059)."""
 
 import re
 import tomllib
@@ -22,11 +23,19 @@ _DENSE_FIELDS = {"model": str, "revision": str, "model_sha256": str, "pooling": 
 
 
 @dataclass(frozen=True)
+class ComparisonConfig:
+    baseline: str  # the retriever every other is compared with, by its `--retriever` name
+    resamples: int  # draws of the questions for each bootstrap interval
+    seed: int  # of the bootstrap's generator, so two runs draw the same resamples
+
+
+@dataclass(frozen=True)
 class RetrievalConfig:
     bm25: BM25Config
     dense: list[DenseConfig]  # one per [dense.<name>] table, in the file's order
     hybrid: list[HybridConfig]  # one per [hybrid.<name>] table, in the file's order
     collapse_pool: int  # the raw Chunks the Collapsed ranking merges copies in
+    comparison: ComparisonConfig  # how the eval report compares the retrievers (ADR 0059)
 
     @property
     def retrievers(self) -> dict[str, RetrieverConfig]:
@@ -51,7 +60,13 @@ def load_retrieval_config(path: Path = DEFAULT_PATH) -> RetrievalConfig:
         raise ConfigError(f"[collapse] pool {pool} must be at least 1")
     dense = [_load_dense_table(raw, table, path) for table in tables]
     hybrid = [_load_hybrid_table(raw, table, path, bm25, dense) for table in raw.get("hybrid", {})]
-    return RetrievalConfig(bm25=bm25, dense=dense, hybrid=hybrid, collapse_pool=pool)
+    comparison = ComparisonConfig(**read_table(raw, "comparison", {"baseline": str, "resamples": int, "seed": int}, path))
+    configured = [bm25.name, *(config.name for config in dense), *(config.name for config in hybrid)]
+    if comparison.baseline not in configured:
+        raise ConfigError(f"[comparison] baseline {comparison.baseline!r} is not a retriever in {path}; it configures {', '.join(configured)}")
+    if comparison.resamples < 1:
+        raise ConfigError(f"[comparison] resamples {comparison.resamples} must be at least 1")
+    return RetrievalConfig(bm25=bm25, dense=dense, hybrid=hybrid, collapse_pool=pool, comparison=comparison)
 
 
 def _load_dense_table(raw: dict, table: str, path: Path) -> DenseConfig:

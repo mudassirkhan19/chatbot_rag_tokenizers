@@ -115,7 +115,7 @@ def test_the_chatbot_asks_the_dense_baseline_for_five_chunks_and_answers_with_th
     assert chat.abstention in chat.system_prompt
 
 
-def with_chat_line(tmp_path: Path, old: str, new: str) -> Path:
+def with_line(tmp_path: Path, old: str, new: str) -> Path:
     config = RETRIEVAL_CONFIG.read_text()
     assert config.count(old) == 1
     path = tmp_path / "retrieval.toml"
@@ -156,4 +156,24 @@ def test_a_bad_hybrid_table_stops_with_a_message_naming_the_table(tmp_path, memb
 )
 def test_a_bad_chat_table_stops_with_a_message_naming_it(tmp_path, old, new, message):
     with pytest.raises(ConfigError, match=message):
-        load_chat_config(with_chat_line(tmp_path, old, new))
+        load_chat_config(with_line(tmp_path, old, new))
+
+
+def test_the_repo_config_compares_against_bge_small_with_a_seeded_bootstrap_of_10000_resamples():
+    comparison = load_retrieval_config(RETRIEVAL_CONFIG).comparison
+
+    assert (comparison.baseline, comparison.resamples, comparison.seed) == ("dense.bge-small", 10_000, 55)
+
+
+@pytest.mark.parametrize(
+    "old, new, message",
+    [
+        ('baseline = "dense.bge-small"', 'baseline = "dense.e5"', r"\[comparison\] baseline 'dense.e5' is not a retriever in .*; it configures bm25, dense.bge-small"),
+        ("resamples = 10000", "resamples = 0", r"\[comparison\] resamples 0 must be at least 1"),
+        ("seed = 55", 'seed = "55"', r"\[comparison\] seed '55' is not a int"),
+    ],
+    ids=["unknown-baseline", "no-resamples", "mistyped-seed"],
+)
+def test_a_bad_comparison_table_stops_with_a_message_naming_it(tmp_path, old, new, message):
+    with pytest.raises(ConfigError, match=message):
+        load_retrieval_config(with_line(tmp_path, old, new))

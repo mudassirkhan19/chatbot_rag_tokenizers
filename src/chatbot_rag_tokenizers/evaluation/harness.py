@@ -103,6 +103,16 @@ def all_answerable(scored: Sequence[Scored]) -> list[Scored]:
     return [s for s in scored if s.question.answerable and s.query_kind in (AS_ASKED, FOLLOW_UP_ALONE)]
 
 
+def recall(scored: Scored) -> float:
+    """The query's Recall@5: the share of its question's Passages held in the top 5."""
+    return scored.found / len(scored.question.passages)
+
+
+def reciprocal_rank(scored: Scored) -> float:
+    """1 / the rank of the query's first hit, 0 when none is in the top 10: what MRR@10 averages."""
+    return 1 / scored.first_hit if scored.first_hit else 0.0
+
+
 def metrics(scored: Sequence[Scored]) -> Metrics | None:
     """The metrics over these queries, or None when there are none."""
     if not scored:
@@ -110,7 +120,7 @@ def metrics(scored: Sequence[Scored]) -> Metrics | None:
     count = len(scored)
     return Metrics(
         questions=count,
-        recall=sum(s.found / len(s.question.passages) for s in scored) / count,
-        mrr=sum(1 / s.first_hit if s.first_hit else 0.0 for s in scored) / count,
+        recall=sum(map(recall, scored)) / count,
+        mrr=sum(map(reciprocal_rank, scored)) / count,
         hit=sum(1 for s in scored if s.found) / count,
     )

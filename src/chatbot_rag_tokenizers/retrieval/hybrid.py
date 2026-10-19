@@ -62,6 +62,12 @@ def devices(devices: Iterable[str]) -> str:
     return "+".join(dict.fromkeys(devices))
 
 
+def _summed(sizes: Iterable[int | None]) -> int | None:
+    """The members' sizes summed, leaving out a member without one (BM25); None when no member has one."""
+    known = [size for size in sizes if size is not None]
+    return sum(known) if known else None
+
+
 class Hybrid:
     def __init__(self, config: HybridConfig, members: list[Retriever]) -> None:
         self.config = config
@@ -70,6 +76,14 @@ class Hybrid:
     @property
     def device(self) -> str:
         return devices(member.device for member in self.members)
+
+    @property
+    def parameters(self) -> int | None:
+        return _summed(member.parameters for member in self.members)
+
+    @property
+    def dimension(self) -> int | None:
+        return _summed(member.dimension for member in self.members)
 
     def save(self, directory: Path) -> None:
         directory.mkdir(parents=True, exist_ok=True)  # no files of its own: the record is all there is

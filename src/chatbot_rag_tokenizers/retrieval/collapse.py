@@ -71,6 +71,14 @@ class Collapsed:
     def device(self) -> str:
         return self.retriever.device
 
+    @property
+    def parameters(self) -> int | None:
+        return self.retriever.parameters
+
+    @property
+    def dimension(self) -> int | None:
+        return self.retriever.dimension
+
     def save(self, directory: Path) -> None:
         self.retriever.save(directory)
 
