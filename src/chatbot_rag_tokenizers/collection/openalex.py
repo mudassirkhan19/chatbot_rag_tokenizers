@@ -12,7 +12,7 @@ import re
 import sys
 from datetime import UTC, datetime
 
-from .editions import Edition
+from .editions import Edition, bare_arxiv_id
 from .http import RateLimitedHttp
 from .snapshot import SnapshotStore, StoredResponse
 
@@ -60,9 +60,9 @@ def _arxiv_id(work: dict) -> str:
             (ARXIV_DOI, _bare_doi(location.get("doi"))),
         ]:
             if value and (match := pattern.match(value)):
-                return VERSION_SUFFIX.sub("", match.group(1))
+                return VERSION_SUFFIX.sub("", bare_arxiv_id(match.group(1)))
     if match := ARXIV_DOI.match(_bare_doi(work.get("doi"))):
-        return VERSION_SUFFIX.sub("", match.group(1))
+        return VERSION_SUFFIX.sub("", bare_arxiv_id(match.group(1)))
     return ""
 
 
