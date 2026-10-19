@@ -32,5 +32,5 @@ DOIs are already compared without case: `match_keys` lower-cases them when Candi
 ## Consequences
 - On the full run, the two `arXiv:` rows join their bare-id rows: Discovered goes from 26,388 to 26,386, and Included from 2,706 to 2,705 (`arXiv:2607.05691v1` was included). With full text goes from 2,068 to 2,067, and Indexed from 2,067 to 2,066. The joined `2607.05691v1` gains the OpenAlex channel.
 - No real Edition is excluded as borrowed: the CRAN package was already excluded as not a paper ([0040](0040-the-corpus-keeps-only-papers.md)), which comes first, and the nsurl pair shares an ACL ID. The stage is in place for a future run or Snapshot refresh.
-- The index still holds `arXiv:2607.05691v1`'s Chunks until `index` is next run. The committed eval report was built on that index.
+- `parse`, `index` and `evaluate` were rerun: the parse report drops `arXiv:2607.05691v1`'s file (2,690 files, 141,348 Chunks, from 2,691 and 141,512), the index drops its 164 Chunks, and the eval report's Recall@5, MRR@10, Hit@5 and duplicate rate are unchanged.
 - A borrowed Edition's file stays in the full-text record. `parse` and `index` skip it, as they skip every excluded Edition's files.

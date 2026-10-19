@@ -259,14 +259,14 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
           <text x="0" y="276">Indexed</text>
           <rect class="bar" x="200" y="262" width="31" height="20" rx="2"/>
           <text class="muted" x="238" y="276">2,066 · 8%</text>
-          <text class="muted" x="0" y="294">2,691 pinned files parsed, 1 failed the quality gate</text>
+          <text class="muted" x="0" y="294">2,690 pinned files parsed, 1 failed the quality gate</text>
         </g>
         <line class="drop" x1="200" y1="14" x2="200" y2="300"/>
         <text class="muted" x="0" y="322">Editions, from data/report.md at the Snapshot of 2026-10-16</text>
       </svg>
     </div>
     <div class="stats">
-      <div class="stat"><div class="v">141,512</div><div class="k">Chunks in the index, from 2,690 files</div></div>
+      <div class="stat"><div class="v">141,348</div><div class="k">Chunks in the index, from 2,689 files</div></div>
       <div class="stat"><div class="v">36</div><div class="k">Evaluation questions, every one checked by a person</div></div>
       <div class="stat"><div class="v">0.30</div><div class="k">Best baseline Recall@5 (dense, all answerable)</div></div>
       <div class="stat"><div class="v">42–50%</div><div class="k">Top-5 slots wasted on duplicates, before any dedup</div></div>
@@ -301,7 +301,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <div class="arrow">→</div>
       <div class="ent"><b>Pinned file</b><span>A PDF of one Version, named by its sha256</span><span class="ex">1808.06226v1.pdf 8a81eb…</span></div>
       <div class="arrow">→</div>
-      <div class="ent"><b>Chunk</b><span>A run of text from one Section of one file: text, table or caption. The unit retrieved and cited.</span><span class="ex">141,512</span></div>
+      <div class="ent"><b>Chunk</b><span>A run of text from one Section of one file: text, table or caption. The unit retrieved and cited.</span><span class="ex">141,348</span></div>
       <div class="arrow">⇠</div>
       <div class="ent ghost"><b>Passage</b><span>A verbatim quote that answers an Evaluation question. Any Chunk holding it, from any Edition, counts.</span><span class="ex">36 questions</span></div>
     </div>
@@ -552,7 +552,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
     <div class="block">
       <dl class="io">
         <dt>Input</dt><dd>2,705 included Editions.</dd>
-        <dt>Output</dt><dd>2,691 pinned PDF files (hashes in the Snapshot, files never committed) and 141,512 Chunks in a local parse cache, plus a committed parse report with one line per file.</dd>
+        <dt>Output</dt><dd>2,690 pinned PDF files (hashes in the Snapshot, files never committed) and 141,348 Chunks in a local parse cache, plus a committed parse report with one line per file.</dd>
       </dl>
       <h4>Nouns born here</h4>
       <dl class="nouns">
@@ -581,11 +581,11 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
         <tbody>
           <tr><td>Included Editions with full text</td><td class="n">2,067</td></tr>
           <tr><td>Included Editions with no open PDF</td><td class="n">636</td></tr>
-          <tr><td>Pinned files parsed / failed the gate</td><td class="n">2,690 / 1</td></tr>
-          <tr><td>Sections</td><td class="n">69,081</td></tr>
-          <tr><td>Chunks</td><td class="n">141,512</td></tr>
-          <tr><td>of which table / caption</td><td class="n">18,038 / 13,737</td></tr>
-          <tr><td>of which mostly numeric text (missed table cells)</td><td class="n">4,782</td></tr>
+          <tr><td>Pinned files parsed / failed the gate</td><td class="n">2,689 / 1</td></tr>
+          <tr><td>Sections</td><td class="n">69,031</td></tr>
+          <tr><td>Chunks</td><td class="n">141,348</td></tr>
+          <tr><td>of which table / caption</td><td class="n">18,034 / 13,712</td></tr>
+          <tr><td>of which mostly numeric text (missed table cells)</td><td class="n">4,767</td></tr>
         </tbody>
       </table></div>
 
@@ -638,7 +638,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
   <div class="sec-head">
     <div class="eyebrow">Stage 4</div>
     <div class="title-row"><h2>Retrieve: how a question finds Chunks</h2><span class="chip partial">partial</span></div>
-    <p class="goal">Rank the 141,512 Chunks for a question. Two baselines exist so every later choice has a number to beat. The embedding comparison, hybrid search and duplicate suppression are not built yet.</p>
+    <p class="goal">Rank the 141,348 Chunks for a question. Two baselines exist so every later choice has a number to beat. The embedding comparison, hybrid search and duplicate suppression are not built yet.</p>
   </div>
   <div class="panel">
     <div class="block">
