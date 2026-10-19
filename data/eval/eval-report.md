@@ -18,8 +18,8 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
   - tokenizer_sha256: `ce64fce797c24f68df90b40a3f74f579b336a493db14bd583fd520ea0d8c9a98`
   - min_sections: `2`
   - min_body_characters: `2000`
-- Files: 2690
-- Chunks: 141512
+- Files: 2689
+- Chunks: 141348
 
 ## Retrievers
 
@@ -232,5 +232,5 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 
 These depend on the machine and change from run to run.
 
-- bm25: index built on cpu in 9.63 s; 52 queries on cpu, latency p50 243.23 ms, p95 358.12 ms
-- dense.bge-small: index built on mps in 817.53 s; 52 queries on mps, latency p50 38.23 ms, p95 44.32 ms
+- bm25: index built on cpu in 10.17 s; 52 queries on cpu, latency p50 192.88 ms, p95 291.79 ms
+- dense.bge-small: index built on mps in 771.08 s; 52 queries on mps, latency p50 27.97 ms, p95 29.96 ms

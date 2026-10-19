@@ -116,7 +116,7 @@ This sends each PDF to the pinned GROBID service and cuts its text into Chunks t
 - **The parse cache** (`data/parse-cache/`, `--cache`, never committed) keeps GROBID's TEI and the bibliography per file sha256 and parser version, and the Chunks per file sha256, parser version and chunking-config hash (ADR 0030). A file whose TEI is cached is not sent to GROBID again, so a rerun only parses new files; a new GROBID digest re-parses it, and a chunking-config change only re-chunks it from the cached TEI.
 - **Reproducible.** Files are processed in sorted order and nothing in the output depends on time or the machine, so the same PDFs and config give byte-identical Chunks and report. GROBID's raw TEI is not byte-stable (ADR 0024); the Chunks are.
 - **The parse report** (`data/parse-report.md`, `--report`, committed) names the GROBID image and version and the chunking config, and gives a line per file (with its table and caption Chunks, and its text Chunks that are mostly numbers, most of them the cells of a table GROBID missed: ADR 0035) and the totals.
-- **The committed report is the full-corpus run** (`just parse`, 1 h 33 min on an Apple-silicon laptop, then rerun from the cached TEI in 4 min once Editions that are not papers were excluded, and again once numbered headings GROBID left in paragraphs were recovered: ADR 0043): all 2,691 pinned files of the 2,068 included Editions with full text, 69,081 Sections and 141,512 Chunks (109,737 text, 18,038 table, 13,737 caption). 1 file fails the quality gate: `2508.13058v1`, a 4-page paper written in Turkish in which GROBID finds 1 Section.
+- **The committed report is the full-corpus run** (`just parse`, 1 h 33 min on an Apple-silicon laptop, then rerun from the cached TEI in 4 min once Editions that are not papers were excluded, again once numbered headings GROBID left in paragraphs were recovered: ADR 0043, and again once an `arXiv:`-prefixed duplicate Edition was merged: ADR 0049): all 2,690 pinned files of the 2,067 included Editions with full text, 69,031 Sections and 141,348 Chunks (109,602 text, 18,034 table, 13,712 caption). 1 file fails the quality gate: `2508.13058v1`, a 4-page paper written in Turkish in which GROBID finds 1 Section.
 
 ## Index and evaluate retrieval
 
@@ -126,7 +126,7 @@ just eval-check   # check the Evaluation set's questions and quotes against the 
 just evaluate     # score both retrievers on the Evaluation set and write the eval report
 ```
 
-`index` builds the retrievers, `eval-check` checks the hand-checked Evaluation set, and `evaluate` scores the retrievers on it (ADRs 0039, 0041 and 0042). There are two retrievers, BM25 and the dense baseline, and the corpus is every file the committed parse report lists as parsed: 2,690 files of the full-corpus run.
+`index` builds the retrievers, `eval-check` checks the hand-checked Evaluation set, and `evaluate` scores the retrievers on it (ADRs 0039, 0041 and 0042). There are two retrievers, BM25 and the dense baseline, and the corpus is every file the committed parse report lists as parsed: 2,689 files of the full-corpus run.
 
 - **`index` inputs.**
   - The parse report (`data/parse-report.md`, `--parse-report`) decides which files make up the corpus: every file it lists as parsed.

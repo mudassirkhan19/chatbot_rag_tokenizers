@@ -2717,18 +2717,17 @@ Numeric counts the text Chunks in which more than 35% of their words are numbers
 | W7217633576 | `482533a357de17faf4ea1eb12d644fc434f9ab713ada4d856c6d4d6f1712aeb4` | parsed | 47 | 49 | 0 | 2 | 0 |
 | W7218093374 | `61def1383f8f656c04ce9a6109b6c7acc661ff4428b99abbfd793af9855cbc30` | parsed | 13 | 39 | 2 | 13 | 0 |
 | Y00-1015 | `161396dcad544fadac7b008ec54414265299a362ba25588167e2f5236111f71b` | parsed | 20 | 35 | 7 | 3 | 0 |
-| arXiv:2607.05691v1 | `642b20d45f55f080971fef5e6b510d6c647b7fd4af978ebd2cb971ef379c97ae` | parsed | 50 | 164 | 4 | 25 | 15 |
 | cmp-lg/9607036v1 | `4053f462852d066837712c1819a155a1f7da8cb417cab77cce305bed72854bd7` | parsed | 17 | 37 | 3 | 3 | 0 |
 
 ## Totals
 
-- Files: 2691
-- Sections: 69081
-- Chunks: 141512
-- Table Chunks: 18038
-- Caption Chunks: 13737
-- Numeric text Chunks: 4782
-- Parsed: 2690
+- Files: 2690
+- Sections: 69031
+- Chunks: 141348
+- Table Chunks: 18034
+- Caption Chunks: 13712
+- Numeric text Chunks: 4767
+- Parsed: 2689
 - Failed: 1
 
 ## Failures by reason
