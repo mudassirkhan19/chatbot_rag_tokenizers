@@ -6,7 +6,8 @@
 
 Unanswerable questions are run, so they get a line and a latency, but are left out of the metrics. A
 follow-up is run three ways: alone, after its history, and as its reference rewrite. Each query keeps its
-top 5, for measuring what crowds it (crowding.py).
+top 5, for measuring what crowds it (crowding.py). A Collapsed ranking (ADR 0053) is scored the same way, and
+its query also keeps the Editions merged into each slot and how many Works its pool held.
 """
 
 import time
@@ -15,6 +16,7 @@ from dataclasses import dataclass
 
 from ..parsing.chunker import Chunk
 from ..parsing.report import is_mostly_numeric
+from ..retrieval.collapse import Collapsed
 from ..retrieval.retriever import Retriever
 from .evalset import Question
 from .matching import MatchingRule, holds
@@ -35,8 +37,10 @@ class Slot:
     """One place in the top 5, for measuring what crowds it (ADR 0044)."""
 
     edition_id: str
+    pinned_id: str  # the file the Chunk is from
     mostly_numeric: bool  # a text Chunk that is mostly numbers, as the parse report counts them (ADR 0035)
     holds_passage: bool
+    merged: tuple[str, ...] = ()  # in a Collapsed ranking, the pinned ids of the Work's other files in the pool
 
 
 @dataclass(frozen=True)
@@ -49,6 +53,7 @@ class Scored:
     found: int  # the Passages held by a Chunk in the top 5
     top: tuple[Slot, ...]  # the top 5, best first; fewer when the retriever ranked fewer Chunks
     seconds: float  # how long the retriever took to answer
+    pool_works: int | None = None  # in a Collapsed ranking, the Works its pool held
 
 
 @dataclass(frozen=True)
@@ -75,16 +80,21 @@ def score(questions: Sequence[Question], retriever: Retriever, chunks: Mapping[s
     for question in questions:
         for query_kind, text in queries(question):
             started = time.perf_counter()
-            ranking = [chunks[chunk_id] for chunk_id, _ in retriever.query(text, MRR_DEPTH)]
+            if isinstance(retriever, Collapsed):
+                collapse = retriever.collapse(text, MRR_DEPTH)
+                hits, merged, pool_works = collapse.ranking, {i: m.editions for i, m in collapse.merged.items()}, collapse.works
+            else:
+                hits, merged, pool_works = retriever.query(text, MRR_DEPTH), {}, None
             seconds = time.perf_counter() - started
+            ranking = [chunks[chunk_id] for chunk_id, _ in hits]
             held = [[holds(chunk.text, passage.quote, rule) for passage in question.passages] for chunk in ranking]
             first_hit = next((rank for rank, row in enumerate(held, start=1) if any(row)), None)
             found = sum(1 for column in zip(*held[:RECALL_DEPTH]) if any(column))
             top = tuple(
-                Slot(chunk.edition_id, is_mostly_numeric(chunk), any(row))
+                Slot(chunk.edition_id, chunk.pinned_id, is_mostly_numeric(chunk), any(row), merged.get(chunk.chunk_id, ()))
                 for chunk, row in zip(ranking[:CROWDING_DEPTH], held)
             )
-            scored.append(Scored(question, query_kind, first_hit, found, top, seconds))
+            scored.append(Scored(question, query_kind, first_hit, found, top, seconds, pool_works))
     return scored
 
 

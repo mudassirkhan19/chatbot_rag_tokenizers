@@ -43,12 +43,12 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0036](0036-a-dropped-grobid-connection-stops-the-run.md) | A reset or dropped GROBID connection stops the run, like a refused one | Accepted |
 | [0037](0037-withdrawn-preprints-are-excluded.md) | Withdrawn arXiv preprints are excluded from the corpus | Accepted |
 | [0038](0038-parse-only-the-files-of-included-editions.md) | Parse only the files of included Editions | Accepted |
-| [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) | Retrieval tracer: BM25, the index cache and the evaluate harness | Accepted, Passage matching and the loader's shape checks superseded by 0041; amended by 0043 |
+| [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) | Retrieval tracer: BM25, the index cache and the evaluate harness | Accepted, Passage matching and the loader's shape checks superseded by 0041; amended by 0043 and 0053 |
 | [0040](0040-the-corpus-keeps-only-papers.md) | The corpus keeps only papers | Accepted |
 | [0041](0041-passage-matcher-eval-check-and-calibration.md) | The Passage matcher, eval-check and the v1/vN calibration | Accepted, amended by 0051 |
 | [0042](0042-dense-baseline-bge-small-behind-the-embedder-boundary.md) | Dense baseline: bge-small behind the embedder boundary, on MPS by default | Accepted, amended by 0050 |
 | [0043](0043-recover-numbered-headings-grobid-left-in-paragraphs.md) | Recover numbered headings GROBID left in paragraphs | Accepted |
-| [0044](0044-duplicate-rate-restatement-and-numeric-share-in-evaluate.md) | Duplicate rate, Survey restatement and the numeric-Chunk share in evaluate | Accepted, Work groups filled by 0047 |
+| [0044](0044-duplicate-rate-restatement-and-numeric-share-in-evaluate.md) | Duplicate rate, Survey restatement and the numeric-Chunk share in evaluate | Accepted, Work groups filled by 0047; amended by 0053 |
 | [0045](0045-index-marks-editions-indexed-from-a-committed-record.md) | `index` marks Editions indexed, from a record committed in the Snapshot | Accepted |
 | [0046](0046-evaluation-set-quotes-checked-by-and-absence-evidence.md) | The Evaluation set: short quotes committed, a check per question, and absence evidence | Accepted |
 | [0047](0047-hand-checked-work-groups-are-the-duplicate-ground-truth.md) | Hand-checked Work groups are the ground truth for the duplicate rate | Accepted |
@@ -57,6 +57,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0050](0050-named-dense-tables-and-a-configurable-embedder.md) | Named dense tables and a configurable embedder; `dense` becomes `dense.bge-small` | Accepted, amended by 0052 |
 | [0051](0051-work-grouping-in-collect.md) | Work grouping in `collect`: work_id, Canonical Edition, Survey flag and Suspected pairs | Accepted |
 | [0052](0052-bge-base-and-openscholar-pinned-and-verified.md) | bge-base and OpenScholar_Retriever pinned, and checked by the opt-in model test | Accepted |
+| [0053](0053-collapsed-ranking-and-collapsed-twins.md) | The Collapsed ranking: one Chunk per Work, scored as a `+collapsed` twin of every retriever | Accepted |
 
 ## Template
 
