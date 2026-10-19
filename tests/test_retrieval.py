@@ -475,7 +475,7 @@ def test_the_report_counts_the_editions_a_person_checked(indexed, tmp_path):
 
     report = run_evaluate(indexed, work_groups=groups)
 
-    assert "4 Editions in 2 Works, 2 of the Editions checked by hand (checked_by)," in report
+    assert "4 Editions in 2 Works, 2 of the Editions checked (who checked each is in checked_by)," in report
 
 
 def test_evaluate_stops_on_a_malformed_work_groups_file(indexed, tmp_path):

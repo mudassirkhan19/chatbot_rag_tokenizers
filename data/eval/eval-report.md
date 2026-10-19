@@ -76,7 +76,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 
 What takes the top 5 slots of each answerable question, as a user would ask it (the *all answerable* row's queries), on the raw ranking (ADR 0044).
 
-- Work groups: `data/eval/work-groups.csv` (sha256 `7c42da873e6fea33af1a712bdf97b9a8f1423de68f55864c40d5069b78938307`), 154 Editions in 130 Works, 0 of the Editions checked by hand (checked_by), never computed by the system being measured.
+- Work groups: `data/eval/work-groups.csv` (sha256 `447de1df77b3df26b3b88e292ec3ececf0af9ea8b40dc6b24525d3d292ff0fe2`), 154 Editions in 130 Works, 154 of the Editions checked (who checked each is in checked_by), never computed by the system being measured.
 - A duplicate slot holds a Chunk from a Work already ranked higher: another Edition or Version of it, or another Chunk of the same file.
 - A restatement slot holds a Chunk from a Survey. A Survey is always its own Work, and its Chunks are never duplicates.
 - Duplicates and restatement count only the questions whose top 5 Editions all have a Work group.
@@ -232,5 +232,5 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 
 These depend on the machine and change from run to run.
 
-- bm25: index built on cpu in 9.63 s; 52 queries on cpu, latency p50 200.26 ms, p95 320.52 ms
-- dense: index built on mps in 817.53 s; 52 queries on mps, latency p50 28.51 ms, p95 30.91 ms
+- bm25: index built on cpu in 9.63 s; 52 queries on cpu, latency p50 196.56 ms, p95 313.56 ms
+- dense: index built on mps in 817.53 s; 52 queries on mps, latency p50 29.19 ms, p95 33.22 ms

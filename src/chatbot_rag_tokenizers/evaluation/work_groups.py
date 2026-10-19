@@ -8,8 +8,8 @@ A committed CSV, one Edition per row, with the columns of the export `evaluate -
 Editions with the same work_id are one Work. survey is "yes" for a Survey's Editions and "no" otherwise; a
 Survey is always its own Work, so a Work's Editions are all Surveys or none is. A row whose work_id is blank,
 as the export writes it, is an Edition with no Work group yet. Title, authors, year and venue are only there
-for the person grouping and are not read. checked_by names who checked the row by hand; blank, or no such
-column, means nobody has, and the eval report counts the rows that were (ADR 0047). note says why a drafted row
+for the person grouping and are not read. checked_by says who checked the row: a person's name, or a draft
+the person approved without reading each row ("draft, approved by …"). Blank, or no such column, means nobody has, and the eval report counts the rows that were (ADR 0047). note says why a drafted row
 needs a closer look, for the person checking it, and is not read.
 
 The grouping is given, never computed, so the duplicate stage is never scored by its own grouping.

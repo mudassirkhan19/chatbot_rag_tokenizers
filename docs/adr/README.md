@@ -48,10 +48,10 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0041](0041-passage-matcher-eval-check-and-calibration.md) | The Passage matcher, eval-check and the v1/vN calibration | Accepted |
 | [0042](0042-dense-baseline-bge-small-behind-the-embedder-boundary.md) | Dense baseline: bge-small behind the embedder boundary, on MPS by default | Accepted |
 | [0043](0043-recover-numbered-headings-grobid-left-in-paragraphs.md) | Recover numbered headings GROBID left in paragraphs | Accepted |
-| [0044](0044-duplicate-rate-restatement-and-numeric-share-in-evaluate.md) | Duplicate rate, Survey restatement and the numeric-Chunk share in evaluate | Accepted, Work groups drafted in 0047 |
+| [0044](0044-duplicate-rate-restatement-and-numeric-share-in-evaluate.md) | Duplicate rate, Survey restatement and the numeric-Chunk share in evaluate | Accepted, Work groups filled by 0047 |
 | [0045](0045-index-marks-editions-indexed-from-a-committed-record.md) | `index` marks Editions indexed, from a record committed in the Snapshot | Accepted |
 | [0046](0046-evaluation-set-quotes-checked-by-and-absence-evidence.md) | The Evaluation set: short quotes committed, a check per question, and absence evidence | Accepted |
-| [0047](0047-hand-checked-work-groups-are-the-duplicate-ground-truth.md) | Hand-checked Work groups are the ground truth for the duplicate rate | Proposed |
+| [0047](0047-hand-checked-work-groups-are-the-duplicate-ground-truth.md) | Hand-checked Work groups are the ground truth for the duplicate rate | Accepted |
 
 ## Template
 
