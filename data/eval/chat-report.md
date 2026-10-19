@@ -27,7 +27,7 @@ Written by `chat-eval`. Every question of the Evaluation set is asked of the cha
 ## Measures
 
 - Each single-paper, multi-paper and unanswerable question is a Conversation of one Turn. A follow-up is a Conversation that first asks its stored history, the bot answering each, then the follow-up. Only the question's own Turn is scored.
-- An answer is an Abstention when it holds the Abstention sentence, compared after the Passage matcher's normalisation. The abstention rate is the share of the questions answered with one: on the unanswerable questions it is the rate of correct Abstentions, on the answerable ones the false-abstention rate.
+- An answer is an Abstention when it holds the Abstention sentence, or when its text, without its markers, is one sentence declining in the model's own words, such as "The provided chunks do not contain …". Both are compared after the Passage matcher's normalisation. A decline that goes on to answer (another sentence, or a clause after ";", "but" or "however") or cites a Chunk after it is an answer. The abstention rate is the share of the questions answered with one: on the unanswerable questions it is the rate of correct Abstentions, on the answerable ones the false-abstention rate.
 - An answer that is not an Abstention is grounded when it cites at least one retrieved Chunk, every marker in it names a Chunk retrieved for its Turn, and every number in it, cut into words as the Passage matcher cuts them (a word that starts with a digit, such as 50k or 0.1, but not ByT5), appears in a cited Chunk's context header or text. An uncited answer is not grounded. Abstentions are left out of the grounded rate.
 - Recall@5: the share of a question's Passages held by one of the 5 Chunks its Turn retrieved, averaged over the answerable questions, with the Passage matcher of `evaluate` (ADR 0041).
 - Every rate has its 95% Wilson interval, in the column beside it and in brackets in the lines below the table. It covers the sampling of the questions, not the answer model's run-to-run variation, which the Variation section measures. Recall@5 is a mean of per-question shares, not a proportion, and has no interval here: it is the retriever's measure, and the eval report gives its bootstrap interval (ADR 0061).
@@ -36,19 +36,19 @@ Written by `chat-eval`. Every question of the Evaluation set is asked of the cha
 
 | Question type | Questions | Abstained | Abstention rate | 95% interval | Answers | Grounded | Grounded rate | 95% interval | Recall@5 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| single-paper | 12 | 0 | 0.00 | [0.00, 0.24] | 12 | 11 | 0.92 | [0.65, 0.99] | 0.58 |
+| single-paper | 12 | 1 | 0.08 | [0.01, 0.35] | 11 | 11 | 1.00 | [0.74, 1.00] | 0.58 |
 | multi-paper | 8 | 0 | 0.00 | [0.00, 0.32] | 8 | 8 | 1.00 | [0.68, 1.00] | 0.06 |
-| follow-up | 8 | 0 | 0.00 | [0.00, 0.32] | 8 | 7 | 0.88 | [0.53, 0.98] | 0.50 |
-| all answerable | 28 | 0 | 0.00 | [0.00, 0.12] | 28 | 26 | 0.93 | [0.77, 0.98] | 0.41 |
-| unanswerable: near-miss | 6 | 0 | 0.00 | [0.00, 0.39] | 6 | 2 | 0.33 | [0.10, 0.70] | — |
+| follow-up | 8 | 1 | 0.12 | [0.02, 0.47] | 7 | 7 | 1.00 | [0.65, 1.00] | 0.50 |
+| all answerable | 28 | 2 | 0.07 | [0.02, 0.23] | 26 | 26 | 1.00 | [0.87, 1.00] | 0.41 |
+| unanswerable: near-miss | 6 | 5 | 0.83 | [0.44, 0.97] | 1 | 1 | 1.00 | [0.21, 1.00] | — |
 | unanswerable: out-of-topic | 2 | 2 | 1.00 | [0.34, 1.00] | 0 | 0 | — | — | — |
-| all unanswerable | 8 | 2 | 0.25 | [0.07, 0.59] | 6 | 2 | 0.33 | [0.10, 0.70] | — |
-| all | 36 | 2 | 0.06 | [0.02, 0.18] | 34 | 28 | 0.82 | [0.66, 0.92] | 0.41 |
+| all unanswerable | 8 | 7 | 0.88 | [0.53, 0.98] | 1 | 1 | 1.00 | [0.21, 1.00] | — |
+| all | 36 | 9 | 0.25 | [0.14, 0.41] | 27 | 27 | 1.00 | [0.88, 1.00] | 0.41 |
 
-- Abstention rate on the unanswerable questions: 2/8 (0.25 [0.07, 0.59]); near-miss 0/6 (0.00 [0.00, 0.39]), out-of-topic 2/2 (1.00 [0.34, 1.00])
-- False-abstention rate on the answerable questions: 0/28 (0.00 [0.00, 0.12])
-- Grounded rate over every answer that is not an Abstention: 28/34 (0.82 [0.66, 0.92])
-- Not grounded: 6 uncited, 0 with an invalid Citation, 3 with a number in no cited Chunk (an answer may be counted under more than one)
+- Abstention rate on the unanswerable questions: 7/8 (0.88 [0.53, 0.98]); near-miss 5/6 (0.83 [0.44, 0.97]), out-of-topic 2/2 (1.00 [0.34, 1.00])
+- False-abstention rate on the answerable questions: 2/28 (0.07 [0.02, 0.23])
+- Grounded rate over every answer that is not an Abstention: 27/27 (1.00 [0.88, 1.00])
+- Not grounded: 0 uncited, 0 with an invalid Citation, 0 with a number in no cited Chunk (an answer may be counted under more than one)
 
 ## Questions
 
@@ -63,7 +63,7 @@ Grounded is yes, no, or — for an Abstention. Passages in its Chunks counts the
 | canine-amharic | single-paper | no | yes | — | — | 1/1: 1 |
 | byt5-span-length | single-paper | no | yes | — | — | 0/1 |
 | digits-right-to-left | single-paper | no | yes | — | — | 0/1 |
-| llama2-70b-vocabulary | single-paper | no | no | — | 70b | 0/1 |
+| llama2-70b-vocabulary | single-paper | yes | — | — | — | 0/1 |
 | xlm-r-tokens-per-language | single-paper | no | yes | — | — | 1/1: 1 |
 | magikarp-verified-share | single-paper | no | yes | — | — | 0/1 |
 | superbpe-curriculum | single-paper | no | yes | — | — | 0/1 |
@@ -82,14 +82,14 @@ Grounded is yes, no, or — for an Abstention. Passages in its Chunks counts the
 | vocabulary-with-scarce-data | follow-up | no | yes | — | — | 1/1: 1 |
 | code-tokenizer-initialisation | follow-up | no | yes | — | — | 0/1 |
 | magikarp-norm-indicator | follow-up | no | yes | — | — | 1/1: 1 |
-| superbpe-mmlu | follow-up | no | no | — | — | 0/1 |
+| superbpe-mmlu | follow-up | yes | — | — | — | 0/1 |
 | tokenization-latency | follow-up | no | yes | — | — | 1/1: 1 |
-| bpe-english-french | unanswerable | no | no | — | — | — |
-| blt-70b-mmlu | unanswerable | no | no | — | 70b | — |
-| blt-8b-gpu-hours | unanswerable | no | no | — | 8bparameter | — |
-| fast-wordpiece-gpu | unanswerable | no | no | — | — | — |
+| bpe-english-french | unanswerable | yes | — | — | — | — |
+| blt-70b-mmlu | unanswerable | yes | — | — | — | — |
+| blt-8b-gpu-hours | unanswerable | yes | — | — | — | — |
+| fast-wordpiece-gpu | unanswerable | yes | — | — | — | — |
 | sentencepiece-korean-speed | unanswerable | no | yes | — | — | — |
-| byt5-learning-rate | unanswerable | no | yes | — | — | — |
+| byt5-learning-rate | unanswerable | yes | — | — | — | — |
 | vitamin-d | unanswerable | yes | — | — | — | — |
 | world-cup-2018 | unanswerable | yes | — | — | — | — |
 
@@ -99,11 +99,11 @@ Grounded is yes, no, or — for an Abstention. Passages in its Chunks counts the
 
 | Measure | Run 1 | Run 2 | Run 3 | Range |
 |---|---:|---:|---:|---:|
-| Abstention rate, unanswerable | 2/8 | 2/8 | 2/8 | 0.25–0.25 |
-| Abstention rate, near-miss | 0/6 | 0/6 | 0/6 | 0.00–0.00 |
+| Abstention rate, unanswerable | 7/8 | 7/8 | 7/8 | 0.88–0.88 |
+| Abstention rate, near-miss | 5/6 | 5/6 | 5/6 | 0.83–0.83 |
 | Abstention rate, out-of-topic | 2/2 | 2/2 | 2/2 | 1.00–1.00 |
-| False-abstention rate, answerable | 0/28 | 0/28 | 0/28 | 0.00–0.00 |
-| Grounded rate | 28/34 | 27/34 | 27/34 | 0.79–0.82 |
+| False-abstention rate, answerable | 2/28 | 2/28 | 2/28 | 0.07–0.07 |
+| Grounded rate | 27/27 | 26/27 | 26/27 | 0.96–1.00 |
 | Recall@5, answerable | 0.41 | 0.41 | 0.41 | 0.41–0.41 |
 
 ### Questions whose verdict changed
@@ -114,8 +114,22 @@ Grounded is yes, no, or — for an Abstention. Passages in its Chunks counts the
 |---|---|---:|---:|---|
 | gpt-4-number-tokens | multi-paper | 0/3 | 1/3 | grounded, not grounded, not grounded |
 
-- Turns whose reply changed wording from run 1: 14 of 44 (byt5-span-length, xlm-r-tokens-per-language, superbpe-curriculum, megabyte-and-blt-patches, gpt-4-number-tokens, wechsel-neighbours Turn 1, wechsel-neighbours Turn 2, digits-fourth-digit Turn 2, vocabulary-with-scarce-data Turn 1, vocabulary-with-scarce-data Turn 2, magikarp-norm-indicator Turn 2, tokenization-latency Turn 1, tokenization-latency Turn 2, byt5-learning-rate)
-- Turns whose retrieved Chunks changed from run 1: 0 of 44 (a follow-up's can move, as its history's replies feed the rewriter)
+- Turns whose reply changed wording from run 1: 11 of 44 (bpe-dropout-rate, xlm-r-tokens-per-language, megabyte-and-blt-patches, api-cost-by-language, gpt-4-number-tokens, wechsel-neighbours Turn 2, digits-fourth-digit Turn 2, vocabulary-with-scarce-data Turn 2, magikarp-norm-indicator Turn 2, tokenization-latency Turn 1, tokenization-latency Turn 2)
+- Turns whose retrieved Chunks changed from run 1: 1 of 44 (tokenization-latency Turn 2) (a follow-up's can move, as its history's replies feed the rewriter)
+
+## Against the baseline
+
+Baseline: `data/eval/chat-answers.jsonl`, 3 runs, its verdicts as stored. Each question whose verdict here differs from the baseline's run 1 is listed, marked flaky in the baseline when its runs disagreed on it, so a change the baseline already varied on is not read as an effect.
+
+| Question | Type | Baseline | Now | Note |
+|---|---|---|---|---|
+| llama2-70b-vocabulary | single-paper | not grounded | abstained | — |
+| superbpe-mmlu | follow-up | not grounded | abstained | — |
+| bpe-english-french | unanswerable | not grounded | abstained | — |
+| blt-70b-mmlu | unanswerable | not grounded | abstained | — |
+| blt-8b-gpu-hours | unanswerable | not grounded | abstained | — |
+| fast-wordpiece-gpu | unanswerable | not grounded | abstained | — |
+| byt5-learning-rate | unanswerable | grounded | abstained | — |
 
 ## Timings
 
@@ -123,7 +137,7 @@ These depend on the machine and change from run to run. They count every Turn of
 
 | Step | Turns | p50 | p95 |
 |---|---:|---:|---:|
-| retrieval | 44 | 0.15 s | 0.30 s |
-| rewriting | 8 | 1.84 s | 2.20 s |
-| answering | 44 | 9.17 s | 14.98 s |
-| whole Turn | 44 | 9.80 s | 16.31 s |
+| retrieval | 44 | 0.09 s | 0.21 s |
+| rewriting | 8 | 0.57 s | 0.78 s |
+| answering | 44 | 4.77 s | 7.06 s |
+| whole Turn | 44 | 4.87 s | 7.34 s |

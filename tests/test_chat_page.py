@@ -173,10 +173,55 @@ def test_the_abstention_sentence_is_recognised_and_the_retrieved_chunks_still_sh
     assert len(turn["chunks"]) == 5 and not any(chunk["cited"] for chunk in turn["chunks"])
 
 
+def test_a_decline_in_the_models_own_words_is_an_abstention(chat, fake_answer_model):
+    # As the pinned model declines a near miss, instead of writing the fixed sentence (#73).
+    fake_answer_model.script[FREEZING] = "The provided chunks do not explicitly state whether WECHSEL freezes its non-embedding weights."
+
+    turn = ask(chat, FREEZING)
+
+    assert turn["abstention"] is True
+    assert turn["references"] == [] and len(turn["chunks"]) == 5
+
+
 def test_an_answer_that_only_mentions_abstaining_is_not_an_abstention(chat, fake_answer_model):
     fake_answer_model.script[FREEZING] = "WECHSEL does not need freezing [1]. The papers in this corpus do not answer whether it helps."
 
     assert ask(chat, FREEZING)["abstention"] is False
+
+
+def test_a_decline_followed_by_an_answer_is_an_answer(chat, fake_answer_model):
+    fake_answer_model.script[FREEZING] = "The provided chunks do not contain TransInner's results. WECHSEL does not need freezing [1]."
+
+    turn = ask(chat, FREEZING)
+
+    assert turn["abstention"] is False
+    assert [reference["number"] for reference in turn["references"]] == [1]
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "The provided chunks do not state whether TransInner helps, but WECHSEL does not need freezing [1].",
+        "The chunks don't say; WECHSEL does not need freezing.",
+        "The provided chunks do not contain the full result, however WECHSEL does not need freezing.",
+    ],
+    ids=["cited-clause", "semicolon", "however"],
+)
+def test_a_one_sentence_decline_that_goes_on_to_answer_is_an_answer(chat, fake_answer_model, reply):
+    fake_answer_model.script[FREEZING] = reply
+
+    assert ask(chat, FREEZING)["abstention"] is False
+
+
+def test_a_decline_carrying_stray_markers_is_an_abstention_and_its_markers_are_kept(chat, fake_answer_model):
+    # The markers stand before the decline and cite no sentence of it, as in the pinned model's byt5 reply.
+    fake_answer_model.script[FREEZING] = "[3][7]\n\nThe provided chunks don't say whether WECHSEL freezes them."
+
+    turn = ask(chat, FREEZING)
+
+    assert turn["abstention"] is True
+    assert markers(turn) == [(3, True), (7, False)]
+    assert turn["invalid"] == [7]
 
 
 @pytest.mark.parametrize("body", [b"not json", b'["a list"]', b'{"question": "  "}'], ids=["not-json", "not-an-object", "blank"])
@@ -380,3 +425,16 @@ def test_the_real_pinned_model_cites_a_retrieved_chunk_and_abstains_off_topic(st
     # Thinking off, temperature 0 and a fixed seed: the same question gets the same answer.
     assert again["answer"] == answered["answer"]
     assert off_topic["abstention"] is True
+
+
+@pytest.mark.skipif(os.environ.get("RUN_OLLAMA_TESTS") != "1", reason="asks the pinned model on Ollama; set RUN_OLLAMA_TESTS=1")
+def test_the_real_pinned_model_abstains_on_a_near_miss_in_whatever_words(start_chat, monkeypatch):
+    # The BPE paper reports English→German and English→Russian, not English→French (#73).
+    monkeypatch.setattr(answer_model, "load_answer_model", REAL_LOAD)
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", REAL_TRANSPORT)
+    chat = start_chat()
+
+    near_miss = ask(chat, "What BLEU score did Sennrich et al.'s subword NMT paper report for English to French translation?")
+
+    print("near miss:", "".join(part.get("text", f"[{part.get('marker')}]") for part in near_miss["answer"]))
+    assert near_miss["abstention"] is True

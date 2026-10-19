@@ -78,8 +78,10 @@ def write_chat_report(
         "- Each single-paper, multi-paper and unanswerable question is a Conversation of one Turn. A follow-up is a"
         " Conversation that first asks its stored history, the bot answering each, then the follow-up. Only the"
         " question's own Turn is scored.",
-        "- An answer is an Abstention when it holds the Abstention sentence, compared after the Passage matcher's"
-        " normalisation. The abstention rate is the share of the questions answered with one: on the unanswerable"
+        "- An answer is an Abstention when it holds the Abstention sentence, or when its text, without its markers, is"
+        " one sentence declining in the model's own words, such as \"The provided chunks do not contain …\". Both are"
+        " compared after the Passage matcher's normalisation. A decline that goes on to answer (another sentence, or a"
+        " clause after \";\", \"but\" or \"however\") or cites a Chunk after it is an answer. The abstention rate is the share of the questions answered with one: on the unanswerable"
         " questions it is the rate of correct Abstentions, on the answerable ones the false-abstention rate.",
         "- An answer that is not an Abstention is grounded when it cites at least one retrieved Chunk, every marker in"
         " it names a Chunk retrieved for its Turn, and every number in it, cut into words as the Passage matcher cuts"

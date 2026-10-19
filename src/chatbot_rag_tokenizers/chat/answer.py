@@ -1,11 +1,13 @@
-"""The answer step (ADRs 0054 and 0056): what the answer model is sent for a Turn, and how its reply is read.
+"""The answer step (ADRs 0054, 0056 and 0064): what the answer model is sent for a Turn, and how its reply is read.
 
 The model gets the config's system prompt, then the earlier Turns of the Conversation, each as its question and
 its answer's text without the markers (which numbered that Turn's Chunks, not this one's), then the question with
 the retrieved Chunks numbered from 1, each under its context header. It cites by number. The reply is cut into
 text and markers: a marker naming a retrieved Chunk is a Citation, and any other number is kept as an invalid
-marker, never dropped. A reply holding the fixed Abstention sentence, compared after the Passage matcher's
-normalisation, is an Abstention.
+marker, never dropped. A reply is an Abstention when it holds the fixed Abstention sentence, or when its text
+is a single sentence declining in the model's own words, such as "The provided chunks do not contain …", that
+neither goes on to answer nor cites. Both are compared after the Passage matcher's normalisation. Markers before
+a decline are kept as written.
 """
 
 import re
@@ -20,6 +22,15 @@ from .model import Message
 _MARKER = re.compile(r"\[\s*(\d+(?:\s*,\s*\d+)*)\s*\]")
 # The space a marker leaves before the punctuation that followed it: "freezing [1]." reads "freezing .".
 _BEFORE_PUNCTUATION = re.compile(r" +([.,;:!?)])")
+# How the model declines in its own words, on the matcher's words: "the provided chunks do not explicitly state".
+_DECLINE = re.compile(
+    r"(?:the )?(?:(?:provided|given|retrieved) )?(?:chunks|excerpts) (?:do not|does not|don t|doesn t) "
+    r"(?:(?:explicitly|specifically|directly|clearly) )?(?:contain|state|mention|include|provide|specify|say)\b"
+)
+# A sentence ends at ".", "!" or "?" followed by a space or a line break.
+_SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
+# How a decline goes on to answer within its sentence: "… do not state it, but mT5 used 0.01 [2]."
+_GOES_ON = re.compile(r"[;:]|\b(?:but|however|although|though|instead|whereas)\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -45,8 +56,7 @@ class Answer:
     @property
     def text(self) -> str:
         """The answer without its markers, as a later Turn is shown it."""
-        text = "".join(part for part in self.parts if isinstance(part, str))
-        return _BEFORE_PUNCTUATION.sub(r"\1", re.sub(r"[ \t]+", " ", text)).strip()
+        return _text(self.parts)
 
 
 Earlier = Sequence[tuple[str, str]]  # the Conversation's earlier Turns, oldest first, as (question, answer text)
@@ -73,7 +83,23 @@ def read_answer(reply: str, retrieved: int, abstention: str) -> Answer:
         parts += [Marker(int(number), 1 <= int(number) <= retrieved) for number in match[1].split(",")]
         end = match.end()
     parts.append(reply[end:])
-    return Answer(tuple(part for part in parts if part != ""), _holds(words(reply), words(abstention)))
+    kept = tuple(part for part in parts if part != "")
+    return Answer(kept, _holds(words(reply), words(abstention)) or _declines(kept))
+
+
+def _text(parts: Sequence[str | Marker]) -> str:
+    text = "".join(part for part in parts if isinstance(part, str))
+    return _BEFORE_PUNCTUATION.sub(r"\1", re.sub(r"[ \t]+", " ", text)).strip()
+
+
+def _declines(parts: Sequence[str | Marker]) -> bool:
+    """The reply is one sentence opening with a decline, with no clause going on past it and no marker after it.
+    Markers before it, on a line of their own, cite no sentence. A decline that goes on to answer is an answer."""
+    text = _text(parts)
+    if len(_SENTENCE_END.split(text)) != 1 or _DECLINE.match(" ".join(words(text))) is None or _GOES_ON.search(text):
+        return False
+    start = next(place for place, part in enumerate(parts) if isinstance(part, str) and part.strip())
+    return not any(isinstance(part, Marker) for part in parts[start:])
 
 
 def _holds(text: tuple[str, ...], sentence: tuple[str, ...]) -> bool:

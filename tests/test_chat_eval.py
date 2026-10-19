@@ -204,6 +204,27 @@ def test_abstention_is_rated_on_the_unanswerable_questions_by_kind_and_false_abs
     assert rows["all"][4] == "4"  # six questions, two of them Abstentions
 
 
+def test_a_decline_in_the_models_own_words_is_counted_as_an_abstention_and_one_followed_by_an_answer_is_not(indexed, fake_answer_model):
+    script(
+        fake_answer_model,
+        byt5="[3][5]\n\nThe provided chunks do not explicitly state the learning rate schedule used by ByT5.",
+        metrics="The provided chunks do not contain the XNLI and WikiANN micro F1.",
+        freezing="The provided chunks do not contain TransInner's results. WECHSEL does not need freezing [1].",
+    )
+
+    report, turns = run_chat_eval(indexed)
+
+    lines = questions(report)
+    assert lines["byt5-schedule"][1:3] == ["yes", "—"]
+    assert lines["metrics-miss"][1:3] == ["yes", "—"]
+    assert lines["freezing"][1:3] == ["no", "yes"]
+    abstained = {turn["question_id"]: turn["abstention"] for turn in turns if turn["scored"]}
+    assert abstained == {"freezing": False, "metrics-miss": True, "vocabulary-sizes": False, "neighbours": False, "byt5-schedule": True}
+    # The decline's stray markers stay in the answers file, but it has no grounding.
+    [byt5] = [turn for turn in turns if turn["question_id"] == "byt5-schedule"]
+    assert len(byt5["cited"]) == 2 and byt5["grounded"] is None
+
+
 def test_a_question_line_names_its_invalid_citations_and_the_passages_in_its_chunks(indexed, fake_answer_model):
     script(fake_answer_model, freezing="WECHSEL does not need freezing [1][7]. It never did [0, 2].")
 

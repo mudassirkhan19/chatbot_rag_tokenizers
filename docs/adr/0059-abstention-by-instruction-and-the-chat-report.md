@@ -1,7 +1,7 @@
 # 0059. Abstention by instruction, and the chat report that measures it
 
 - **Date:** 2026-10-19
-- **Status:** Accepted; the reproducibility consequence amended by [0062](0062-re-scoring-run-to-run-variation-and-wilson-intervals.md)
+- **Status:** Accepted; the reproducibility consequence amended by [0062](0062-re-scoring-run-to-run-variation-and-wilson-intervals.md); what counts as an Abstention amended by [0064](0064-a-decline-in-the-models-own-words-is-an-abstention.md)
 
 ## Context
 Spec #63 asks the bot to say plainly when the corpus doesn't support an answer, and the write-up to measure how often answers are grounded and how the unanswerable questions are handled. The Evaluation set has 8 unanswerable questions out of 36. Six are near misses: the corpus holds the paper or the measure, just not this answer (Sennrich et al.'s English→French BLEU, the Byte Latent Transformer at 70B). Two are out of topic (vitamin D, the 2018 World Cup). ADR 0054 already has the model write a fixed Abstention sentence, and its smoke run found a near miss answered from an unrelated Chunk instead. Issue #67 is the slice that measures this: a `chat-eval` command, a chat report and the answers, and this record of how the bot abstains.

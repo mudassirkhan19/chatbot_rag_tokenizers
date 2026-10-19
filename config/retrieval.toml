@@ -111,7 +111,8 @@ revision = "e98b54fe1913178321e1d9cd007d12a465de77a8f8eae37af69d2501ca03c6b5@0.4
 think = false
 temperature = 0.0
 # The fixed Abstention sentence: the prompt asks for it word for word, and an answer holding it (compared after
-# the Passage matcher's normalisation) is counted as an Abstention.
+# the Passage matcher's normalisation) is counted as an Abstention, as is a one-sentence decline in the model's own
+# words, "The provided chunks do not contain …" (ADR 0064).
 abstention = "The papers in this corpus do not answer this question."
 # Follow-ups (#65, ADR 0056): the answer model is shown the last `history` Turns of the Conversation before this
 # Turn's question, each as its question and its answer's text without the markers, and the rewriter sees the same
