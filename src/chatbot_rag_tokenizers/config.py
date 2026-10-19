@@ -9,10 +9,12 @@ class ConfigError(ValueError):
 
 
 def read_table(raw: dict, name: str, expected: dict[str, type], path: Path) -> dict[str, Any]:
-    """The fields of one TOML table, such as [grobid], checked against the names and types expected."""
-    if name not in raw:
-        raise ConfigError(f"{path} has no [{name}] table")
-    fields = raw[name]
+    """The fields of one TOML table, such as [grobid] or [dense.bge-small], checked against the names and types expected."""
+    fields = raw
+    for part in name.split("."):
+        if not isinstance(fields, dict) or part not in fields:
+            raise ConfigError(f"{path} has no [{name}] table")
+        fields = fields[part]
     if unknown := sorted(set(fields) - set(expected)):
         raise ConfigError(f"[{name}] in {path} has unknown fields: {', '.join(unknown)}")
     for field, kind in expected.items():

@@ -35,7 +35,9 @@ def corpus(tmp_path: Path, grobid: FakeGrobid) -> Path:
     return tmp_path
 
 
-def run_index(tmp_path: Path, parse_config: Path = REPO_CONFIG, retrieval_config: Path = RETRIEVAL_CONFIG) -> None:
+def run_index(
+    tmp_path: Path, parse_config: Path = REPO_CONFIG, retrieval_config: Path = RETRIEVAL_CONFIG, options: tuple[str, ...] = ()
+) -> None:
     main(
         [
             "index",
@@ -48,6 +50,7 @@ def run_index(tmp_path: Path, parse_config: Path = REPO_CONFIG, retrieval_config
             "--snapshot", str(tmp_path / "snapshot"),
             "--manifest", str(tmp_path / "manifest.csv"),
             "--funnel-report", str(tmp_path / "report.md"),
+            *options,
         ]
     )  # fmt: skip
 
@@ -73,7 +76,8 @@ def test_index_builds_bm25_and_dense_and_a_rerun_with_nothing_changed_does_not_r
 def with_revision(tmp_path: Path, revision: str) -> Path:
     """The repo's retrieval config with the dense model at another revision."""
     config = RETRIEVAL_CONFIG.read_text()
-    pinned = load_retrieval_config(RETRIEVAL_CONFIG).dense.revision
+    [dense] = load_retrieval_config(RETRIEVAL_CONFIG).dense
+    pinned = dense.revision
     other = tmp_path / "retrieval-other-revision.toml"
     other.write_text(config.replace(pinned, revision))
     return other
@@ -87,10 +91,73 @@ def test_a_model_revision_change_rebuilds_the_dense_index_and_leaves_bm25_alone(
     run_index(corpus, retrieval_config=with_revision(tmp_path, "0" * 40))
 
     out = capsys.readouterr().out
-    assert "bm25 is up to date" in out and "built dense" in out
+    assert "bm25 is up to date" in out and "built dense.bge-small" in out
     after = cache_files(corpus)
     assert {path: after[path] for path in before} == before
     assert len({path.parent for path in after} - {path.parent for path in before}) == 1
+
+
+# A second dense table beside bge-small, as the embedding comparison adds them (ADR 0050).
+OTHER_TABLE = """
+[dense.other]
+model = "example/other-embedder"
+revision = "1111111111111111111111111111111111111111"
+model_sha256 = "2222222222222222222222222222222222222222222222222222222222222222"
+pooling = "mean"
+max_tokens = 256
+query_instruction = "Represent this sentence for searching relevant passages: "
+"""
+
+
+def with_two_dense_tables(tmp_path: Path, other_revision: str = "1" * 40) -> Path:
+    """The repo's retrieval config plus [dense.other], at the revision given."""
+    path = tmp_path / "retrieval-two-dense.toml"
+    path.write_text(RETRIEVAL_CONFIG.read_text() + OTHER_TABLE.replace("1" * 40, other_revision))
+    return path
+
+
+def index_folders(tmp_path: Path) -> dict[str, Path]:
+    """Each built index's folder, by the retriever its record names."""
+    records = (tmp_path / "index-cache").rglob("index.json")
+    return {json.loads(record.read_text())["retriever"]: record.parent for record in records}
+
+
+def test_each_dense_table_gets_its_own_index_and_a_revision_change_rebuilds_only_that_table(corpus, tmp_path, capsys):
+    run_index(corpus, retrieval_config=with_two_dense_tables(tmp_path))
+    first = index_folders(corpus)
+    assert sorted(first) == ["bm25", "dense.bge-small", "dense.other"]
+    assert len(set(first.values())) == 3
+    before = cache_files(corpus)
+    capsys.readouterr()
+
+    run_index(corpus, retrieval_config=with_two_dense_tables(tmp_path, other_revision="3" * 40))
+
+    out = capsys.readouterr().out
+    assert "bm25 is up to date" in out and "dense.bge-small is up to date" in out and "built dense.other" in out
+    after = cache_files(corpus)
+    assert {path: after[path] for path in before} == before
+    [new] = {path.parent for path in after} - {path.parent for path in before}
+    assert new.name.startswith("dense-") and new != first["dense.other"]
+
+
+def test_two_dense_models_rank_the_fixture_differently(corpus, tmp_path):
+    # The two tables differ in model id and settings the fake embedder ignores, not in query instruction.
+    config = with_two_dense_tables(tmp_path)
+    run_index(corpus, retrieval_config=config)
+
+    report = run_evaluate(corpus, retrieval_config=config)
+
+    bge_small, other = table(report, "### Questions: dense.bge-small"), table(report, "### Questions: dense.other")
+    assert [row[:3] for row in bge_small] == [row[:3] for row in other]
+    assert bge_small != other
+
+
+def test_retriever_dense_bge_small_builds_and_scores_only_that_retriever(corpus):
+    run_index(corpus, options=("--retriever", "dense.bge-small"))
+
+    assert list(index_folders(corpus)) == ["dense.bge-small"]
+    report = run_evaluate(corpus, options=("--retriever", "dense.bge-small"))
+    assert "### Results: dense.bge-small" in report and "### Results: bm25" not in report
 
 
 def test_a_chunking_config_change_builds_a_new_index_and_leaves_the_old_one(corpus, tmp_path):
@@ -175,13 +242,14 @@ def run_evaluate(
     report: str = "eval-report.md",
     work_groups: Path = WORK_GROUPS,
     options: tuple[str, ...] = (),
+    retrieval_config: Path = RETRIEVAL_CONFIG,
 ) -> str:
     """Run `evaluate` on the corpus in tmp_path and return the eval report."""
     main(
         [
             "evaluate",
             "--parse-config", str(REPO_CONFIG),
-            "--config", str(RETRIEVAL_CONFIG),
+            "--config", str(retrieval_config),
             "--cache", str(tmp_path / "cache"),
             "--parse-report", str(tmp_path / "parse-report.md"),
             "--index-cache", str(tmp_path / "index-cache"),
@@ -305,7 +373,7 @@ def test_the_report_records_the_dense_model_pin_and_each_retrievers_device(index
     assert "  - model_sha256: `3c9f31665447c8911517620762200d2245a2518d6e7208acc78cd9db317e21ad`" in retrievers
     timings = report.split("## Timings\n", 1)[1]
     # The fake embedder runs on the CPU, as BM25 does.
-    for name in ("bm25", "dense"):
+    for name in ("bm25", "dense.bge-small"):
         [line] = [line for line in timings.splitlines() if line.startswith(f"- {name}:")]
         assert "index built on cpu in " in line and " queries on cpu, latency p50 " in line and ", p95 " in line
 
