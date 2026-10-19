@@ -823,6 +823,29 @@ def test_the_collapse_merges_copies_from_other_files_and_keeps_a_works_other_chu
         assert collapsed["duplicate: same file"][0] == collapsed["duplicate"][0]
 
 
+def test_before_and_after_puts_each_retrievers_raw_and_collapsed_ranking_in_one_table(with_venue_edition):
+    report = run_evaluate(with_venue_edition)
+
+    rows = {(row[0], row[1]): row[2:] for row in table(report, "## Before and after")}
+    names = [h.removeprefix("### Results: ") for h in headings(report) if h.startswith("### Results: ") and not h.endswith("+collapsed")]
+    assert list(rows) == [(name, ranking) for name in names for ranking in ("raw", "collapsed")]
+    assert report.index("## Crowding") < report.index("## Before and after") < report.index("## Grouping")
+    for name in names:
+        for ranking, twin in (("raw", name), ("collapsed", f"{name}+collapsed")):
+            crowded = {row[0]: row[1] for row in table(report, f"### Crowding: {twin}")}
+            scored = {row[0]: row[3:] for row in table(report, f"### Results: {twin}")}["all answerable"]
+            grouped = report.split(f"### Crowding: {twin}\n", 1)[1].split("- Grouped: ", 1)[1].split(" questions", 1)[0]
+            assert rows[name, ranking] == [
+                crowded["duplicate"],
+                crowded["duplicate: another Edition or Version"],
+                crowded["duplicate: same file"],
+                grouped.replace(" of ", "/"),
+                *scored,
+            ]
+    # The collapse merges the venue Edition's copies into its preprint's slots: none is left in the top 5.
+    assert rows["bm25", "raw"][1] != "0/20" and rows["bm25", "collapsed"][1].startswith("0/")
+
+
 @pytest.fixture
 def with_v1(tmp_path: Path, grobid: FakeGrobid) -> Path:
     """The fixture corpus with the BPE paper's v1 beside its latest Version, both indexed under the Edition

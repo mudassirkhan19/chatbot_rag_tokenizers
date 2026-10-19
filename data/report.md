@@ -33,12 +33,12 @@ Included Editions are one Work when they share an identifier (arXiv id, DOI, ACL
 | | Editions or Works |
 | --- | ---: |
 | Included Editions | 2705 |
-| Works | 2395 |
+| Works | 2393 |
 | Works of several Editions, joined by an identifier | 260 |
 | Works of several Editions, joined by file bytes | 0 |
-| Works of several Editions, joined by title and first author | 48 |
+| Works of several Editions, joined by title and first author | 50 |
 | Canonical Edition is a venue Edition | 1174 |
-| Canonical Edition is a preprint | 1221 |
+| Canonical Edition is a preprint | 1219 |
 | Surveys | 15 |
 | Suspected pairs | 5 |
 
