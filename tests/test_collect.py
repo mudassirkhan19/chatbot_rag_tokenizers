@@ -932,6 +932,12 @@ def test_edition_holding_another_editions_file_is_excluded(fixture_snapshot, no_
     assert "| With full text | 1 |" in report
     assert "borrowed file: 1 excluded, its only file belongs to another Edition" in capsys.readouterr().err
 
+    # The exclusion comes from the Snapshot alone, so a rerun writes the same bytes.
+    first_manifest, first_report = manifest.read_bytes(), report_path.read_bytes()
+    run_collect(fixture_snapshot, manifest, FIXTURES / "scope.toml", "--report", str(report_path))
+    assert manifest.read_bytes() == first_manifest
+    assert report_path.read_bytes() == first_report
+
 
 def record_mrt5_as_a_preprint_of_lrm(snapshot_dir: Path) -> None:
     """arXiv's search page records the Unigram paper's DOI for MrT5, as for a preprint of a venue Edition."""

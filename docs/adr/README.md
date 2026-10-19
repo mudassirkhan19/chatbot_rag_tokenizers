@@ -11,7 +11,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0004](0004-arxiv-keyword-queries.md) | arXiv keyword queries: paging, rate limit and query style | Partly superseded by 0006 |
 | [0005](0005-rule-pre-filter.md) | Stage-1 rule pre-filter for the Relevance verdict | Accepted, amended by 0037, 0040 and 0049 |
 | [0006](0006-arxiv-records-via-oai-pmh.md) | arXiv Version history, comments and licence from OAI-PMH | Partly superseded by 0010 |
-| [0007](0007-local-llm-judge.md) | Stage-2 local LLM judge and verdict cache | Accepted, amended by 0018, 0021 and 0042 |
+| [0007](0007-local-llm-judge.md) | Stage-2 local LLM judge and verdict cache | Accepted, amended by 0018, 0021 and 0042; a stage after it in 0049 |
 | [0008](0008-semantic-scholar-keyword-discovery.md) | Semantic Scholar keyword discovery and combining Editions across sources | Retry limits superseded by 0016; arXiv ids normalised by 0049 |
 | [0009](0009-seeds-and-citation-expansion.md) | Scope boundary, keyword query set, Seeds and citation expansion | Accepted |
 | [0010](0010-arxiv-records-for-rule-passes-only.md) | Fetch arXiv records only for Editions that pass the rules | Accepted |
@@ -53,6 +53,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0046](0046-evaluation-set-quotes-checked-by-and-absence-evidence.md) | The Evaluation set: short quotes committed, a check per question, and absence evidence | Accepted |
 | [0047](0047-hand-checked-work-groups-are-the-duplicate-ground-truth.md) | Hand-checked Work groups are the ground truth for the duplicate rate | Accepted |
 | [0048](0048-hand-curated-domain-model-page.md) | A hand-curated domain model page, refreshed by the issue that changes a number | Accepted |
+| [0049](0049-normalised-arxiv-ids-and-borrowed-files.md) | Normalised arXiv ids, and Editions that hold another Edition's file | Accepted |
 
 ## Template
 
@@ -74,4 +75,3 @@ What else we looked at and why we didn't pick it.
 ## Consequences
 What this makes easier or harder.
 ```
-| [0049](0049-normalised-arxiv-ids-and-borrowed-files.md) | Normalised arXiv ids, and Editions that hold another Edition's file | Accepted |

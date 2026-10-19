@@ -1,7 +1,7 @@
 # 0049. Normalised arXiv ids, and Editions that hold another Edition's file
 
 - **Date:** 2026-10-19
-- **Status:** Accepted. Adds a stage to the Relevance verdict of [0005](0005-rule-pre-filter.md), after the judge, and amends how [0008](0008-semantic-scholar-keyword-discovery.md) combines Candidates.
+- **Status:** Accepted. Adds a stage to the Relevance verdict of [0005](0005-rule-pre-filter.md), after the judge of [0007](0007-local-llm-judge.md), and amends how [0008](0008-semantic-scholar-keyword-discovery.md) combines Candidates.
 
 ## Context
 The full-corpus parse audit (`docs/reports/2026-10-18-full-corpus-parse-audit.md`, #44) found four files each held by two Edition ids. Two are expected: a venue PDF that is its preprint's v1 (`2022.nsurl-1.1` and `2301.06736v1`), and byte-identical Versions of one preprint (`2409.17171v1` and `v2`). Two are bugs:

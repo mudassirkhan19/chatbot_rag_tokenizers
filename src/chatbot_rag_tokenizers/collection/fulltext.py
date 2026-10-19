@@ -253,8 +253,9 @@ def _linked(row: dict[str, str], other: dict[str, str]) -> bool:
 
 
 def _identifiers(row: dict[str, str]) -> set[str]:
-    names = {f"arxiv:{bare_arxiv_id(row['arxiv_id']).casefold()}"} if row["arxiv_id"] else set()
-    return names | {f"{kind}:{row[kind].casefold()}" for kind in ("doi", "acl_id") if row[kind]}
+    """The row's arXiv id, DOI and ACL ID as comparable keys, such as "doi:10.18653/v1/p16-1162"."""
+    keys = {f"arxiv:{bare_arxiv_id(row['arxiv_id']).casefold()}"} if row["arxiv_id"] else set()
+    return keys |{f"{kind}:{row[kind].casefold()}" for kind in ("doi", "acl_id") if row[kind]}
 
 
 def _title_key(title: str) -> str:
