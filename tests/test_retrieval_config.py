@@ -130,8 +130,8 @@ def with_chat_line(tmp_path: Path, old: str, new: str) -> Path:
         ('["bm25", "hybrid.other"]', 60, 100, r"\[hybrid.test\] member 'hybrid.other' is not bm25 or a dense table"),
         ('["dense.bge-small", "dense.bge-base"]', 60, 100, r"\[hybrid.test\] fuses bm25 with one dense table, not dense.bge-small and dense.bge-base"),
         ('["bm25"]', 60, 100, r"\[hybrid.test\] fuses bm25 with one dense table, not bm25"),
-        ('["bm25", "dense.bge-small"]', 0, 100, r"\[hybrid.test\] k 0 must be positive"),
-        ('["bm25", "dense.bge-small"]', 60, -1, r"\[hybrid.test\] pool -1 must be positive"),
+        ('["bm25", "dense.bge-small"]', 0, 100, r"\[hybrid.test\] k 0 must be at least 1"),
+        ('["bm25", "dense.bge-small"]', 60, -1, r"\[hybrid.test\] pool -1 must be at least 1"),
     ],
     ids=["unknown-member", "hybrid-member", "two-dense", "one-member", "k", "pool"],
 )

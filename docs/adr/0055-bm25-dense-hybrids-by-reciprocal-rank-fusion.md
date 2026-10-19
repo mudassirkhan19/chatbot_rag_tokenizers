@@ -1,7 +1,7 @@
 # 0055. BM25 + dense hybrids by reciprocal rank fusion, stored as a record that points to their members
 
 - **Date:** 2026-10-19
-- **Status:** Accepted.
+- **Status:** Accepted. Amends [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md): a hybrid's index record names its members' keys and its folder holds nothing else.
 
 ## Context
 Spec #55 picks an embedding model with evidence. The report should also answer a second question: should keyword search sit beside vector search? BM25 finds exact terms such as "SentencePiece" or "0.1"; a dense model finds paraphrases. Slice #58 adds retrievers that combine them, scored by `evaluate` like the others and usable by the `+collapsed` wrapper ([0053](0053-collapsed-ranking-and-collapsed-twins.md)) and the chatbot ([0054](0054-pinned-local-answer-model-and-the-chat-page.md)).

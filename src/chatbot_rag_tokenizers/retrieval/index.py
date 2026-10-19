@@ -24,6 +24,7 @@ from typing import Any
 
 from ..files import write_atomically
 from .corpus import Corpus
+from . import hybrid
 from .hybrid import HybridConfig
 from .retriever import Retriever, RetrieverConfig
 
@@ -57,7 +58,7 @@ def build(root: Path, corpus: Corpus, configs: list[RetrieverConfig]) -> None:
             # Its members were built just before it: it embeds nothing, and takes their build time and device.
             members = [_built(root, corpus, member) for member in config.members]
             seconds = sum(member["build_seconds"] for member in members)
-            device = "+".join(dict.fromkeys(member.get("device", "cpu") for member in members))
+            device = hybrid.devices(member.get("device", "cpu") for member in members)
             extra["members"] = {member.name: member.key for member in config.members}
             folder.mkdir(parents=True, exist_ok=True)
         else:

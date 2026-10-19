@@ -85,9 +85,9 @@ def _load_hybrid_table(raw: dict, table: str, path: Path, bm25: BM25Config, dens
         if member not in fusable:
             raise ConfigError(f"[{name}] member {member!r} is not bm25 or a dense table")
     members = tuple(fusable[member] for member in fields["members"])
-    if sorted(type(member) is BM25Config for member in members) != [False, True]:
+    if len(members) != 2 or sum(isinstance(member, BM25Config) for member in members) != 1:
         raise ConfigError(f"[{name}] fuses bm25 with one dense table, not {' and '.join(fields['members'])}")
     for field in ("k", "pool"):
         if fields[field] < 1:
-            raise ConfigError(f"[{name}] {field} {fields[field]} must be positive")
+            raise ConfigError(f"[{name}] {field} {fields[field]} must be at least 1")
     return HybridConfig(table=table, members=members, k=fields["k"], pool=fields["pool"])

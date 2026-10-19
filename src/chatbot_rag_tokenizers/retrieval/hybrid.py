@@ -12,7 +12,7 @@ names their keys (index.py), so loading it loads them.
 import hashlib
 import json
 import math
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -57,6 +57,11 @@ class HybridConfig:
         return Hybrid(self, [member.load(directory.parent / member.key) for member in self.members])
 
 
+def devices(devices: Iterable[str]) -> str:
+    """Where a hybrid computes: its members' devices, e.g. "cpu+mps", or one when they agree."""
+    return "+".join(dict.fromkeys(devices))
+
+
 class Hybrid:
     def __init__(self, config: HybridConfig, members: list[Retriever]) -> None:
         self.config = config
@@ -64,8 +69,7 @@ class Hybrid:
 
     @property
     def device(self) -> str:
-        """The members' devices, e.g. "cpu+mps", or one when they agree."""
-        return "+".join(dict.fromkeys(member.device for member in self.members))
+        return devices(member.device for member in self.members)
 
     def save(self, directory: Path) -> None:
         directory.mkdir(parents=True, exist_ok=True)  # no files of its own: the record is all there is
