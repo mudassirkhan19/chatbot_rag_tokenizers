@@ -1,7 +1,7 @@
 # 0055. A collapsed Work shows its best-ranked Chunk's Section; the Canonical Edition only picks the copy
 
 - **Date:** 2026-10-19
-- **Status:** Accepted. Supersedes the "which Chunk stands for a Work" rule of [0053](0053-collapsed-ranking-and-collapsed-twins.md); spec #49 and issue #52 are updated to match.
+- **Status:** Superseded by [0057](0057-the-collapse-merges-copies-not-works.md). It had superseded the "which Chunk stands for a Work" rule of [0053](0053-collapsed-ranking-and-collapsed-twins.md); spec #49 and issue #52 are updated to match.
 
 ## Context
 [0053](0053-collapsed-ranking-and-collapsed-twins.md) showed, for each Work, the best-ranked Chunk of its Canonical Edition's file whenever the pool held any, whatever its Section. On the real corpus that cost most of BM25's hits: Hit@5 0.18 raw, 0.04 collapsed. The Canonical Edition's best-ranked Chunk was often a Section the retriever had ranked far lower than the one that answered: for `wechsel-freezing` the preprint v1's "Is freezing necessary?" held the Passage, and the venue Edition's "Cross-lingual transfer" was shown. The rule chose the right file but the wrong text.
