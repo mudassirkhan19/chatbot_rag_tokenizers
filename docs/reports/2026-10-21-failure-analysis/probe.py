@@ -4,7 +4,8 @@ Usage: probe.py TARGETS(comma) QUERY...
 
 The ranking is dense.bge-small, then the Collapsed ranking with the [chat] pool and overlap. The per-paper split is
 left out: it only changes a question that names two or more papers. The top 5 is printed so that it can be compared
-with the Turn's `retrieved` in data/eval/chat-answers.jsonl.
+with the Turn's `retrieved` in data/eval/chat-answers.jsonl. It is #77's probe.py, with the overlap that
+ADR 0074 added to the Collapsed ranking, and without the raw ranking.
 """
 
 import sys

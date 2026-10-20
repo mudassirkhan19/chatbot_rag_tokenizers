@@ -924,7 +924,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
           <li>The grounded rate overstates grounding: the check passes misattributed and borrowed claims, as 3 of 19 hand labels show.</li>
           <li>The answer model can attach one paper's claim to another in a comparison. <a data-issue="83">Issue 83</a>.</li>
           <li>A 5B model answers some near-miss questions it should abstain on, and gives incomplete answers; a larger one is untested. <a data-issue="85">Issue 85</a>.</li>
-          <li>A right answer can cite nothing: canine-hashing in the final run, in all three runs. <a data-issue="87">Issue 87</a>.</li>
+          <li>A right answer can cite nothing: canine-hashing, in each of the final run's three runs. <a data-issue="87">Issue 87</a>.</li>
         </ul>
       </div>
       <p class="repro">Reproduce: <code>just chat</code> serves the page; <code>just chat-eval</code> asks the set (Ollama with the pinned model), <code>just chat-eval --from-answers</code> re-scores the committed replies without it.</p>
@@ -989,7 +989,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <div class="eyebrow">Brief: deliverables</div>
       <div class="head"><h3>Write-up, transcript, failure analysis</h3><span class="chip planned">to write</span></div>
       <p>2–3 pages on design decisions with a results table; one conversation of at least five turns with a follow-up and an unanswerable; at least three questions the system still gets wrong, and why.</p>
-      <p><b>Exists:</b> a six-Turn Transcript with two follow-ups and two Abstentions, on the chatbot as built (<a data-file="docs/reports/2026-10-21-chat-transcript.md">2026-10-21</a>); the failure diagnosis (<a data-file="docs/reports/2026-10-21-chat-failure-diagnosis.md">2026-10-21</a>), which traces nine kinds of failure to where each first goes wrong; the failure analysis (<a data-file="docs/reports/2026-10-21-failure-analysis.md">2026-10-21</a>), six questions the final run still gets wrong, each traced to the diagnosis, with its fix (#62, #83, #85, #87, #88); this page and 77 ADRs as the source of the write-up.</p>
+      <p><b>Exists:</b> a six-Turn Transcript with two follow-ups and two Abstentions, on the chatbot as built (<a data-file="docs/reports/2026-10-21-chat-transcript.md">2026-10-21</a>); the failure diagnosis (<a data-file="docs/reports/2026-10-21-chat-failure-diagnosis.md">2026-10-21</a>), which traces nine kinds of failure to where each first goes wrong; the failure analysis (<a data-file="docs/reports/2026-10-21-failure-analysis.md">2026-10-21</a>), six questions the final run still gets wrong, each traced to the diagnosis, with its fix (<a data-issue="62">62</a>, <a data-issue="83">83</a>, <a data-issue="85">85</a>, <a data-issue="87">87</a>, <a data-issue="88">88</a>); this page and 77 ADRs as the source of the write-up.</p>
       <p><b>Not written yet:</b> the 2–3 page write-up with its results table, linked from the top of the README.</p>
       <p><a data-issue="79">Write-up, issue 79</a> · <a data-issue="78">failure analysis, issue 78</a></p>
     </div>

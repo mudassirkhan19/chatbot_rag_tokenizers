@@ -1,6 +1,6 @@
 # Failure analysis: six questions the chatbot still gets wrong, 2026-10-21
 
-The failure analysis `docs/ASSIGNMENT.md` asks for (#78): questions the system still gets wrong, and why. It works from the committed chat run (`data/eval/chat-answers.jsonl`, ADR 0077: `dense.bge-small+per-paper+collapsed`, gemma4:e2b-mlx at temperature 0, k 5, history 3), and the system was not re-run. Each failure below is the same in all three runs of `data/eval/chat-answers-runs.jsonl`: the same Chunks, the same Rewrite and the same verdict.
+The failure analysis `docs/ASSIGNMENT.md` asks for (#78): questions the system still gets wrong, and why. It works from the committed chat run (`data/eval/chat-answers.jsonl`, ADR 0077: `dense.bge-small+per-paper+collapsed`, gemma4:e2b-mlx at temperature 0, k 5, history 3), and the system was not re-run. Each failure below is the same in all three runs (run 1 in that file, runs 2 and 3 in `data/eval/chat-answers-runs.jsonl`): the same Chunks, the same Rewrite, the same citations and the same verdict. The replies quoted are run 1's; only canine-hashing's wording differs between runs.
 
 The causes come from #77's diagnosis ([`2026-10-21-chat-failure-diagnosis.md`](2026-10-21-chat-failure-diagnosis.md)). #80, #81 and #82 fixed part of what it found, so each failure here is the part still left. The only new evidence is read-only: the Chunks' text, and the ranks of the Chunks that hold the answer. [`probe.py`](2026-10-21-failure-analysis/probe.py) ranks them under the committed retriever without its per-paper split, which changes only a question naming two or more papers. For the four Turns probed, its top 5 matches the committed `retrieved` exactly.
 
@@ -10,7 +10,7 @@ The causes come from #77's diagnosis ([`2026-10-21-chat-failure-diagnosis.md`](2
 |---|---|---|---|---|---|---|
 | 1 | magikarp-norm-indicator | follow-up | abstains, though the paper answers | the Rewrite, then retrieval | 1, 2 | #88, #62 |
 | 2 | llama2-70b-vocabulary | single-paper | abstains, though the paper's Abstract answers | retrieval | 2 | #62 |
-| 3 | superbpe-mmlu | follow-up | gives a CommonsenseQA gain, from another paper, for MMLU | retrieval, then the answer | 2, 4, 3 | #62, #83, #85 |
+| 3 | superbpe-mmlu | follow-up | asked about MMLU, gives SuperBPE's CommonsenseQA gain | retrieval, then the answer | 2, 3 | #62, #85 |
 | 4 | gpt-4-number-tokens | multi-paper | says GPT-4 groups digits from the right; it groups from the left | the answer | 4 | #83 |
 | 5 | sentencepiece-korean-speed | unanswerable | gives English and Japanese speeds instead of abstaining | the answer | 3 | #85 |
 | 6 | canine-hashing | follow-up | right, but cites nothing | the answer | new | #87 |
@@ -29,7 +29,7 @@ Turn 2: "Is there a signal in the weights that spots them without already knowin
 
 **Correct answer:** yes, the norm of the input embeddings, which "conveniently does not require a set of previously known untrained tokens". The Chunk is `b3ef5544a0943f38-0011` (EMNLP Edition, § 2.2 Under-trained token indicators). `7c88df71d4c601fc-0011` in arXiv v2 holds the same text, and the collapse merges it into the EMNLP Chunk.
 
-**Where it goes wrong: the Rewrite first.** #82's prompt (ADR 0073) added the paper's name, as it should. But it left "them", where 0070's Rewrite had said "the under-trained tokens". The five Chunks retrieved are other parts of the paper (closed models, a results table, the v1 indicators section), plus another paper's use of Magikarp. None of them says what the norm indicator does without known tokens, so the model's decline is correct for its Chunks.
+**Where it goes wrong: the Rewrite first.** #82's prompt (ADR 0073) added the paper's name, as it should. But it left "them", where 0070's Rewrite had said "the under-trained tokens". The five Chunks retrieved are other parts of the paper (closed models, a results table, v1's § 3.1 results and v1's § 2.2 indicators), plus another paper's use of Magikarp. v1's § 2.2 (`d43971fc4f5a2b4d-0007`) does say that "we can use the l 2 -norm of the embeddings to detect under-trained tokens", as "an additional indicator", and the other paper names "Norm Collapse". Neither says the norm needs no known tokens, which is what the question asks. So the decline is defensible for these Chunks, though a partial answer was there.
 
 **Then retrieval.** A better Rewrite alone doesn't find the Passage:
 
@@ -37,7 +37,7 @@ Turn 2: "Is there a signal in the weights that spots them without already knowin
 |---|---|
 | the committed Rewrite ("…spots them…") | not in the top 50 |
 | "them" → "under-trained tokens" | 14 |
-| the Evaluation set's reference Rewrite ("which embedding-based indicator flags under-trained tokens without needing a set of known untrained tokens?") | 8 |
+| the Evaluation set's reference rewrite ("In Fishing for Magikarp, which embedding-based indicator flags under-trained tokens without needing a set of known untrained tokens?") | 8 |
 
 This is #77's kind 1, and then kind 2's weak hold of the embedder on the question's terms. The paper has many Chunks about indicators, and § 2.2 isn't the closest to any of these wordings.
 
@@ -62,7 +62,7 @@ This is #77's kind 2. The question describes the paper ("the work on scaling law
 
 **Fix:** a reranker over the top 50 (#62), where the Abstract is at rank 22. No filed fix changes the first-stage ranking for a paper that is described rather than named.
 
-## 3. superbpe-mmlu: the wrong benchmark, from another paper, passed as grounded
+## 3. superbpe-mmlu: the wrong benchmark, passed as grounded
 
 **Conversation.**
 Turn 1: "How does SuperBPE change BPE training so that it ends up with tokens that span several words?" It is answered correctly, from SuperBPE § 2 (two phases, whitespace pretokenization skipped in the second).
@@ -74,11 +74,11 @@ Turn 2: "How much did that help on MMLU?"
 
 **Correct answer:** +8.2% on MMLU (36.5 to 44.7), within a +4.0% average over 30 tasks. Three of SuperBPE's Chunks hold it: the Introduction (`6b625407f4717f4a-0005`, the Passage), Table 1 (`-0010`) and the Abstract (`-0000`).
 
-**Where it goes wrong: retrieval first.** The five Chunks are SuperBPE's results text (`-0019`: the 4.0% average and +9.7% on multiple choice, but not MMLU), its setup (`-0018`), its loss analysis (`-0024`), and two Chunks of another paper, Benchmarking BPE Tokenizers … with Bits per Byte (`ab54dfb946207c7e-0026`, `-0007`). None of them says "MMLU". The Introduction ranks 6th, one place outside k = 5. Table 1 ranks 29th, and the Abstract is not in the top 50. The reference Rewrite ("How much does the SuperBPE model improve over the BPE baseline on MMLU?") ranks the Introduction 13th, so the wording isn't the cause.
+**Where it goes wrong: retrieval first.** The five Chunks are SuperBPE's results text (`-0019`: the 4.0% average and +9.7% on multiple choice, but not MMLU), its setup (`-0018`), its loss analysis (`-0024`), and two Chunks of another paper, Benchmarking BPE Tokenizers … with Bits per Byte (`ab54dfb946207c7e-0026`, `-0007`). None of them says "MMLU". The Introduction ranks 6th, one place outside k = 5. Table 1 ranks 29th, and the Abstract is not in the top 50. The reference rewrite ("How much does the SuperBPE model improve over the BPE baseline on MMLU?") ranks the Introduction 13th, so the wording isn't the cause.
 
-**Then the answer.** Without an MMLU figure, the model should abstain. It takes the one benchmark number in its Chunks instead: `[5]`'s report of another paper's result ("Liu et al. (2025) found that SuperBPE yields a 20.3 percentage point improvement on the CommonsenseQA benchmark"). It answers a different benchmark and drops whose claim it was. This is #77's kind 3 (a nearby fact in place of a missing one) and kind 4 (another paper's account). The check passes it, since 20.3 is in the cited Chunk (#77's kind 9).
+**Then the answer.** Without an MMLU figure, the model should abstain. It takes a benchmark figure from `[5]` instead, another paper's summary of SuperBPE: "Liu et al. (2025) found that SuperBPE yields a 20.3 percentage point improvement on the CommonsenseQA benchmark". Liu et al. (2025) is the SuperBPE paper, and its Table 1 gives the same +20.3 for CommonsenseQA. So the claim is SuperBPE's, and the reply gives it to SuperBPE. The fault is the benchmark: the question asks about MMLU. This is #77's kind 3, a nearby fact in place of a missing one. The check passes it, since 20.3 is in the cited Chunk (#77's kind 9).
 
-**Fix:** a reranker (#62) for the Introduction at rank 6. The attribution rule (#83) and a larger model (#85) would be needed for the answer step, as #77 found a prompt rule alone doesn't stop near-miss answers.
+**Fix:** a reranker (#62) for the Introduction at rank 6. For the answer step, a larger model (#85), since #77 found a prompt rule alone doesn't stop near-miss answers.
 
 ## 4. gpt-4-number-tokens: one paper's custom tokenizer given as GPT-4's
 
@@ -99,17 +99,17 @@ The check calls the answer not grounded, but for the "4" of "GPT-4", which no ci
 
 **Fix:** #83, the attribution rule. On digits-fourth-digit, #77 found that the rule removed a borrowed explanation and left the control Turns unchanged.
 
-## 5. sentencepiece-korean-speed: a near miss answered with other languages
+## 5. sentencepiece-korean-speed: a near-miss answered with other languages
 
-**Question:** "How quickly does SentencePiece segment Korean text?" The corpus doesn't say. It is an unanswerable near miss.
+**Question:** "How quickly does SentencePiece segment Korean text?" The corpus doesn't say. It is an unanswerable near-miss question.
 
 **Answer given:** "SentencePiece has a segmentation speed of around 21k and 74k sentences/sec for English and Japanese, respectively [1]. While there is specific mention of SentencePiece being used for BPE tokenization in Korean, the exact segmentation speed for Korean text is not explicitly stated in the provided chunks."
 
 **Correct answer:** the Abstention sentence. A reply that adds the English and Japanese figures as context, clearly labelled, would be acceptable to a reader. But rule 4 asks for the sentence alone, and the reply leads with the wrong languages.
 
-**Where it goes wrong: the answer.** Retrieval does what it can: three SentencePiece Chunks (§ 3.2 and § 4.2, the speed results), plus two Korean papers. The model reports the speeds the Chunks hold, then declines. Its "specific mention of SentencePiece being used for BPE tokenization in Korean" comes from `0d8e2a997e4cb2d3-0038`, the Jamo-level Korean MT paper, which uses SentencePiece and says nothing of its speed. The Abstention rule (ADR 0064) counts a decline after an answer as an answer, and the developer labelled the labelled run's reply "not grounded (should have abstained)".
+**Where it goes wrong: the answer.** Retrieval does what it can: three SentencePiece Chunks (§ 3.2 and § 4.2, the speed results), plus two Korean papers. The model reports the speeds the Chunks hold, then declines. Its "specific mention of SentencePiece being used for BPE tokenization in Korean" comes from `0d8e2a997e4cb2d3-0038`, the Jamo-level Korean MT paper, which uses SentencePiece and says nothing of its speed. The Abstention rule (ADR 0064) counts a decline after an answer as an answer, and the developer labelled the labelled run's reply "not grounded (or “unanswerable — should have abstained”)".
 
-This is #77's kind 3. #77 re-answered this Turn with a stricter prompt, and Korean still got the English and Japanese speeds, plus a new misleading sentence. A prompt rule doesn't change gemma4:e2b's behaviour on near misses.
+This is #77's kind 3. #77 re-answered this Turn with a stricter prompt, and Korean still got the English and Japanese speeds, plus a new misleading sentence. A prompt rule doesn't change gemma4:e2b's behaviour on near-miss questions.
 
 **Fix:** #85, a larger answer model measured on near-miss abstention.
 
@@ -134,7 +134,7 @@ Turn 2: "How does it give every possible character an embedding without an enorm
 ## Also wrong, not traced here
 
 - **digits-fourth-digit** (follow-up) no longer borrows Baeumel et al.'s explanation, #77's main example of kind 4. But it doesn't answer the question either. It says left-to-right "is significantly worse" in the "length mismatch" condition, and not that the model "always gets the fourth digit wrong" (`762b049e1ca2dbb3-0029`). That Chunk is not in the top 50 for the Rewrite, which drops the study's name ("the left-to-right tokenization version").
-- **bpe-and-wechsel-vocabularies** (multi-paper) retrieves neither paper. It says the subword NMT paper "did not specify" its merges, though it used 59,500 and 89,500 (`f4e5a6bbbe0d8745-0017`). Its 10k, 32k and 64k come from another paper (`0aa9ed33e506a59f-0016`, 2020.lrec-1.450), and WECHSEL's 50k (`60e34b5be09609b8-0018`) is not given. Per-paper retrieval (#81) looks a name up by the words of a title. "The original subword NMT paper" doesn't match its title, Neural Machine Translation of Rare Words with Subword Units, so the question may be ranked as one query. The Names the model gave aren't stored, so that is not confirmed.
+- **bpe-and-wechsel-vocabularies** (multi-paper) retrieves neither paper. It says the subword NMT paper "did not specify" its merges, though it used 59,500 and 89,500 (`f4e5a6bbbe0d8745-0017`). Its 10k, 32k and 64k come from another paper (`0aa9ed33e506a59f-0016`, 2020.lrec-1.450), and WECHSEL's 50k (`60e34b5be09609b8-0018`) is not given. Per-paper retrieval (#81) looks a name up by the words of a title. "The original subword NMT paper" doesn't match its title, Neural Machine Translation of Rare Words with Subword Units, so the question may be ranked as one query. The names the model gave aren't stored, so that is not confirmed.
 
 ## Reproducing
 
