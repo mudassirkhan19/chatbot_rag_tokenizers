@@ -1,6 +1,6 @@
 # Tokenizer literature RAG
 
-A grounded chatbot over research papers about tokenization for language models. See `docs/ASSIGNMENT.md` for the brief, `GLOSSARY.md` for the terms used here (Edition, Candidate, Snapshot, …) and `docs/adr/` for the design decisions. `docs/domain-model.html` is a one-page map of the pipeline's business logic, stage by stage, with the numbers and the decisions behind each (open it in a browser).
+A grounded chatbot over research papers about tokenization for language models. Start with the write-up, [`docs/write-up.md`](docs/write-up.md): the design decisions, the results and the reasons behind them. See `docs/ASSIGNMENT.md` for the brief, `GLOSSARY.md` for the terms used here (Edition, Candidate, Snapshot, …) and `docs/adr/` for each decision in full. `docs/domain-model.html` is a one-page map of the pipeline's business logic, stage by stage, with the numbers and the decisions behind each (open it in a browser).
 
 ## Prerequisites
 
