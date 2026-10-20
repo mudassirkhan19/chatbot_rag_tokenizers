@@ -723,7 +723,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
         <li><b>Recall@5</b>: share of a question's Passages held by a Chunk in the top 5, averaged over questions.</li>
         <li><b>MRR@10</b>: 1 over the rank of the first Chunk holding any Passage; 0 if none in the top 10.</li>
         <li><b>Duplicate rate</b>: share of top-5 slots holding a Chunk from a Work already ranked higher, and share of questions with at least one such slot. A Survey restating a finding is counted separately as restatement, never as a duplicate.</li>
-        <li><b>Follow-ups</b> are scored three ways: alone, with history prepended, and as a hand-written reference rewrite. The headline row uses "alone", as a user would type it.</li>
+        <li><b>Follow-ups</b> are scored four ways: alone, with history prepended, as a hand-written reference rewrite, and as the chatbot's own Rewrite of the stored history and the follow-up (the rewriter row, skipped without the answer model). The headline row uses "alone", as a user would type it.</li>
         <li><b>Unanswerable</b> questions are run but left out of the retrieval metrics; they are for the chatbot's abstention measure.</li>
       </ul>
     </div>

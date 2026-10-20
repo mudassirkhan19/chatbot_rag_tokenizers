@@ -13,6 +13,8 @@ from pathlib import Path
 
 import pytest
 
+from chatbot_rag_tokenizers.chat import model as answer_model
+from chatbot_rag_tokenizers.chat.model import AnswerModelUnavailable
 from chatbot_rag_tokenizers.cli import main
 from chatbot_rag_tokenizers.parsing.config import load_parse_config
 from chatbot_rag_tokenizers.retrieval import index
@@ -334,6 +336,16 @@ def cost(report: str) -> dict[str, list[str]]:
     return {row[0]: row[1:] for row in table(report, "## Cost")}
 
 
+def section(report: str, heading: str) -> str:
+    """A ``## `` section of the report, up to the next."""
+    return report.split(f"\n{heading}\n", 1)[1].split("\n## ", 1)[0]
+
+
+def rewrites(report: str) -> str:
+    """The Rewrites table under Questions, or its "None" line."""
+    return report.split("\n### Rewrites\n", 1)[1].split("\n### ", 1)[0].strip().split("\n\n")[-1]
+
+
 def listed(report: str, heading: str) -> list[str]:
     """The last paragraph of a section: its list, or "None."."""
     return report.split(f"\n{heading}\n", 1)[1].split("\n## ", 1)[0].strip().split("\n\n")[-1].splitlines()
@@ -342,6 +354,14 @@ def listed(report: str, heading: str) -> list[str]:
 def as_a_user_asks(lines: dict[tuple[str, str], list[str]]) -> list[list[str]]:
     """The lines of every answerable question as a user would ask it: the all-answerable row's queries."""
     return [line for (_, query), line in lines.items() if query in ("as asked", "follow-up alone") and line[2] != "—"]
+
+
+@pytest.fixture(autouse=True)
+def rewriter(fake_answer_model) -> None:
+    """The fake answer model rewrites the fixture's follow-up, as the [chat] rewriter of `evaluate`."""
+    fake_answer_model.script["Follow-up question: And what did they settle on for those two?"] = (
+        "Which temperature and number of neighbors does WECHSEL settle on?"
+    )
 
 
 @pytest.fixture
@@ -385,12 +405,61 @@ def test_a_follow_up_is_scored_alone_with_its_history_and_as_its_reference_rewri
     report = run_evaluate(indexed)
 
     lines = {query: line for (question, query), line in questions(report).items() if question == "neighbours"}
-    assert list(lines) == ["follow-up alone", "history + follow-up", "reference rewrite"]
+    assert list(lines) == ["follow-up alone", "history + follow-up", "reference rewrite", "rewriter"]
     # Alone, the follow-up names nothing to search for; its history and its rewrite name WECHSEL's settings.
     assert lines["follow-up alone"] == ["follow-up", "none", "0/1"]
     assert lines["history + follow-up"] == ["follow-up", "3", "1/1"]
     assert lines["reference rewrite"] == ["follow-up", "2", "1/1"]
     assert [query for kind, query in results(report) if kind == "follow-up"] == list(lines)
+
+
+def test_a_follow_up_is_scored_fourth_as_the_chatbots_rewrite_for_every_retriever(indexed, fake_answer_model):
+    report = run_evaluate(indexed)
+
+    assert questions(report)["neighbours", "rewriter"] == ["follow-up", "2", "1/1"]
+    for name in ("bm25", "bm25+collapsed", "dense.bge-small", "dense.bge-small+collapsed"):
+        follow_ups = [row[1] for row in table(report, f"### Results: {name}") if row[0] == "follow-up"]
+        assert follow_ups == ["follow-up alone", "history + follow-up", "reference rewrite", "rewriter"]
+    # The rewriter is asked once per follow-up, not once per retriever, and is shown the stored history's questions.
+    [chat] = fake_answer_model.chats
+    assert chat[-1]["content"] == (
+        "Conversation so far:\n\nQuestion: How does WECHSEL pick the temperature and the number of neighbors?"
+        "\n\nFollow-up question: And what did they settle on for those two?"
+    )
+
+
+def test_the_questions_print_each_follow_ups_rewrite_beside_its_reference_rewrite(indexed):
+    report = run_evaluate(indexed)
+
+    assert table(report, "### Rewrites") == [
+        [
+            "neighbours",
+            "And what did they settle on for those two?",
+            "Which temperature τ and number of neighbors k does WECHSEL choose?",
+            "Which temperature and number of neighbors does WECHSEL settle on?",
+        ]
+    ]
+    assert re.search(r"- Rewriter: fake-answer-model, thinking off, temperature 0\.0, rewrite prompt sha256 `[0-9a-f]{64}`", report)
+
+
+def test_with_no_answer_model_the_rewriter_row_is_skipped_and_the_other_rows_are_unchanged(indexed, monkeypatch, capsys):
+    with_rewriter = run_evaluate(indexed, report="with.md")
+
+    def unreachable(settings):
+        raise AnswerModelUnavailable("Ollama is not answering at http://localhost:11434.")
+
+    monkeypatch.setattr(answer_model, "load_answer_model", unreachable)
+    without = run_evaluate(indexed, report="without.md")
+
+    assert "evaluate: the rewriter row is skipped: Ollama is not answering" in capsys.readouterr().out
+    assert "- The rewriter row is skipped: Ollama is not answering at http://localhost:11434." in without
+    assert rewrites(without) == "None: the rewriter row is skipped."
+    rows = results(with_rewriter)
+    assert rows.pop(("follow-up", "rewriter")) == ["1", "1.00", "0.500", "1.00"]
+    assert results(without) == rows
+    # Every table that takes the follow-up as a user asks it is the same without the rewriter.
+    for heading in ("## Comparison", "## Crowding", "## Before and after", "## Grouping", "## Editions without a Work group"):
+        assert section(without, heading) == section(with_rewriter, heading)
 
 
 def test_two_runs_give_the_same_report_apart_from_timings(indexed):
@@ -1142,6 +1211,6 @@ def test_the_cost_table_gives_each_retrievers_parameters_dimension_and_index_siz
     # A Collapsed ranking is its retriever's index, timed on its own queries.
     assert rows["dense.bge-small+collapsed"][:5] == rows["dense.bge-small"][:5]
     built_on, build, queries, queried_on, p50, p95 = rows["dense.bge-small"][3:]
-    # Four questions as asked and one follow-up three ways.
-    assert (built_on, queries, queried_on) == ("cpu", "7", "cpu")
+    # Four questions as asked and one follow-up four ways.
+    assert (built_on, queries, queried_on) == ("cpu", "8", "cpu")
     assert build.endswith(" s") and p50.endswith(" ms") and p95.endswith(" ms")

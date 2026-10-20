@@ -5,7 +5,8 @@
 - Hit@5: the share of questions with a Passage held in the top 5.
 
 Unanswerable questions are run, so they get a line and a latency, but are left out of the metrics. A
-follow-up is run three ways: alone, after its history, and as its reference rewrite. Each query keeps its
+follow-up is run three ways: alone, after its history, and as its reference rewrite, and a fourth, as the chatbot's
+Rewrite, when `evaluate` has the answer model (ADR 0066). Each query keeps its
 top 5, for measuring what crowds it (crowding.py). A Collapsed ranking (ADR 0053) is scored the same way, and
 its query also keeps the Editions merged into each slot and how many distinct Chunks its pool held.
 """
@@ -24,12 +25,13 @@ from .matching import MatchingRule, holds
 RECALL_DEPTH = HIT_DEPTH = CROWDING_DEPTH = 5
 MRR_DEPTH = 10
 
-# How a question is put to the retriever: as asked, or, for a follow-up, in each of three ways.
+# How a question is put to the retriever: as asked, or, for a follow-up, in each of three ways and the rewriter's.
 AS_ASKED = "as asked"
 FOLLOW_UP_ALONE = "follow-up alone"
 WITH_HISTORY = "history + follow-up"
 REWRITE = "reference rewrite"
-FOLLOW_UP_QUERIES = (FOLLOW_UP_ALONE, WITH_HISTORY, REWRITE)
+REWRITER = "rewriter"
+FOLLOW_UP_QUERIES = (FOLLOW_UP_ALONE, WITH_HISTORY, REWRITE, REWRITER)
 
 
 @dataclass(frozen=True)
@@ -64,21 +66,25 @@ class Metrics:
     hit: float
 
 
-def queries(question: Question) -> list[tuple[str, str]]:
-    """Each query a question is run as, named."""
+def queries(question: Question, rewrites: Mapping[str, str]) -> list[tuple[str, str]]:
+    """Each query a question is run as, named. ``rewrites`` holds the rewriter's Rewrite of each follow-up, by
+    question id, and is empty when the rewriter wasn't run."""
     if question.type != "follow-up":
         return [(AS_ASKED, question.question)]
-    return [
+    named = [
         (FOLLOW_UP_ALONE, question.question),
         (WITH_HISTORY, " ".join([*question.history, question.question])),
         (REWRITE, question.rewrite),
     ]
+    return named + ([(REWRITER, rewrites[question.id])] if question.id in rewrites else [])
 
 
-def score(questions: Sequence[Question], retriever: Retriever, chunks: Mapping[str, Chunk], rule: MatchingRule) -> list[Scored]:
+def score(
+    questions: Sequence[Question], retriever: Retriever, chunks: Mapping[str, Chunk], rule: MatchingRule, rewrites: Mapping[str, str] = {}
+) -> list[Scored]:
     scored = []
     for question in questions:
-        for query_kind, text in queries(question):
+        for query_kind, text in queries(question, rewrites):
             started = time.perf_counter()
             if isinstance(retriever, Collapsed):
                 collapse = retriever.collapse(text, MRR_DEPTH)
