@@ -55,9 +55,9 @@ def indexed(tmp_path: Path, grobid: FakeGrobid) -> Path:
     return tmp_path
 
 
-def corpus_arguments(tmp_path: Path) -> list[str]:
+def corpus_arguments(tmp_path: Path, config: Path = RETRIEVAL_CONFIG) -> list[str]:
     return [
-        "--config", str(RETRIEVAL_CONFIG),
+        "--config", str(config),
         "--cache", str(tmp_path / "cache"),
         "--parse-report", str(tmp_path / "parse-report.md"),
         "--index-cache", str(tmp_path / "index-cache"),
@@ -83,9 +83,10 @@ def start_chat(indexed: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Calla
         servers.append(make_server(*args, **kwargs))
         return servers[-1]
 
-    def start() -> Chat:
+    def start(arguments: list[str] | None = None) -> Chat:
         monkeypatch.setattr(page, "make_server", recorded)
-        arguments = ["chat", *corpus_arguments(indexed), "--port", "0", "--transcripts", str(indexed / "reports")]
+        options = corpus_arguments(indexed) if arguments is None else arguments
+        arguments = ["chat", *options, "--port", "0", "--transcripts", str(indexed / "reports")]
         thread = threading.Thread(target=main, args=(arguments,), daemon=True)
         threads.append(thread)
         thread.start()
@@ -142,6 +143,8 @@ def test_an_answer_cites_the_chunks_the_model_saw_under_those_numbers(chat, fake
         assert chunk["header"].endswith(reference["section_title"])
         assert reference["pages"]
     assert [chunk["cited"] for chunk in chunks] == [True, False, True, False, False]
+    # A raw retriever has no collapse behind it, so a reference is its Chunk's Citation anchor and nothing more.
+    assert {key for reference in references for key in reference} == {"number", "title", "edition", "section_number", "section_title", "pages", "anchor"}
 
 
 def test_chat_prints_where_the_page_is_and_serves_it(start_chat, capsys):
@@ -519,3 +522,118 @@ def test_the_real_pinned_model_abstains_on_a_near_miss_in_whatever_words(start_c
 
     print("near miss:", "".join(part.get("text", f"[{part.get('marker')}]") for part in near_miss["answer"]))
     assert near_miss["abstention"] is True
+
+
+# Citations after the collapse (#71): `[chat]` names the `+collapsed` twin, over the fixture Work grouping.
+MANIFEST = ROOT / "tests" / "fixtures" / "eval" / "manifest.csv"
+VOCABULARY = "What vocabulary size do the translation systems use?"
+WECHSEL_WORK = "minixhofer-2022-wechsel-effective-initialization"
+
+
+@pytest.fixture
+def copies(tmp_path: Path, grobid: FakeGrobid) -> Path:
+    """Each fixture paper in two files of its Work, indexed: WECHSEL as v1 and v2, the BPE paper as its preprint
+    and its ACL Edition (P16-1162). Each pair is parsed from one TEI, so every Chunk has a copy in the other file."""
+    directory = tmp_path / "copies"
+    directory.mkdir()
+    files = [
+        seed_pdf(directory, grobid, "wechsel_2112.06598v1.pdf", "wechsel_2112.06598v2.tei.xml"),
+        seed_pdf(directory, grobid, "wechsel_2112.06598v2.pdf", "wechsel_2112.06598v2.tei.xml"),
+        seed_pdf(directory, grobid, "bpe_1508.07909v5.pdf", "missed-table.tei.xml"),
+        seed_pdf(directory, grobid, "P16-1162.pdf", "missed-table.tei.xml"),
+    ]
+    run_parse(directory, *files)
+    main(["index", *corpus_arguments(directory), "--retriever", "dense.bge-small",
+          "--snapshot", str(directory / "snapshot"), "--manifest", str(directory / "manifest.csv"),
+          "--funnel-report", str(directory / "report.md")])  # fmt: skip
+    # The twin, with a pool that holds the whole corpus, so every Chunk's copy is in it.
+    config = RETRIEVAL_CONFIG.read_text().replace('retriever = "dense.bge-small"', 'retriever = "dense.bge-small+collapsed"')
+    (directory / "retrieval.toml").write_text(config.replace("pool = 50", "pool = 1000"))
+    return directory
+
+
+def collapsed(start_chat: Callable[..., Chat], copies: Path, manifest: Path = MANIFEST) -> Chat:
+    return start_chat([*corpus_arguments(copies, copies / "retrieval.toml"), "--manifest", str(manifest)])
+
+
+def manifest_with(tmp_path: Path, old: str, new: str) -> Path:
+    text = MANIFEST.read_text()
+    assert text.count(old) == 1
+    path = tmp_path / "manifest-changed.csv"
+    path.write_text(text.replace(old, new))
+    return path
+
+
+def ask_citing_all(chat: Chat, fake_answer_model, question: str) -> dict:
+    """The question as the first Turn of a new Conversation, its answer citing all five Chunks."""
+    post(chat, "reset")
+    fake_answer_model.script[question] = "Cited [1][2][3][4][5]."
+    return ask(chat, question)
+
+
+def test_with_a_collapsed_retriever_a_reference_names_the_edition_shown_then_the_merged_editions(start_chat, copies, fake_answer_model):
+    chat = collapsed(start_chat, copies)
+    with urllib.request.urlopen(f"{chat.url}/status") as response:
+        assert json.loads(response.read())["retriever"] == "dense.bge-small+collapsed"
+
+    turns = [ask_citing_all(chat, fake_answer_model, question) for question in (FREEZING, VOCABULARY)]
+
+    # Each passage once, shown by the best file: WECHSEL's latest Version with v1 merged into it, and the BPE
+    # paper's Canonical ACL Edition with its preprint merged into it. A merged Version of the Edition shown is
+    # written as its Version alone.
+    written = {"2112.06598v2": (["2112.06598v1"], "2112.06598v2, also v1"), "P16-1162": (["1508.07909v5"], "P16-1162, also 1508.07909v5")}
+    for turn in turns:
+        assert len({chunk["text"] for chunk in turn["chunks"]}) == 5
+        for reference in turn["references"]:
+            also, editions = written[reference["edition"]]
+            assert (reference["also"], reference["editions"], reference["survey"]) == (also, editions, False)
+            assert reference["anchor"].startswith(editions + " · ")
+            assert reference["anchor"] == turn["chunks"][reference["number"] - 1]["anchor"]
+    assert {reference["edition"] for turn in turns for reference in turn["references"]} == set(written)
+
+
+def test_with_a_collapsed_retriever_a_surveys_chunk_is_marked_a_survey(start_chat, copies, fake_answer_model, tmp_path):
+    # The manifest's grouping rule flags WECHSEL a Survey, on each of its Editions.
+    survey = manifest_with(tmp_path, f"{WECHSEL_WORK},no,no", f"{WECHSEL_WORK},no,yes")
+    survey.write_text(survey.read_text().replace(f"{WECHSEL_WORK},yes,no", f"{WECHSEL_WORK},yes,yes"))
+    chat = collapsed(start_chat, copies, survey)
+
+    turn = ask_citing_all(chat, fake_answer_model, VOCABULARY)
+
+    surveys = {reference["edition"]: reference["survey"] for reference in turn["references"]}
+    assert surveys == {"2112.06598v2": True, "P16-1162": False}
+    # The transcript writes the references as the page does: the merged Editions after the one shown, and the mark.
+    transcript = save(chat).read_text()
+    for reference in turn["references"]:
+        section = f"{reference['section_number']} {reference['section_title']}".strip()
+        line = f"- [{reference['number']}] {reference['title']}. {reference['editions']}, {section}, {reference['pages']}."
+        assert line + (" Survey." if reference["survey"] else "") + "\n" in transcript
+
+
+def test_with_a_collapsed_retriever_a_reference_with_no_merged_copies_reads_as_it_does_today(start_chat, copies, fake_answer_model, tmp_path):
+    # P16-1162 is its own Work here, so the BPE paper's two files hold no copies of each other.
+    apart = manifest_with(tmp_path, "indexed,sennrich-2016-neural-machine-translation,yes,no", "indexed,,,")
+    chat = collapsed(start_chat, copies, apart)
+
+    turn = ask_citing_all(chat, fake_answer_model, VOCABULARY)
+
+    bpe = [reference for reference in turn["references"] if reference["edition"] in ("1508.07909v5", "P16-1162")]
+    assert bpe
+    for reference in bpe:
+        assert (reference["also"], reference["editions"], reference["survey"]) == ([], reference["edition"], False)
+        section = " ".join(part for part in (reference["section_number"], reference["section_title"]) if part)
+        assert reference["anchor"] == " · ".join(part for part in (reference["edition"], section, reference["pages"]) if part)
+
+
+@pytest.mark.parametrize(
+    "shown, also, written",
+    [
+        ("2112.06598v2", ("2112.06598v1", "2022.acl-long.12"), "2112.06598v2, also v1 and 2022.acl-long.12"),
+        ("P16-1162", ("1508.07909v5", "1508.07909v1"), "P16-1162, also 1508.07909v5 and v1"),
+        ("P16-1162", ("1508.07909v5", "W16-2209", "1508.07909v1"), "P16-1162, also 1508.07909v5, W16-2209 and v1"),
+        ("2112.06598v2", (), "2112.06598v2"),
+    ],
+    ids=["issue-example", "venue-shown", "three-merged", "none-merged"],
+)
+def test_the_merged_editions_follow_the_edition_shown_a_version_of_a_preprint_already_named_by_its_version_alone(shown, also, written):
+    assert page.editions_written(shown, also) == written

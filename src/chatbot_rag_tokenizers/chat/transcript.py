@@ -68,6 +68,9 @@ def _marker(part: dict[str, Any]) -> str:
 
 
 def _reference(reference: dict[str, Any]) -> str:
-    """As the page's reference list writes it: title, Edition, Section and pages."""
+    """As the page's reference list writes it: title, Edition (with the merged Editions after the collapse, ADR 0069),
+    Section and pages, then a Survey's mark."""
     section = " ".join(part for part in (reference["section_number"], reference["section_title"]) if part)
-    return f"{reference['title']}. {reference['edition']}, {section}" + (f", {reference['pages']}" if reference["pages"] else "") + "."
+    editions = reference.get("editions", reference["edition"])
+    written = f"{reference['title']}. {editions}, {section}" + (f", {reference['pages']}" if reference["pages"] else "") + "."
+    return written + (" Survey." if reference.get("survey") else "")

@@ -4,7 +4,8 @@ that answers each (ADRs 0054 and 0056).
 A Turn retrieves k Chunks from the configured retriever, sends them to the answer model and reads its reply. The
 first Turn of a Conversation retrieves its question as asked. A later Turn is a follow-up: the answer model first
 writes a Rewrite from the last `history` Turns' questions and answer texts and the new question, retrieval sees
-the Rewrite, and the answer model is shown those Turns before the Rewrite and its Chunks. The answer model is
+the Rewrite, and the answer model is shown those Turns before the Rewrite and its Chunks. A `+collapsed` twin's
+Turn keeps the collapse's side table, what stands behind each retrieved Chunk (ADRs 0057 and 0069). The answer model is
 loaded on first use and loaded again after it fails, so a page started while Ollama was stopped answers once
 Ollama is started.
 """
@@ -14,6 +15,7 @@ import time
 from dataclasses import dataclass, field
 
 from ..parsing.chunker import Chunk
+from ..retrieval.collapse import Collapsed, Merged
 from ..retrieval.retriever import Retriever
 from . import model as answer_model
 from .answer import Answer, messages, read_answer
@@ -30,6 +32,7 @@ class Turn:
     reply: str  # the model's raw output
     answer: Answer
     seconds: dict[str, float]  # retrieval, rewriting and answering
+    merged: dict[str, Merged] | None = None  # the collapse's side table by Chunk id; None for a raw ranking
 
 
 @dataclass
@@ -62,7 +65,12 @@ class Chatbot:
                 rewriting = time.perf_counter() - started
             query = rewrite or question
             started = time.perf_counter()
-            retrieved = tuple(self.chunks[chunk_id] for chunk_id, _ in self.retriever.query(query, self.config.k))
+            if isinstance(self.retriever, Collapsed):
+                collapse = self.retriever.collapse(query, self.config.k)
+                ranking, merged = collapse.ranking, collapse.merged
+            else:
+                ranking, merged = self.retriever.query(query, self.config.k), None
+            retrieved = tuple(self.chunks[chunk_id] for chunk_id, _ in ranking)
             retrieval = time.perf_counter() - started
             # The answer model is shown each earlier Turn as it was answered: its Rewrite, or its question on a first Turn.
             earlier = [(turn.rewrite or turn.question, turn.answer.text) for turn in shown]
@@ -70,7 +78,7 @@ class Chatbot:
             reply = self._complete(model, messages(self.config.system_prompt, query, retrieved, earlier))
             answering = time.perf_counter() - started
             seconds = {"retrieval": retrieval, "rewriting": rewriting, "answering": answering}
-            turn = Turn(question, rewrite, retrieved, reply, read_answer(reply, len(retrieved), self.config.abstention), seconds)
+            turn = Turn(question, rewrite, retrieved, reply, read_answer(reply, len(retrieved), self.config.abstention), seconds, merged)
             self.turns.append(turn)
             return turn
 

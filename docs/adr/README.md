@@ -58,7 +58,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0051](0051-work-grouping-in-collect.md) | Work grouping in `collect`: work_id, Canonical Edition, Survey flag and Suspected pairs | Accepted, title comparison amended by 0063 |
 | [0052](0052-bge-base-and-openscholar-pinned-and-verified.md) | bge-base and OpenScholar_Retriever pinned, and checked by the opt-in model test | Accepted |
 | [0053](0053-collapsed-ranking-and-collapsed-twins.md) | The Collapsed ranking: one Chunk per Work, scored as a `+collapsed` twin of every retriever | Accepted, the Chunk a Work shows superseded by 0055, one Chunk per Work by 0057 |
-| [0054](0054-pinned-local-answer-model-and-the-chat-page.md) | The pinned local answer model, the shared Ollama module and the chat page | Accepted, amended by 0056 and 0064 |
+| [0054](0054-pinned-local-answer-model-and-the-chat-page.md) | The pinned local answer model, the shared Ollama module and the chat page | Accepted, amended by 0056, 0064 and 0069 |
 | [0055](0055-a-work-shows-its-best-ranked-section.md) | A collapsed Work shows its best-ranked Chunk's Section; the Canonical Edition only picks the copy | Superseded by 0057 |
 | [0056](0056-follow-ups-the-conversation-and-the-rewrite.md) | Follow-ups: the Conversation and the Rewrite | Accepted, amended by 0067; the transcript in 0068 |
 | [0057](0057-the-collapse-merges-copies-not-works.md) | The collapse merges copies of a passage across a Work's files, not whole Works | Accepted |
@@ -73,6 +73,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0066](0066-chunks-cite-the-parse-reports-ids-whatever-filled-the-cache.md) | Chunks cite the parse report's ids, whatever filled the parse cache | Accepted |
 | [0067](0067-the-rewriter-row-of-evaluate.md) | The rewriter row of `evaluate`: the chatbot's Rewrite of each stored follow-up, skipped without the model | Accepted |
 | [0068](0068-the-transcript-saved-from-the-chat-page.md) | The transcript, saved from the chat page under docs/reports from the page's own Turn records | Accepted |
+| [0069](0069-citations-name-the-merged-editions-after-the-collapse.md) | Citations name the merged Editions and mark Surveys after the collapse | Accepted |
 
 ## Template
 
