@@ -139,3 +139,19 @@ system_prompt = """You answer questions about research papers on tokenization fo
 # Chunks, then the follow-up question; the reply is the Rewrite that retrieval sees. A description that points back
 # ("the study") is replaced by the paper, method or model it names, as a pronoun is (ADR 0073).
 rewrite_prompt = """You rewrite the last question of a conversation about research papers on tokenization so that it can be understood without the conversation. Replace every word that points back into the conversation, such as "it", "that", "they", "the second method" or "the study", with what it refers to, naming the paper, method or model as the conversation names it. Keep everything else the question asks. Add nothing the conversation doesn't say. If the question already stands on its own, return it unchanged. Reply with the rewritten last question only: one question, on one line, with no explanation. Don't repeat the earlier questions, and don't refer to "the conversation" or "the previous answer"."""
+
+# The decision model as a grounding judge (#70, ADR 0075), run by `chat-eval --judge` on the developer's hand-checked
+# sample. Each sentence of a reply that cites Chunks is a claim; the model gives P(yes) to the question below for
+# each claim and each Chunk it cites, and a Turn's score is the mean. It is the [judge] of config/scope.toml, Tev1
+# 4B, with the same pin. The threshold is set before looking at the scores, not tuned on the labels it is compared
+# with: P(yes) of one half, where the model leans to yes. The report hashes the state, instructions, criteria and threshold.
+[chat.judge]
+model = "tev1:4b"
+revision = "4d24c6f6d61a48d9b72902f4805c5f1da53010736b834b0372377fb4bb7e53d3@0.40.5"
+threshold = 0.5
+state = """Chunk: {chunk}
+
+Claim: {claim}"""
+instructions = "Does the Chunk support the claim? The claim is a sentence from an answer about research papers that cites this excerpt of a paper as its source. It is supported when everything it states (each fact, number and name, and which paper or method it attributes them to) is stated in the Chunk or follows directly from it."
+true = "The Chunk supports every part of the claim."
+false = "Some part of the claim is not in the Chunk, contradicts it, or is attributed to the wrong paper or method."

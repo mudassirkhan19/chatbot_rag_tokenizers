@@ -7,7 +7,8 @@ text and markers: a marker naming a retrieved Chunk is a Citation, and any other
 marker, never dropped. A reply is an Abstention when it holds the fixed Abstention sentence, or when its text
 is a single sentence declining in the model's own words, such as "The provided chunks do not contain …", that
 neither goes on to answer nor cites. Both are compared after the Passage matcher's normalisation. Markers before
-a decline are kept as written.
+a decline are kept as written. Each sentence that cites a Chunk is a claim, which the grounding judge checks against
+each Chunk it cites (ADR 0075).
 """
 
 import re
@@ -29,6 +30,8 @@ _DECLINE = re.compile(
 )
 # A sentence ends at ".", "!" or "?" followed by a space or a line break.
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
+# What is left between markers in a row: "[2], [3]".
+_BETWEEN_MARKERS = re.compile(r"[\s,;]*")
 # How a decline goes on to answer within its sentence: "… do not state it, but mT5 used 0.01 [2]."
 _GOES_ON = re.compile(r"[;:]|\b(?:but|however|although|though|instead|whereas)\b", re.IGNORECASE)
 
@@ -57,6 +60,27 @@ class Answer:
     def text(self) -> str:
         """The answer without its markers, as a later Turn is shown it."""
         return _text(self.parts)
+
+    @property
+    def claims(self) -> list[tuple[str, list[int]]]:
+        """Each sentence that cites a retrieved Chunk, without its markers, and the Chunks it cites, each once, in
+        the order first cited. A marker that opens a sentence, as in "… for BPE. [2] It …", cites the sentence
+        before it."""
+        sentences: list[list[str | Marker]] = [[]]
+        for part in self.parts:
+            if isinstance(part, Marker):
+                opens = not _text(sentences[-1]) and len(sentences) > 1
+                sentences[-2 if opens else -1].append(part)
+            elif not (sentences[-1] and isinstance(sentences[-1][-1], Marker) and _BETWEEN_MARKERS.fullmatch(part)):
+                first, *rest = _SENTENCE_END.split(part)
+                sentences[-1].append(first)
+                sentences += [[piece] for piece in rest]
+        claims = []
+        for sentence in sentences:
+            cited = list(dict.fromkeys(part.number for part in sentence if isinstance(part, Marker) and part.valid))
+            if cited and _text(sentence):
+                claims.append((_text(sentence), cited))
+        return claims
 
 
 Earlier = Sequence[tuple[str, str]]  # the Conversation's earlier Turns, oldest first, as (question, answer text)

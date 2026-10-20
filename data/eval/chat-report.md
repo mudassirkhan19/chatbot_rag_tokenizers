@@ -107,6 +107,44 @@ The developer's labels on a seeded sample of answered Turns (`chat-eval --export
 | digits-fourth-digit | follow-up | grounded | not grounded | Sentence 2 is the problem. "This is because the left-to-right nature of autoregressive language modeling conflicts with the right-to-left structure of arithmetic, leading to errors when the answer length differs from the inputs [1]": - [1] states the conflict between left-to-right generation and right-to-left arithmetic, but about another paper's phenomenon. It says nothing about answer length. - The paper the result comes from explains it differently. [3] says the cause is likely "misalignment between input and output tokenizations … rather than some carry-related notion of problem difficulty". - So the answer borrows an explanation from another paper, and the source paper contradicts it. The automatic check passes it because 8.25 is in a cited Chunk and every marker is valid; it can't see causal claims. - It also doesn't answer "where". The question asks where L2R goes wrong; the answer gives how much and a borrowed why. |
 | sentencepiece-korean-speed | unanswerable | grounded | not grounded | not grounded (or “unanswerable — should have abstained”), not “grounded.” |
 
+### The decision model
+
+`chat-eval --judge`: the pinned decision model is asked, for each sentence of a sampled reply that cites Chunks and each Chunk it cites, whether the Chunk supports the sentence. A Turn's score is the mean of its P(yes), and it is grounded by the model when the score is at least the threshold; a Turn with no cited sentence is not. Pairs counts the sentences and Chunks judged.
+
+- Decision model: tev1:4b@4d24c6f6d61a on Ollama 0.40.5
+- Decision question and threshold sha256: `ce79241703de7f57eebe2cdc3c49add56031539299c7bbd7596ae842117ee508`
+- Threshold: 0.5
+- Agreement with the hand labels: 16/19 (0.84 [0.62, 0.94])
+- Grounded by the decision model but not by hand: 3; not grounded by it but grounded by hand: 0
+
+| Question | Type | Pairs | Score | Decision model | Automatic | By hand |
+|---|---|---:|---:|---|---|---|
+| sentencepiece-whitespace | single-paper | 2 | 0.90 | grounded | grounded | grounded |
+| bpe-dropout-rate | single-paper | 6 | 0.85 | grounded | grounded | grounded |
+| canine-amharic | single-paper | 5 | 0.93 | grounded | grounded | grounded |
+| digits-right-to-left | single-paper | 1 | 0.94 | grounded | grounded | grounded |
+| magikarp-verified-share | single-paper | 1 | 0.97 | grounded | grounded | grounded |
+| superbpe-curriculum | single-paper | 6 | 0.53 | grounded | grounded | grounded |
+| bpe-and-wechsel-vocabularies | multi-paper | 2 | 0.97 | grounded | grounded | not grounded |
+| compression-and-accuracy | multi-paper | 3 | 0.85 | grounded | grounded | grounded |
+| one-sided-regularization | multi-paper | 2 | 0.95 | grounded | grounded | grounded |
+| megabyte-and-blt-patches | multi-paper | 2 | 0.98 | grounded | grounded | grounded |
+| api-cost-by-language | multi-paper | 2 | 0.80 | grounded | grounded | grounded |
+| gpt-4-number-tokens | multi-paper | 2 | 0.52 | grounded | grounded | grounded |
+| wechsel-neighbours | follow-up | 2 | 0.99 | grounded | grounded | grounded |
+| canine-hashing | follow-up | 3 | 0.98 | grounded | grounded | grounded |
+| digits-fourth-digit | follow-up | 3 | 0.89 | grounded | grounded | not grounded |
+| vocabulary-with-scarce-data | follow-up | 4 | 0.97 | grounded | grounded | grounded |
+| magikarp-norm-indicator | follow-up | 2 | 0.98 | grounded | grounded | grounded |
+| tokenization-latency | follow-up | 5 | 0.98 | grounded | grounded | grounded |
+| sentencepiece-korean-speed | unanswerable | 2 | 0.99 | grounded | grounded | not grounded |
+
+| Question | Type | Decision model | By hand | Note |
+|---|---|---|---|---|
+| bpe-and-wechsel-vocabularies | multi-paper | grounded | not grounded | A properly grounded answer would say that the provided context doesn’t state how many merge operations the original subword NMT paper used or how large WECHSEL’s tokenizer vocabularies are. It could add only that, in the transfer-learning paper, vocabulary size equals the number of BPE merge operations, which were varied in experiments. |
+| digits-fourth-digit | follow-up | grounded | not grounded | Sentence 2 is the problem. "This is because the left-to-right nature of autoregressive language modeling conflicts with the right-to-left structure of arithmetic, leading to errors when the answer length differs from the inputs [1]": - [1] states the conflict between left-to-right generation and right-to-left arithmetic, but about another paper's phenomenon. It says nothing about answer length. - The paper the result comes from explains it differently. [3] says the cause is likely "misalignment between input and output tokenizations … rather than some carry-related notion of problem difficulty". - So the answer borrows an explanation from another paper, and the source paper contradicts it. The automatic check passes it because 8.25 is in a cited Chunk and every marker is valid; it can't see causal claims. - It also doesn't answer "where". The question asks where L2R goes wrong; the answer gives how much and a borrowed why. |
+| sentencepiece-korean-speed | unanswerable | grounded | not grounded | not grounded (or “unanswerable — should have abstained”), not “grounded.” |
+
 ## Variation
 
 3 runs of the whole set, one after another in one process; the report above is run 1's, and the answers file's runs file holds the others. A range is the lowest and highest rate over the runs.

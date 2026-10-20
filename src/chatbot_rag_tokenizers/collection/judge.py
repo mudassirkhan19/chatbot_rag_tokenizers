@@ -19,7 +19,6 @@ from a complete Snapshot never loads them.
 import hashlib
 import json
 import math
-import re
 import sys
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
@@ -28,14 +27,11 @@ from typing import Any, Protocol, cast
 
 import httpx
 
-from ..ollama import OLLAMA_URL, Ollama, OllamaModelError, response_json
+from ..ollama import OLLAMA_URL, InputTooLong, Ollama, OllamaModelError
 from .config import JudgeConfig
 from .editions import Edition
 
 ANSWERS = ("Yes", "No")
-
-# Ollama's answer when a decision model's input is longer than its context, which it never truncates.
-_TOO_LONG = re.compile(r"has (?P<tokens>\d+) tokens; expected 1\u2013(?P<limit>\d+)")
 
 
 def prompt_hash(prompt: str) -> str:
@@ -195,7 +191,6 @@ class _Ollama:
     def __init__(self, config: JudgeConfig, client: httpx.Client | None = None) -> None:
         self.config = config
         self.ollama = Ollama(client)
-        self.client = self.ollama.client
         digest, version = self.ollama.check_pin(config.model, config.revision)
         print(f"judge: using {config.model}@{digest[:12]} from Ollama {version}", file=sys.stderr)
 
@@ -232,24 +227,11 @@ class OllamaDecisionJudge(_Ollama):
         assert question is not None, "the config requires [judge.decision] for this backend"
         abstract = edition.abstract
         while True:
-            response = self.client.post(
-                "/v1/systemone",
-                json={
-                    "model": self.config.model,
-                    "state": question.state.format(title=edition.title, abstract=abstract),
-                    "questions": {
-                        "in_scope": {
-                            "type": "noul",
-                            "instructions": question.instructions,
-                            "criteria": {"true": question.true, "false": question.false},
-                        }
-                    },
-                },
-            )
-            too_long = _TOO_LONG.search(response.text) if response.status_code == 400 else None
-            if too_long is None:
-                return float(response_json(response)["answers"]["in_scope"]["noul"])
-            abstract = _shorten(abstract, int(too_long["tokens"]), int(too_long["limit"]))
+            state = question.state.format(title=edition.title, abstract=abstract)
+            try:
+                return self.ollama.decide(self.config.model, state, "in_scope", question.instructions, question.true, question.false)
+            except InputTooLong as too_long:
+                abstract = _shorten(abstract, too_long.tokens, too_long.limit)
             print(f"judge: {edition.edition_id} is too long for the model; abstract cut to {len(abstract)} characters", file=sys.stderr)
 
 

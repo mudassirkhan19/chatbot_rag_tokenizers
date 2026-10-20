@@ -28,7 +28,7 @@ from importlib import resources
 from pathlib import Path
 
 from ..parsing.chunker import Chunk
-from .answer import read_answer
+from .answer import Answer, read_answer
 from .answers import Asked, verdict
 from .grounding import Grounding, ground
 
@@ -89,12 +89,16 @@ def _row(item: Asked) -> dict[str, str]:
 
 
 @dataclass(frozen=True)
-class Disagreement:
+class Checked:
+    """A row the developer labelled, scored by the automatic check on its sampled reply."""
+
     question_id: str
     type: str
     automatic: str  # the automatic verdict on the sampled reply
     label: str  # the developer's
     note: str
+    answer: Answer  # the sampled reply, read with the current Abstention sentence
+    retrieved: tuple[Chunk, ...]  # the row's retrieved Chunks, from the corpus
 
 
 @dataclass(frozen=True)
@@ -104,9 +108,16 @@ class Comparison:
     rows: int
     labelled: int  # rows the developer gave a label
     unsure: int  # rows the developer checked and left without one
-    compared: int  # the labelled rows scored
-    disagreements: tuple[Disagreement, ...]
+    checked: tuple[Checked, ...]  # the labelled rows scored
     dropped: tuple[str, ...]  # question ids of the labelled rows whose Chunks the corpus no longer has
+
+    @property
+    def compared(self) -> int:
+        return len(self.checked)
+
+    @property
+    def disagreements(self) -> tuple[Checked, ...]:
+        return tuple(row for row in self.checked if row.label != row.automatic)
 
     @property
     def agreed(self) -> int:
@@ -117,25 +128,23 @@ def compare(rows: Sequence[dict[str, str]], chunks: Mapping[str, Chunk], abstent
     """The developer's labelled rows against the automatic check scored on each row's reply over its Chunks, as
     stored in the sample, whatever a later run has answered: a label and the check both judge that one reply."""
     labelled = [row for row in rows if row["checked_by"] == "developer" and row["label"]]
-    scored: list[tuple[dict[str, str], str]] = []
+    checked = []
     dropped = []
     for row in labelled:
         ids = row["retrieved"].split()
         if all(chunk_id in chunks for chunk_id in ids):
-            retrieved = [chunks[chunk_id] for chunk_id in ids]
+            retrieved = tuple(chunks[chunk_id] for chunk_id in ids)
             answer = read_answer(row["reply"], len(retrieved), abstention)
             grounding = ground(answer, retrieved)
-            scored.append((row, verdict(answer.abstention, None if grounding is None else grounding.grounded)))
+            automatic = verdict(answer.abstention, None if grounding is None else grounding.grounded)
+            checked.append(Checked(row["question_id"], row["type"], automatic, row["label"], row["note"], answer, retrieved))
         else:
             dropped.append(row["question_id"])
     return Comparison(
         rows=len(rows),
         labelled=len(labelled),
         unsure=sum(1 for row in rows if row["checked_by"] == "developer" and not row["label"]),
-        compared=len(scored),
-        disagreements=tuple(
-            Disagreement(row["question_id"], row["type"], automatic, row["label"], row["note"]) for row, automatic in scored if row["label"] != automatic
-        ),
+        checked=tuple(checked),
         dropped=tuple(dropped),
     )
 

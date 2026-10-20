@@ -140,6 +140,10 @@ _Avoid_: Reference (that is a bibliography entry), source, link
 An answer that cites at least one Chunk, every Citation of which resolves to a Chunk retrieved for its Turn, and every number of which (a word that starts with a digit, so "50k" but not "ByT5") appears in a cited Chunk's context header or text. An Abstention is neither grounded nor not.
 _Avoid_: Faithful, supported, hallucination-free
 
+**Claim**:
+A sentence of an answer that cites at least one retrieved Chunk, without its markers. The grounding judge asks of each claim and each Chunk it cites whether the Chunk supports it.
+_Avoid_: Statement, assertion
+
 **Abstention**:
 An answer that says plainly the corpus does not support an answer to the question, instead of answering it. A correct Abstention answers an unanswerable question; a false one refuses an answerable question.
 _Avoid_: Refusal, "I don't know", fallback

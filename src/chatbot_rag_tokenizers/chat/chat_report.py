@@ -4,7 +4,7 @@ eval report's style.
 It names what was scored (the Evaluation set, the Chunks, the retriever, the answer model's pin and the prompts'
 hashes), then gives the grounded, abstention and false-abstention rates with their Wilson intervals and Recall@k
 per question type, a line per question, the grounding verdict's agreement with the developer's hand-checked
-sample, the variation over the runs, the questions whose verdict changed from a
+sample, and with `chat-eval --judge` the decision model's, the variation over the runs, the questions whose verdict changed from a
 baseline when one is given, and the timings last. Everything above the timings depends only on the inputs and the
 model's replies, so re-scoring the stored replies reproduces it exactly.
 """
@@ -22,7 +22,8 @@ from ..evaluation.report import NONE
 from ..retrieval.corpus import Corpus
 from .answers import Asked, Baseline, Run, asked_over
 from .grounding_check import compare, read_check
-from .config import ChatConfig
+from .grounding_judge import GroundingJudge, Judged, judge_pin, judge_sample
+from .config import ChatConfig, GroundingJudgeConfig
 from .model import pin
 
 # The normal quantile of the Wilson interval: 1.96 for 95%.
@@ -39,9 +40,11 @@ def write_chat_report(
     baseline: Baseline | None,
     rescored_from: Path | None,
     check: Path | None = None,
+    judge: GroundingJudge | None = None,
 ) -> None:
     """The report on runs[0], the run reported, against ``baseline`` when one is given. ``rescored_from`` names the answers file a re-scored report was
-    scored from, which holds no timings. ``check`` is the developer's hand-checked sample, compared when it exists."""
+    scored from, which holds no timings. ``check`` is the developer's hand-checked sample, compared when it exists,
+    and scored by ``judge`` when one is given. Raises JudgeUnavailable."""
     k = config.k
     asked = runs[0]
     scored = [item for item in asked if item.scored]
@@ -116,7 +119,7 @@ def write_chat_report(
         "|---|---|---|---|---|---|---:|",
         *[_question(item) for item in scored],
         "",
-        *_hand_check(corpus, config, check),
+        *_hand_check(corpus, config, check, judge),
         *_variation(runs, k),
         *([] if baseline is None else _against(scored, baseline, asked_over(corpus, config))),
         "## Timings",
@@ -288,9 +291,9 @@ def _against(scored: Sequence[Asked], baseline: Baseline, here: dict[str, Any]) 
     return [*lines, "| Question | Type | Baseline | Now | Note |", "|---|---|---|---|---|", *rows, ""]
 
 
-def _hand_check(corpus: Corpus, config: ChatConfig, check: Path | None) -> list[str]:
+def _hand_check(corpus: Corpus, config: ChatConfig, check: Path | None, judge: GroundingJudge | None) -> list[str]:
     """The automatic verdict's agreement with the developer's labels on the sample, and every disagreement (ADRs 0071
-    and 0072)."""
+    and 0072), then the decision model's when ``judge`` is given (ADR 0075)."""
     lines = [
         "## Grounding checked by hand",
         "",
@@ -317,12 +320,56 @@ def _hand_check(corpus: Corpus, config: ChatConfig, check: Path | None) -> list[
         lines.append(f"- Not compared, as the corpus no longer has every Chunk the sampled reply was given: {', '.join(result.dropped)}")
     lines.append("")
     if not result.disagreements:
-        return [*lines, "No disagreements.", ""]
+        lines += ["No disagreements.", ""]
+    else:
+        lines += [
+            "| Question | Type | Automatic | By hand | Note |",
+            "|---|---|---|---|---|",
+            *[f"| {d.question_id} | {d.type} | {d.automatic} | {d.label} | {_cell(d.note) or NONE} |" for d in result.disagreements],
+            "",
+        ]
+    if judge is None:
+        return lines
+    assert config.judge is not None, "chat-eval --judge needs [chat.judge]"
+    return [*lines, *_judged(config.judge, judge_sample(result.checked, judge, config.judge.threshold))]
+
+
+def _judged(settings: GroundingJudgeConfig, judged: Sequence[Judged]) -> list[str]:
+    """The decision model's verdict on each labelled row beside the automatic check's and the developer's, its
+    agreement with the developer's, and every disagreement."""
+    agreed = sum(1 for item in judged if item.verdict == item.row.label)
+    wrong = [item for item in judged if item.verdict != item.row.label]
+    lines = [
+        "### The decision model",
+        "",
+        "`chat-eval --judge`: the pinned decision model is asked, for each sentence of a sampled reply that cites"
+        " Chunks and each Chunk it cites, whether the Chunk supports the sentence. A Turn's score is the mean of its"
+        " P(yes), and it is grounded by the model when the score is at least the threshold; a Turn with no cited"
+        " sentence is not. Pairs counts the sentences and Chunks judged.",
+        "",
+        f"- Decision model: {judge_pin(settings)}",
+        f"- Decision question and threshold sha256: `{settings.question_hash}`",
+        f"- Threshold: {settings.threshold}",
+        f"- Agreement with the hand labels: {_counted(agreed, len(judged))}",
+        f"- Grounded by the decision model but not by hand: {sum(1 for item in wrong if item.verdict == 'grounded')}; not"
+        f" grounded by it but grounded by hand: {sum(1 for item in wrong if item.verdict == 'not grounded')}",
+        "",
+        "| Question | Type | Pairs | Score | Decision model | Automatic | By hand |",
+        "|---|---|---:|---:|---|---|---|",
+        *[
+            f"| {item.row.question_id} | {item.row.type} | {item.pairs} | {NONE if item.score is None else f'{item.score:.2f}'}"
+            f" | {item.verdict} | {item.row.automatic} | {item.row.label} |"
+            for item in judged
+        ],
+        "",
+    ]
+    if not wrong:
+        return [*lines, "The decision model agrees with every hand label.", ""]
     return [
         *lines,
-        "| Question | Type | Automatic | By hand | Note |",
+        "| Question | Type | Decision model | By hand | Note |",
         "|---|---|---|---|---|",
-        *[f"| {d.question_id} | {d.type} | {d.automatic} | {d.label} | {_cell(d.note) or NONE} |" for d in result.disagreements],
+        *[f"| {item.row.question_id} | {item.row.type} | {item.verdict} | {item.row.label} | {_cell(item.row.note) or NONE} |" for item in wrong],
         "",
     ]
 

@@ -79,6 +79,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0072](0072-the-hand-check-scores-each-sampled-reply.md) | The hand check scores the automatic check on each sampled reply, not only where the run still gives it | Accepted |
 | [0073](0073-the-rewrite-names-the-paper-the-conversation-is-about.md) | The rewrite prompt names the paper, method or model a follow-up points back to | Accepted |
 | [0074](0074-the-collapse-matches-copies-by-their-text.md) | The collapse matches copies by their text, not their place in the Section | Accepted |
+| [0075](0075-tev1-as-a-grounding-judge-measured-against-the-hand-labels.md) | Tev1 as a grounding judge: P(yes) per claim and cited Chunk, averaged per Turn, measured against the hand labels | Accepted |
 
 ## Template
 
