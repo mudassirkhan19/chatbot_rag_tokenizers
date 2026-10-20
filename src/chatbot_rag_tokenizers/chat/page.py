@@ -1,17 +1,18 @@
-"""The chat page (ADRs 0054, 0056 and 0067): `chat` serves it on localhost with the standard library's threading HTTP
+"""The chat page (ADRs 0054, 0056 and 0069): `chat` serves it on localhost with the standard library's threading HTTP
 server, as `audit label` serves its page. The server holds one Conversation.
 
     GET  /        the page
     GET  /status  the retriever and the answer model, or why the model can't answer
     POST /turn    {"question": ...}: the next Turn of the Conversation, or a 503 saying why the model can't answer
     POST /reset   starts a new Conversation
+    POST /save    writes the Conversation as a Markdown transcript under the reports folder and returns its path
 
 A Turn comes back as its question and its Rewrite (null on the first Turn), its answer, cut into text and markers
 (each marker valid or not), a reference per cited Chunk from its Citation anchor, every retrieved Chunk in rank
 order, numbered as the model saw it and marked cited or not, the model's raw reply, and the seconds spent
 retrieving, rewriting and answering. The page folds the uncited Chunks away.
 
-When the retriever is a `+collapsed` twin, its side table goes into each anchor too (ADR 0067): the merged Editions,
+When the retriever is a `+collapsed` twin, its side table goes into each anchor too (ADR 0069): the merged Editions,
 the files whose copies of the passage were folded into the Chunk, follow the Edition shown, as in "2112.06598v2,
 also v1 and 2022.naacl-main.293", and a Survey's Chunk is flagged. A raw retriever's Turn has no side table, and
 its anchors are as they were.
@@ -19,9 +20,11 @@ its anchors are as they were.
 
 import json
 import sys
+from datetime import date
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
+from pathlib import Path
 from typing import Any
 
 from ..parsing.chunker import HEADER_SEPARATOR, Chunk
@@ -30,10 +33,11 @@ from ..retrieval.collapse import Merged
 from .answer import Marker
 from .conversation import Chatbot, Turn
 from .model import AnswerModelUnavailable
+from . import transcript
 
 
-def make_server(chatbot: Chatbot, port: int = 8766) -> ThreadingHTTPServer:
-    """A server for the chat page on localhost; ``port=0`` picks a free one."""
+def make_server(chatbot: Chatbot, port: int = 8766, transcripts: Path = Path("docs/reports")) -> ThreadingHTTPServer:
+    """A server for the chat page on localhost; ``port=0`` picks a free one. Transcripts are saved in ``transcripts``."""
     page = resources.files(__package__).joinpath("page.html").read_bytes()
 
     class Handler(BaseHTTPRequestHandler):
@@ -58,6 +62,14 @@ def make_server(chatbot: Chatbot, port: int = 8766) -> ThreadingHTTPServer:
             if self.path == "/reset":
                 chatbot.reset()
                 self._json({"turns": len(chatbot.turns)})
+                return
+            if self.path == "/save":
+                turns = list(chatbot.turns)
+                if not turns:
+                    self._json({"error": "no Turn to save: ask a question first"}, HTTPStatus.BAD_REQUEST)
+                    return
+                path = transcript.save([turn_json(turn) for turn in turns], status(chatbot), transcripts, date.today())
+                self._json({"path": str(path)})
                 return
             if self.path != "/turn":
                 self._json({"error": f"no such action: {self.path}"}, HTTPStatus.NOT_FOUND)

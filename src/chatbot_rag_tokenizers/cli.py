@@ -169,6 +169,9 @@ def main(argv: list[str] | None = None) -> None:
     _add_chunk_arguments(chat_cmd)
     chat_cmd.add_argument("--index-cache", type=Path, default=Path("data/index-cache"), help="the index cache (default data/index-cache)")
     chat_cmd.add_argument("--port", type=int, default=8766, help="port on localhost (default 8766)")
+    chat_cmd.add_argument(
+        "--transcripts", type=Path, default=Path("docs/reports"), help="where the page's save writes transcripts (default docs/reports)"
+    )
 
     chat_eval_cmd = commands.add_parser(
         "chat-eval",
@@ -315,6 +318,7 @@ def main(argv: list[str] | None = None) -> None:
                 args.work_groups,
                 retrieval.collapse_pool,
                 retrieval.comparison,
+                args.config,
                 args.export_ungrouped,
             )
         except (EvaluationSetError, WorkGroupsError, index.IndexMissing, BaselineMissing) as error:
@@ -384,7 +388,7 @@ def _chatbot(args: argparse.Namespace) -> tuple[Chatbot, Corpus]:
 def _chat(args: argparse.Namespace) -> None:
     chatbot, _ = _chatbot(args)
     try:
-        server = page.make_server(chatbot, args.port)
+        server = page.make_server(chatbot, args.port, args.transcripts)
     except OSError as error:
         sys.exit(f"chat: can't serve on port {args.port} ({error}); pass another with --port")
     page.serve(chatbot, server)

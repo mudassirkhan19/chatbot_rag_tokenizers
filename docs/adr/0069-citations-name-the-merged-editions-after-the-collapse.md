@@ -1,4 +1,4 @@
-# 0067. Citations name the merged Editions and mark Surveys after the collapse
+# 0069. Citations name the merged Editions and mark Surveys after the collapse
 
 - **Date:** 2026-10-20
 - **Status:** Accepted; amends [0054](0054-pinned-local-answer-model-and-the-chat-page.md), whose `[chat]` named only a configured retriever
@@ -9,7 +9,7 @@ Spec #63 has the chatbot retrieve with the retriever #61 chose, collapsed (story
 ## Decision
 - **`[chat]` takes a `+collapsed` twin by name**, as `evaluate` names them: `retriever = "dense.bge-small+collapsed"`. It retrieves over its retriever's index with the `[collapse]` pool, and `chat` and `chat-eval` read the Works from the manifest (`--manifest`, default `data/manifest.csv`), as `evaluate` does. The repo's `[chat]` is unchanged here; #72 switches it.
 - **A Turn keeps the collapse's side table**, what stands behind each retrieved Chunk. A raw retriever's Turn has none.
-- **The anchor names the merged Editions after the Edition shown**, best-ranked first: "2112.06598v2, also v1", "P16-1162, also 1508.07909v5". A Version of a preprint already named is written as its Version alone; any other Edition by its pinned id; three or more read "a, b and c". The page's `/turn` adds `editions` (as written), `also` (the merged pinned ids) and `survey` to each reference and Chunk, only when the side table is there. A reference with no merged copies reads as before.
+- **The anchor names the merged Editions after the Edition shown**, best-ranked first: "2112.06598v2, also v1", "P16-1162, also 1508.07909v5". A Version of a preprint already named is written as its Version alone; any other Edition by its pinned id; three or more read "a, b and c". The page's `/turn` adds `editions` (as written), `also` (the merged pinned ids) and `survey` to each reference and Chunk, only when the side table is there. A reference with no merged copies reads as before. The saved transcript ([0068](0068-the-transcript-saved-from-the-chat-page.md)) writes each reference as the page does, merged Editions and Survey mark included.
 - **The Survey flag is the manifest's `survey` column** for the shown Chunk's Edition, the grouping rule's flag ([0051](0051-work-grouping-in-collect.md)), carried on the collapse's `Merged`. The page marks it beside the reference and the Chunk. Surveys are still not demoted.
 - **`chat-eval` names the twin and its pool.** The report's Retriever line gives the twin's name and the collapse pool; the key stays the retriever's, since the index is its. The answers file's first line gains `collapse_pool` (null for the raw ranking, which is how files written before it read), so `--from-answers` refuses to re-score a collapsed run as a raw one or the reverse.
 

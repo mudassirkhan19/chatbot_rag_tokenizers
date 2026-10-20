@@ -5,7 +5,7 @@ A Turn retrieves k Chunks from the configured retriever, sends them to the answe
 first Turn of a Conversation retrieves its question as asked. A later Turn is a follow-up: the answer model first
 writes a Rewrite from the last `history` Turns' questions and answer texts and the new question, retrieval sees
 the Rewrite, and the answer model is shown those Turns before the Rewrite and its Chunks. A `+collapsed` twin's
-Turn keeps the collapse's side table, what stands behind each retrieved Chunk (ADRs 0057 and 0067). The answer model is
+Turn keeps the collapse's side table, what stands behind each retrieved Chunk (ADRs 0057 and 0069). The answer model is
 loaded on first use and loaded again after it fails, so a page started while Ollama was stopped answers once
 Ollama is started.
 """
