@@ -115,10 +115,10 @@ def with_hybrid(tmp_path: Path, table: str) -> Path:
     return path
 
 
-def test_the_chatbot_asks_bge_small_the_comparisons_choice_collapsed_for_five_chunks_and_answers_with_the_pinned_gemma():
+def test_the_chatbot_asks_bge_small_the_comparisons_choice_per_paper_and_collapsed_for_five_chunks_and_answers_with_the_pinned_gemma():
     chat = load_chat_config(RETRIEVAL_CONFIG)
 
-    assert (chat.retriever_name, chat.k) == ("dense.bge-small+collapsed", 5)
+    assert (chat.retriever_name, chat.k) == ("dense.bge-small+per-paper+collapsed", 5)
     assert chat.model == AnswerModelConfig(
         "gemma4:e2b-mlx", "e98b54fe1913178321e1d9cd007d12a465de77a8f8eae37af69d2501ca03c6b5@0.40.5", think=False, temperature=0.0
     )
@@ -126,13 +126,15 @@ def test_the_chatbot_asks_bge_small_the_comparisons_choice_collapsed_for_five_ch
     assert chat.abstention in chat.system_prompt
 
 
-def test_the_chatbot_takes_a_collapsed_twin_by_its_name_over_its_retrievers_index_with_the_collapse_pool(tmp_path):
-    chat = load_chat_config(RETRIEVAL_CONFIG)
-    raw = load_chat_config(with_line(tmp_path, 'retriever = "dense.bge-small+collapsed"', 'retriever = "dense.bge-small"'))
+@pytest.mark.parametrize(
+    "retriever, per_paper, pool",
+    [("dense.bge-small+per-paper+collapsed", True, 50), ("dense.bge-small+collapsed", False, 50), ("dense.bge-small+per-paper", True, None), ("dense.bge-small", False, None)],
+)
+def test_the_chatbot_takes_a_twin_by_its_name_over_its_retrievers_index(tmp_path, retriever, per_paper, pool):
+    chat = load_chat_config(with_line(tmp_path, 'retriever = "dense.bge-small+per-paper+collapsed"', f'retriever = "{retriever}"'))
 
     # The twin's index is its retriever's; the collapse merges copies in the [collapse] pool.
-    assert (chat.retriever.name, chat.collapse_pool, chat.retriever_name) == ("dense.bge-small", 50, "dense.bge-small+collapsed")
-    assert (raw.retriever.name, raw.collapse_pool, raw.retriever_name) == ("dense.bge-small", None, "dense.bge-small")
+    assert (chat.retriever.name, chat.per_paper, chat.collapse_pool, chat.retriever_name) == ("dense.bge-small", per_paper, pool, retriever)
 
 
 def with_line(tmp_path: Path, old: str, new: str) -> Path:
@@ -166,14 +168,15 @@ def test_a_bad_hybrid_table_stops_with_a_message_naming_the_table(tmp_path, memb
 @pytest.mark.parametrize(
     "old, new, message",
     [
-        ('retriever = "dense.bge-small+collapsed"', 'retriever = "dense.e5"', r"\[chat\] retriever 'dense.e5' is not a retriever .* configures: bm25, dense.bge-small"),
-        ('retriever = "dense.bge-small+collapsed"', 'retriever = "dense.e5+collapsed"', r"\[chat\] retriever 'dense.e5\+collapsed' is not a retriever .* configures: bm25, dense.bge-small"),
+        ('retriever = "dense.bge-small+per-paper+collapsed"', 'retriever = "dense.e5"', r"\[chat\] retriever 'dense.e5' is not a retriever .* configures: bm25, dense.bge-small"),
+        ('retriever = "dense.bge-small+per-paper+collapsed"', 'retriever = "dense.e5+per-paper+collapsed"', r"\[chat\] retriever 'dense.e5\+per-paper\+collapsed' is not a retriever .* configures: bm25, dense.bge-small"),
+        ('retriever = "dense.bge-small+per-paper+collapsed"', 'retriever = "dense.bge-small+collapsed+per-paper"', r"\[chat\] retriever 'dense.bge-small\+collapsed\+per-paper' is not a retriever .* or one of them \+per-paper, \+collapsed or \+per-paper\+collapsed"),
         ("k = 5", "k = 0", r"\[chat\] k 0 must be at least 1"),
         ('revision = "e98b54fe1913178321e1d9cd007d12a465de77a8f8eae37af69d2501ca03c6b5@0.40.5"', 'revision = "latest"', r"\[chat\] revision 'latest' is not pinned as <digest>@<Ollama version>"),
         ("think = false", 'think = "no"', r"\[chat\] think 'no' is not a bool"),
         ("history = 3", "history = 0", r"\[chat\] history 0 must be at least 1"),
     ],
-    ids=["unknown-retriever", "unknown-collapsed-retriever", "no-chunks", "unpinned", "mistyped", "no-history"],
+    ids=["unknown-retriever", "unknown-twin", "twin-out-of-order", "no-chunks", "unpinned", "mistyped", "no-history"],
 )
 def test_a_bad_chat_table_stops_with_a_message_naming_it(tmp_path, old, new, message):
     with pytest.raises(ConfigError, match=message):

@@ -2,9 +2,9 @@
 
 It names what was scored (the Evaluation set, the chunking config and corpus, each retriever's settings),
 then gives a results table per retriever and question type, each retriever's raw ranking followed by its
-Collapsed ranking (ADR 0053), the Comparison against a baseline (ADR 0061), what crowds the top 5 (ADR 0044),
+Collapsed ranking (ADR 0053) and its per-paper Collapsed ranking (ADR 0076), the Comparison against a baseline (ADR 0061), what crowds the top 5 (ADR 0044),
 the two rankings side by side (ADR 0063), the grouping rule scored against the Work groups (ADR 0060), each
-follow-up's Rewrite beside its reference rewrite (ADR 0067) and a line per question, then the Cost table. Everything above the Cost table, which comes last, depends only on the inputs, so two runs on the same index give the same
+follow-up's Rewrite beside its reference rewrite (ADR 0067), the papers each query names (ADR 0076) and a line per question, then the Cost table. Everything above the Cost table, which comes last, depends only on the inputs, so two runs on the same index give the same
 report up to that section, and the Cost table differs only in its times.
 """
 
@@ -14,6 +14,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ..retrieval import per_paper
 from ..retrieval.collapse import SUFFIX
 from ..retrieval.config import ComparisonConfig
 from ..retrieval.corpus import Corpus
@@ -39,6 +40,7 @@ from .harness import (
     Scored,
     all_answerable,
     metrics,
+    queries,
     recall,
     reciprocal_rank,
 )
@@ -65,16 +67,38 @@ class Rewriter:
 
 
 @dataclass(frozen=True)
+class PaperNames:
+    """The papers each query names, as the answer model lists them for the per-paper twins (ADR 0076), or why they
+    weren't asked for."""
+
+    model: str  # the answer model and how it is run, as the chat report names them
+    prompt: str
+    names: Mapping[str, tuple[str, ...]] = field(default_factory=dict)  # by query text
+    works: Mapping[str, frozenset[str]] = field(default_factory=dict)  # the Works each name could be, by name
+    skipped: str = ""  # why the answer model couldn't answer, when it couldn't
+
+    @property
+    def ran(self) -> bool:
+        return not self.skipped
+
+
+@dataclass(frozen=True)
 class RetrieverRun:
     config: RetrieverConfig
     index: Index  # what was queried, with its build time and device
     scored: list[Scored]
     pool: int | None = None  # for a Collapsed ranking, the raw Chunks it merged copies in
     overlap: float | None = None  # for a Collapsed ranking, the share of word 5-grams that made two Chunks copies
+    per_paper: bool = False  # each paper a query names took its turn before copies were merged (ADR 0076)
 
     @property
     def name(self) -> str:
-        return self.config.name + (SUFFIX if self.pool else "")
+        return self.config.name + (per_paper.SUFFIX if self.per_paper else "") + (SUFFIX if self.pool else "")
+
+    @property
+    def ranking(self) -> str:
+        """Which of its retriever's rankings this is, in a word or two."""
+        return ("per paper, " if self.per_paper else "") + ("collapsed" if self.pool else "raw")
 
 
 def write_eval_report(
@@ -90,6 +114,7 @@ def write_eval_report(
     ungrouped: Sequence[str],
     comparison: ComparisonConfig,
     rewriter: Rewriter,
+    names: PaperNames,
 ) -> None:
     counts = ", ".join(f"{sum(1 for q in questions if q.type == kind)} {kind}" for kind in QUESTION_TYPES)
     lines = [
@@ -142,6 +167,14 @@ def write_eval_report(
         " the last `history` prior turns as earlier questions with no answers, and the follow-up (ADR 0067). The *all"
         " answerable* row takes each follow-up alone, as a user would ask it.",
         *_rewriter(rewriter),
+        f"- Its `{per_paper.SUFFIX}{SUFFIX}` twin asks the answer model, given the `[chat]` names prompt and the query alone,"
+        " for the papers, methods and models the query names, and keeps the names the query holds. A name"
+        ' "<Surname> et al." could be any Work whose Edition\'s first author has that surname, any other name any Work'
+        " whose Edition's title holds all its words. When two or more names could be different Works, the raw ranking"
+        " is split by name into the Chunks of each name's Works, in the raw order, and the names take turns at the"
+        f" slots, each Chunk once, before copies are merged as in the `{SUFFIX}` twin; otherwise the query is ranked as"
+        " it is (ADR 0076). A hybrid ranks only its members' pools, so a name's Chunks outside them are not reached.",
+        *_names(names),
         "",
         "## Results",
         "",
@@ -184,6 +217,7 @@ def write_eval_report(
         " after a +.",
         "",
         *_rewrites(questions, rewriter),
+        *_named(questions, rewriter, names),
         *[line for run in runs for line in _questions(run, groups.editions)],
         "## Cost",
         "",
@@ -201,6 +235,8 @@ def write_eval_report(
 
 
 def _retriever(run: RetrieverRun) -> list[str]:
+    if run.per_paper:
+        return [f"- {run.name}: {run.config.name}'s index, a turn for each paper the query names, then copies merged"]
     if run.pool:
         return [f"- {run.name}: {run.config.name}'s index, with copies from other files of a Work merged", f"  - pool: `{run.pool}`", f"  - overlap: `{run.overlap}`"]
     return [f"- {run.name}: `{run.config.key}`", *[f"  - {name}: `{value}`" for name, value in run.config.describe().items()]]
@@ -223,6 +259,25 @@ def _rewrites(questions: Sequence[Question], rewriter: Rewriter) -> list[str]:
         f"| {q.id} | {q.question} | {q.rewrite} | {rewriter.rewrites[q.id]} |" for q in questions if q.id in rewriter.rewrites
     ]
     return [*lines, "| Question | Follow-up | Reference rewrite | Rewrite |", "|---|---|---|---|", *rows, ""]
+
+
+def _names(names: PaperNames) -> list[str]:
+    if not names.ran:
+        return [f"- The per-paper twins are skipped: {names.skipped}"]
+    return [f"- Names: {names.model}, names prompt sha256 `{hashlib.sha256(names.prompt.encode()).hexdigest()}`"]
+
+
+def _named(questions: Sequence[Question], rewriter: Rewriter, names: PaperNames) -> list[str]:
+    lines = ["### Names", "", "Each query that names a paper, method or model the query holds, with the Works each name could be.", ""]
+    rows = []
+    for question in questions:
+        for kind, text in queries(question, rewriter.rewrites):
+            if found := names.names.get(text):
+                named = "; ".join(f"{name} ({', '.join(sorted(names.works[name])) or 'no Work'})" for name in found)
+                rows.append(f"| {question.id} | {kind} | {named} |")
+    if not rows:
+        return [*lines, "None." if names.ran else "None: the per-paper twins are skipped.", ""]
+    return [*lines, "| Question | Query | Names (Works) |", "|---|---|---|", *rows, ""]
 
 
 def _results(run: RetrieverRun, rewriter: Rewriter) -> list[str]:
@@ -369,7 +424,7 @@ def _before_and_after(runs: Sequence[RetrieverRun], groups: Mapping[str, WorkGro
             f"{total.grouped}/{total.queries}",
             *([f"{m.recall:.2f}", f"{m.mrr:.3f}", f"{m.hit:.2f}"] if m else [NONE] * 3),
         ]
-        lines.append(f"| {run.config.name} | {'collapsed' if run.pool else 'raw'} | {' | '.join(cells)} |")
+        lines.append(f"| {run.config.name} | {run.ranking} | {' | '.join(cells)} |")
     return [*lines, ""]
 
 

@@ -5,7 +5,8 @@ A Turn retrieves k Chunks from the configured retriever, sends them to the answe
 first Turn of a Conversation retrieves its question as asked. A later Turn is a follow-up: the answer model first
 writes a Rewrite from the last `history` Turns' questions and answer texts and the new question, retrieval sees
 the Rewrite, and the answer model is shown those Turns before the Rewrite and its Chunks. A `+collapsed` twin's
-Turn keeps the collapse's side table, what stands behind each retrieved Chunk (ADRs 0057 and 0069). The answer model is
+Turn keeps the collapse's side table, what stands behind each retrieved Chunk (ADRs 0057 and 0069). A `+per-paper` twin
+asks the answer model for the papers the query names before it retrieves (ADR 0076). The answer model is
 loaded on first use and loaded again after it fails, so a page started while Ollama was stopped answers once
 Ollama is started.
 """
@@ -21,6 +22,7 @@ from . import model as answer_model
 from .answer import Answer, messages, read_answer
 from .config import ChatConfig
 from .model import AnswerModel, AnswerModelUnavailable, Message
+from .names import read_names, names_messages
 from .rewrite import read_rewrite, rewrite_messages
 
 
@@ -81,6 +83,10 @@ class Chatbot:
             turn = Turn(question, rewrite, retrieved, reply, read_answer(reply, len(retrieved), self.config.abstention), seconds, merged)
             self.turns.append(turn)
             return turn
+
+    def names(self, query: str) -> tuple[str, ...]:
+        """The papers, methods and models the query names, for a `+per-paper` twin. Raises AnswerModelUnavailable."""
+        return read_names(self._complete(self.model(), names_messages(self.config.names_prompt, query)), query)
 
     def reset(self) -> None:
         """Starts a new Conversation: the next question is a first Turn again."""

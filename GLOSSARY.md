@@ -114,6 +114,10 @@ _Avoid_: Clusters, dedup output (the duplicate stage's own grouping is what the 
 A ranking in which each passage appears once, however many files of its Work hold a copy: copies of a Chunk from a Work's other Editions and Versions are merged into the slot of the best-ranked one, shown from the Canonical Edition when its copy was retrieved, with the merged Editions named beside it. A Work's other passages keep their own slots.
 _Avoid_: Deduplicated results, merged results, filtered ranking
 
+**Per-paper retrieval**:
+Retrieval for a question that names two or more papers, methods or models that are different Works: each name takes its turn at the slots with the Chunks of its Works, in the order the retriever ranks them for the whole question. A name is found among the indexed Works by its first author ("Goldman et al.") or by the words of a title ("MEGABYTE"); a question naming fewer is ranked as it is.
+_Avoid_: Query decomposition, sub-queries, multi-query
+
 ### Chat
 
 **Conversation**:

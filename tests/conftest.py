@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from chatbot_rag_tokenizers.chat import model as answer_model
+from chatbot_rag_tokenizers.chat.config import load_chat_config
 from chatbot_rag_tokenizers.collection import judge
 from chatbot_rag_tokenizers.collection.snapshot import SnapshotStore
 from chatbot_rag_tokenizers.retrieval import embedder
@@ -17,6 +18,7 @@ from chatbot_rag_tokenizers.retrieval.bm25 import tokenise
 from parse_support import FakeGrobid, fake_pdf
 
 FIXTURES = Path(__file__).parent / "fixtures"
+NAMES_PROMPT = load_chat_config(Path(__file__).parents[1] / "config" / "retrieval.toml").names_prompt
 
 ARXIV_API = "https://export.arxiv.org/api/query"
 ARXIV_OAI = "https://oaipmh.arxiv.org/oai"
@@ -229,15 +231,23 @@ class FakeAnswerModel:
     """A scripted answer model in place of the pinned one: it replies with the script's answer for the first key
     found in the chat's last user message, and records every chat it is given. A key scripted with a list of
     answers gives the next one each time it is asked, then keeps giving the last, as a model whose reply varies
-    between runs. An unscripted question fails the test, so every answer a test sees is one it wrote."""
+    between runs. An unscripted question fails the test, so every answer a test sees is one it wrote.
+
+    A chat asking for the papers a question names (the [chat] names prompt) is answered apart: from ``names``, by the
+    question, or NONE, so a test that doesn't script names retrieves as before. It is recorded in ``namings``."""
 
     pin = "fake-answer-model"
 
     def __init__(self) -> None:
         self.script: dict[str, str | list[str]] = {}
         self.chats: list[list[dict[str, str]]] = []
+        self.names: dict[str, str] = {}
+        self.namings: list[list[dict[str, str]]] = []
 
     def complete(self, messages: Sequence[dict[str, str]]) -> str:
+        if messages[0]["content"] == NAMES_PROMPT:
+            self.namings.append(list(messages))
+            return self.names.get(messages[-1]["content"], "NONE")
         self.chats.append(list(messages))
         last = messages[-1]["content"]
         for key, answer in self.script.items():

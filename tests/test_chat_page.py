@@ -152,7 +152,7 @@ def test_an_answer_cites_the_chunks_the_model_saw_under_those_numbers(chat, fake
 
 def test_with_a_raw_retriever_a_reference_is_its_chunks_citation_anchor_and_nothing_more(start_chat, indexed, fake_answer_model):
     config = indexed / "retrieval-raw.toml"
-    config.write_text(RETRIEVAL_CONFIG.read_text().replace('retriever = "dense.bge-small+collapsed"', 'retriever = "dense.bge-small"'))
+    config.write_text(RETRIEVAL_CONFIG.read_text().replace('retriever = "dense.bge-small+per-paper+collapsed"', 'retriever = "dense.bge-small"'))
     chat = start_chat(corpus_arguments(indexed, config))
     fake_answer_model.script[FREEZING] = "WECHSEL does not need freezing [1]."
 
@@ -354,6 +354,25 @@ def test_the_first_turn_has_no_rewrite_costs_one_model_call_and_carries_its_timi
     assert turn["reply"] == "WECHSEL does not need freezing [1]."
 
 
+COMPARISON = "How large are WECHSEL's vocabularies, and how many merge operations did Sennrich et al. learn?"
+
+
+def test_a_question_naming_two_papers_takes_turns_between_their_chunks_in_the_order_named(chat, fake_answer_model):
+    fake_answer_model.script[COMPARISON] = "Both [1][2]."
+    # Asked as one query, the fixture ranks a WECHSEL Chunk first; "the Transformer" isn't in the question, so it is
+    # dropped, Sennrich et al. is the only name left, and the question is ranked as asked.
+    fake_answer_model.names[COMPARISON] = "Sennrich et al.\nthe Transformer"
+    assert ask(chat, COMPARISON)["chunks"][0]["edition"] == "2112.06598v2"
+    post(chat, "reset")
+
+    fake_answer_model.names[COMPARISON] = "Sennrich et al.\nWECHSEL"
+    turn = ask(chat, COMPARISON)
+
+    assert [chunk["edition"] for chunk in turn["chunks"]] == ["1508.07909v5", "2112.06598v2"] * 2 + ["1508.07909v5"]
+    assert fake_answer_model.namings[-1][-1]["content"] == COMPARISON
+    assert len(fake_answer_model.chats) == 2  # naming is not an answer
+
+
 def script_follow_up(fake_answer_model) -> None:
     # The fake answers the first key found in the last message, and the rewriter's holds the earlier questions
     # too, so the follow-up's key goes first.
@@ -373,6 +392,7 @@ def test_a_follow_up_is_retrieved_with_the_rewrite_and_shows_it(chat, fake_answe
     assert set(follow_up["seconds"]) == {"retrieval", "rewriting", "answering"}
     *_, answering = fake_answer_model.chats
     assert f"Question: {REWRITTEN}" in answering[-1]["content"] and MMLU not in answering[-1]["content"]
+    assert fake_answer_model.namings[-1][-1]["content"] == REWRITTEN  # the papers named are the Rewrite's
     # Retrieval saw the Rewrite: the follow-up has the Chunks the Rewrite gets when asked as a first question,
     # not those of the follow-up asked alone.
     post(chat, "reset")
@@ -586,7 +606,7 @@ def ask_citing_all(chat: Chat, fake_answer_model, question: str) -> dict:
 def test_with_a_collapsed_retriever_a_reference_names_the_edition_shown_then_the_merged_editions(start_chat, copies, fake_answer_model):
     chat = collapsed(start_chat, copies)
     with urllib.request.urlopen(f"{chat.url}/status") as response:
-        assert json.loads(response.read())["retriever"] == "dense.bge-small+collapsed"
+        assert json.loads(response.read())["retriever"] == "dense.bge-small+per-paper+collapsed"
 
     turns = [ask_citing_all(chat, fake_answer_model, question) for question in (FREEZING, VOCABULARY)]
 

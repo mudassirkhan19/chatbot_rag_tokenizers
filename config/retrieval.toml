@@ -104,11 +104,12 @@ resamples = 10000
 seed = 55
 
 # The chatbot (spec #63, ADR 0054). Each Turn retrieves k Chunks from the retriever named here, one of the
-# retrievers above or its `+collapsed` twin (ADR 0069), and the answer model answers from them. dense.bge-small is
-# the embedding comparison's choice: nothing beats it beyond noise on the raw or the Collapsed ranking (ADR 0065).
-# The chatbot retrieves with its twin, so a Citation stands for every copy of the passage (ADR 0070).
+# retrievers above or its `+per-paper`, `+collapsed` or `+per-paper+collapsed` twin, and the answer model answers from
+# them. dense.bge-small is the embedding comparison's choice: nothing beats it beyond noise on the raw or the Collapsed
+# ranking (ADR 0065). The chatbot retrieves with its `+collapsed` twin, so a Citation stands for every copy of the
+# passage (ADR 0070), and per paper, so a question that names two papers gets the Chunks of each (ADR 0076).
 [chat]
-retriever = "dense.bge-small+collapsed"
+retriever = "dense.bge-small+per-paper+collapsed"
 k = 5
 # The answer model: gemma4:e2b-mlx on Ollama, pinned as the judge is, as <digest>@<Ollama version> (ADR 0021).
 # Thinking off and temperature 0, so the same question over the same Chunks gets the same answer.
@@ -139,6 +140,12 @@ system_prompt = """You answer questions about research papers on tokenization fo
 # Chunks, then the follow-up question; the reply is the Rewrite that retrieval sees. A description that points back
 # ("the study") is replaced by the paper, method or model it names, as a pronoun is (ADR 0073).
 rewrite_prompt = """You rewrite the last question of a conversation about research papers on tokenization so that it can be understood without the conversation. Replace every word that points back into the conversation, such as "it", "that", "they", "the second method" or "the study", with what it refers to, naming the paper, method or model as the conversation names it. Keep everything else the question asks. Add nothing the conversation doesn't say. If the question already stands on its own, return it unchanged. Reply with the rewritten last question only: one question, on one line, with no explanation. Don't repeat the earlier questions, and don't refer to "the conversation" or "the previous answer"."""
+# Per-paper retrieval (#81, ADR 0076): the answer model gets this prompt and the question alone (on a follow-up, its
+# Rewrite), and replies with the papers, methods and models the question names, one per line. A name the question
+# doesn't hold is dropped. Each name is looked up among the indexed Works: "<Surname> et al." by the first author,
+# any other name by the words of a title. When two or more names find different Works, each gets its own turn at
+# the k slots, with the Chunks of its Works in the order the retriever ranks them for the question.
+names_prompt = """You list the papers, methods and models a question about research papers on tokenization names. Name each as the question names it, with any author it gives, such as "Goldman et al.'s Unpacking Tokenization" or "BPE-dropout". Reply with one per line, with no numbering and no explanation. If the question names none, reply NONE."""
 
 # The decision model as a grounding judge (#70, ADR 0075), run by `chat-eval --judge` on the developer's hand-checked
 # sample. Each sentence of a reply that cites Chunks is a claim; the model gives P(yes) to the question below for

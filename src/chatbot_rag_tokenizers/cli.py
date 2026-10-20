@@ -32,6 +32,7 @@ from .retrieval import index
 from .retrieval.collapse import Collapsed
 from .retrieval.config import load_retrieval_config
 from .retrieval.corpus import Corpus, CorpusError, load_corpus
+from .retrieval.per_paper import NamedWorks, PerPaper
 from .retrieval.retriever import RetrieverConfig
 
 
@@ -445,10 +446,13 @@ def _chatbot(args: argparse.Namespace) -> tuple[Chatbot, Corpus]:
     except index.IndexMissing as error:
         sys.exit(f"{args.command}: {error}")
     chunks = {chunk.chunk_id: chunk for chunk in corpus.chunks}
-    retriever = built.retriever
+    manifest = read_manifest(args.manifest) if config.per_paper or config.collapse_pool else []
+    chatbot = Chatbot(config, built.retriever, chunks)
+    if config.per_paper:
+        chatbot.retriever = PerPaper(chatbot.retriever, chunks, NamedWorks(chunks, manifest), chatbot.names)
     if config.collapse_pool and config.collapse_overlap:
-        retriever = Collapsed(retriever, chunks, read_manifest(args.manifest), config.collapse_pool, config.collapse_overlap)
-    return Chatbot(config, retriever, chunks), corpus
+        chatbot.retriever = Collapsed(chatbot.retriever, chunks, manifest, config.collapse_pool, config.collapse_overlap)
+    return chatbot, corpus
 
 
 def _chat(args: argparse.Namespace) -> None:
