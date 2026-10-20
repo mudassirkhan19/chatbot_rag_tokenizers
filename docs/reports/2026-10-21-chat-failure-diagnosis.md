@@ -109,3 +109,7 @@ The issue also asks for the chat report to score the check on each sampled reply
 ## Reproducing
 
 From a checkout with the parse cache and the index cache, `uv run python docs/reports/2026-10-21-chat-failure-diagnosis/chunks.py <out.pkl>` dumps the Chunks. `compare.py`, `dups.py <pkl> data/eval/chat-answers.jsonl`, `probe.py <chunk ids> <queries…>`, `rewrites.py` and `answers.py <pkl> <question ids…>` print the tables above. `rewrites.py` and `answers.py` need Ollama 0.40.5 with the pinned model.
+
+## Fixes filed
+
+Under #63: #80 (the collapse merges by text), #81 (retrieve for each named paper), #82 (the rewrite keeps the referent), #83 (the answer prompt's attribution rule), #84 (score the check on each sampled reply), #85 (a larger answer model, a defer candidate).
