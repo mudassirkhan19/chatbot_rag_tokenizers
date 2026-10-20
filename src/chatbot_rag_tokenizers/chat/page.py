@@ -5,6 +5,7 @@ server, as `audit label` serves its page. The server holds one Conversation.
     GET  /status  the retriever and the answer model, or why the model can't answer
     POST /turn    {"question": ...}: the next Turn of the Conversation, or a 503 saying why the model can't answer
     POST /reset   starts a new Conversation
+    POST /save    writes the Conversation as a Markdown transcript under the reports folder and returns its path
 
 A Turn comes back as its question and its Rewrite (null on the first Turn), its answer, cut into text and markers
 (each marker valid or not), a reference per cited Chunk from its Citation anchor, every retrieved Chunk in rank
@@ -14,19 +15,22 @@ retrieving, rewriting and answering. The page folds the uncited Chunks away.
 
 import json
 import sys
+from datetime import date
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
+from pathlib import Path
 from typing import Any
 
 from ..parsing.chunker import HEADER_SEPARATOR, Chunk
 from .answer import Marker
 from .conversation import Chatbot, Turn
 from .model import AnswerModelUnavailable
+from . import transcript
 
 
-def make_server(chatbot: Chatbot, port: int = 8766) -> ThreadingHTTPServer:
-    """A server for the chat page on localhost; ``port=0`` picks a free one."""
+def make_server(chatbot: Chatbot, port: int = 8766, transcripts: Path = Path("docs/reports")) -> ThreadingHTTPServer:
+    """A server for the chat page on localhost; ``port=0`` picks a free one. Transcripts are saved in ``transcripts``."""
     page = resources.files(__package__).joinpath("page.html").read_bytes()
 
     class Handler(BaseHTTPRequestHandler):
@@ -51,6 +55,14 @@ def make_server(chatbot: Chatbot, port: int = 8766) -> ThreadingHTTPServer:
             if self.path == "/reset":
                 chatbot.reset()
                 self._json({"turns": len(chatbot.turns)})
+                return
+            if self.path == "/save":
+                turns = list(chatbot.turns)
+                if not turns:
+                    self._json({"error": "no Turn to save: ask a question first"}, HTTPStatus.BAD_REQUEST)
+                    return
+                path = transcript.save([turn_json(turn) for turn in turns], status(chatbot), transcripts, date.today())
+                self._json({"path": str(path)})
                 return
             if self.path != "/turn":
                 self._json({"error": f"no such action: {self.path}"}, HTTPStatus.NOT_FOUND)

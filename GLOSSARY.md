@@ -128,6 +128,10 @@ _Avoid_: Message, exchange, query
 The standalone question the chatbot forms from a follow-up Turn and the Conversation before it, which is what retrieval sees. The Evaluation set's hand-written reference rewrite is the ceiling it is measured against.
 _Avoid_: Reformulation, expanded query, reference rewrite (that is the Evaluation set's)
 
+**Transcript**:
+A Conversation saved from the chat page as Markdown (under `docs/reports` unless `chat --transcripts` names another folder), rendered from the same Turn records the page shows: each Turn's question, Rewrite, answer with its markers and reference list.
+_Avoid_: Log, chat history, export
+
 **Citation**:
 A marker in an answer that names one retrieved Chunk by its Citation anchor, so a reader can open the paper and Section it came from. An answer may cite only Chunks retrieved for its Turn.
 _Avoid_: Reference (that is a bibliography entry), source, link
