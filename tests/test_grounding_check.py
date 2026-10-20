@@ -18,7 +18,7 @@ from chatbot_rag_tokenizers.chat import grounding_check
 from chatbot_rag_tokenizers.cli import main
 from conftest import read_rows
 import test_chat_eval
-from test_chat_eval import EVALUATION_SET, MANIFEST, corpus_arguments, edit_answers, run_chat_eval, script, table
+from test_chat_eval import EVALUATION_SET, MANIFEST, corpus_arguments, edit_answers, run_chat_eval, script
 from test_chat_page import SOCKETS
 
 indexed = test_chat_eval.indexed  # the fixture corpus, parsed and indexed in tmp_path
@@ -176,7 +176,7 @@ def test_the_report_gives_the_agreement_over_the_rows_the_developer_labelled_and
         exported,
         freezing=("grounded", ""),
         metrics_miss=("not grounded", "Chunk 1 never names WikiANN"),
-        vocabulary_sizes=("grounded", "32,000 is Chunk 2's 32k"),
+        vocabulary_sizes=("grounded", "32,000 is Chunk 2's 32k:\n  - the | in a table\n  - is escaped"),
     )
 
     report, turns = run_chat_eval(exported.parent, EVALUATION_SET, "chat", "--from-answers", "--check", str(exported))
@@ -187,9 +187,11 @@ def test_the_report_gives_the_agreement_over_the_rows_the_developer_labelled_and
     assert f"Sample: `{exported}`, 4 Turns: 3 labelled by the developer, 0 left unsure, 1 not checked by the developer" in section
     assert "Agreement with the automatic verdict: 1/3 (0.33 [0.06, 0.79])" in section
     assert "Grounded by the automatic check but not by hand: 1; not grounded by the check but grounded by hand: 1" in section
-    assert table(report, "## Grounding checked by hand") == [
-        ["metrics-miss", "single-paper", "grounded", "not grounded", "Chunk 1 never names WikiANN"],
-        ["vocabulary-sizes", "multi-paper", "not grounded", "grounded", "32,000 is Chunk 2's 32k"],
+    # A note's line breaks are joined and its pipes escaped, so each disagreement stays one row of the table.
+    rows = [line for line in section.splitlines() if line.startswith("| ") and "Question" not in line]
+    assert rows == [
+        "| metrics-miss | single-paper | grounded | not grounded | Chunk 1 never names WikiANN |",
+        "| vocabulary-sizes | multi-paper | not grounded | grounded | 32,000 is Chunk 2's 32k: - the \\| in a table - is escaped |",
     ]
 
 

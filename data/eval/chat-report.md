@@ -97,11 +97,15 @@ Grounded is yes, no, or — for an Abstention. Passages in its Chunks counts the
 
 The developer's labels on a seeded sample of answered Turns (`chat-eval --export-check`, labelled on the `chat-label` page) against this run's automatic verdict. A row is compared when the developer gave it a label and this run asked its question with the same reply over the same Chunks.
 
-- Sample: `data/eval/grounding-check.csv`, 20 Turns: 0 labelled by the developer, 0 left unsure, 20 not checked by the developer
-- Agreement with the automatic verdict: 0/0 (—)
-- Grounded by the automatic check but not by hand: 0; not grounded by the check but grounded by hand: 0
+- Sample: `data/eval/grounding-check.csv`, 20 Turns: 19 labelled by the developer, 1 left unsure, 0 not checked by the developer
+- Agreement with the automatic verdict: 16/19 (0.84 [0.62, 0.94])
+- Grounded by the automatic check but not by hand: 3; not grounded by the check but grounded by hand: 0
 
-No disagreements.
+| Question | Type | Automatic | By hand | Note |
+|---|---|---|---|---|
+| bpe-and-wechsel-vocabularies | multi-paper | grounded | not grounded | A properly grounded answer would say that the provided context doesn’t state how many merge operations the original subword NMT paper used or how large WECHSEL’s tokenizer vocabularies are. It could add only that, in the transfer-learning paper, vocabulary size equals the number of BPE merge operations, which were varied in experiments. |
+| digits-fourth-digit | follow-up | grounded | not grounded | Sentence 2 is the problem. "This is because the left-to-right nature of autoregressive language modeling conflicts with the right-to-left structure of arithmetic, leading to errors when the answer length differs from the inputs [1]": - [1] states the conflict between left-to-right generation and right-to-left arithmetic, but about another paper's phenomenon. It says nothing about answer length. - The paper the result comes from explains it differently. [3] says the cause is likely "misalignment between input and output tokenizations … rather than some carry-related notion of problem difficulty". - So the answer borrows an explanation from another paper, and the source paper contradicts it. The automatic check passes it because 8.25 is in a cited Chunk and every marker is valid; it can't see causal claims. - It also doesn't answer "where". The question asks where L2R goes wrong; the answer gives how much and a borrowed why. |
+| sentencepiece-korean-speed | unanswerable | grounded | not grounded | not grounded (or “unanswerable — should have abstained”), not “grounded.” |
 
 ## Variation
 

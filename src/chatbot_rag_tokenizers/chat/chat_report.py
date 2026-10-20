@@ -319,9 +319,14 @@ def _hand_check(scored: Sequence[Asked], check: Path | None) -> list[str]:
         *lines,
         "| Question | Type | Automatic | By hand | Note |",
         "|---|---|---|---|---|",
-        *[f"| {d.item.question.id} | {d.item.question.type} | {d.item.verdict} | {d.label} | {d.note or NONE} |" for d in result.disagreements],
+        *[f"| {d.item.question.id} | {d.item.question.type} | {d.item.verdict} | {d.label} | {_cell(d.note) or NONE} |" for d in result.disagreements],
         "",
     ]
+
+
+def _cell(text: str) -> str:
+    """Free text as one Markdown table cell: line breaks joined, pipes escaped."""
+    return " ".join(text.split()).replace("|", "\\|")
 
 
 def _abstained(scored: Sequence[Asked], test: Callable[[Question], bool]) -> tuple[int, int]:
