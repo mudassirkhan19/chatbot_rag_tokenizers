@@ -1,7 +1,7 @@
 # 0068. The Transcript, saved from the chat page
 
 - **Date:** 2026-10-20
-- **Status:** Accepted
+- **Status:** Accepted; the committed Transcript described under Consequences is replaced by [0070](0070-the-chatbot-retrieves-collapsed-and-the-final-chat-numbers.md)'s, asked on the collapsed retriever
 
 ## Context
 The brief asks for a transcript of one Conversation of at least five Turns, with a follow-up and an unanswerable question. Spec #63 (story 12) and issue #68 ask for it to be a file the page produced, not a copy-paste: a save action that writes the Conversation as Markdown under the reports folder, named by date, with every Turn's question, Rewrite, answer with its markers and reference list. The saved file and the page must render the same Turns from the same records.

@@ -104,10 +104,10 @@ def with_hybrid(tmp_path: Path, table: str) -> Path:
     return path
 
 
-def test_the_chatbot_asks_bge_small_the_comparisons_choice_for_five_chunks_and_answers_with_the_pinned_gemma():
+def test_the_chatbot_asks_bge_small_the_comparisons_choice_collapsed_for_five_chunks_and_answers_with_the_pinned_gemma():
     chat = load_chat_config(RETRIEVAL_CONFIG)
 
-    assert (chat.retriever.name, chat.k) == ("dense.bge-small", 5)
+    assert (chat.retriever_name, chat.k) == ("dense.bge-small+collapsed", 5)
     assert chat.model == AnswerModelConfig(
         "gemma4:e2b-mlx", "e98b54fe1913178321e1d9cd007d12a465de77a8f8eae37af69d2501ca03c6b5@0.40.5", think=False, temperature=0.0
     )
@@ -116,11 +116,12 @@ def test_the_chatbot_asks_bge_small_the_comparisons_choice_for_five_chunks_and_a
 
 
 def test_the_chatbot_takes_a_collapsed_twin_by_its_name_over_its_retrievers_index_with_the_collapse_pool(tmp_path):
-    chat = load_chat_config(with_line(tmp_path, 'retriever = "dense.bge-small"', 'retriever = "dense.bge-small+collapsed"'))
+    chat = load_chat_config(RETRIEVAL_CONFIG)
+    raw = load_chat_config(with_line(tmp_path, 'retriever = "dense.bge-small+collapsed"', 'retriever = "dense.bge-small"'))
 
     # The twin's index is its retriever's; the collapse merges copies in the [collapse] pool.
     assert (chat.retriever.name, chat.collapse_pool, chat.retriever_name) == ("dense.bge-small", 50, "dense.bge-small+collapsed")
-    assert (load_chat_config(RETRIEVAL_CONFIG).collapse_pool, load_chat_config(RETRIEVAL_CONFIG).retriever_name) == (None, "dense.bge-small")
+    assert (raw.retriever.name, raw.collapse_pool, raw.retriever_name) == ("dense.bge-small", None, "dense.bge-small")
 
 
 def with_line(tmp_path: Path, old: str, new: str) -> Path:
@@ -154,8 +155,8 @@ def test_a_bad_hybrid_table_stops_with_a_message_naming_the_table(tmp_path, memb
 @pytest.mark.parametrize(
     "old, new, message",
     [
-        ('retriever = "dense.bge-small"', 'retriever = "dense.e5"', r"\[chat\] retriever 'dense.e5' is not a retriever .* configures: bm25, dense.bge-small"),
-        ('retriever = "dense.bge-small"', 'retriever = "dense.e5+collapsed"', r"\[chat\] retriever 'dense.e5\+collapsed' is not a retriever .* configures: bm25, dense.bge-small"),
+        ('retriever = "dense.bge-small+collapsed"', 'retriever = "dense.e5"', r"\[chat\] retriever 'dense.e5' is not a retriever .* configures: bm25, dense.bge-small"),
+        ('retriever = "dense.bge-small+collapsed"', 'retriever = "dense.e5+collapsed"', r"\[chat\] retriever 'dense.e5\+collapsed' is not a retriever .* configures: bm25, dense.bge-small"),
         ("k = 5", "k = 0", r"\[chat\] k 0 must be at least 1"),
         ('revision = "e98b54fe1913178321e1d9cd007d12a465de77a8f8eae37af69d2501ca03c6b5@0.40.5"', 'revision = "latest"', r"\[chat\] revision 'latest' is not pinned as <digest>@<Ollama version>"),
         ("think = false", 'think = "no"', r"\[chat\] think 'no' is not a bool"),

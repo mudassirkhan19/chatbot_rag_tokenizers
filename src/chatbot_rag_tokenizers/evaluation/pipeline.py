@@ -59,8 +59,8 @@ def rewrite_follow_ups(questions: Sequence[Question], chat_config: Path) -> Rewr
             if question.type == "follow-up"
         }
     except AnswerModelUnavailable as error:
-        return Rewriter(f"{answer_model.pin(chat.model)}, {settings}", chat.rewrite_prompt, skipped=str(error))
-    return Rewriter(f"{model.pin}, {settings}", chat.rewrite_prompt, written)
+        return Rewriter(f"{answer_model.pin(chat.model)}, {settings}", chat.rewrite_prompt, skipped=str(error), chat_retriever=chat.retriever_name, chat_k=chat.k)
+    return Rewriter(f"{model.pin}, {settings}", chat.rewrite_prompt, written, chat_retriever=chat.retriever_name, chat_k=chat.k)
 
 
 def evaluate(

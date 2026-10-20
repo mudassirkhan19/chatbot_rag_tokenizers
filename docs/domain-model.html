@@ -271,7 +271,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <div class="stat"><div class="v">0.30 → 0.38</div><div class="k">Recall@5 of the chatbot's retriever, bge-small, raw and collapsed (all answerable)</div></div>
       <div class="stat"><div class="v">42–50% → 27–41%</div><div class="k">Top-5 slots holding a duplicate, raw and collapsed (BM25, bge-small and their hybrid)</div></div>
       <div class="stat"><div class="v">180</div><div class="k">Audit-set Candidates that chose the judge</div></div>
-      <div class="stat"><div class="v">65</div><div class="k">Decision records (ADRs)</div></div>
+      <div class="stat"><div class="v">70</div><div class="k">Decision records (ADRs)</div></div>
     </div>
   </div>
 
@@ -782,7 +782,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
         <ul>
           <li>28 answerable questions is a small set; a single question moves Recall@5 by 0.036.</li>
           <li>About 25 of 36 questions are grounded in Seeds, the best-known papers, so the set may flatter retrieval of famous results.</li>
-          <li>Grounding rate and abstention on unanswerable questions are defined by the brief but not yet measured; they need the chatbot.</li>
+          <li>Grounding rate and abstention on unanswerable questions are measured by <code>chat-eval</code> in the chat report, not here: 24/25 answers grounded and 7/8 unanswerable questions abstained on, with the chatbot's retriever (ADR 0070).</li>
         </ul>
       </div>
       <p class="repro">Reproduce: <code>just evaluate</code> after <code>just index</code>. Set: <a data-file="data/eval/evaluation-set.jsonl">evaluation-set.jsonl</a>, groups: <a data-file="data/eval/work-groups.csv">work-groups.csv</a>, absence evidence: <a data-file="data/eval/absence-evidence.md">absence-evidence.md</a>.</p>
@@ -838,13 +838,14 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <div class="eyebrow">Brief: core</div>
       <h3>A grounded chatbot</h3>
       <p>Multi-turn, so "how does that compare with WordPiece?" resolves; every answer cites paper and Section; says plainly when the corpus does not support an answer. Measure grounding and the handling of unanswerable questions.</p>
-      <p><b>Exists:</b> citation anchors on every Chunk, 8 follow-up questions with histories and rewrites, 8 unanswerable questions with absence evidence.</p>
+      <p><b>Done:</b> a local chat page over bge-small's <code>+collapsed</code> twin and the pinned gemma4:e2b-mlx, rewriting each follow-up before retrieval, citing paper, Edition, Section and pages, and abstaining in a fixed sentence. On the 36 questions: 7/8 unanswerable questions abstained on (0.88 [0.53, 0.98]), 24/25 answers grounded (0.96 [0.80, 0.99]), 4/28 false abstentions (0.14 [0.06, 0.31]), and Recall@5 0.48 of the Chunks it retrieved (ADR 0070).</p>
+      <p><a data-issue="63">Spec issue 63</a></p>
     </div>
     <div class="plan">
       <div class="eyebrow">Brief: deliverables</div>
       <h3>Write-up, transcript, failure analysis</h3>
       <p>2–3 pages on design decisions with a results table; one conversation of at least five turns with a follow-up and an unanswerable; at least three questions the system still gets wrong, and why.</p>
-      <p><b>Exists:</b> this page and 47 ADRs as the source of the write-up; per-question rows in the eval report as the start of the failure analysis.</p>
+      <p><b>Exists:</b> this page and 70 ADRs as the source of the write-up; a six-Turn transcript saved from the chat page, on the chatbot's retriever (<code>docs/reports/2026-10-20-chat-transcript.md</code>); per-question rows in the eval and chat reports as the start of the failure analysis.</p>
     </div>
   </div>
 </section>

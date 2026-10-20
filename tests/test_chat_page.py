@@ -38,6 +38,7 @@ REAL_TRANSPORT = httpx.HTTPTransport.handle_request  # taken before the fake GRO
 SOCKETS = [(socket.socket, "connect", socket.socket.connect), (socket, "create_connection", socket.create_connection), (socket, "getaddrinfo", socket.getaddrinfo)]
 FREEZING = "Does WECHSEL need to freeze the non-embedding parameters at the start of training?"
 ABSTENTION = load_chat_config(RETRIEVAL_CONFIG).abstention
+MANIFEST = ROOT / "tests" / "fixtures" / "eval" / "manifest.csv"  # the Works the chatbot's Collapsed ranking reads
 TITLES = {WECHSEL_TITLE, "Neural Machine Translation of Rare Words with Subword Units"}
 
 
@@ -85,7 +86,7 @@ def start_chat(indexed: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Calla
 
     def start(arguments: list[str] | None = None) -> Chat:
         monkeypatch.setattr(page, "make_server", recorded)
-        options = corpus_arguments(indexed) if arguments is None else arguments
+        options = [*corpus_arguments(indexed), "--manifest", str(MANIFEST)] if arguments is None else arguments
         arguments = ["chat", *options, "--port", "0", "--transcripts", str(indexed / "reports")]
         thread = threading.Thread(target=main, args=(arguments,), daemon=True)
         threads.append(thread)
@@ -143,8 +144,21 @@ def test_an_answer_cites_the_chunks_the_model_saw_under_those_numbers(chat, fake
         assert chunk["header"].endswith(reference["section_title"])
         assert reference["pages"]
     assert [chunk["cited"] for chunk in chunks] == [True, False, True, False, False]
-    # A raw retriever has no collapse behind it, so a reference is its Chunk's Citation anchor and nothing more.
-    assert {key for reference in references for key in reference} == {"number", "title", "edition", "section_number", "section_title", "pages", "anchor"}
+    # The chatbot retrieves collapsed, and each fixture paper is one file, so no reference has a copy merged into it.
+    assert [(reference["also"], reference["editions"], reference["survey"]) for reference in references] == [
+        ([], reference["edition"], False) for reference in references
+    ]
+
+
+def test_with_a_raw_retriever_a_reference_is_its_chunks_citation_anchor_and_nothing_more(start_chat, indexed, fake_answer_model):
+    config = indexed / "retrieval-raw.toml"
+    config.write_text(RETRIEVAL_CONFIG.read_text().replace('retriever = "dense.bge-small+collapsed"', 'retriever = "dense.bge-small"'))
+    chat = start_chat(corpus_arguments(indexed, config))
+    fake_answer_model.script[FREEZING] = "WECHSEL does not need freezing [1]."
+
+    references = ask(chat, FREEZING)["references"]
+
+    assert [set(reference) for reference in references] == [{"number", "title", "edition", "section_number", "section_title", "pages", "anchor"}]
 
 
 def test_chat_prints_where_the_page_is_and_serves_it(start_chat, capsys):
@@ -525,7 +539,6 @@ def test_the_real_pinned_model_abstains_on_a_near_miss_in_whatever_words(start_c
 
 
 # Citations after the collapse (#71): `[chat]` names the `+collapsed` twin, over the fixture Work grouping.
-MANIFEST = ROOT / "tests" / "fixtures" / "eval" / "manifest.csv"
 VOCABULARY = "What vocabulary size do the translation systems use?"
 WECHSEL_WORK = "minixhofer-2022-wechsel-effective-initialization"
 
@@ -546,9 +559,8 @@ def copies(tmp_path: Path, grobid: FakeGrobid) -> Path:
     main(["index", *corpus_arguments(directory), "--retriever", "dense.bge-small",
           "--snapshot", str(directory / "snapshot"), "--manifest", str(directory / "manifest.csv"),
           "--funnel-report", str(directory / "report.md")])  # fmt: skip
-    # The twin, with a pool that holds the whole corpus, so every Chunk's copy is in it.
-    config = RETRIEVAL_CONFIG.read_text().replace('retriever = "dense.bge-small"', 'retriever = "dense.bge-small+collapsed"')
-    (directory / "retrieval.toml").write_text(config.replace("pool = 50", "pool = 1000"))
+    # The repo's chatbot, the twin, with a pool that holds the whole corpus, so every Chunk's copy is in it.
+    (directory / "retrieval.toml").write_text(RETRIEVAL_CONFIG.read_text().replace("pool = 50", "pool = 1000"))
     return directory
 
 
