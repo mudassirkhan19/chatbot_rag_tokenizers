@@ -357,7 +357,7 @@ def test_the_first_turn_has_no_rewrite_costs_one_model_call_and_carries_its_timi
 COMPARISON = "How large are WECHSEL's vocabularies, and how many merge operations did Sennrich et al. learn?"
 
 
-def test_a_question_naming_two_papers_takes_turns_between_their_chunks_in_the_order_named(chat, fake_answer_model):
+def test_a_question_naming_two_papers_fills_the_slots_from_their_chunks_in_rotation_in_the_order_named(chat, fake_answer_model):
     fake_answer_model.script[COMPARISON] = "Both [1][2]."
     # Asked as one query, the fixture ranks a WECHSEL Chunk first; "the Transformer" isn't in the question, so it is
     # dropped, Sennrich et al. is the only name left, and the question is ranked as asked.

@@ -70,7 +70,7 @@ def ids(ranking: list[tuple[str, float]]) -> list[str]:
     return [chunk_id for chunk_id, _ in ranking]
 
 
-def test_a_question_naming_two_papers_takes_turns_between_each_papers_best_chunks():
+def test_a_question_naming_two_papers_fills_the_slots_from_each_papers_best_chunks_in_rotation():
     retriever = per_paper({QUESTION: ["MEGABYTE", "Byte Latent Transformer"]})
 
     assert ids(retriever.query(QUESTION, 3)) == ["megabyte-1", "blt-1", "megabyte-2"]
@@ -95,10 +95,23 @@ def test_a_name_with_et_al_finds_the_works_whose_first_author_has_that_surname()
     assert retriever.works("Simig et al.") == set()  # the second author, not the first
 
 
-def test_a_name_whose_words_are_in_two_works_titles_takes_both_in_one_turn():
+def test_a_name_whose_words_are_in_two_works_titles_takes_both_in_one_stream():
     fast = {"edition_id": "2601.00001v1", "work_id": "fast-blt", "title": "Fast Byte Latent Transformer", "authors": "A. Author"}
     retriever = per_paper({QUESTION: ["MEGABYTE", "Byte Latent Transformer"]}, [*CHUNKS, chunk("fast-blt-1", "2601.00001v1")], [*MANIFEST, fast])
 
     assert retriever.works("Byte Latent Transformer") == {"pagnoni-2024-blt", "fast-blt"}
     assert retriever.works("Bytes Latent Transformer") == set()  # whole words only
-    assert ids(retriever.query(QUESTION, 6)) == ["megabyte-1", "blt-1", "megabyte-2", "blt-2", "fast-blt-1"]
+    assert ids(retriever.query(QUESTION, 5)) == ["megabyte-1", "blt-1", "megabyte-2", "blt-2", "fast-blt-1"]
+
+
+def test_once_the_named_papers_run_out_the_rest_of_the_ranking_fills_the_slots():
+    retriever = per_paper({QUESTION: ["MEGABYTE", "Byte Latent Transformer"]})
+
+    assert ids(retriever.query(QUESTION, 7))[4:] == ["spacebyte-1", "spacebyte-2", "spacebyte-3"]
+
+
+def test_an_edition_without_a_manifest_row_is_its_own_work_with_no_title():
+    orphan = chunk("orphan-1", "2601.99999v1")
+    retriever = per_paper({QUESTION: ["MEGABYTE", "Byte Latent Transformer"]}, [*CHUNKS, orphan])
+
+    assert ids(retriever.query(QUESTION, 8))[-1] == "orphan-1"

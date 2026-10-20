@@ -9,8 +9,8 @@ could be among the indexed Chunks' Editions:
 
 A name no Work matches is dropped. When two or more names find different Works, the retriever's whole ranking for
 the question is split into one stream per name, the Chunks of that name's Works in the order the ranking gives them,
-and the streams take turns, in the order the names were given, each Chunk once. Otherwise the question is ranked as
-it is. No retriever's code or index changes; a Collapsed ranking (collapse.py) wraps this one as it wraps any other.
+and the streams fill the slots in rotation, in the order the names were given, each Chunk once, then the rest of the
+ranking. Otherwise the question is ranked as it is. No retriever's code or index changes; a Collapsed ranking (collapse.py) wraps this one as it wraps any other.
 """
 
 import re
@@ -30,15 +30,17 @@ class NamedWorks:
     """The Works a name could be, among the Works of the indexed Chunks."""
 
     def __init__(self, chunks: Mapping[str, Chunk], manifest: Iterable[Mapping[str, str]]) -> None:
+        # An Edition without a work_id, or without a manifest row, is its own Work, as in the Collapsed ranking.
         rows = {row["edition_id"]: row for row in manifest}
-        self.of_chunk = {chunk_id: rows[chunk.edition_id]["work_id"] or f"edition:{chunk.edition_id}" for chunk_id, chunk in chunks.items()}
+        works = {edition_id: rows.get(edition_id, {}).get("work_id") or f"edition:{edition_id}" for edition_id in {c.edition_id for c in chunks.values()}}
+        self.of_chunk = {chunk_id: works[chunk.edition_id] for chunk_id, chunk in chunks.items()}
         self._titles: dict[str, list[set[str]]] = {}  # the words of each title of a Work's indexed Editions
         self._first_authors: dict[str, set[str]] = {}  # the lower-cased surname of each indexed Edition's first author
-        for edition_id in {chunk.edition_id for chunk in chunks.values()}:
-            work = rows[edition_id]["work_id"] or f"edition:{edition_id}"
-            self._titles.setdefault(work, []).append(set(tokenise(rows[edition_id]["title"])))
+        for edition_id, work in works.items():
+            row = rows.get(edition_id, {})
+            self._titles.setdefault(work, []).append(set(tokenise(row.get("title", ""))))
             surnames = self._first_authors.setdefault(work, set())
-            if first := rows[edition_id]["authors"].split(";")[0].split():
+            if first := row.get("authors", "").split(";")[0].split():
                 surnames.add(first[-1].lower())
 
     def __call__(self, name: str) -> frozenset[str]:
@@ -81,8 +83,10 @@ class PerPaper:
         ranking = self.retriever.query(text, len(self.chunks))
         streams = [[hit for hit in ranking if self.works.of_chunk[hit[0]] in named] for named in works]
         merged: dict[str, float] = {}
-        for turn in range(max(map(len, streams))):
+        for place in range(max(map(len, streams))):
             for stream in streams:
-                if turn < len(stream):
-                    merged.setdefault(*stream[turn])
+                if place < len(stream):
+                    merged.setdefault(*stream[place])
+        for chunk_id, score in ranking:  # once the named Works' Chunks run out, the rest in the raw order
+            merged.setdefault(chunk_id, score)
         return list(merged.items())[:k]

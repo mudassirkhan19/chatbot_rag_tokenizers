@@ -26,3 +26,10 @@ def test_none_names_nothing(fake_answer_model):
     fake_answer_model.script["What multiple"] = "NONE"
 
     assert name_papers(fake_answer_model, PROMPT, "What multiple of the English bill could non-English speakers face?") == ()
+
+
+def test_a_name_matches_the_question_whatever_its_apostrophes(fake_answer_model):
+    question = "How does Goldman et al.’s Unpacking Tokenization measure compression?"
+    fake_answer_model.script[question] = "Goldman et al.'s Unpacking Tokenization"
+
+    assert name_papers(fake_answer_model, PROMPT, question) == ("Goldman et al.'s Unpacking Tokenization",)

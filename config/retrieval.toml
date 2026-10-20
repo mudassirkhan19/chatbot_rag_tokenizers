@@ -143,8 +143,8 @@ rewrite_prompt = """You rewrite the last question of a conversation about resear
 # Per-paper retrieval (#81, ADR 0076): the answer model gets this prompt and the question alone (on a follow-up, its
 # Rewrite), and replies with the papers, methods and models the question names, one per line. A name the question
 # doesn't hold is dropped. Each name is looked up among the indexed Works: "<Surname> et al." by the first author,
-# any other name by the words of a title. When two or more names find different Works, each gets its own turn at
-# the k slots, with the Chunks of its Works in the order the retriever ranks them for the question.
+# any other name by the words of a title. When two or more names find different Works, they fill the k slots in
+# rotation, each with the Chunks of its Works in the order the retriever ranks them for the question, then the rest.
 names_prompt = """You list the papers, methods and models a question about research papers on tokenization names. Name each as the question names it, with any author it gives, such as "Goldman et al.'s Unpacking Tokenization" or "BPE-dropout". Reply with one per line, with no numbering and no explanation. If the question names none, reply NONE."""
 
 # The decision model as a grounding judge (#70, ADR 0075), run by `chat-eval --judge` on the developer's hand-checked

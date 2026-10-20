@@ -115,7 +115,7 @@ A ranking in which each passage appears once, however many files of its Work hol
 _Avoid_: Deduplicated results, merged results, filtered ranking
 
 **Per-paper retrieval**:
-Retrieval for a question that names two or more papers, methods or models that are different Works: each name takes its turn at the slots with the Chunks of its Works, in the order the retriever ranks them for the whole question. A name is found among the indexed Works by its first author ("Goldman et al.") or by the words of a title ("MEGABYTE"); a question naming fewer is ranked as it is.
+Retrieval for a question that names two or more papers, methods or models that are different Works: the names fill the slots in rotation, each with the Chunks of its Works in the order the retriever ranks them for the whole question, then the rest of the ranking. A name is found among the indexed Works by its first author ("Goldman et al.") or by the words of a title ("MEGABYTE"); a question naming fewer is ranked as it is.
 _Avoid_: Query decomposition, sub-queries, multi-query
 
 ### Chat

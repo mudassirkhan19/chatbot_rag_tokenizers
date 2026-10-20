@@ -902,11 +902,11 @@ def test_every_retriever_gets_a_collapsed_twin_and_a_per_paper_collapsed_twin_in
     assert list(cost(report)) == [f"{name}{twin}" for name in names for twin in TWINS]
     for name in names:
         assert f"- {name}+collapsed: {name}'s index, with copies from other files of a Work merged" in retrievers
-        assert f"- {name}+per-paper+collapsed: {name}'s index, a turn for each paper the query names, then copies merged" in retrievers
+        assert f"- {name}+per-paper+collapsed: {name}'s index, the papers the query names in rotation, then copies merged" in retrievers
         assert cost(report)[f"{name}+collapsed"][3] == cost(report)[f"{name}+per-paper+collapsed"][3] == "cpu"
 
 
-def test_a_question_naming_two_papers_takes_turns_between_their_files_in_the_per_paper_twin(indexed, tmp_path, fake_answer_model):
+def test_a_question_naming_two_papers_alternates_their_files_in_the_per_paper_twin(indexed, tmp_path, fake_answer_model):
     [vocabulary] = [line for line in EVALUATION_SET.read_text().splitlines() if '"id": "vocabulary-sizes"' in line]
     question = "Compare the vocabulary size of WECHSEL's tokenizers with the subword units Sennrich et al. learn."
     evaluation_set = tmp_path / "comparison.jsonl"

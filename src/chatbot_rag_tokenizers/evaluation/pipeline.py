@@ -3,7 +3,7 @@ crowds the top 5 measured against the Work groups (ADR 0044). Every retriever is
 Collapsed ranking over the same index (ADR 0053). A follow-up is scored a fourth way, as the chatbot's Rewrite of its
 stored history and itself, when the [chat] answer model answers at its pin; otherwise that row is skipped (ADR 0067).
 With the same model, every retriever is scored a third time, per paper and collapsed: the papers each query names,
-listed once per query, each take a turn at the slots (ADR 0076)."""
+listed once per query, fill the slots in rotation (ADR 0076)."""
 
 import hashlib
 from collections.abc import Iterable, Mapping, Sequence

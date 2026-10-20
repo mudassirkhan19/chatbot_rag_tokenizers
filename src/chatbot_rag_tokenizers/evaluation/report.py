@@ -89,7 +89,7 @@ class RetrieverRun:
     scored: list[Scored]
     pool: int | None = None  # for a Collapsed ranking, the raw Chunks it merged copies in
     overlap: float | None = None  # for a Collapsed ranking, the share of word 5-grams that made two Chunks copies
-    per_paper: bool = False  # each paper a query names took its turn before copies were merged (ADR 0076)
+    per_paper: bool = False  # the papers a query names filled the slots in rotation before copies were merged (ADR 0076)
 
     @property
     def name(self) -> str:
@@ -171,8 +171,8 @@ def write_eval_report(
         " for the papers, methods and models the query names, and keeps the names the query holds. A name"
         ' "<Surname> et al." could be any Work whose Edition\'s first author has that surname, any other name any Work'
         " whose Edition's title holds all its words. When two or more names could be different Works, the raw ranking"
-        " is split by name into the Chunks of each name's Works, in the raw order, and the names take turns at the"
-        f" slots, each Chunk once, before copies are merged as in the `{SUFFIX}` twin; otherwise the query is ranked as"
+        " is split by name into the Chunks of each name's Works, in the raw order, and the names fill the slots in"
+        f" rotation, each Chunk once, then the rest of the raw ranking, before copies are merged as in the `{SUFFIX}` twin; otherwise the query is ranked as"
         " it is (ADR 0076). A hybrid ranks only its members' pools, so a name's Chunks outside them are not reached.",
         *_names(names),
         "",
@@ -236,7 +236,7 @@ def write_eval_report(
 
 def _retriever(run: RetrieverRun) -> list[str]:
     if run.per_paper:
-        return [f"- {run.name}: {run.config.name}'s index, a turn for each paper the query names, then copies merged"]
+        return [f"- {run.name}: {run.config.name}'s index, the papers the query names in rotation, then copies merged"]
     if run.pool:
         return [f"- {run.name}: {run.config.name}'s index, with copies from other files of a Work merged", f"  - pool: `{run.pool}`", f"  - overlap: `{run.overlap}`"]
     return [f"- {run.name}: `{run.config.key}`", *[f"  - {name}: `{value}`" for name, value in run.config.describe().items()]]

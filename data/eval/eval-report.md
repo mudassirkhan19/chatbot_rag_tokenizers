@@ -30,7 +30,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 - bm25+collapsed: bm25's index, with copies from other files of a Work merged
   - pool: `50`
   - overlap: `0.4`
-- bm25+per-paper+collapsed: bm25's index, a turn for each paper the query names, then copies merged
+- bm25+per-paper+collapsed: bm25's index, the papers the query names in rotation, then copies merged
 - dense.bge-small: `dense-784e5a0da1b5`
   - model: `BAAI/bge-small-en-v1.5`
   - revision: `5c38ec7c405ec4b44b94cc5a9bb96e735b38267a`
@@ -42,7 +42,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 - dense.bge-small+collapsed: dense.bge-small's index, with copies from other files of a Work merged
   - pool: `50`
   - overlap: `0.4`
-- dense.bge-small+per-paper+collapsed: dense.bge-small's index, a turn for each paper the query names, then copies merged
+- dense.bge-small+per-paper+collapsed: dense.bge-small's index, the papers the query names in rotation, then copies merged
 - dense.bge-base: `dense-7fa306867c3e`
   - model: `BAAI/bge-base-en-v1.5`
   - revision: `a5beb1e3e68b9ab74eb54cfd186867f64f240e1a`
@@ -54,7 +54,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 - dense.bge-base+collapsed: dense.bge-base's index, with copies from other files of a Work merged
   - pool: `50`
   - overlap: `0.4`
-- dense.bge-base+per-paper+collapsed: dense.bge-base's index, a turn for each paper the query names, then copies merged
+- dense.bge-base+per-paper+collapsed: dense.bge-base's index, the papers the query names in rotation, then copies merged
 - dense.openscholar: `dense-93a6ab523c22`
   - model: `OpenScholar/OpenScholar_Retriever`
   - revision: `ef4f3120d33b3ca57e12fce2b369f5982a7bb929`
@@ -66,7 +66,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 - dense.openscholar+collapsed: dense.openscholar's index, with copies from other files of a Work merged
   - pool: `50`
   - overlap: `0.4`
-- dense.openscholar+per-paper+collapsed: dense.openscholar's index, a turn for each paper the query names, then copies merged
+- dense.openscholar+per-paper+collapsed: dense.openscholar's index, the papers the query names in rotation, then copies merged
 - hybrid.bm25+bge-small: `hybrid-01e5a9f225b9`
   - members: `bm25 (bm25-abfdc4a74910), dense.bge-small (dense-784e5a0da1b5)`
   - k: `60`
@@ -75,7 +75,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 - hybrid.bm25+bge-small+collapsed: hybrid.bm25+bge-small's index, with copies from other files of a Work merged
   - pool: `50`
   - overlap: `0.4`
-- hybrid.bm25+bge-small+per-paper+collapsed: hybrid.bm25+bge-small's index, a turn for each paper the query names, then copies merged
+- hybrid.bm25+bge-small+per-paper+collapsed: hybrid.bm25+bge-small's index, the papers the query names in rotation, then copies merged
 - hybrid.bm25+bge-base: `hybrid-38deefeb5f83`
   - members: `bm25 (bm25-abfdc4a74910), dense.bge-base (dense-7fa306867c3e)`
   - k: `60`
@@ -84,7 +84,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 - hybrid.bm25+bge-base+collapsed: hybrid.bm25+bge-base's index, with copies from other files of a Work merged
   - pool: `50`
   - overlap: `0.4`
-- hybrid.bm25+bge-base+per-paper+collapsed: hybrid.bm25+bge-base's index, a turn for each paper the query names, then copies merged
+- hybrid.bm25+bge-base+per-paper+collapsed: hybrid.bm25+bge-base's index, the papers the query names in rotation, then copies merged
 - hybrid.bm25+openscholar: `hybrid-954860d0d8b2`
   - members: `bm25 (bm25-abfdc4a74910), dense.openscholar (dense-93a6ab523c22)`
   - k: `60`
@@ -93,7 +93,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 - hybrid.bm25+openscholar+collapsed: hybrid.bm25+openscholar's index, with copies from other files of a Work merged
   - pool: `50`
   - overlap: `0.4`
-- hybrid.bm25+openscholar+per-paper+collapsed: hybrid.bm25+openscholar's index, a turn for each paper the query names, then copies merged
+- hybrid.bm25+openscholar+per-paper+collapsed: hybrid.bm25+openscholar's index, the papers the query names in rotation, then copies merged
 - The chatbot's retriever, from `[chat]`: dense.bge-small+per-paper+collapsed, 5 Chunks per Turn
 
 ## Metrics
@@ -107,7 +107,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 - Unanswerable questions are run but left out of the metrics.
 - A follow-up is run four ways: follow-up alone, history + follow-up (its prior turns, then the follow-up, joined by spaces), reference rewrite and rewriter, the chatbot's Rewrite: the answer model, given the `[chat]` rewrite prompt, the last `history` prior turns as earlier questions with no answers, and the follow-up (ADR 0067). The *all answerable* row takes each follow-up alone, as a user would ask it.
 - Rewriter: gemma4:e2b-mlx@e98b54fe1913 on Ollama 0.40.5, thinking off, temperature 0.0, rewrite prompt sha256 `a55b1f544689263b5369feb47da5d246675078f5c8ee93fcdff60dffaebc13f7`
-- Its `+per-paper+collapsed` twin asks the answer model, given the `[chat]` names prompt and the query alone, for the papers, methods and models the query names, and keeps the names the query holds. A name "<Surname> et al." could be any Work whose Edition's first author has that surname, any other name any Work whose Edition's title holds all its words. When two or more names could be different Works, the raw ranking is split by name into the Chunks of each name's Works, in the raw order, and the names take turns at the slots, each Chunk once, before copies are merged as in the `+collapsed` twin; otherwise the query is ranked as it is (ADR 0076). A hybrid ranks only its members' pools, so a name's Chunks outside them are not reached.
+- Its `+per-paper+collapsed` twin asks the answer model, given the `[chat]` names prompt and the query alone, for the papers, methods and models the query names, and keeps the names the query holds. A name "<Surname> et al." could be any Work whose Edition's first author has that surname, any other name any Work whose Edition's title holds all its words. When two or more names could be different Works, the raw ranking is split by name into the Chunks of each name's Works, in the raw order, and the names fill the slots in rotation, each Chunk once, then the rest of the raw ranking, before copies are merged as in the `+collapsed` twin; otherwise the query is ranked as it is (ADR 0076). A hybrid ranks only its members' pools, so a name's Chunks outside them are not reached.
 - Names: gemma4:e2b-mlx@e98b54fe1913 on Ollama 0.40.5, thinking off, temperature 0.0, names prompt sha256 `531471f2e894a13dd2742e00f1f6af4cb5d8e651e2e316367842771845b81bbb`
 
 ## Results
@@ -769,7 +769,7 @@ What takes the top 5 slots of each answerable question, as a user would ask it (
 
 - Grouped: 17 of 28 questions have a Work group for every Edition in their top 5.
 - Mostly-numeric slots holding a Passage: 0 of 2
-- Pool: the top 50 raw Chunks held fewer than 5 distinct Chunks, once copies were merged, for 0 of 28 questions, and fewer than 10, the depth each query asks for, for 1.
+- Pool: the top 50 raw Chunks held fewer than 5 distinct Chunks, once copies were merged, for 0 of 28 questions, and fewer than 10, the depth each query asks for, for 0.
 
 ### Crowding: hybrid.bm25+openscholar
 
@@ -810,7 +810,7 @@ What takes the top 5 slots of each answerable question, as a user would ask it (
 
 - Grouped: 16 of 28 questions have a Work group for every Edition in their top 5.
 - Mostly-numeric slots holding a Passage: 0 of 3
-- Pool: the top 50 raw Chunks held fewer than 5 distinct Chunks, once copies were merged, for 0 of 28 questions, and fewer than 10, the depth each query asks for, for 1.
+- Pool: the top 50 raw Chunks held fewer than 5 distinct Chunks, once copies were merged, for 0 of 28 questions, and fewer than 10, the depth each query asks for, for 0.
 
 ## Before and after
 
@@ -2388,24 +2388,24 @@ Each retriever's model and index, with how long the index took to build and each
 
 | Retriever | Parameters | Dimension | Index on disk | Built on | Build time | Queries | Queried on | Latency p50 | Latency p95 |
 |---|---:|---:|---:|---|---:|---:|---|---:|---:|
-| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 229.86 ms | 343.09 ms |
-| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 244.74 ms | 353.07 ms |
-| bm25+per-paper+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 253.02 ms | 419.50 ms |
-| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 29.27 ms | 32.55 ms |
-| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 40.48 ms | 60.26 ms |
-| dense.bge-small+per-paper+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 42.54 ms | 164.92 ms |
-| dense.bge-base | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 38.76 ms | 43.70 ms |
-| dense.bge-base+collapsed | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 49.92 ms | 74.38 ms |
-| dense.bge-base+per-paper+collapsed | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 51.92 ms | 167.74 ms |
-| dense.openscholar | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 38.61 ms | 43.13 ms |
-| dense.openscholar+collapsed | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 47.86 ms | 67.06 ms |
-| dense.openscholar+per-paper+collapsed | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 51.08 ms | 175.10 ms |
-| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 256.49 ms | 398.02 ms |
-| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 267.85 ms | 389.88 ms |
-| hybrid.bm25+bge-small+per-paper+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 269.71 ms | 392.25 ms |
-| hybrid.bm25+bge-base | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 275.99 ms | 408.66 ms |
-| hybrid.bm25+bge-base+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 280.22 ms | 421.38 ms |
-| hybrid.bm25+bge-base+per-paper+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 288.51 ms | 423.38 ms |
-| hybrid.bm25+openscholar | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 275.66 ms | 417.00 ms |
-| hybrid.bm25+openscholar+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 286.57 ms | 401.80 ms |
-| hybrid.bm25+openscholar+per-paper+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 278.40 ms | 400.32 ms |
+| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 229.53 ms | 343.46 ms |
+| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 245.30 ms | 353.41 ms |
+| bm25+per-paper+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 250.85 ms | 462.77 ms |
+| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 28.71 ms | 31.51 ms |
+| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 40.09 ms | 60.49 ms |
+| dense.bge-small+per-paper+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 42.11 ms | 200.32 ms |
+| dense.bge-base | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 38.76 ms | 43.29 ms |
+| dense.bge-base+collapsed | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 50.65 ms | 77.10 ms |
+| dense.bge-base+per-paper+collapsed | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 52.01 ms | 212.32 ms |
+| dense.openscholar | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 38.34 ms | 42.97 ms |
+| dense.openscholar+collapsed | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 47.52 ms | 67.64 ms |
+| dense.openscholar+per-paper+collapsed | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 50.23 ms | 183.06 ms |
+| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 233.00 ms | 372.14 ms |
+| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 252.88 ms | 384.54 ms |
+| hybrid.bm25+bge-small+per-paper+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 248.19 ms | 355.45 ms |
+| hybrid.bm25+bge-base | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 252.35 ms | 392.29 ms |
+| hybrid.bm25+bge-base+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 267.31 ms | 391.67 ms |
+| hybrid.bm25+bge-base+per-paper+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 271.23 ms | 392.52 ms |
+| hybrid.bm25+openscholar | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 256.43 ms | 384.63 ms |
+| hybrid.bm25+openscholar+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 280.53 ms | 387.81 ms |
+| hybrid.bm25+openscholar+per-paper+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 267.60 ms | 371.38 ms |
