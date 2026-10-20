@@ -124,6 +124,10 @@ _Avoid_: Session, chat, thread
 One question and the answer it gets, with the Chunks retrieved for it. A follow-up Turn is resolved against the Conversation before it.
 _Avoid_: Message, exchange, query
 
+**Transcript**:
+A Conversation saved from the chat page as Markdown under `docs/reports`, rendered from the same Turn records the page shows: each Turn's question, Rewrite, answer with its markers and reference list.
+_Avoid_: Log, chat history, export
+
 **Rewrite**:
 The standalone question the chatbot forms from a follow-up Turn and the Conversation before it, which is what retrieval sees. The Evaluation set's hand-written reference rewrite is the ceiling it is measured against.
 _Avoid_: Reformulation, expanded query, reference rewrite (that is the Evaluation set's)

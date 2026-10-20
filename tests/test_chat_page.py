@@ -17,6 +17,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
+from datetime import date
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
@@ -84,7 +85,8 @@ def start_chat(indexed: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Calla
 
     def start() -> Chat:
         monkeypatch.setattr(page, "make_server", recorded)
-        thread = threading.Thread(target=main, args=(["chat", *corpus_arguments(indexed), "--port", "0"],), daemon=True)
+        arguments = ["chat", *corpus_arguments(indexed), "--port", "0", "--transcripts", str(indexed / "reports")]
+        thread = threading.Thread(target=main, args=(arguments,), daemon=True)
         threads.append(thread)
         thread.start()
         while not servers:
@@ -403,6 +405,83 @@ def test_reset_empties_the_conversation_so_the_next_question_is_a_first_turn(cha
 
     assert again["rewrite"] is None
     assert len(fake_answer_model.chats) == 1 and len(fake_answer_model.chats[0]) == 2
+
+
+# The transcript (#68): the save action writes the Conversation as Markdown under the reports folder.
+TODAY = date.today().isoformat()
+OFF_TOPIC = "What is the capital of France?"
+
+
+def save(chat: Chat) -> Path:
+    path = Path(post(chat, "save")["path"])
+    assert path.is_file()
+    return path
+
+
+def test_save_writes_every_turn_as_markdown_under_the_reports_folder_and_names_the_path(chat, indexed, fake_answer_model):
+    # Scripted first, as its rewriter's message holds the earlier questions too: rewritten as asked, then abstained on.
+    fake_answer_model.script[OFF_TOPIC] = [OFF_TOPIC, ABSTENTION]
+    script_follow_up(fake_answer_model)
+    first = ask(chat, FREEZING)
+    ask(chat, MMLU)
+    ask(chat, OFF_TOPIC)
+
+    path = save(chat)
+
+    assert path == indexed / "reports" / f"{TODAY}-chat-transcript.md"
+    transcript = path.read_text()
+    assert transcript.startswith(f"# Chat transcript, {TODAY}\n")
+    assert [line for line in transcript.splitlines() if line.startswith("## ")] == ["## Turn 1", "## Turn 2", "## Turn 3"]
+    turn_1, turn_2, turn_3 = transcript.split("\n## Turn ")[1:]
+    assert f"**Question:** {FREEZING}" in turn_1 and "Searched as" not in turn_1
+    assert "WECHSEL does not need freezing [1]." in turn_1
+    reference = first["references"][0]
+    section = f"{reference['section_number']} {reference['section_title']}".strip()
+    assert f"- [1] {reference['title']}. {reference['edition']}, {section}, {reference['pages']}." in turn_1
+    assert f"**Question:** {MMLU}\n\n**Searched as:** {REWRITTEN}" in turn_2
+    assert "Freezing gave no gain on MMLU [2]." in turn_2
+    assert "**Answer (Abstention):**" in turn_3 and ABSTENTION in turn_3 and "References" not in turn_3
+
+
+def test_saving_before_any_question_is_refused_and_writes_nothing(chat, indexed, fake_answer_model):
+    script_follow_up(fake_answer_model)
+    ask(chat, FREEZING)
+    post(chat, "reset")
+
+    with pytest.raises(urllib.error.HTTPError) as raised:
+        post(chat, "save")
+
+    assert raised.value.code == 400 and "no Turn to save" in json.loads(raised.value.read())["error"]
+    assert not (indexed / "reports").exists()
+
+
+def test_a_second_save_on_the_same_day_keeps_the_first_and_a_reset_starts_the_next_transcript(chat, indexed, fake_answer_model):
+    script_follow_up(fake_answer_model)
+    ask(chat, FREEZING)
+    ask(chat, MMLU)
+    first = save(chat)
+    post(chat, "reset")
+    ask(chat, FREEZING)
+
+    second = save(chat)
+
+    assert second == indexed / "reports" / f"{TODAY}-chat-transcript-2.md"
+    assert first.read_text().count("## Turn ") == 2
+    assert second.read_text().count("## Turn ") == 1
+
+
+def test_the_transcript_strikes_an_invalid_marker_and_lists_the_uncited_chunks_as_the_page_does(chat, fake_answer_model):
+    fake_answer_model.script[FREEZING] = "Freezing is not needed [2]. It doubles the score [7]."
+    turn = ask(chat, FREEZING)
+
+    transcript = save(chat).read_text()
+
+    assert "Freezing is not needed [2]. It doubles the score ~~[7]~~." in transcript
+    assert "Invalid Citations: [7] name no retrieved Chunk." in transcript
+    uncited = [chunk for chunk in turn["chunks"] if not chunk["cited"]]
+    assert [chunk["number"] for chunk in uncited] == [1, 3, 4, 5]
+    for chunk in uncited:
+        assert f"- [{chunk['number']}] {chunk['title']} · {chunk['anchor']}" in transcript
 
 
 @pytest.mark.skipif(os.environ.get("RUN_OLLAMA_TESTS") != "1", reason="asks the pinned model on Ollama; set RUN_OLLAMA_TESTS=1")
