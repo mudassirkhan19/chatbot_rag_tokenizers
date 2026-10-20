@@ -104,7 +104,7 @@ def with_hybrid(tmp_path: Path, table: str) -> Path:
     return path
 
 
-def test_the_chatbot_asks_the_retriever_adr_0065_chose_for_five_chunks_and_answers_with_the_pinned_gemma():
+def test_the_chatbot_asks_bge_small_the_comparisons_choice_for_five_chunks_and_answers_with_the_pinned_gemma():
     chat = load_chat_config(RETRIEVAL_CONFIG)
 
     assert (chat.retriever.name, chat.k) == ("dense.bge-small", 5)

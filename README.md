@@ -207,15 +207,15 @@ The committed Evaluation set has 36 checked questions (ADR 0046), and the commit
 
 The decision rule was fixed in spec #55 before any run: recommend the best *all answerable* Recall@5, unless its lead over a cheaper retriever is within noise (the paired bootstrap interval of the difference holds 0), and keep `dense.bge-small` if nothing beats it beyond noise. ADR 0065 applies it to both rankings and makes the choice on the Collapsed one, which the chatbot will retrieve with. The numbers are the eval report's *Comparison* and *Cost* sections: the 28 answerable questions as a user asks them, against `dense.bge-small` (raw) and `dense.bge-small+collapsed` (collapsed), with 95% intervals from 10,000 resamples, seed 55.
 
-| Retriever | Recall@5 raw | Recall@5 collapsed | Difference, collapsed [95%] | MRR@10 raw | MRR@10 collapsed | Query p50 |
+| Retriever | Recall@5 raw | Recall@5 collapsed | Difference, collapsed [95%] | MRR@10 raw | MRR@10 collapsed | Query p50, collapsed |
 |---|---:|---:|---|---:|---:|---:|
 | bm25 | 0.16 | 0.20 | -0.18 [-0.36, +0.00], within noise | 0.118 | 0.138 | about 190 ms |
-| **dense.bge-small** | 0.30 | **0.38** | — | 0.244 | 0.271 | about 27 ms |
+| **dense.bge-small** | 0.30 | **0.38** | — | 0.244 | 0.271 | about 28 ms |
 | dense.bge-base | 0.29 | 0.32 | -0.05 [-0.18, +0.07], within noise | 0.211 | 0.258 | about 37 ms |
-| dense.openscholar | 0.07 | 0.08 | -0.29 [-0.49, -0.10], beyond noise | 0.046 | 0.061 | about 37 ms |
+| dense.openscholar | 0.07 | 0.08 | -0.29 [-0.49, -0.10], beyond noise | 0.046 | 0.061 | about 36 ms |
 | hybrid.bm25+bge-small | 0.34 | 0.39 | +0.01 [-0.14, +0.16], within noise | 0.257 | 0.277 | about 220 ms |
-| hybrid.bm25+bge-base | 0.34 | 0.35 | -0.02 [-0.20, +0.14], within noise | 0.237 | 0.270 | about 235 ms |
-| hybrid.bm25+openscholar | 0.28 | 0.32 | -0.06 [-0.25, +0.12], within noise | 0.190 | 0.227 | about 235 ms |
+| hybrid.bm25+bge-base | 0.34 | 0.35 | -0.02 [-0.20, +0.14], within noise | 0.237 | 0.270 | about 240 ms |
+| hybrid.bm25+openscholar | 0.28 | 0.32 | -0.06 [-0.25, +0.12], within noise | 0.190 | 0.227 | about 237 ms |
 
 - **Recommendation: `dense.bge-small`**, on both rankings. On the collapsed numbers the best Recall@5 is `hybrid.bm25+bge-small`'s 0.39, but its +0.01 lead is within noise, and bge-small is the cheaper of the two: about 28 ms per query against about 220 ms, and its index builds in 1318.64 s against 1327.99 s. Collapsing doesn't change the choice. It narrows the hybrid's raw lead of +0.04 [-0.09, +0.16].
 - **A scientific model doesn't help here.** OpenScholar_Retriever is the only retriever beyond noise, and it is a loss. It finds the right paper about as often as bge-small, but ranks the paper's short Chunks (captions, short lists) above the one holding the Passage (ADR 0065).
