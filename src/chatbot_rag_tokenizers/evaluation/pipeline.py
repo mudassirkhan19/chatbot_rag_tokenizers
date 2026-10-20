@@ -51,6 +51,7 @@ def rewrite_follow_ups(questions: Sequence[Question], chat_config: Path) -> Rewr
     except ConfigError as error:
         return Rewriter("", "", skipped=str(error))
     settings = f"thinking {'on' if chat.model.think else 'off'}, temperature {chat.model.temperature}"
+    chatbot = f"{chat.retriever_name}, {chat.k} Chunks per Turn"
     try:
         model = answer_model.load_answer_model(chat.model)
         written = {
@@ -59,8 +60,8 @@ def rewrite_follow_ups(questions: Sequence[Question], chat_config: Path) -> Rewr
             if question.type == "follow-up"
         }
     except AnswerModelUnavailable as error:
-        return Rewriter(f"{answer_model.pin(chat.model)}, {settings}", chat.rewrite_prompt, skipped=str(error))
-    return Rewriter(f"{model.pin}, {settings}", chat.rewrite_prompt, written)
+        return Rewriter(f"{answer_model.pin(chat.model)}, {settings}", chat.rewrite_prompt, skipped=str(error), chatbot=chatbot)
+    return Rewriter(f"{model.pin}, {settings}", chat.rewrite_prompt, written, chatbot=chatbot)
 
 
 def evaluate(

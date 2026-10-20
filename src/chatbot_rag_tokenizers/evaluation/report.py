@@ -56,6 +56,7 @@ class Rewriter:
     prompt: str
     rewrites: Mapping[str, str] = field(default_factory=dict)  # each follow-up's Rewrite, by question id
     skipped: str = ""  # why the answer model couldn't answer, when it couldn't
+    chatbot: str = ""  # the retriever `[chat]` names and its k, when the [chat] table could be read
 
     @property
     def ran(self) -> bool:
@@ -113,6 +114,7 @@ def write_eval_report(
         "## Retrievers",
         "",
         *[line for run in runs for line in _retriever(run)],
+        *([f"- The chatbot's retriever, from `[chat]`: {rewriter.chatbot}"] if rewriter.chatbot else []),
         "",
         "## Metrics",
         "",

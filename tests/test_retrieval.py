@@ -473,6 +473,16 @@ def test_with_no_chat_table_the_rewriter_row_is_skipped(indexed, tmp_path, capsy
     assert ("follow-up", "rewriter") not in results(report)
 
 
+def test_the_retrievers_name_the_one_the_chatbot_retrieves_with(indexed, tmp_path):
+    config = tmp_path / "chat-bm25.toml"
+    text = re.sub(r'^retriever = ".*"$', 'retriever = "bm25+collapsed"', RETRIEVAL_CONFIG.read_text(), count=1, flags=re.M)
+    config.write_text(re.sub(r"^k = 5$", "k = 3", text, count=1, flags=re.M))
+
+    report = run_evaluate(indexed, retrieval_config=config)
+
+    assert "- The chatbot's retriever, from `[chat]`: bm25+collapsed, 3 Chunks per Turn" in section(report, "## Retrievers")
+
+
 def test_two_runs_give_the_same_report_apart_from_timings(indexed):
     first = run_evaluate(indexed, report="first.md")
     second = run_evaluate(indexed, report="second.md")
