@@ -273,7 +273,7 @@ just chat        # serves the chat page and prints its URL, http://localhost:876
 Type a question and the page answers it from the papers. Each question retrieves the top 5 Chunks from the retriever the `[chat]` table of `config/retrieval.toml` names, which is `dense.bge-small+collapsed`: the embedding comparison's choice (ADR 0065) on the Collapsed ranking, so the 5 are 5 different passages, each copy of one folded into it (ADR 0070). The pinned answer model, `gemma4:e2b-mlx` on Ollama with thinking off and temperature 0, answers from those Chunks only (ADR 0054). An answer takes one to three seconds on an Apple-silicon laptop, and a follow-up a second or two more for its Rewrite.
 
 - **The answer** carries a numbered marker such as `[2]` for each Chunk it uses. A marker that names no retrieved Chunk is struck through as invalid, never dropped.
-- **The references** under the answer give, for each cited Chunk, the paper's title, its pinned Edition id with Version, the Section number and title, and the pages. As `[chat]` names a `+collapsed` twin, a reference also names the files whose copies of the passage were merged into the Chunk, as in "2112.06598v2, also v1", and marks a Survey's Chunk (ADR 0069).
+- **The references** under the answer give, for each cited Chunk, the paper's title, its pinned Edition id with Version, the Section number and title, and the pages. Because `[chat]` names a `+collapsed` twin, a reference also names the files whose copies of the passage were merged into the Chunk, as in "2112.06598v2, also v1", and marks a Survey's Chunk (ADR 0069).
 - **The panel** beside the answer shows each cited Chunk's text and Citation anchor. The retrieved Chunks the answer didn't cite are folded away under it.
 - **An Abstention** is an answer that declines instead of answering. The model is told to write the fixed sentence "The papers in this corpus do not answer this question." when the Chunks don't answer, but it often declines in its own words, as in "The provided chunks do not contain the specific BLEU score …". A reply holding the fixed sentence is an Abstention, and so is one whose text is a single sentence declining in that way (ADR 0064). A decline that goes on to answer, in another sentence or a clause after "but" or ";", or that cites a Chunk after it, is an answer. The retrieved Chunks are still shown.
 - **A follow-up** such as "how much did that help on MMLU?" is understood from the Conversation so far. On every question after the first, the answer model first rewrites it as a standalone question from the earlier questions and answers, and retrieval uses that Rewrite, shown under the question as "Searched as:". The answer model then sees the last three Turns before the Rewrite and its Chunks (`history` in `[chat]`, ADR 0056). **New conversation** forgets the Turns so far, as reloading the page does.
@@ -324,14 +324,14 @@ The committed chat report, from `chat-eval --runs 3` on `dense.bge-small+collaps
 | single-paper | 12 | 1/12 (0.08 [0.01, 0.35]) | 11/11 (1.00 [0.74, 1.00]) | 0.75 |
 | multi-paper | 8 | 1/8 (0.12 [0.02, 0.47]) | 6/7 (0.86 [0.49, 0.97]) | 0.06 |
 | follow-up | 8 | 2/8 (0.25 [0.07, 0.59]) | 6/6 (1.00 [0.61, 1.00]) | 0.50 |
-| all answerable | 28 | 4/28 (0.14 [0.06, 0.31]), false | 23/24 (0.96 [0.80, 0.99]) | 0.48 |
+| all answerable | 28 | 4/28 (0.14 [0.06, 0.31]), all false abstentions | 23/24 (0.96 [0.80, 0.99]) | 0.48 |
 | unanswerable: near-miss | 6 | 5/6 (0.83 [0.44, 0.97]) | 1/1 (1.00 [0.21, 1.00]) | — |
 | unanswerable: out-of-topic | 2 | 2/2 (1.00 [0.34, 1.00]) | — | — |
 | all unanswerable | 8 | 7/8 (0.88 [0.53, 0.98]) | 1/1 (1.00 [0.21, 1.00]) | — |
 
 - **Grounded:** 24 of the 25 answers that are not Abstentions (0.96 [0.80, 0.99]). The one that isn't, `gpt-4-number-tokens`, writes "GPT-4" with no cited Chunk holding the 4. It was grounded in only 1 of 3 runs on the raw retriever too.
 - **Unanswerable:** 7 of 8 are Abstentions. The near miss `sentencepiece-korean-speed` is answered, citing its Chunks, though the corpus doesn't hold its answer.
-- **Against the raw retriever** (the report's *Against the baseline*): Recall@5 rises from 0.41 to 0.48, and the false-abstention rate from 2/28 to 4/28. The two new false abstentions decline with the answer in their Chunks (ADR 0070).
+- **Against the raw retriever** (its chat report, in ADR 0070): Recall@5 rises from 0.41 to 0.48, and the false-abstention rate from 2/28 to 4/28. The report's *Against the baseline* lists the three questions whose verdict changed. `magikarp-norm-indicator` declines with its Passage in its Chunks. `one-sided-regularization` declines with a Chunk at rank 2 that states the answer in the ACL Edition's rewording, which the Passage matcher doesn't count.
 - **Speed:** a Turn takes 1.58 s at p50 and 2.31 s at p95, almost all of it the answer.
 
 ## Measure the Relevance verdict

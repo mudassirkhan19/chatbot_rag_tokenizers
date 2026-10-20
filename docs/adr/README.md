@@ -74,7 +74,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0067](0067-the-rewriter-row-of-evaluate.md) | The rewriter row of `evaluate`: the chatbot's Rewrite of each stored follow-up, skipped without the model | Accepted |
 | [0068](0068-the-transcript-saved-from-the-chat-page.md) | The transcript, saved from the chat page under docs/reports from the page's own Turn records | Accepted, its Transcript replaced by 0070's |
 | [0069](0069-citations-name-the-merged-editions-after-the-collapse.md) | Citations name the merged Editions and mark Surveys after the collapse | Accepted |
-| [0070](0070-the-chatbot-retrieves-collapsed-and-the-final-chat-numbers.md) | The chatbot retrieves with bge-small's Collapsed twin, and the final chat numbers | Accepted |
+| [0070](0070-the-chatbot-retrieves-collapsed-and-the-final-chat-numbers.md) | The chatbot retrieves with bge-small's `+collapsed` twin, and the final chat numbers | Accepted |
 
 ## Template
 

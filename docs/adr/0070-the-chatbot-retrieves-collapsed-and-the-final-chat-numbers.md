@@ -1,4 +1,4 @@
-# 0070. The chatbot retrieves with bge-small's Collapsed twin, and the final chat numbers
+# 0070. The chatbot retrieves with bge-small's `+collapsed` twin, and the final chat numbers
 
 - **Date:** 2026-10-20
 - **Status:** Accepted; amends [0068](0068-the-transcript-saved-from-the-chat-page.md), whose committed Transcript it replaces
@@ -11,7 +11,7 @@
 
 **The eval report names the chatbot's retriever.** Its Retrievers section ends with "The chatbot's retriever, from `[chat]`: dense.bge-small+collapsed, 5 Chunks per Turn" whenever the `[chat]` table can be read. The rewriter row itself doesn't depend on the retriever, since the rewriter writes from the stored history alone ([0067](0067-the-rewriter-row-of-evaluate.md)). The rerun changed nothing in the report but this line and the timings. The chat report and the answers file already name the twin and its pool (0069).
 
-**The reports were regenerated with the real model.** `evaluate` was rerun, then `chat-eval --runs 3 --baseline` with the committed raw run as the baseline. From the chat report:
+**The reports were regenerated with the real model.** `evaluate` was rerun, then `chat-eval --runs 3 --baseline data/eval/chat-answers.jsonl`, with the raw run committed at 85f95f9 as the baseline. The run overwrote that file, so the report's baseline path now names the collapsed answers; the raw ones are at `git show 85f95f9:data/eval/chat-answers.jsonl`. From the chat report:
 
 | | Raw (`dense.bge-small`) | Collapsed (`dense.bge-small+collapsed`) |
 |---|---:|---:|
@@ -23,11 +23,11 @@
 | Recall@5, single-paper | 0.58 | 0.75 |
 
 The three runs agree on every verdict and rate. Three questions changed verdict against the raw run:
-- `one-sided-regularization` now abstains. The collapse shows BPE-dropout's § 5.2 from its Canonical ACL Edition (`2020.acl-main.170`), where the venue reworded the arXiv text into bullets ("for large datasets, BPE-dropout should be used only on the source side"). It is at rank 2, and the model says the Chunks don't answer it.
+- `one-sided-regularization` now abstains. The collapse shows BPE-dropout's § 5.2 from its Canonical ACL Edition (`2020.acl-main.170`), where the venue reworded the arXiv text into bullets ("for large datasets, BPE-dropout should be used only on the source side"). It is at rank 2, and the model says the Chunks don't answer it. The Passage matcher finds none of the question's Passages in it (0/3): the reworded copy is too far from the quote.
 - `magikarp-norm-indicator` now abstains with its Passage in its Chunks. The reply declines the previous Turn's question (the share of flagged tokens confirmed), not this one.
 - `gpt-4-number-tokens` is not grounded ("4" of GPT-4 is in no cited Chunk). It was flaky in the raw run already: grounded in 1 of 3 runs.
 
-So the collapse helps retrieval and, on two questions, costs the answer model. Both new false abstentions are declines with the answer in the Chunks, not retrieval misses. The false-abstention intervals overlap widely ([0.02, 0.23] and [0.06, 0.31]). The choice stays with the retrieval evidence the decision rule was written for.
+So the collapse helps retrieval and, on two questions, costs the answer model. Both new false abstentions are declines with the answer in the Chunks, by the developer's reading: `magikarp-norm-indicator`'s by the Passage matcher too, `one-sided-regularization`'s only in the reworded copy. The false-abstention intervals overlap widely ([0.02, 0.23] and [0.06, 0.31]). The choice stays with the retrieval evidence the decision rule was written for.
 
 **The Transcript was asked again, on the collapsed retriever.** These were the committed Transcript's six questions, asked once through the page's endpoints and saved as they came, as 0068 committed its Transcript. It replaces `docs/reports/2026-10-20-chat-transcript.md`. The raw-retriever Transcript is in git history.
 
