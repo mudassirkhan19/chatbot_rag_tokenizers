@@ -346,7 +346,8 @@ def _judged(settings: GroundingJudgeConfig, judged: Sequence[Judged]) -> list[st
         "`chat-eval --judge`: the pinned decision model is asked, for each sentence of a sampled reply that cites"
         " Chunks and each Chunk it cites, whether the Chunk supports the sentence. A Turn's score is the mean of its"
         " P(yes), and it is grounded by the model when the score is at least the threshold; a Turn with no cited"
-        " sentence is not. Pairs counts the sentences and Chunks judged.",
+        " sentence is not. Pairs counts the sentences and Chunks judged. The judge is measured here, not used: the"
+        " grounded rate above is the automatic check's (ADR 0075).",
         "",
         f"- Decision model: {judge_pin(settings)}",
         f"- Decision question and threshold sha256: `{settings.question_hash}`",
