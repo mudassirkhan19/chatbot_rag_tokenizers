@@ -8,8 +8,9 @@ own, and the automatic verdict copied into `label` as the draft, as `audit expor
 records who set the label: `draft`, `agent` or `developer` (ADR 0020).
 
 `chat-label` serves a page, in the audit label page's shape, that shows one row at a time and saves `label`,
-`checked_by=developer` and a note straight to the file. The chat report compares the hand labels with the reported
-run's verdicts on the rows the developer labelled whose reply and Chunks are still the run's.
+`checked_by=developer` and a note straight to the file. The chat report compares the hand labels with the automatic
+check scored on each labelled row's reply over its Chunks, as stored in the sample, whatever a later run has answered
+(ADR 0072). Only a row whose Chunks the corpus no longer has is left out.
 """
 
 import csv
@@ -19,15 +20,17 @@ import random
 import sys
 import tempfile
 import threading
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
 from pathlib import Path
 
-from .answers import Asked
-from .grounding import Grounding
+from ..parsing.chunker import Chunk
+from .answer import read_answer
+from .answers import Asked, verdict
+from .grounding import Grounding, ground
 
 COLUMNS = [
     "question_id",
@@ -87,53 +90,54 @@ def _row(item: Asked) -> dict[str, str]:
 
 @dataclass(frozen=True)
 class Disagreement:
-    item: Asked  # the run's Turn
+    question_id: str
+    type: str
+    automatic: str  # the automatic verdict on the sampled reply
     label: str  # the developer's
     note: str
 
 
 @dataclass(frozen=True)
 class Comparison:
-    """The sample's hand labels against a run's verdicts."""
+    """The sample's hand labels against the automatic verdict on each sampled reply."""
 
     rows: int
     labelled: int  # rows the developer gave a label
     unsure: int  # rows the developer checked and left without one
-    compared: int  # the labelled rows whose reply and Chunks are the run's
+    compared: int  # the labelled rows scored
     disagreements: tuple[Disagreement, ...]
-    stale: tuple[str, ...]  # question ids of the labelled rows that are not
+    dropped: tuple[str, ...]  # question ids of the labelled rows whose Chunks the corpus no longer has
 
     @property
     def agreed(self) -> int:
         return self.compared - len(self.disagreements)
 
 
-def compare(scored: Sequence[Asked], rows: Sequence[dict[str, str]]) -> Comparison:
-    """The developer's labelled rows against the run's scored Turns of the same questions, each only when the run
-    asked it with the same reply over the same Chunks, as a label is a judgement of one reply."""
-    turns = {item.question.id: item for item in scored}
+def compare(rows: Sequence[dict[str, str]], chunks: Mapping[str, Chunk], abstention: str) -> Comparison:
+    """The developer's labelled rows against the automatic check scored on each row's reply over its Chunks, as
+    stored in the sample, whatever a later run has answered: a label and the check both judge that one reply."""
     labelled = [row for row in rows if row["checked_by"] == "developer" and row["label"]]
-    current: list[tuple[dict[str, str], Asked]] = []
-    stale = []
+    scored: list[tuple[dict[str, str], str]] = []
+    dropped = []
     for row in labelled:
-        item = turns.get(row["question_id"])
-        if item is not None and _same(row, item):
-            current.append((row, item))
+        ids = row["retrieved"].split()
+        if all(chunk_id in chunks for chunk_id in ids):
+            retrieved = [chunks[chunk_id] for chunk_id in ids]
+            answer = read_answer(row["reply"], len(retrieved), abstention)
+            grounding = ground(answer, retrieved)
+            scored.append((row, verdict(answer.abstention, None if grounding is None else grounding.grounded)))
         else:
-            stale.append(row["question_id"])
+            dropped.append(row["question_id"])
     return Comparison(
         rows=len(rows),
         labelled=len(labelled),
         unsure=sum(1 for row in rows if row["checked_by"] == "developer" and not row["label"]),
-        compared=len(current),
-        disagreements=tuple(Disagreement(item, row["label"], row["note"]) for row, item in current if row["label"] != item.verdict),
-        stale=tuple(stale),
+        compared=len(scored),
+        disagreements=tuple(
+            Disagreement(row["question_id"], row["type"], automatic, row["label"], row["note"]) for row, automatic in scored if row["label"] != automatic
+        ),
+        dropped=tuple(dropped),
     )
-
-
-def _same(row: dict[str, str], item: Asked) -> bool:
-    """The run answered with the row's reply over its Chunks, and the reply is still an answer, not an Abstention."""
-    return item.grounding is not None and row["reply"] == item.turn.reply and row["retrieved"].split() == [chunk.chunk_id for chunk in item.turn.retrieved]
 
 
 def _reason(grounding: Grounding) -> str:
