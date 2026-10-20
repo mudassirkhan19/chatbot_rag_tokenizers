@@ -22,7 +22,7 @@ from ..evaluation.report import NONE
 from ..retrieval.corpus import Corpus
 from .answers import Asked, Baseline, Run, asked_over
 from .grounding_check import compare, read_check
-from .grounding_judge import GroundingJudge, Judged, judge_sample, pin as judge_pin
+from .grounding_judge import GroundingJudge, Judged, judge_pin, judge_sample
 from .config import ChatConfig, GroundingJudgeConfig
 from .model import pin
 
@@ -348,7 +348,7 @@ def _judged(settings: GroundingJudgeConfig, judged: Sequence[Judged]) -> list[st
         " sentence is not. Pairs counts the sentences and Chunks judged.",
         "",
         f"- Decision model: {judge_pin(settings)}",
-        f"- Decision question sha256: `{settings.question_hash}`",
+        f"- Decision question and threshold sha256: `{settings.question_hash}`",
         f"- Threshold: {settings.threshold}",
         f"- Agreement with the hand labels: {_counted(agreed, len(judged))}",
         f"- Grounded by the decision model but not by hand: {sum(1 for item in wrong if item.verdict == 'grounded')}; not"

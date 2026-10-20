@@ -19,7 +19,7 @@ from typing import Protocol
 
 import httpx
 
-from ..ollama import OLLAMA_URL, Ollama, OllamaModelError, split_pin
+from ..ollama import OLLAMA_URL, InputTooLong, Ollama, OllamaModelError, split_pin
 from ..parsing.chunker import Chunk
 from .config import GroundingJudgeConfig
 from .grounding_check import Checked
@@ -35,7 +35,7 @@ class GroundingJudge(Protocol):
         ...
 
 
-def pin(settings: GroundingJudgeConfig) -> str:
+def judge_pin(settings: GroundingJudgeConfig) -> str:
     """The pinned decision model as the report names it, from its revision, as the answer model is named."""
     digest, version = split_pin(settings.revision)
     return f"{settings.model}@{digest[:12]} on Ollama {version}"
@@ -88,6 +88,9 @@ def _named_failures() -> Iterator[None]:
         yield
     except httpx.TransportError as error:
         raise JudgeUnavailable(f"Ollama is not answering at {OLLAMA_URL}. Start the Ollama app or run `ollama serve`, then judge again.") from error
+    except InputTooLong as error:
+        # A Chunk is at most 350 tokens of text, so this needs a much longer claim or state; nothing is cut.
+        raise JudgeUnavailable(f"the grounding judge refused a claim and its Chunk: {error}. Shorten [chat.judge] state or instructions.") from error
     except OllamaModelError as error:
         raise JudgeUnavailable(f"the grounding judge is not ready: {error}. `just init` checks and pulls the pinned judge.") from error
     except httpx.HTTPStatusError as error:

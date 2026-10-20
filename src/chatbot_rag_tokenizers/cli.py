@@ -424,6 +424,8 @@ def _grounding_judge(args: argparse.Namespace, config: ChatConfig) -> GroundingJ
         return None
     if config.judge is None:
         sys.exit(f"chat-eval: --judge needs a [chat.judge] table in {args.config}")
+    if not args.check.exists():
+        sys.exit(f"chat-eval: --judge scores the hand-checked sample, and {args.check} doesn't exist; draw it with `chat-eval --export-check`")
     return grounding_judge.load_grounding_judge(config.judge)
 
 

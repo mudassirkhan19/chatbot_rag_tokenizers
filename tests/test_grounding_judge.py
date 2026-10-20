@@ -78,9 +78,9 @@ def test_the_judge_scores_each_labelled_row_and_the_report_gives_its_agreement_w
     ]
     section = judge_section(report)
     settings = tomllib.loads(RETRIEVAL_CONFIG.read_text())["chat"]["judge"]
-    question = {field: settings[field] for field in ("state", "instructions", "true", "false")}
+    question = {field: settings[field] for field in ("state", "instructions", "true", "false", "threshold")}
     assert "- Decision model: tev1:4b@4d24c6f6d61a on Ollama 0.40.5" in section
-    assert f"- Decision question sha256: `{hashlib.sha256(json.dumps(question, sort_keys=True).encode()).hexdigest()}`" in section
+    assert f"- Decision question and threshold sha256: `{hashlib.sha256(json.dumps(question, sort_keys=True).encode()).hexdigest()}`" in section
     assert f"- Threshold: {settings['threshold']}" in section
     assert "- Agreement with the hand labels: 2/3 (0.67 [0.21, 0.94])" in section
     assert "- Grounded by the decision model but not by hand: 0; not grounded by it but grounded by hand: 1" in section
@@ -206,3 +206,26 @@ def test_the_ollama_judge_refuses_a_model_other_than_the_pinned_one():
 
     with pytest.raises(grounding_judge.JudgeUnavailable, match="tev1:4b is not installed"):
         OllamaGroundingJudge(settings, Ollama(client(StubOllama())))
+
+
+def test_a_claim_and_chunk_too_long_for_the_judge_stop_it_with_the_reason_not_a_pull():
+    settings = load_chat_config(RETRIEVAL_CONFIG).judge
+    assert settings is not None
+    settings = replace(settings, model="gemma4:e2b-mlx", revision=PIN)
+    chunk = Chunk("c1", "e1", "e1", "v1", "f" * 64, "3", "Results", ("Results",), False, "text", None, None, "Paper", "word " * 80, 80)
+
+    judge = OllamaGroundingJudge(settings, Ollama(client(StubOllama(max_tokens=50))))
+
+    with pytest.raises(grounding_judge.JudgeUnavailable, match="refused a claim and its Chunk: the input has \\d+ tokens, more than the model's 50-token context"):
+        judge.support("WECHSEL uses 32,000 tokens.", chunk)
+
+
+def test_judge_without_a_sample_stops_before_anything_is_asked(indexed, fake_answer_model, fake_judge):
+    script(fake_answer_model)
+    missing = indexed / "none.csv"
+
+    with pytest.raises(SystemExit) as stopped:
+        run_chat_eval(indexed, EVALUATION_SET, "chat", "--check", str(missing), "--judge")
+
+    assert stopped.value.code == f"chat-eval: --judge scores the hand-checked sample, and {missing} doesn't exist; draw it with `chat-eval --export-check`"
+    assert fake_answer_model.chats == []

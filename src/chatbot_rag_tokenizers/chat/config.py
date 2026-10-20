@@ -55,8 +55,8 @@ class GroundingJudgeConfig:
 
     @property
     def question_hash(self) -> str:
-        """The sha256 of the decision question, as the scope judge's is hashed: the state, instructions and criteria."""
-        question = {"state": self.state, "instructions": self.instructions, "true": self.true, "false": self.false}
+        """The sha256 of the decision question and the threshold: the state, instructions, criteria and threshold."""
+        question = {"state": self.state, "instructions": self.instructions, "true": self.true, "false": self.false, "threshold": self.threshold}
         return hashlib.sha256(json.dumps(question, sort_keys=True).encode()).hexdigest()
 
 

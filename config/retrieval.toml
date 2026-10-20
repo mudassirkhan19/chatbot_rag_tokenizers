@@ -138,7 +138,7 @@ rewrite_prompt = """You rewrite the last question of a conversation about resear
 # sample. Each sentence of a reply that cites Chunks is a claim; the model gives P(yes) to the question below for
 # each claim and each Chunk it cites, and a Turn's score is the mean. It is the [judge] of config/scope.toml, Tev1
 # 4B, with the same pin. The threshold is set before looking at the scores, not tuned on the labels it is compared
-# with: P(yes) of one half, where the model leans to yes. The report hashes the state, instructions and criteria.
+# with: P(yes) of one half, where the model leans to yes. The report hashes the state, instructions, criteria and threshold.
 [chat.judge]
 model = "tev1:4b"
 revision = "4d24c6f6d61a48d9b72902f4805c5f1da53010736b834b0372377fb4bb7e53d3@0.40.5"

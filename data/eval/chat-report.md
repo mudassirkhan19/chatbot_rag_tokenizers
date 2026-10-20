@@ -112,7 +112,7 @@ The developer's labels on a seeded sample of answered Turns (`chat-eval --export
 `chat-eval --judge`: the pinned decision model is asked, for each sentence of a sampled reply that cites Chunks and each Chunk it cites, whether the Chunk supports the sentence. A Turn's score is the mean of its P(yes), and it is grounded by the model when the score is at least the threshold; a Turn with no cited sentence is not. Pairs counts the sentences and Chunks judged.
 
 - Decision model: tev1:4b@4d24c6f6d61a on Ollama 0.40.5
-- Decision question sha256: `a1b226305abb81a9e51aed58962ea09d04bda4ffd3a15c2fd6afc0231e6a9114`
+- Decision question and threshold sha256: `ce79241703de7f57eebe2cdc3c49add56031539299c7bbd7596ae842117ee508`
 - Threshold: 0.5
 - Agreement with the hand labels: 16/19 (0.84 [0.62, 0.94])
 - Grounded by the decision model but not by hand: 3; not grounded by it but grounded by hand: 0
