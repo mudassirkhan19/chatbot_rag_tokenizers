@@ -1,4 +1,4 @@
-"""The transcript (ADR 0068): the chat page's Conversation saved as Markdown under the reports folder.
+"""The Transcript (ADR 0068): the chat page's Conversation saved as Markdown under the reports folder.
 
 It is rendered from the records `POST /turn` returned to the page, so the file and the page show the same Turns:
 for each, the question, the Rewrite on a follow-up ("Searched as:"), the answer with its markers, an invalid
@@ -60,9 +60,11 @@ def _turn(record: dict[str, Any]) -> list[str]:
 
 def _answer(parts: Sequence[dict[str, Any]]) -> str:
     """The answer as the page shows it: its text with each marker in place, an invalid one struck through."""
-    return "".join(
-        part["text"] if "text" in part else f"[{part['marker']}]" if part["valid"] else f"~~[{part['marker']}]~~" for part in parts
-    ).strip()
+    return "".join(part["text"] if "text" in part else _marker(part) for part in parts).strip()
+
+
+def _marker(part: dict[str, Any]) -> str:
+    return f"[{part['marker']}]" if part["valid"] else f"~~[{part['marker']}]~~"
 
 
 def _reference(reference: dict[str, Any]) -> str:

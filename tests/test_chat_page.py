@@ -407,8 +407,7 @@ def test_reset_empties_the_conversation_so_the_next_question_is_a_first_turn(cha
     assert len(fake_answer_model.chats) == 1 and len(fake_answer_model.chats[0]) == 2
 
 
-# The transcript (#68): the save action writes the Conversation as Markdown under the reports folder.
-TODAY = date.today().isoformat()
+# The Transcript (#68): the save action writes the Conversation as Markdown under the reports folder.
 OFF_TOPIC = "What is the capital of France?"
 
 
@@ -426,11 +425,14 @@ def test_save_writes_every_turn_as_markdown_under_the_reports_folder_and_names_t
     ask(chat, MMLU)
     ask(chat, OFF_TOPIC)
 
+    before = date.today().isoformat()
     path = save(chat)
 
-    assert path == indexed / "reports" / f"{TODAY}-chat-transcript.md"
+    # Named by the day it was saved, read on both sides of the save so a run across midnight passes.
+    day = next(day for day in (before, date.today().isoformat()) if path.name == f"{day}-chat-transcript.md")
+    assert path.parent == indexed / "reports"
     transcript = path.read_text()
-    assert transcript.startswith(f"# Chat transcript, {TODAY}\n")
+    assert transcript.startswith(f"# Chat transcript, {day}\n")
     assert [line for line in transcript.splitlines() if line.startswith("## ")] == ["## Turn 1", "## Turn 2", "## Turn 3"]
     turn_1, turn_2, turn_3 = transcript.split("\n## Turn ")[1:]
     assert f"**Question:** {FREEZING}" in turn_1 and "Searched as" not in turn_1
@@ -465,7 +467,7 @@ def test_a_second_save_on_the_same_day_keeps_the_first_and_a_reset_starts_the_ne
 
     second = save(chat)
 
-    assert second == indexed / "reports" / f"{TODAY}-chat-transcript-2.md"
+    assert second == first.with_name(first.stem + "-2.md")
     assert first.read_text().count("## Turn ") == 2
     assert second.read_text().count("## Turn ") == 1
 

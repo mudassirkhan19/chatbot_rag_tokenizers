@@ -26,7 +26,7 @@ from ..parsing.chunker import HEADER_SEPARATOR, Chunk
 from .answer import Marker
 from .conversation import Chatbot, Turn
 from .model import AnswerModelUnavailable
-from .transcript import save
+from . import transcript
 
 
 def make_server(chatbot: Chatbot, port: int = 8766, transcripts: Path = Path("docs/reports")) -> ThreadingHTTPServer:
@@ -61,7 +61,7 @@ def make_server(chatbot: Chatbot, port: int = 8766, transcripts: Path = Path("do
                 if not turns:
                     self._json({"error": "no Turn to save: ask a question first"}, HTTPStatus.BAD_REQUEST)
                     return
-                path = save([turn_json(turn) for turn in turns], status(chatbot), transcripts, date.today())
+                path = transcript.save([turn_json(turn) for turn in turns], status(chatbot), transcripts, date.today())
                 self._json({"path": str(path)})
                 return
             if self.path != "/turn":
