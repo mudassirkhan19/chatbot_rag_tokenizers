@@ -173,6 +173,10 @@ caption { text-align: left; caption-side: top; font-size: 0.85rem; color: var(--
 .plan h3 { color: var(--planned); }
 .plan p, .plan li { font-size: 0.92rem; }
 .plan .eyebrow { color: var(--planned); }
+.plan.done { border-style: solid; border-color: var(--line); background: var(--surface); }
+.plan.done h3, .plan.done .eyebrow { color: inherit; }
+.plan .head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.4rem 0.8rem; }
+.order { margin-top: 1.2rem; }
 
 /* example */
 .trace { display: grid; gap: 0.6rem; }
@@ -954,38 +958,40 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
   <div class="sec-head">
     <div class="eyebrow">The brief, requirement by requirement</div>
     <div class="title-row"><h2>What's left, and what already exists toward it</h2><span class="chip partial">partial</span></div>
-    <p class="goal">Each of the brief's requirements, where it stands, and the open issues before submission. Design is decided in an ADR when each is picked up; nothing here is a design.</p>
+    <p class="goal">Each of the brief's requirements, where it stands, and what is still to do before submission. Enhancement issues are listed but don't block it.</p>
   </div>
   <div class="plans">
-    <div class="plan">
+    <div class="plan done">
       <div class="eyebrow">Brief: challenging</div>
-      <h3>Pick an embedding model with evidence</h3>
+      <div class="head"><h3>Pick an embedding model with evidence</h3><span class="chip done">done</span></div>
       <p>Compare at least two models, one suited to scientific text; consider keyword search beside vectors; report Recall@5, MRR, cost and latency; recommend one.</p>
       <p><b>Done:</b> bge-small, bge-base (size control), OpenScholar (scientific) and their BM25 hybrids, scored raw and collapsed with paired bootstrap intervals, cost and latency. Nothing beats bge-small beyond noise on either ranking, so it is the chatbot's retriever (ADR 0065): Recall@5 0.38 and MRR@10 0.276 collapsed, 0.43 and 0.329 with per-paper retrieval.</p>
       <p><a data-issue="55">Spec issue 55</a></p>
     </div>
-    <div class="plan">
+    <div class="plan done">
       <div class="eyebrow">Brief: challenging</div>
-      <h3>Handle Versions and near-duplicates</h3>
+      <div class="head"><h3>Handle Versions and near-duplicates</h3><span class="chip done">done</span></div>
       <p>Stop versions, preprint-plus-venue pairs and Survey restatements crowding the top 5 without merging different papers. Show before and after, with the duplicate rate.</p>
       <p><b>Done:</b> collect groups Editions into Works (scored 30/30 against the Work groups), every retriever has a Collapsed twin, and the eval report's <i>Before and after</i> table gives copies from another Edition or Version falling from 23–27% to 3–4% of top-5 slots for BM25, bge-small and their hybrid, with Recall@5 up for every retriever, since the collapse matches copies by their text (ADR 0074). Surveys are marked, not demoted: they take 0 or 1 slot.</p>
       <p><a data-issue="49">Spec issue 49</a></p>
     </div>
-    <div class="plan">
+    <div class="plan done">
       <div class="eyebrow">Brief: core</div>
-      <h3>A grounded chatbot</h3>
+      <div class="head"><h3>A grounded chatbot</h3><span class="chip partial">final run left</span></div>
       <p>Multi-turn, so "how does that compare with WordPiece?" resolves; every answer cites paper and Section; says plainly when the corpus does not support an answer. Measure grounding and the handling of unanswerable questions.</p>
-      <p><b>Built:</b> see <a href="#chat">Stage 6</a>. On the committed run, 7/8 unanswerable questions abstained on, 24/25 answers grounded, 4/28 false abstentions, and the grounding verdict agrees with the developer on 16/19. <b>Open:</b> the final run on the chatbot as built (<a data-issue="86">86</a>), Claims kept to their own paper (<a data-issue="83">83</a>), a larger answer model (<a data-issue="85">85</a>).</p>
+      <p><b>Built:</b> see <a href="#chat">Stage 6</a>. On the committed run, 7/8 unanswerable questions abstained on, 24/25 answers grounded, 4/28 false abstentions, and the grounding verdict agrees with the developer on 16/19. <b>Left:</b> the final run on the chatbot as built (<a data-issue="86">86</a>), which also regenerates the Transcript. <b>Enhancements, not needed:</b> Claims kept to their own paper (<a data-issue="83">83</a>), a larger answer model (<a data-issue="85">85</a>), a reranker (<a data-issue="62">62</a>).</p>
       <p><a data-issue="63">Spec issue 63</a></p>
     </div>
     <div class="plan">
       <div class="eyebrow">Brief: deliverables</div>
-      <h3>Write-up, transcript, failure analysis</h3>
+      <div class="head"><h3>Write-up, transcript, failure analysis</h3><span class="chip planned">to write</span></div>
       <p>2–3 pages on design decisions with a results table; one conversation of at least five turns with a follow-up and an unanswerable; at least three questions the system still gets wrong, and why.</p>
-      <p><b>Exists:</b> this page and 76 ADRs as the source of the write-up; a six-Turn transcript saved from the chat page (<a data-file="docs/reports/2026-10-20-chat-transcript.md">2026-10-20</a>), to be regenerated by #86; the failure diagnosis (<a data-file="docs/reports/2026-10-21-chat-failure-diagnosis.md">2026-10-21</a>), which traces nine kinds of failure to where each first goes wrong.</p>
+      <p><b>Exists:</b> a six-Turn Transcript with a follow-up and Abstentions (<a data-file="docs/reports/2026-10-20-chat-transcript.md">2026-10-20</a>), to be regenerated by #86; the failure diagnosis (<a data-file="docs/reports/2026-10-21-chat-failure-diagnosis.md">2026-10-21</a>), which traces nine kinds of failure to where each first goes wrong; this page and 76 ADRs as the source of the write-up.</p>
+      <p><b>Not written yet:</b> the failure analysis, at least three questions the system still gets wrong, built from the diagnosis on #86's answers; and the 2–3 page write-up with its results table, linked from the top of the README.</p>
       <p><a data-issue="79">Write-up, issue 79</a> · <a data-issue="78">failure analysis, issue 78</a></p>
     </div>
   </div>
+  <p class="why order"><b>Order before submission:</b> <a data-issue="86">#86</a> the final run, then <a data-issue="78">#78</a> the failure analysis on its answers, then <a data-issue="79">#79</a> the write-up, which quotes both. Each refreshes this page's numbers as it lands.</p>
 </section>
 
 <!-- ============================ EXAMPLE ============================ -->
