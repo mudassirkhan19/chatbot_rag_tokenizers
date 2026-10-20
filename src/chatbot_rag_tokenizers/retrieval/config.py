@@ -1,4 +1,4 @@
-"""The retrieval config file: each retriever's settings (ADRs 0039, 0042, 0050 and 0058), the Collapsed ranking's pool and overlap (ADRs 0053 and 0072)
+"""The retrieval config file: each retriever's settings (ADRs 0039, 0042, 0050 and 0058), the Collapsed ranking's pool and overlap (ADRs 0053 and 0073)
 and the eval report's Comparison (ADR 0061)."""
 
 import re
@@ -35,7 +35,7 @@ class RetrievalConfig:
     dense: list[DenseConfig]  # one per [dense.<name>] table, in the file's order
     hybrid: list[HybridConfig]  # one per [hybrid.<name>] table, in the file's order
     collapse_pool: int  # the raw Chunks the Collapsed ranking merges copies in
-    collapse_overlap: float  # the share of word 5-grams two Chunks of a Work share to be copies (ADR 0072)
+    collapse_overlap: float  # the share of word 5-grams two Chunks of a Work share to be copies (ADR 0073)
     comparison: ComparisonConfig  # how the eval report compares the retrievers (ADR 0061)
 
     @property

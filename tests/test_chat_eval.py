@@ -320,6 +320,17 @@ def test_a_raw_chatbot_is_named_by_its_retriever_alone_and_its_answers_are_not_r
     assert "collapse_pool None, not 50" in str(stopped.value.code)
 
 
+def test_answers_collapsed_with_another_overlap_are_not_rescored_as_these(indexed, fake_answer_model):
+    script(fake_answer_model)
+    config = indexed / "retrieval-overlap.toml"
+    config.write_text(RETRIEVAL_CONFIG.read_text().replace("overlap = 0.4", "overlap = 0.9"))
+    run_chat_eval(indexed, EVALUATION_SET, "chat", "--config", str(config))
+
+    with pytest.raises(SystemExit) as stopped:
+        run_chat_eval(indexed, EVALUATION_SET, "chat", "--from-answers")
+    assert "collapse_overlap 0.9, not 0.4" in str(stopped.value.code)
+
+
 def edit_answers(path: Path, edit) -> None:
     """Rewrite the answers file with ``edit`` applied to each Turn's record, its first line left as it is."""
     first, *records = path.read_text(encoding="utf-8").splitlines()

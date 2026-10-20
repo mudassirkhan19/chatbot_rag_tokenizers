@@ -18,7 +18,7 @@ from chatbot_rag_tokenizers.chat import grounding_check
 from chatbot_rag_tokenizers.cli import main
 from conftest import read_rows
 import test_chat_eval
-from test_chat_eval import EVALUATION_SET, MANIFEST, corpus_arguments, edit_answers, run_chat_eval, script
+from test_chat_eval import ABSTENTION, EVALUATION_SET, MANIFEST, corpus_arguments, edit_answers, run_chat_eval, script
 from test_chat_page import SOCKETS
 
 indexed = test_chat_eval.indexed  # the fixture corpus, parsed and indexed in tmp_path
@@ -161,6 +161,10 @@ def label(check: Path, **labels: tuple[str, str]) -> None:
         if row["question_id"].replace("-", "_") in labels:
             row["label"], row["note"] = labels[row["question_id"].replace("-", "_")]
             row["checked_by"] = "developer"
+    write_rows(check, rows)
+
+
+def write_rows(check: Path, rows: list[dict[str, str]]) -> None:
     with check.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0]), lineterminator="\n")
         writer.writeheader()
@@ -195,17 +199,66 @@ def test_the_report_gives_the_agreement_over_the_rows_the_developer_labelled_and
     ]
 
 
-def test_a_row_whose_reply_changed_since_the_sample_is_not_compared_and_unsure_rows_are_left_out(exported):
-    label(exported, freezing=("not grounded", ""), metrics_miss=("", "can't tell"), vocabulary_sizes=("not grounded", ""))
+def test_a_row_is_scored_on_its_sampled_reply_whatever_the_run_answers_since_and_unsure_rows_are_left_out(exported):
+    label(exported, freezing=("not grounded", "the claim is not in Chunk 1"), metrics_miss=("", "can't tell"), vocabulary_sizes=("not grounded", ""))
     edit_answers(exported.parent / "chat-answers.jsonl", lambda record: {**record, "reply": record["reply"].replace("does not need", "never needs")})
 
     report, _ = run_chat_eval(exported.parent, EVALUATION_SET, "chat", "--from-answers", "--check", str(exported))
 
     section = hand_check(report)
     assert "4 Turns: 2 labelled by the developer, 1 left unsure, 1 not checked by the developer" in section
+    assert "Agreement with the automatic verdict: 1/2 (0.50 [0.09, 0.91])" in section
+    assert "Not compared" not in section
+    rows = [line for line in section.splitlines() if line.startswith("| ") and "Question" not in line]
+    assert rows == ["| freezing | single-paper | grounded | not grounded | the claim is not in Chunk 1 |"]
+
+
+def test_the_check_is_scored_on_the_reply_as_stored_in_the_sample_not_the_runs(exported):
+    """A sampled reply edited to give a number in no cited Chunk is not grounded, though the run's reply still is."""
+    rows = read_rows(exported)
+    for row in rows:
+        if row["question_id"] == "freezing":
+            row["reply"] = row["reply"].rstrip(".") + " in 1987."
+    write_rows(exported, rows)
+    label(exported, freezing=("not grounded", ""))
+
+    report, turns = run_chat_eval(exported.parent, EVALUATION_SET, "chat", "--from-answers", "--check", str(exported))
+
+    assert {turn["question_id"]: turn["grounded"] for turn in turns if turn["scored"]}["freezing"] is True
+    section = hand_check(report)
     assert "Agreement with the automatic verdict: 1/1 (1.00 [0.21, 1.00])" in section
-    assert "Not compared, as this run's reply or Chunks differ from the sample's, or its reply is now an Abstention: freezing" in section
     assert "No disagreements." in section
+
+
+def test_a_sampled_reply_that_now_reads_as_an_abstention_is_counted_as_one(exported):
+    """A reply read again with today's Abstention sentence can decline; it is neither grounded nor not by the check."""
+    rows = read_rows(exported)
+    for row in rows:
+        if row["question_id"] == "freezing":
+            row["reply"] = ABSTENTION
+    write_rows(exported, rows)
+    label(exported, freezing=("not grounded", ""))
+
+    report, _ = run_chat_eval(exported.parent, EVALUATION_SET, "chat", "--from-answers", "--check", str(exported))
+
+    section = hand_check(report)
+    assert "Agreement with the automatic verdict: 0/1 (0.00 [0.00, 0.79])" in section
+    assert "Grounded by the automatic check but not by hand: 0; not grounded by the check but grounded by hand: 0;" in section
+    assert "an Abstention by the check: 1" in section
+    assert "| freezing | single-paper | abstained | not grounded | — |" in section
+
+
+def test_a_row_whose_chunks_the_corpus_no_longer_has_is_not_compared(exported):
+    label(exported, freezing=("grounded", ""), vocabulary_sizes=("not grounded", ""))
+    text = exported.read_text(encoding="utf-8")
+    freezing = next(row for row in read_rows(exported) if row["question_id"] == "freezing")
+    exported.write_text(text.replace(freezing["retrieved"], freezing["retrieved"] + " gone-chunk", 1), encoding="utf-8")
+
+    report, _ = run_chat_eval(exported.parent, EVALUATION_SET, "chat", "--from-answers", "--check", str(exported))
+
+    section = hand_check(report)
+    assert "Agreement with the automatic verdict: 1/1 (1.00 [0.21, 1.00])" in section
+    assert "Not compared, as the corpus no longer has every Chunk the sampled reply was given: freezing" in section
 
 
 def test_without_a_sample_the_report_says_how_to_draw_one(indexed, fake_answer_model):

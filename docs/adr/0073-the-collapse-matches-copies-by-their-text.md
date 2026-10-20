@@ -1,4 +1,4 @@
-# 0072. The collapse matches copies by their text, not their place in the Section
+# 0073. The collapse matches copies by their text, not their place in the Section
 
 - **Date:** 2026-10-21
 - **Status:** Accepted. Supersedes the merge key of [0057](0057-the-collapse-merges-copies-not-works.md) (the same Section path and the same count of Chunks before it); the rest of 0057 stands.
@@ -12,17 +12,17 @@
 - *The closest-Chunk condition*: a Chunk's closest Chunk in a file is the one it shares the largest share with. A table cut into two Chunks repeats its caption in both, so the first rows of v1 share 0.69 with the last rows of v2. But v1's first rows are closer to v2's first rows (1.00), and v2's last rows are closer to v1's last rows, so the pair stays apart. Each holds rows the other lacks.
 - **`overlap` is 0.4**, in `[collapse]` of `config/retrieval.toml`, and the eval report and chat report print it beside the pool.
 - **Going down the pool, a Chunk joins the best-ranked slot of its Work that holds a copy of it and no Chunk of its own file**, or it opens a slot. Two Chunks of one file are never merged, as in 0057, so a slot holds one Chunk per file. Which copy a slot shows (the tier order), the side table and Surveys are as in 0057.
-- **The answers file's first line doesn't record `overlap`.** Rescoring stored answers retrieves nothing, and a new key would make `chat-eval --from-answers` refuse the committed answers, which #84 rescores, until #86 regenerates them.
+- **The answers file's first line records `collapse_overlap`**, as it records `collapse_pool`, so `chat-eval --from-answers` refuses answers that another rule retrieved. The committed answers were retrieved with 0057's key and have no `collapse_overlap`, so `--from-answers` refuses them until #86 regenerates the chat run. #86 has to rerun it anyway, and #84, which rescored them, has already merged.
 
 ## How the threshold was chosen
-For every Chunk of a Work with more than one file, its closest Chunk in each other file of the Work (`docs/reports/2026-10-21-collapse-by-text/overlaps.py`, 107,807 pairs):
+For every Chunk of a Work with more than one file, its closest and second-closest Chunk in each other file of the Work (`docs/reports/2026-10-21-collapse-by-text/overlaps.py`). That gives 107,807 (Chunk, other file) pairs:
 
 | Overlap | 0–0.1 | 0.1–0.2 | 0.2–0.3 | 0.3–0.4 | 0.4–0.5 | 0.5–0.6 | 0.6–0.7 | 0.7–0.8 | 0.8–0.9 | 0.9–1.0 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Closest Chunk | 11,453 | 2,594 | 2,385 | 2,482 | 2,863 | 3,740 | 4,400 | 5,107 | 7,672 | 65,111 |
 | Second closest | 75,227 | 9,250 | 6,301 | 4,485 | 3,494 | 3,178 | 2,183 | 1,551 | 972 | 1,166 |
 
-Copies sit at 0.9–1.0, and other text below 0.1. Between them, no threshold is clean. Of the 58,699 pairs at or above 0.4, the closest-Chunk condition keeps 11,607 apart, such as an Abstract and an Introduction that share a sentence. In samples of the closest-Chunk pairs that pass, 4 of 5 at 0.5–0.6 and 6 of 8 at 0.4–0.5 were one passage, reworded or extended by a revision. The others were a boundary shift (half of one Chunk lies in the other's neighbour) and, at 0.46–0.48, one wrong merge: two different appendix Sections of one paper that share table rows.
+Copies sit at 0.9–1.0, and other text below 0.1. Between them, no threshold is clean. Counted over every pair of Chunks instead (each unordered pair once, not only the closest), 58,699 pairs share 0.4 or more, and the closest-Chunk condition keeps 11,607 of them apart, such as an Abstract and an Introduction that share a sentence. In samples of the closest-Chunk pairs that pass, 4 of 5 at 0.5–0.6 and 6 of 8 at 0.4–0.5 were one passage, reworded or extended by a revision. The others were a boundary shift (half of one Chunk lies in the other's neighbour) and, at 0.46–0.48, one wrong merge: two different appendix Sections of one paper that share table rows.
 
 The eval report decided between 0.5 and 0.4. At 0.5, bge-small's Collapsed Recall@5 fell from 0.38 to 0.34, all of it on one question. `magikarp-verified-share`'s Passage is a sentence the EMNLP Edition and v2 added to a paragraph of "3 Results". v1's shorter paragraph shares 0.42 with it. The place key merged the two and showed the EMNLP copy. At 0.5 v1's copy stands alone, without the sentence. 0.4 and 0.3 give the same eval report, timings aside, on BM25, bge-small and their hybrid. 0.4 is the higher one, so it lets in fewer of the boundary-shift and wrong merges below it.
 

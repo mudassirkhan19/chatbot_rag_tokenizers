@@ -1,4 +1,4 @@
-"""How the Collapsed ranking's copy rule (ADR 0072) splits the corpus: for every Chunk of a Work with more than one
+"""How the Collapsed ranking's copy rule (ADR 0073) splits the corpus: for every Chunk of a Work with more than one
 file, its best and second-best word 5-gram overlap (on the smaller Chunk) with a Chunk of each other file of the
 Work, and how many pairs at or above the threshold the closest-Chunk condition keeps apart.
 

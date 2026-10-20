@@ -1,12 +1,12 @@
-"""The Collapsed ranking (ADRs 0053, 0057 and 0072): each Chunk once, however many files of its Work hold a copy.
+"""The Collapsed ranking (ADRs 0053, 0057 and 0073): each Chunk once, however many files of its Work hold a copy.
 
 The wrapper asks the retriever it wraps for a pool of Chunks and merges copies: Chunks of one Work, through the
 manifest's work_id, from different files, that share at least `overlap` of their word 5-grams, counted on the
-smaller Chunk's, where one of the two is the other's closest Chunk in its file. That is what a paper's arXiv Versions and its preprint and venue Editions repeat, wherever their
-files put it: GROBID nests a Section in one Edition only, headings change case, Sections are renumbered and a
-revision adds paragraphs, so the place in the Section is no key (ADR 0072). Going down the pool, a Chunk joins the
-best-ranked slot of its Work that it is a copy of one Chunk of, and that holds no Chunk of its file; else it opens a
-slot. A Chunk whose Edition has no work_id is its Edition's own Work, so nothing the collapse can't place is
+smaller Chunk's, where one of the two is the other's closest Chunk in its file. That is what a paper's arXiv
+Versions and its preprint and venue Editions repeat, wherever their files put it: GROBID nests a Section in one
+Edition only, headings change case, Sections are renumbered and a revision adds paragraphs, so the place in the
+Section is no key (ADR 0073). Going down the pool, a Chunk joins the best-ranked slot of its Work that holds a copy
+of it and no Chunk of its file; else it opens a slot. A Chunk whose Edition has no work_id is its Edition's own Work, so nothing the collapse can't place is
 dropped. A Work's other Chunks are other text and keep their own slots, as the raw ranking gave them.
 
 Each slot takes the place of its best-ranked copy, and shows the copy from the best file, best first by tier, then
@@ -101,7 +101,7 @@ class Collapsed:
         slots: list[tuple[str, list[tuple[str, float]]]] = []  # each passage's Work and copies, in raw order
         for chunk_id, score in self.retriever.query(text, max(self.pool, k)):
             work_id = self.work_of(self.chunks[chunk_id])
-            slot = next((copies for work, copies in slots if work == work_id and self._copies(chunk_id, copies)), None)
+            slot = next((copies for work, copies in slots if work == work_id and self._joins(chunk_id, copies)), None)
             if slot is None:
                 slots.append((work_id, [(chunk_id, score)]))
             else:
@@ -118,15 +118,15 @@ class Collapsed:
     def work_of(self, chunk: Chunk) -> str:
         return self._work.get(chunk.edition_id, f"edition:{chunk.edition_id}")
 
-    def _copies(self, chunk_id: str, copies: list[tuple[str, float]]) -> bool:
+    def _joins(self, chunk_id: str, copies: list[tuple[str, float]]) -> bool:
         """Whether the Chunk is a copy of the passage these copies hold: from a file none of them is from, and sharing
         a copy of one of them."""
         file = self.chunks[chunk_id].file_sha256
         if any(self.chunks[other].file_sha256 == file for other, _ in copies):
             return False
-        return any(self._copy(chunk_id, other) for other, _ in copies)
+        return any(self._is_copy(chunk_id, other) for other, _ in copies)
 
-    def _copy(self, a: str, b: str) -> bool:
+    def _is_copy(self, a: str, b: str) -> bool:
         """Two Chunks of different files are copies when they share at least `overlap` of their word 5-grams and one of
         them is the other's closest Chunk in its file: a table cut into two Chunks repeats its caption in both, and
         each is closer to its own copy in the other file than to the other's."""
