@@ -536,3 +536,17 @@ def test_with_a_collapsed_retriever_a_reference_with_no_merged_copies_reads_as_i
         assert (reference["also"], reference["editions"], reference["survey"]) == ([], reference["edition"], False)
         section = " ".join(part for part in (reference["section_number"], reference["section_title"]) if part)
         assert reference["anchor"] == " · ".join(part for part in (reference["edition"], section, reference["pages"]) if part)
+
+
+@pytest.mark.parametrize(
+    "shown, also, written",
+    [
+        ("2112.06598v2", ("2112.06598v1", "2022.acl-long.12"), "2112.06598v2, also v1 and 2022.acl-long.12"),
+        ("P16-1162", ("1508.07909v5", "1508.07909v1"), "P16-1162, also 1508.07909v5 and v1"),
+        ("P16-1162", ("1508.07909v5", "W16-2209", "1508.07909v1"), "P16-1162, also 1508.07909v5, W16-2209 and v1"),
+        ("2112.06598v2", (), "2112.06598v2"),
+    ],
+    ids=["issue-example", "venue-shown", "three-merged", "none-merged"],
+)
+def test_the_merged_editions_follow_the_edition_shown_a_version_of_a_preprint_already_named_by_its_version_alone(shown, also, written):
+    assert page.editions_written(shown, also) == written
