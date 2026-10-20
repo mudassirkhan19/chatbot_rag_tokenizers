@@ -1,32 +1,43 @@
-"""The chat page (ADRs 0054 and 0056): `chat` serves it on localhost with the standard library's threading HTTP
+"""The chat page (ADRs 0054, 0056 and 0069): `chat` serves it on localhost with the standard library's threading HTTP
 server, as `audit label` serves its page. The server holds one Conversation.
 
     GET  /        the page
     GET  /status  the retriever and the answer model, or why the model can't answer
     POST /turn    {"question": ...}: the next Turn of the Conversation, or a 503 saying why the model can't answer
     POST /reset   starts a new Conversation
+    POST /save    writes the Conversation as a Markdown transcript under the reports folder and returns its path
 
 A Turn comes back as its question and its Rewrite (null on the first Turn), its answer, cut into text and markers
 (each marker valid or not), a reference per cited Chunk from its Citation anchor, every retrieved Chunk in rank
 order, numbered as the model saw it and marked cited or not, the model's raw reply, and the seconds spent
 retrieving, rewriting and answering. The page folds the uncited Chunks away.
+
+When the retriever is a `+collapsed` twin, its side table goes into each anchor too (ADR 0069): the merged Editions,
+the files whose copies of the passage were folded into the Chunk, follow the Edition shown, as in "2112.06598v2,
+also v1 and 2022.naacl-main.293", and a Survey's Chunk is flagged. A raw retriever's Turn has no side table, and
+its anchors are as they were.
 """
 
 import json
 import sys
+from datetime import date
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
+from pathlib import Path
 from typing import Any
 
 from ..parsing.chunker import HEADER_SEPARATOR, Chunk
+from ..parsing.inputs import VERSION
+from ..retrieval.collapse import Merged
 from .answer import Marker
 from .conversation import Chatbot, Turn
 from .model import AnswerModelUnavailable
+from . import transcript
 
 
-def make_server(chatbot: Chatbot, port: int = 8766) -> ThreadingHTTPServer:
-    """A server for the chat page on localhost; ``port=0`` picks a free one."""
+def make_server(chatbot: Chatbot, port: int = 8766, transcripts: Path = Path("docs/reports")) -> ThreadingHTTPServer:
+    """A server for the chat page on localhost; ``port=0`` picks a free one. Transcripts are saved in ``transcripts``."""
     page = resources.files(__package__).joinpath("page.html").read_bytes()
 
     class Handler(BaseHTTPRequestHandler):
@@ -51,6 +62,14 @@ def make_server(chatbot: Chatbot, port: int = 8766) -> ThreadingHTTPServer:
             if self.path == "/reset":
                 chatbot.reset()
                 self._json({"turns": len(chatbot.turns)})
+                return
+            if self.path == "/save":
+                turns = list(chatbot.turns)
+                if not turns:
+                    self._json({"error": "no Turn to save: ask a question first"}, HTTPStatus.BAD_REQUEST)
+                    return
+                path = transcript.save([turn_json(turn) for turn in turns], status(chatbot), transcripts, date.today())
+                self._json({"path": str(path)})
                 return
             if self.path != "/turn":
                 self._json({"error": f"no such action: {self.path}"}, HTTPStatus.NOT_FOUND)
@@ -99,7 +118,7 @@ def status(chatbot: Chatbot) -> dict[str, Any]:
         model, error = chatbot.model().pin, None
     except AnswerModelUnavailable as unavailable:
         model, error = chatbot.config.model.model, str(unavailable)
-    return {"retriever": chatbot.config.retriever.name, "k": chatbot.config.k, "model": model, "error": error}
+    return {"retriever": chatbot.config.retriever_name, "k": chatbot.config.k, "model": model, "error": error}
 
 
 def turn_json(turn: Turn) -> dict[str, Any]:
@@ -112,17 +131,19 @@ def turn_json(turn: Turn) -> dict[str, Any]:
         "answer": [{"marker": part.number, "valid": part.valid} if isinstance(part, Marker) else {"text": part} for part in turn.answer.parts],
         "abstention": turn.answer.abstention,
         "invalid": turn.answer.invalid,
-        "references": [{"number": number, **anchor(turn.retrieved[number - 1])} for number in cited],
+        "references": [{"number": number, **anchor(turn.retrieved[number - 1], turn.merged)} for number in cited],
         "chunks": [
-            {"number": number, "chunk_id": chunk.chunk_id, "cited": number in cited, "header": chunk.header, "text": chunk.text, **anchor(chunk)}
+            {"number": number, "chunk_id": chunk.chunk_id, "cited": number in cited, "header": chunk.header, "text": chunk.text, **anchor(chunk, turn.merged)}
             for number, chunk in enumerate(turn.retrieved, start=1)
         ],
         "seconds": {name: round(seconds, 3) for name, seconds in turn.seconds.items()},
     }
 
 
-def anchor(chunk: Chunk) -> dict[str, str]:
-    """The Chunk's Citation anchor, and the title of its paper."""
+def anchor(chunk: Chunk, merged: dict[str, Merged] | None = None) -> dict[str, Any]:
+    """The Chunk's Citation anchor, and the title of its paper. With the collapse's side table, the anchor names
+    the merged Editions after the Edition shown, and `editions` (as the anchor writes them), `also` (the merged
+    Editions' pinned ids) and `survey` are added."""
     if chunk.page_start is None or chunk.page_end is None:
         pages = ""
     elif chunk.page_start == chunk.page_end:
@@ -130,14 +151,38 @@ def anchor(chunk: Chunk) -> dict[str, str]:
     else:
         pages = f"pp. {chunk.page_start}–{chunk.page_end}"
     section = " ".join(part for part in (chunk.section_number, chunk.section_title) if part)
-    return {
+    folded = None if merged is None else merged[chunk.chunk_id]
+    editions = chunk.pinned_id if folded is None else editions_written(chunk.pinned_id, folded.editions)
+    fields = {
         "title": title(chunk),
         "edition": chunk.pinned_id,
         "section_number": chunk.section_number,
         "section_title": chunk.section_title,
         "pages": pages,
-        "anchor": " · ".join(part for part in (chunk.pinned_id, section, pages) if part),
+        "anchor": " · ".join(part for part in (editions, section, pages) if part),
     }
+    return fields if folded is None else {**fields, "editions": editions, "also": list(folded.editions), "survey": folded.survey}
+
+
+def editions_written(shown: str, also: tuple[str, ...]) -> str:
+    """The Edition shown, then the merged Editions: "2112.06598v2, also v1 and 2022.naacl-main.293". A Version of
+    a preprint already named is written as its Version alone."""
+    named = {_arxiv_id(shown)}
+    written = []
+    for pinned_id in also:
+        arxiv_id = _arxiv_id(pinned_id)
+        written.append(pinned_id.removeprefix(arxiv_id) if arxiv_id and arxiv_id in named else pinned_id)
+        named.add(arxiv_id)
+    if not written:
+        return shown
+    listed = written[0] if len(written) == 1 else f"{', '.join(written[:-1])} and {written[-1]}"
+    return f"{shown}, also {listed}"
+
+
+def _arxiv_id(pinned_id: str) -> str:
+    """A pinned arXiv id without its Version, or "" for an id with none, such as a venue Edition's."""
+    versioned = VERSION.fullmatch(pinned_id)
+    return pinned_id.removesuffix(versioned["version"]) if versioned else ""
 
 
 def title(chunk: Chunk) -> str:

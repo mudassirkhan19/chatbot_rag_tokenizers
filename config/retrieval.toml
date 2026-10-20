@@ -99,10 +99,11 @@ resamples = 10000
 seed = 55
 
 # The chatbot (spec #63, ADR 0054). Each Turn retrieves k Chunks from the retriever named here, one of the
-# retrievers above, and the answer model answers from them. The dense baseline until the embedding comparison
-# (#61) names its choice.
+# retrievers above or its `+collapsed` twin (ADR 0069), and the answer model answers from them. dense.bge-small is
+# the embedding comparison's choice: nothing beats it beyond noise on the raw or the Collapsed ranking (ADR 0065).
+# The chatbot retrieves with its twin, so a Citation stands for every copy of the passage (ADR 0070).
 [chat]
-retriever = "dense.bge-small"
+retriever = "dense.bge-small+collapsed"
 k = 5
 # The answer model: gemma4:e2b-mlx on Ollama, pinned as the judge is, as <digest>@<Ollama version> (ADR 0021).
 # Thinking off and temperature 0, so the same question over the same Chunks gets the same answer.

@@ -17,6 +17,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
+from datetime import date
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
@@ -37,6 +38,7 @@ REAL_TRANSPORT = httpx.HTTPTransport.handle_request  # taken before the fake GRO
 SOCKETS = [(socket.socket, "connect", socket.socket.connect), (socket, "create_connection", socket.create_connection), (socket, "getaddrinfo", socket.getaddrinfo)]
 FREEZING = "Does WECHSEL need to freeze the non-embedding parameters at the start of training?"
 ABSTENTION = load_chat_config(RETRIEVAL_CONFIG).abstention
+MANIFEST = ROOT / "tests" / "fixtures" / "eval" / "manifest.csv"  # the Works the chatbot's Collapsed ranking reads
 TITLES = {WECHSEL_TITLE, "Neural Machine Translation of Rare Words with Subword Units"}
 
 
@@ -54,9 +56,9 @@ def indexed(tmp_path: Path, grobid: FakeGrobid) -> Path:
     return tmp_path
 
 
-def corpus_arguments(tmp_path: Path) -> list[str]:
+def corpus_arguments(tmp_path: Path, config: Path = RETRIEVAL_CONFIG) -> list[str]:
     return [
-        "--config", str(RETRIEVAL_CONFIG),
+        "--config", str(config),
         "--cache", str(tmp_path / "cache"),
         "--parse-report", str(tmp_path / "parse-report.md"),
         "--index-cache", str(tmp_path / "index-cache"),
@@ -82,9 +84,11 @@ def start_chat(indexed: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Calla
         servers.append(make_server(*args, **kwargs))
         return servers[-1]
 
-    def start() -> Chat:
+    def start(arguments: list[str] | None = None) -> Chat:
         monkeypatch.setattr(page, "make_server", recorded)
-        thread = threading.Thread(target=main, args=(["chat", *corpus_arguments(indexed), "--port", "0"],), daemon=True)
+        options = [*corpus_arguments(indexed), "--manifest", str(MANIFEST)] if arguments is None else arguments
+        arguments = ["chat", *options, "--port", "0", "--transcripts", str(indexed / "reports")]
+        thread = threading.Thread(target=main, args=(arguments,), daemon=True)
         threads.append(thread)
         thread.start()
         while not servers:
@@ -140,6 +144,21 @@ def test_an_answer_cites_the_chunks_the_model_saw_under_those_numbers(chat, fake
         assert chunk["header"].endswith(reference["section_title"])
         assert reference["pages"]
     assert [chunk["cited"] for chunk in chunks] == [True, False, True, False, False]
+    # The chatbot retrieves collapsed, and each fixture paper is one file, so no reference has a copy merged into it.
+    assert [(reference["also"], reference["editions"], reference["survey"]) for reference in references] == [
+        ([], reference["edition"], False) for reference in references
+    ]
+
+
+def test_with_a_raw_retriever_a_reference_is_its_chunks_citation_anchor_and_nothing_more(start_chat, indexed, fake_answer_model):
+    config = indexed / "retrieval-raw.toml"
+    config.write_text(RETRIEVAL_CONFIG.read_text().replace('retriever = "dense.bge-small+collapsed"', 'retriever = "dense.bge-small"'))
+    chat = start_chat(corpus_arguments(indexed, config))
+    fake_answer_model.script[FREEZING] = "WECHSEL does not need freezing [1]."
+
+    references = ask(chat, FREEZING)["references"]
+
+    assert [set(reference) for reference in references] == [{"number", "title", "edition", "section_number", "section_title", "pages", "anchor"}]
 
 
 def test_chat_prints_where_the_page_is_and_serves_it(start_chat, capsys):
@@ -405,6 +424,85 @@ def test_reset_empties_the_conversation_so_the_next_question_is_a_first_turn(cha
     assert len(fake_answer_model.chats) == 1 and len(fake_answer_model.chats[0]) == 2
 
 
+# The Transcript (#68): the save action writes the Conversation as Markdown under the reports folder.
+OFF_TOPIC = "What is the capital of France?"
+
+
+def save(chat: Chat) -> Path:
+    path = Path(post(chat, "save")["path"])
+    assert path.is_file()
+    return path
+
+
+def test_save_writes_every_turn_as_markdown_under_the_reports_folder_and_names_the_path(chat, indexed, fake_answer_model):
+    # Scripted first, as its rewriter's message holds the earlier questions too: rewritten as asked, then abstained on.
+    fake_answer_model.script[OFF_TOPIC] = [OFF_TOPIC, ABSTENTION]
+    script_follow_up(fake_answer_model)
+    first = ask(chat, FREEZING)
+    ask(chat, MMLU)
+    ask(chat, OFF_TOPIC)
+
+    before = date.today().isoformat()
+    path = save(chat)
+
+    # Named by the day it was saved, read on both sides of the save so a run across midnight passes.
+    day = next(day for day in (before, date.today().isoformat()) if path.name == f"{day}-chat-transcript.md")
+    assert path.parent == indexed / "reports"
+    transcript = path.read_text()
+    assert transcript.startswith(f"# Chat transcript, {day}\n")
+    assert [line for line in transcript.splitlines() if line.startswith("## ")] == ["## Turn 1", "## Turn 2", "## Turn 3"]
+    turn_1, turn_2, turn_3 = transcript.split("\n## Turn ")[1:]
+    assert f"**Question:** {FREEZING}" in turn_1 and "Searched as" not in turn_1
+    assert "WECHSEL does not need freezing [1]." in turn_1
+    reference = first["references"][0]
+    section = f"{reference['section_number']} {reference['section_title']}".strip()
+    assert f"- [1] {reference['title']}. {reference['edition']}, {section}, {reference['pages']}." in turn_1
+    assert f"**Question:** {MMLU}\n\n**Searched as:** {REWRITTEN}" in turn_2
+    assert "Freezing gave no gain on MMLU [2]." in turn_2
+    assert "**Answer (Abstention):**" in turn_3 and ABSTENTION in turn_3 and "References" not in turn_3
+
+
+def test_saving_before_any_question_is_refused_and_writes_nothing(chat, indexed, fake_answer_model):
+    script_follow_up(fake_answer_model)
+    ask(chat, FREEZING)
+    post(chat, "reset")
+
+    with pytest.raises(urllib.error.HTTPError) as raised:
+        post(chat, "save")
+
+    assert raised.value.code == 400 and "no Turn to save" in json.loads(raised.value.read())["error"]
+    assert not (indexed / "reports").exists()
+
+
+def test_a_second_save_on_the_same_day_keeps_the_first_and_a_reset_starts_the_next_transcript(chat, indexed, fake_answer_model):
+    script_follow_up(fake_answer_model)
+    ask(chat, FREEZING)
+    ask(chat, MMLU)
+    first = save(chat)
+    post(chat, "reset")
+    ask(chat, FREEZING)
+
+    second = save(chat)
+
+    assert second == first.with_name(first.stem + "-2.md")
+    assert first.read_text().count("## Turn ") == 2
+    assert second.read_text().count("## Turn ") == 1
+
+
+def test_the_transcript_strikes_an_invalid_marker_and_lists_the_uncited_chunks_as_the_page_does(chat, fake_answer_model):
+    fake_answer_model.script[FREEZING] = "Freezing is not needed [2]. It doubles the score [7]."
+    turn = ask(chat, FREEZING)
+
+    transcript = save(chat).read_text()
+
+    assert "Freezing is not needed [2]. It doubles the score ~~[7]~~." in transcript
+    assert "Invalid Citations: [7] name no retrieved Chunk." in transcript
+    uncited = [chunk for chunk in turn["chunks"] if not chunk["cited"]]
+    assert [chunk["number"] for chunk in uncited] == [1, 3, 4, 5]
+    for chunk in uncited:
+        assert f"- [{chunk['number']}] {chunk['title']} · {chunk['anchor']}" in transcript
+
+
 @pytest.mark.skipif(os.environ.get("RUN_OLLAMA_TESTS") != "1", reason="asks the pinned model on Ollama; set RUN_OLLAMA_TESTS=1")
 def test_the_real_pinned_model_cites_a_retrieved_chunk_and_abstains_off_topic(start_chat, monkeypatch):
     monkeypatch.setattr(answer_model, "load_answer_model", REAL_LOAD)
@@ -438,3 +536,116 @@ def test_the_real_pinned_model_abstains_on_a_near_miss_in_whatever_words(start_c
 
     print("near miss:", "".join(part.get("text", f"[{part.get('marker')}]") for part in near_miss["answer"]))
     assert near_miss["abstention"] is True
+
+
+# Citations after the collapse (#71): `[chat]` names the `+collapsed` twin, over the fixture Work grouping.
+VOCABULARY = "What vocabulary size do the translation systems use?"
+WECHSEL_WORK = "minixhofer-2022-wechsel-effective-initialization"
+
+
+@pytest.fixture
+def copies(tmp_path: Path, grobid: FakeGrobid) -> Path:
+    """Each fixture paper in two files of its Work, indexed: WECHSEL as v1 and v2, the BPE paper as its preprint
+    and its ACL Edition (P16-1162). Each pair is parsed from one TEI, so every Chunk has a copy in the other file."""
+    directory = tmp_path / "copies"
+    directory.mkdir()
+    files = [
+        seed_pdf(directory, grobid, "wechsel_2112.06598v1.pdf", "wechsel_2112.06598v2.tei.xml"),
+        seed_pdf(directory, grobid, "wechsel_2112.06598v2.pdf", "wechsel_2112.06598v2.tei.xml"),
+        seed_pdf(directory, grobid, "bpe_1508.07909v5.pdf", "missed-table.tei.xml"),
+        seed_pdf(directory, grobid, "P16-1162.pdf", "missed-table.tei.xml"),
+    ]
+    run_parse(directory, *files)
+    main(["index", *corpus_arguments(directory), "--retriever", "dense.bge-small",
+          "--snapshot", str(directory / "snapshot"), "--manifest", str(directory / "manifest.csv"),
+          "--funnel-report", str(directory / "report.md")])  # fmt: skip
+    # The repo's chatbot, the twin, with a pool that holds the whole corpus, so every Chunk's copy is in it.
+    (directory / "retrieval.toml").write_text(RETRIEVAL_CONFIG.read_text().replace("pool = 50", "pool = 1000"))
+    return directory
+
+
+def collapsed(start_chat: Callable[..., Chat], copies: Path, manifest: Path = MANIFEST) -> Chat:
+    return start_chat([*corpus_arguments(copies, copies / "retrieval.toml"), "--manifest", str(manifest)])
+
+
+def manifest_with(tmp_path: Path, old: str, new: str) -> Path:
+    text = MANIFEST.read_text()
+    assert text.count(old) == 1
+    path = tmp_path / "manifest-changed.csv"
+    path.write_text(text.replace(old, new))
+    return path
+
+
+def ask_citing_all(chat: Chat, fake_answer_model, question: str) -> dict:
+    """The question as the first Turn of a new Conversation, its answer citing all five Chunks."""
+    post(chat, "reset")
+    fake_answer_model.script[question] = "Cited [1][2][3][4][5]."
+    return ask(chat, question)
+
+
+def test_with_a_collapsed_retriever_a_reference_names_the_edition_shown_then_the_merged_editions(start_chat, copies, fake_answer_model):
+    chat = collapsed(start_chat, copies)
+    with urllib.request.urlopen(f"{chat.url}/status") as response:
+        assert json.loads(response.read())["retriever"] == "dense.bge-small+collapsed"
+
+    turns = [ask_citing_all(chat, fake_answer_model, question) for question in (FREEZING, VOCABULARY)]
+
+    # Each passage once, shown by the best file: WECHSEL's latest Version with v1 merged into it, and the BPE
+    # paper's Canonical ACL Edition with its preprint merged into it. A merged Version of the Edition shown is
+    # written as its Version alone.
+    written = {"2112.06598v2": (["2112.06598v1"], "2112.06598v2, also v1"), "P16-1162": (["1508.07909v5"], "P16-1162, also 1508.07909v5")}
+    for turn in turns:
+        assert len({chunk["text"] for chunk in turn["chunks"]}) == 5
+        for reference in turn["references"]:
+            also, editions = written[reference["edition"]]
+            assert (reference["also"], reference["editions"], reference["survey"]) == (also, editions, False)
+            assert reference["anchor"].startswith(editions + " · ")
+            assert reference["anchor"] == turn["chunks"][reference["number"] - 1]["anchor"]
+    assert {reference["edition"] for turn in turns for reference in turn["references"]} == set(written)
+
+
+def test_with_a_collapsed_retriever_a_surveys_chunk_is_marked_a_survey(start_chat, copies, fake_answer_model, tmp_path):
+    # The manifest's grouping rule flags WECHSEL a Survey, on each of its Editions.
+    survey = manifest_with(tmp_path, f"{WECHSEL_WORK},no,no", f"{WECHSEL_WORK},no,yes")
+    survey.write_text(survey.read_text().replace(f"{WECHSEL_WORK},yes,no", f"{WECHSEL_WORK},yes,yes"))
+    chat = collapsed(start_chat, copies, survey)
+
+    turn = ask_citing_all(chat, fake_answer_model, VOCABULARY)
+
+    surveys = {reference["edition"]: reference["survey"] for reference in turn["references"]}
+    assert surveys == {"2112.06598v2": True, "P16-1162": False}
+    # The transcript writes the references as the page does: the merged Editions after the one shown, and the mark.
+    transcript = save(chat).read_text()
+    for reference in turn["references"]:
+        section = f"{reference['section_number']} {reference['section_title']}".strip()
+        line = f"- [{reference['number']}] {reference['title']}. {reference['editions']}, {section}, {reference['pages']}."
+        assert line + (" Survey." if reference["survey"] else "") + "\n" in transcript
+
+
+def test_with_a_collapsed_retriever_a_reference_with_no_merged_copies_reads_as_it_does_today(start_chat, copies, fake_answer_model, tmp_path):
+    # P16-1162 is its own Work here, so the BPE paper's two files hold no copies of each other.
+    apart = manifest_with(tmp_path, "indexed,sennrich-2016-neural-machine-translation,yes,no", "indexed,,,")
+    chat = collapsed(start_chat, copies, apart)
+
+    turn = ask_citing_all(chat, fake_answer_model, VOCABULARY)
+
+    bpe = [reference for reference in turn["references"] if reference["edition"] in ("1508.07909v5", "P16-1162")]
+    assert bpe
+    for reference in bpe:
+        assert (reference["also"], reference["editions"], reference["survey"]) == ([], reference["edition"], False)
+        section = " ".join(part for part in (reference["section_number"], reference["section_title"]) if part)
+        assert reference["anchor"] == " · ".join(part for part in (reference["edition"], section, reference["pages"]) if part)
+
+
+@pytest.mark.parametrize(
+    "shown, also, written",
+    [
+        ("2112.06598v2", ("2112.06598v1", "2022.acl-long.12"), "2112.06598v2, also v1 and 2022.acl-long.12"),
+        ("P16-1162", ("1508.07909v5", "1508.07909v1"), "P16-1162, also 1508.07909v5 and v1"),
+        ("P16-1162", ("1508.07909v5", "W16-2209", "1508.07909v1"), "P16-1162, also 1508.07909v5, W16-2209 and v1"),
+        ("2112.06598v2", (), "2112.06598v2"),
+    ],
+    ids=["issue-example", "venue-shown", "three-merged", "none-merged"],
+)
+def test_the_merged_editions_follow_the_edition_shown_a_version_of_a_preprint_already_named_by_its_version_alone(shown, also, written):
+    assert page.editions_written(shown, also) == written

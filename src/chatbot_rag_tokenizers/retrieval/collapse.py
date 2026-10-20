@@ -15,7 +15,7 @@ by rank:
 
 so a stale v1 stands for a passage only when no later copy of it was retrieved. Surveys are not demoted. No
 retriever's code or index changes, and `query` keeps the raw `(chunk_id, score)` shape; `collapse` also gives,
-by Chunk id, the Work, the merged Editions and the merged copies.
+by Chunk id, the Work, the merged Editions, the merged copies and whether the manifest flags its Edition a Survey.
 """
 
 from collections.abc import Iterable, Mapping
@@ -35,6 +35,7 @@ class Merged:
     work_id: str  # the manifest's work_id, or "edition:<id>" for an Edition with none
     editions: tuple[str, ...]  # the pinned ids (ids with Version) of the files of the copies merged into it, best first
     copies: tuple[str, ...]  # the ids of the copies merged into it, best first
+    survey: bool  # the manifest's survey column says yes for the shown Chunk's Edition
 
 
 @dataclass(frozen=True)
@@ -55,7 +56,10 @@ class Collapsed:
         self.pool = pool
         self._work: dict[str, str] = {}  # each Edition's Work, for the Editions that have one
         self._canonical: set[str] = set()  # the Canonical Editions' ids
+        self._survey: set[str] = set()  # the ids of the Editions flagged a Survey
         for row in manifest:
+            if row["survey"] == "yes":
+                self._survey.add(row["edition_id"])
             if row["work_id"]:
                 self._work[row["edition_id"]] = row["work_id"]
                 if row["canonical"] == "yes":
@@ -95,7 +99,8 @@ class Collapsed:
             shown = min(copies, key=lambda hit: self._tier(self.chunks[hit[0]]))  # min keeps the best-ranked on a tie
             others = [chunk_id for chunk_id, _ in copies if chunk_id != shown[0]]
             ranking.append(shown)
-            merged[shown[0]] = Merged(work_id, tuple(dict.fromkeys(self.chunks[c].pinned_id for c in others)), tuple(others))
+            editions = tuple(dict.fromkeys(self.chunks[c].pinned_id for c in others))
+            merged[shown[0]] = Merged(work_id, editions, tuple(others), self.chunks[shown[0]].edition_id in self._survey)
         return Collapse(ranking, merged, len(slots))
 
     def work_of(self, chunk: Chunk) -> str:

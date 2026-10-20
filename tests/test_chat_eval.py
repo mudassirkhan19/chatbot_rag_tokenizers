@@ -297,12 +297,27 @@ def test_the_report_names_the_retriever_the_model_pin_the_prompts_hashes_and_the
     report, _ = run_chat_eval(indexed)
 
     assert f"- sha256: `{hashlib.sha256(EVALUATION_SET.read_bytes()).hexdigest()}`" in report
-    assert f"- Retriever: dense.bge-small (`{config.retriever.key}`), 5 Chunks per Turn" in report
+    # The twin retrieves over its retriever's index, so the key is the raw retriever's; the pool tells them apart.
+    assert f"- Retriever: dense.bge-small+collapsed (`{config.retriever.key}`), collapse pool 50, 5 Chunks per Turn" in report
     # Built from the [chat] revision the model was checked against, so a re-scored report names it without Ollama.
     assert "- Answer model: gemma4:e2b-mlx@e98b54fe1913 on Ollama 0.40.5, thinking off, temperature 0.0" in report
     assert f"`{hashlib.sha256(config.system_prompt.encode()).hexdigest()}`" in report
     assert f"`{hashlib.sha256(config.rewrite_prompt.encode()).hexdigest()}`" in report
     assert report.index("## Questions") < report.index("## Timings") and report.rstrip().endswith("s |")
+
+
+def test_a_raw_chatbot_is_named_by_its_retriever_alone_and_its_answers_are_not_rescored_as_the_collapsed_ones(indexed, fake_answer_model):
+    script(fake_answer_model)
+    config = indexed / "retrieval-raw.toml"
+    config.write_text(RETRIEVAL_CONFIG.read_text().replace('retriever = "dense.bge-small+collapsed"', 'retriever = "dense.bge-small"'))
+    key = load_chat_config(config).retriever.key
+
+    report, _ = run_chat_eval(indexed, EVALUATION_SET, "chat", "--config", str(config))
+
+    assert f"- Retriever: dense.bge-small (`{key}`), 5 Chunks per Turn" in report
+    with pytest.raises(SystemExit) as stopped:
+        run_chat_eval(indexed, EVALUATION_SET, "chat", "--from-answers")
+    assert "collapse_pool None, not 50" in str(stopped.value.code)
 
 
 def edit_answers(path: Path, edit) -> None:

@@ -198,7 +198,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
   <p class="lede">One page for a project manager's view of the pipeline so far: five stages, the decisions behind each one, the numbers they produced, how each is checked, and what is still open. Every decision links to its record on GitHub. Software structure is deliberately left out.</p>
   <div class="asof">
     <span>As of <b>2026-10-20</b></span>
-    <span>Commit <b class="mono">a54b3ea</b> on <a data-file="">main</a></span>
+    <span>Commit <b class="mono">5445519</b> on <a data-file="">main</a></span>
     <span>Snapshot date <b>2026-10-16</b> (judge and PDF hashes 2026-10-17)</span>
     <span>Status: <span class="chip done">done</span> <span class="chip partial">partial</span> <span class="chip planned">planned</span></span>
   </div>
@@ -268,10 +268,10 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
     <div class="stats">
       <div class="stat"><div class="v">141,348</div><div class="k">Chunks in the index, from 2,689 files</div></div>
       <div class="stat"><div class="v">36</div><div class="k">Evaluation questions, every one checked by a person</div></div>
-      <div class="stat"><div class="v">0.30</div><div class="k">Best baseline Recall@5 (dense, all answerable)</div></div>
+      <div class="stat"><div class="v">0.30 → 0.38</div><div class="k">Recall@5 of the chatbot's retriever, bge-small, raw and collapsed (all answerable)</div></div>
       <div class="stat"><div class="v">42–50% → 27–41%</div><div class="k">Top-5 slots holding a duplicate, raw and collapsed (BM25, bge-small and their hybrid)</div></div>
       <div class="stat"><div class="v">180</div><div class="k">Audit-set Candidates that chose the judge</div></div>
-      <div class="stat"><div class="v">63</div><div class="k">Decision records (ADRs)</div></div>
+      <div class="stat"><div class="v">70</div><div class="k">Decision records (ADRs)</div></div>
     </div>
   </div>
 
@@ -280,7 +280,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
     <a class="stage-card" href="#discover"><span class="n">Stage 1</span><span class="t">Discover</span><span class="d">Keyword queries on 3 sources, one citation hop from 21 Seeds, ACL venue rows</span></a>
     <a class="stage-card" href="#judge"><span class="n">Stage 2</span><span class="t">Judge relevance</span><span class="d">Rules, then a local LLM judge measured on an Audit set</span></a>
     <a class="stage-card" href="#parse"><span class="n">Stage 3</span><span class="t">Acquire &amp; parse</span><span class="d">Pinned PDFs, GROBID, Section-aware Chunks, quality gate</span></a>
-    <a class="stage-card" href="#retrieve"><span class="n">Stage 4</span><span class="t">Retrieve</span><span class="d">BM25, a dense baseline, their hybrid and a Collapsed twin of each; the embedding comparison still to come</span></a>
+    <a class="stage-card" href="#retrieve"><span class="n">Stage 4</span><span class="t">Retrieve</span><span class="d">BM25, a dense baseline, their hybrids and a Collapsed twin of each; bge-small chosen on the evidence</span></a>
     <a class="stage-card" href="#evaluate"><span class="n">Stage 5</span><span class="t">Evaluate</span><span class="d">36 questions, Recall@5, MRR, duplicate rate against checked Work groups</span></a>
     <a class="stage-card planned" href="#remaining"><span class="n">Next</span><span class="t">Chatbot</span><span class="d">Multi-turn, cited answers, grounding measured</span></a>
   </div>
@@ -638,7 +638,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
   <div class="sec-head">
     <div class="eyebrow">Stage 4</div>
     <div class="title-row"><h2>Retrieve: how a question finds Chunks</h2><span class="chip partial">partial</span></div>
-    <p class="goal">Rank the 141,348 Chunks for a question. Two baselines exist so every later choice has a number to beat, and every retriever has a Collapsed twin that merges copies of a passage across a Work's files. The embedding comparison has run on the raw ranking (bge-small stays); the final choice waits for the collapsed numbers.</p>
+    <p class="goal">Rank the 141,348 Chunks for a question. Two baselines exist so every later choice has a number to beat, and every retriever has a Collapsed twin that merges copies of a passage across a Work's files. The embedding comparison has run on both rankings, and bge-small stays as the chatbot's retriever.</p>
   </div>
   <div class="panel">
     <div class="block">
@@ -655,10 +655,10 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       </ul>
       <h4>The embedding comparison: five more retrievers</h4>
       <ul class="plain">
-        <li><b>bge-base-en-v1.5</b>, the size control (110M parameters, 768 dimensions): Recall@5 0.29, built in 48 minutes.</li>
-        <li><b>OpenScholar_Retriever</b>, the scientific candidate (Contriever-base trained further on peS2o): Recall@5 0.07, below bge-small beyond noise. It finds the right paper as often as bge-small, but ranks the paper's short Chunks, such as figure captions, above the one holding the Passage.</li>
-        <li><b>Three hybrids</b>, BM25 plus each dense model by reciprocal rank fusion: Recall@5 0.34, 0.34 and 0.28.</li>
-        <li>On the raw ranking nothing beats bge-small's 0.30 beyond noise, so it stays (Proposed until the collapsed numbers are in).</li>
+        <li><b>bge-base-en-v1.5</b>, the size control (110M parameters, 768 dimensions): Recall@5 0.29 raw and 0.32 collapsed, built in 48 minutes.</li>
+        <li><b>OpenScholar_Retriever</b>, the scientific candidate (Contriever-base trained further on peS2o): Recall@5 0.07 raw and 0.08 collapsed, below bge-small beyond noise on both. It finds the right paper as often as bge-small, but ranks the paper's short Chunks, such as figure captions, above the one holding the Passage.</li>
+        <li><b>Three hybrids</b>, BM25 plus each dense model by reciprocal rank fusion: Recall@5 0.34, 0.34 and 0.28 raw, 0.39, 0.35 and 0.32 collapsed.</li>
+        <li>Nothing beats bge-small beyond noise on either ranking, so it stays: 0.30 raw and 0.38 collapsed. It is the retriever <code>[chat]</code> names.</li>
       </ul>
       <h4>Not yet built</h4>
       <ul class="plain">
@@ -669,7 +669,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <h4>Decisions</h4>
       <details class="dec">
         <summary>The corpus is the parse report's parsed files; the index cache is local and keyed<span class="ref">ADR 0039</span></summary>
-        <div class="body"><p>Index and evaluate read only the files the committed parse report lists, not everything in the cache, which also holds Chunks of withdrawn and re-pinned files. The cache folder is named by chunking key and retriever key, so a change to either builds beside the old one.</p><p class="why"><b>Why:</b> the thing being scored must be exactly the corpus, and the report checks against the config so a stale cache stops the run. <a data-adr="0039">Read ADR 0039</a>.</p></div>
+        <div class="body"><p>Index and evaluate read only the files the committed parse report lists, not everything in the cache, which also holds Chunks of withdrawn and re-pinned files. The cache folder is named by chunking key and retriever key, so a change to either builds beside the old one. Each file's Chunks cite the report's pinned id and the manifest's Edition, whichever id filled the cache, and the index fingerprint stays over the cached Chunks, so restamping rebuilds nothing.</p><p class="why"><b>Why:</b> the thing being scored must be exactly the corpus, and the report checks against the config so a stale cache stops the run. <a data-adr="0039">Read ADR 0039</a>, <a data-adr="0066">ADR 0066</a>.</p></div>
       </details>
       <details class="dec">
         <summary>Dense baseline behind an embedder boundary, bge-small pinned by revision and weight hash<span class="ref">ADR 0042</span></summary>
@@ -680,8 +680,8 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
         <div class="body"><p>collect joins two Editions into one Work when they share an arXiv id, DOI, ACL ID or file bytes, or a title (hyphens inside words dropped, word order ignored) and a first-author surname: 2,705 included Editions in 2,393 Works. The Collapsed ranking reads that grouping and merges a passage's copies into the best-ranked slot. On the Work groups the rule joins 30 of 30 pairs and nothing more.</p><p class="why"><b>Why:</b> one Chunk per Work dropped the passages that answered; merging only copies frees the slots copies took, and a title match with a different author is listed as a Suspected pair, never joined. <a data-adr="0051">ADR 0051</a>, <a data-adr="0057">ADR 0057</a>, <a data-adr="0063">ADR 0063</a>.</p></div>
       </details>
       <details class="dec">
-        <summary>The embedding comparison on the raw ranking: bge-small stays<span class="ref">ADR 0065, Proposed</span></summary>
-        <div class="body"><p>Seven retrievers over the full corpus, each against bge-small on the 28 answerable questions with paired bootstrap intervals. The best Recall@5, 0.34, belongs to the BM25 + bge-small and BM25 + bge-base hybrids, but their +0.04 lead (interval −0.09 to +0.16) is within noise, so the rule fixed before the run picks the cheaper bge-small. OpenScholar is the only retriever beyond noise, and it is a loss.</p><p class="why"><b>Why:</b> a rule written before the run keeps the choice from being fitted to the numbers, and one question moves Recall@5 by 0.036. <a data-adr="0065">ADR 0065</a>.</p></div>
+        <summary>The embedding comparison, raw and collapsed: bge-small stays<span class="ref">ADR 0065</span></summary>
+        <div class="body"><p>Seven retrievers over the full corpus, each against bge-small on the 28 answerable questions with paired bootstrap intervals. The best Recall@5, 0.34, belongs to the BM25 + bge-small and BM25 + bge-base hybrids, but their +0.04 lead (interval −0.09 to +0.16) is within noise, so the rule fixed before the run picks the cheaper bge-small. On the Collapsed ranking, which the chatbot will retrieve with, the best is the BM25 + bge-small hybrid's 0.39 against bge-small's 0.38 (+0.01, interval −0.14 to +0.16), so the choice doesn't change. OpenScholar is the only retriever beyond noise on either ranking, and it is a loss.</p><p class="why"><b>Why:</b> a rule written before the run keeps the choice from being fitted to the numbers, and one question moves Recall@5 by 0.036. <a data-adr="0065">ADR 0065</a>.</p></div>
       </details>
       <details class="dec">
         <summary>Index marks Editions indexed, from a record committed in the Snapshot<span class="ref">ADR 0045</span></summary>
@@ -723,7 +723,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
         <li><b>Recall@5</b>: share of a question's Passages held by a Chunk in the top 5, averaged over questions.</li>
         <li><b>MRR@10</b>: 1 over the rank of the first Chunk holding any Passage; 0 if none in the top 10.</li>
         <li><b>Duplicate rate</b>: share of top-5 slots holding a Chunk from a Work already ranked higher, and share of questions with at least one such slot. A Survey restating a finding is counted separately as restatement, never as a duplicate.</li>
-        <li><b>Follow-ups</b> are scored three ways: alone, with history prepended, and as a hand-written reference rewrite. The headline row uses "alone", as a user would type it.</li>
+        <li><b>Follow-ups</b> are scored four ways: alone, with history prepended, as a hand-written reference rewrite, and as the chatbot's own Rewrite of the stored history and the follow-up (the rewriter row, skipped without the answer model). The headline row uses "alone", as a user would type it.</li>
         <li><b>Unanswerable</b> questions are run but left out of the retrieval metrics; they are for the chatbot's abstention measure.</li>
       </ul>
     </div>
@@ -782,7 +782,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
         <ul>
           <li>28 answerable questions is a small set; a single question moves Recall@5 by 0.036.</li>
           <li>About 25 of 36 questions are grounded in Seeds, the best-known papers, so the set may flatter retrieval of famous results.</li>
-          <li>Grounding rate and abstention on unanswerable questions are defined by the brief but not yet measured; they need the chatbot.</li>
+          <li>Grounding rate and abstention on unanswerable questions are measured by <code>chat-eval</code> in the chat report, not here: 24/25 answers grounded and 7/8 unanswerable questions abstained on, with the chatbot's retriever (ADR 0070).</li>
         </ul>
       </div>
       <p class="repro">Reproduce: <code>just evaluate</code> after <code>just index</code>. Set: <a data-file="data/eval/evaluation-set.jsonl">evaluation-set.jsonl</a>, groups: <a data-file="data/eval/work-groups.csv">work-groups.csv</a>, absence evidence: <a data-file="data/eval/absence-evidence.md">absence-evidence.md</a>.</p>
@@ -824,7 +824,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <div class="eyebrow">Brief: challenging</div>
       <h3>Pick an embedding model with evidence</h3>
       <p>Compare at least two models, one suited to scientific text; consider keyword search beside vectors; report Recall@5, MRR, cost and latency; recommend one.</p>
-      <p><b>Done on the raw ranking:</b> bge-small, bge-base (size control), OpenScholar (scientific) and their BM25 hybrids, scored with paired bootstrap intervals, cost and latency. Nothing beats bge-small beyond noise, so it stays (ADR 0065, Proposed). <b>Left:</b> the same rule on the collapsed numbers, then the chatbot's retriever.</p>
+      <p><b>Done:</b> bge-small, bge-base (size control), OpenScholar (scientific) and their BM25 hybrids, scored raw and collapsed with paired bootstrap intervals, cost and latency. Nothing beats bge-small beyond noise on either ranking, so it is the chatbot's retriever (ADR 0065): Recall@5 0.38 and MRR@10 0.271 collapsed.</p>
       <p><a data-issue="55">Spec issue 55</a></p>
     </div>
     <div class="plan">
@@ -838,13 +838,14 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <div class="eyebrow">Brief: core</div>
       <h3>A grounded chatbot</h3>
       <p>Multi-turn, so "how does that compare with WordPiece?" resolves; every answer cites paper and Section; says plainly when the corpus does not support an answer. Measure grounding and the handling of unanswerable questions.</p>
-      <p><b>Exists:</b> citation anchors on every Chunk, 8 follow-up questions with histories and rewrites, 8 unanswerable questions with absence evidence.</p>
+      <p><b>Done:</b> a local chat page over bge-small's <code>+collapsed</code> twin and the pinned gemma4:e2b-mlx, rewriting each follow-up before retrieval, citing paper, Edition, Section and pages, and abstaining in a fixed sentence. On the 36 questions: 7/8 unanswerable questions abstained on (0.88 [0.53, 0.98]), 24/25 answers grounded (0.96 [0.80, 0.99]), 4/28 false abstentions (0.14 [0.06, 0.31]), and Recall@5 0.48 of the Chunks it retrieved (ADR 0070).</p>
+      <p><a data-issue="63">Spec issue 63</a></p>
     </div>
     <div class="plan">
       <div class="eyebrow">Brief: deliverables</div>
       <h3>Write-up, transcript, failure analysis</h3>
       <p>2–3 pages on design decisions with a results table; one conversation of at least five turns with a follow-up and an unanswerable; at least three questions the system still gets wrong, and why.</p>
-      <p><b>Exists:</b> this page and 47 ADRs as the source of the write-up; per-question rows in the eval report as the start of the failure analysis.</p>
+      <p><b>Exists:</b> this page and 70 ADRs as the source of the write-up; a six-Turn transcript saved from the chat page, on the chatbot's retriever (<code>docs/reports/2026-10-20-chat-transcript.md</code>); per-question rows in the eval and chat reports as the start of the failure analysis.</p>
     </div>
   </div>
 </section>
@@ -917,7 +918,8 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
     "0060":"0060-the-grouping-rule-scored-against-the-work-groups",
     "0061":"0061-the-comparison-paired-bootstrap-against-a-baseline",
     "0063":"0063-versions-and-near-duplicates-measured-before-and-after",
-    "0065":"0065-the-embedding-comparison-on-the-raw-ranking"
+    "0065":"0065-the-embedding-comparison-on-the-raw-ranking",
+    "0066":"0066-chunks-cite-the-parse-reports-ids-whatever-filled-the-cache"
   };
   document.querySelectorAll("a[data-adr]").forEach(function (a) {
     var n = a.getAttribute("data-adr");

@@ -1,4 +1,4 @@
-"""The developer's check of the grounding verdict (spec #63, ADR 0066): a seeded sample of answered Turns, labelled
+"""The developer's check of the grounding verdict (spec #63, ADR 0071): a seeded sample of answered Turns, labelled
 by hand, and the automatic check's agreement with it.
 
 `chat-eval --export-check` draws the sample from the answers file, scored again with the current code, as

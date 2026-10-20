@@ -80,6 +80,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
   - fusion: `reciprocal rank fusion: the sum of 1 / (k + rank) over the members, ties to the member listed first`
 - hybrid.bm25+openscholar+collapsed: hybrid.bm25+openscholar's index, with copies from other files of a Work merged
   - pool: `50`
+- The chatbot's retriever, from `[chat]`: dense.bge-small+collapsed, 5 Chunks per Turn
 
 ## Metrics
 
@@ -90,7 +91,8 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 - A retriever's own ranking is scored raw: duplicates of one Work all take their slots.
 - Its `+collapsed` twin is scored on the Collapsed ranking (ADRs 0053 and 0057) over the same index: from the raw top *pool* Chunks, with Works from the manifest's work_id (an Edition with none is its own Work), in the raw order, it merges copies: the Chunks of a Work from different files at the same place in the same Section (another Version's or Edition's copy of the passage), into the slot of the best-ranked one, shown from the Canonical Edition's file when the pool holds a copy from it, else from an Edition's latest file, else as ranked. A Work's other Chunks keep their slots. Surveys are not demoted.
 - Unanswerable questions are run but left out of the metrics.
-- A follow-up is run three ways: follow-up alone, history + follow-up (its prior turns, then the follow-up, joined by spaces) and reference rewrite. The *all answerable* row takes each follow-up alone, as a user would ask it.
+- A follow-up is run four ways: follow-up alone, history + follow-up (its prior turns, then the follow-up, joined by spaces), reference rewrite and rewriter, the chatbot's Rewrite: the answer model, given the `[chat]` rewrite prompt, the last `history` prior turns as earlier questions with no answers, and the follow-up (ADR 0067). The *all answerable* row takes each follow-up alone, as a user would ask it.
+- Rewriter: gemma4:e2b-mlx@e98b54fe1913 on Ollama 0.40.5, thinking off, temperature 0.0, rewrite prompt sha256 `667083844bf2a3deeb25ed76510b41f884d360d9767a39e098829b30c6c1dfab`
 
 ## Results
 
@@ -103,6 +105,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | follow-up | follow-up alone | 8 | 0.00 | 0.000 | 0.00 |
 | follow-up | history + follow-up | 8 | 0.00 | 0.000 | 0.00 |
 | follow-up | reference rewrite | 8 | 0.62 | 0.583 | 0.62 |
+| follow-up | rewriter | 8 | 0.00 | 0.000 | 0.00 |
 | all answerable | as asked, follow-ups alone | 28 | 0.16 | 0.118 | 0.18 |
 | unanswerable | left out | 8 | — | — | — |
 
@@ -115,6 +118,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | follow-up | follow-up alone | 8 | 0.00 | 0.000 | 0.00 |
 | follow-up | history + follow-up | 8 | 0.00 | 0.000 | 0.00 |
 | follow-up | reference rewrite | 8 | 0.75 | 0.588 | 0.75 |
+| follow-up | rewriter | 8 | 0.00 | 0.000 | 0.00 |
 | all answerable | as asked, follow-ups alone | 28 | 0.20 | 0.138 | 0.21 |
 | unanswerable | left out | 8 | — | — | — |
 
@@ -127,6 +131,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | follow-up | follow-up alone | 8 | 0.12 | 0.125 | 0.12 |
 | follow-up | history + follow-up | 8 | 0.12 | 0.031 | 0.12 |
 | follow-up | reference rewrite | 8 | 0.50 | 0.400 | 0.50 |
+| follow-up | rewriter | 8 | 0.25 | 0.250 | 0.25 |
 | all answerable | as asked, follow-ups alone | 28 | 0.30 | 0.244 | 0.32 |
 | unanswerable | left out | 8 | — | — | — |
 
@@ -139,6 +144,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | follow-up | follow-up alone | 8 | 0.12 | 0.125 | 0.12 |
 | follow-up | history + follow-up | 8 | 0.12 | 0.059 | 0.12 |
 | follow-up | reference rewrite | 8 | 0.50 | 0.367 | 0.50 |
+| follow-up | rewriter | 8 | 0.25 | 0.266 | 0.25 |
 | all answerable | as asked, follow-ups alone | 28 | 0.38 | 0.271 | 0.39 |
 | unanswerable | left out | 8 | — | — | — |
 
@@ -151,6 +157,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | follow-up | follow-up alone | 8 | 0.12 | 0.141 | 0.12 |
 | follow-up | history + follow-up | 8 | 0.00 | 0.021 | 0.00 |
 | follow-up | reference rewrite | 8 | 0.38 | 0.411 | 0.38 |
+| follow-up | rewriter | 8 | 0.12 | 0.167 | 0.12 |
 | all answerable | as asked, follow-ups alone | 28 | 0.29 | 0.211 | 0.29 |
 | unanswerable | left out | 8 | — | — | — |
 
@@ -163,6 +170,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | follow-up | follow-up alone | 8 | 0.12 | 0.143 | 0.12 |
 | follow-up | history + follow-up | 8 | 0.00 | 0.036 | 0.00 |
 | follow-up | reference rewrite | 8 | 0.50 | 0.358 | 0.50 |
+| follow-up | rewriter | 8 | 0.38 | 0.197 | 0.38 |
 | all answerable | as asked, follow-ups alone | 28 | 0.32 | 0.258 | 0.32 |
 | unanswerable | left out | 8 | — | — | — |
 
@@ -175,6 +183,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | follow-up | follow-up alone | 8 | 0.00 | 0.000 | 0.00 |
 | follow-up | history + follow-up | 8 | 0.12 | 0.062 | 0.12 |
 | follow-up | reference rewrite | 8 | 0.12 | 0.042 | 0.12 |
+| follow-up | rewriter | 8 | 0.00 | 0.000 | 0.00 |
 | all answerable | as asked, follow-ups alone | 28 | 0.07 | 0.046 | 0.07 |
 | unanswerable | left out | 8 | — | — | — |
 
@@ -187,6 +196,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | follow-up | follow-up alone | 8 | 0.00 | 0.000 | 0.00 |
 | follow-up | history + follow-up | 8 | 0.12 | 0.125 | 0.12 |
 | follow-up | reference rewrite | 8 | 0.12 | 0.075 | 0.12 |
+| follow-up | rewriter | 8 | 0.00 | 0.000 | 0.00 |
 | all answerable | as asked, follow-ups alone | 28 | 0.08 | 0.061 | 0.11 |
 | unanswerable | left out | 8 | — | — | — |
 
@@ -199,6 +209,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | follow-up | follow-up alone | 8 | 0.12 | 0.125 | 0.12 |
 | follow-up | history + follow-up | 8 | 0.12 | 0.025 | 0.12 |
 | follow-up | reference rewrite | 8 | 0.62 | 0.493 | 0.62 |
+| follow-up | rewriter | 8 | 0.12 | 0.062 | 0.12 |
 | all answerable | as asked, follow-ups alone | 28 | 0.34 | 0.257 | 0.36 |
 | unanswerable | left out | 8 | — | — | — |
 
@@ -211,6 +222,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | follow-up | follow-up alone | 8 | 0.12 | 0.125 | 0.12 |
 | follow-up | history + follow-up | 8 | 0.12 | 0.080 | 0.12 |
 | follow-up | reference rewrite | 8 | 0.88 | 0.473 | 0.88 |
+| follow-up | rewriter | 8 | 0.12 | 0.076 | 0.12 |
 | all answerable | as asked, follow-ups alone | 28 | 0.39 | 0.277 | 0.43 |
 | unanswerable | left out | 8 | — | — | — |
 
@@ -223,6 +235,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | follow-up | follow-up alone | 8 | 0.25 | 0.188 | 0.25 |
 | follow-up | history + follow-up | 8 | 0.00 | 0.021 | 0.00 |
 | follow-up | reference rewrite | 8 | 0.50 | 0.455 | 0.50 |
+| follow-up | rewriter | 8 | 0.12 | 0.042 | 0.12 |
 | all answerable | as asked, follow-ups alone | 28 | 0.34 | 0.237 | 0.36 |
 | unanswerable | left out | 8 | — | — | — |
 
@@ -235,6 +248,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | follow-up | follow-up alone | 8 | 0.25 | 0.188 | 0.25 |
 | follow-up | history + follow-up | 8 | 0.12 | 0.058 | 0.12 |
 | follow-up | reference rewrite | 8 | 0.62 | 0.412 | 0.62 |
+| follow-up | rewriter | 8 | 0.12 | 0.056 | 0.12 |
 | all answerable | as asked, follow-ups alone | 28 | 0.35 | 0.270 | 0.39 |
 | unanswerable | left out | 8 | — | — | — |
 
@@ -247,6 +261,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | follow-up | follow-up alone | 8 | 0.00 | 0.000 | 0.00 |
 | follow-up | history + follow-up | 8 | 0.00 | 0.016 | 0.00 |
 | follow-up | reference rewrite | 8 | 0.50 | 0.304 | 0.50 |
+| follow-up | rewriter | 8 | 0.00 | 0.000 | 0.00 |
 | all answerable | as asked, follow-ups alone | 28 | 0.28 | 0.190 | 0.32 |
 | unanswerable | left out | 8 | — | — | — |
 
@@ -259,6 +274,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | follow-up | follow-up alone | 8 | 0.00 | 0.000 | 0.00 |
 | follow-up | history + follow-up | 8 | 0.00 | 0.021 | 0.00 |
 | follow-up | reference rewrite | 8 | 0.50 | 0.390 | 0.50 |
+| follow-up | rewriter | 8 | 0.00 | 0.000 | 0.00 |
 | all answerable | as asked, follow-ups alone | 28 | 0.32 | 0.227 | 0.36 |
 | unanswerable | left out | 8 | — | — | — |
 
@@ -405,13 +421,13 @@ What takes the top 5 slots of each answerable question, as a user would ask it (
 
 | Measure | Top-5 slots | Share of slots | Questions | Share of questions |
 |---|---:|---:|---:|---:|
-| duplicate | 38/135 | 0.28 | 19/27 | 0.70 |
-| duplicate: another Edition or Version | 12/135 | 0.09 | 12/27 | 0.44 |
-| duplicate: same file | 26/135 | 0.19 | 15/27 | 0.56 |
-| restatement | 0/135 | 0.00 | 0/27 | 0.00 |
+| duplicate | 38/140 | 0.27 | 19/28 | 0.68 |
+| duplicate: another Edition or Version | 12/140 | 0.09 | 12/28 | 0.43 |
+| duplicate: same file | 26/140 | 0.19 | 15/28 | 0.54 |
+| restatement | 0/140 | 0.00 | 0/28 | 0.00 |
 | mostly numeric | 2/140 | 0.01 | 1/28 | 0.04 |
 
-- Grouped: 27 of 28 questions have a Work group for every Edition in their top 5.
+- Grouped: 28 of 28 questions have a Work group for every Edition in their top 5.
 - Mostly-numeric slots holding a Passage: 0 of 2
 - Pool: the top 50 raw Chunks held fewer than 5 distinct Chunks, once copies were merged, for 0 of 28 questions, and fewer than 10, the depth each query asks for, for 0.
 
@@ -584,7 +600,7 @@ Each retriever's raw ranking and its Collapsed ranking, over the answerable ques
 | Retriever | Ranking | Duplicate | Another Edition or Version | Same file | Grouped questions | Recall@5 | MRR@10 | Hit@5 |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
 | bm25 | raw | 59/140 | 38/140 | 21/140 | 28/28 | 0.16 | 0.118 | 0.18 |
-| bm25 | collapsed | 38/135 | 12/135 | 26/135 | 27/28 | 0.20 | 0.138 | 0.21 |
+| bm25 | collapsed | 38/140 | 12/140 | 26/140 | 28/28 | 0.20 | 0.138 | 0.21 |
 | dense.bge-small | raw | 70/140 | 33/140 | 37/140 | 28/28 | 0.30 | 0.244 | 0.32 |
 | dense.bge-small | collapsed | 57/140 | 13/140 | 44/140 | 28/28 | 0.38 | 0.271 | 0.39 |
 | dense.bge-base | raw | 57/100 | 24/100 | 33/100 | 20/28 | 0.29 | 0.211 | 0.29 |
@@ -630,7 +646,7 @@ None.
 
 ## Editions without a Work group
 
-Editions in any retriever's top 5 for an answerable question, in any query, with no Work group. `evaluate --export-ungrouped` writes them, with their titles, for grouping.
+Editions in any retriever's top 5 for an answerable question, in any query but the rewriter's, with no Work group. `evaluate --export-ungrouped` writes them, with their titles, for grouping.
 
 - 10.5121/ijci.2024.130204
 - 10.54254/2755-2721/2026.37609
@@ -708,11 +724,25 @@ Editions in any retriever's top 5 for an answerable question, in any query, with
 - W17-4109
 - W18-1205
 - W19-4602
-- arXiv:2607.05691v1
 
 ## Questions
 
 First hit is the rank of the first Chunk holding a Passage, within the top 10; Passages found counts those held in the top 5. The slot counts are within the top 5; a question with an Edition there that has no Work group has its duplicates and restatements marked ungrouped. A Collapsed ranking's lines name the file of each top-5 Chunk, with the other files of its Work in the pool after a +.
+
+### Rewrites
+
+Each follow-up's reference rewrite and the rewriter's Rewrite, which are its last two queries below.
+
+| Question | Follow-up | Reference rewrite | Rewrite |
+|---|---|---|---|
+| wechsel-neighbours | When it builds the new subword embeddings from similar source subwords, what temperature and how many neighbours does it use? | Which temperature and number of nearest neighbours does WECHSEL use to initialise subword embeddings? | When a model is transferred to a new language with WECHSEL, do its non-embedding weights have to be held fixed early in training? When it builds the new subword embeddings from similar source subwords, what temperature and how many neighbours does it use? |
+| canine-hashing | How does it give every possible character an embedding without an enormous table? | How does CANINE embed every Unicode codepoint without a vocabulary-sized embedding matrix? | How does the model give every possible character an embedding without an enormous table? |
+| digits-fourth-digit | And when the answer is longer than the numbers being added, where does the left-to-right version go wrong? | In the study of number tokenization direction in GPT models, which digit does the model get wrong under left-to-right tokenization when the answer has more digits than the addends? | When the answer is longer than the numbers being added, where does the left-to-right version go wrong? |
+| vocabulary-with-scarce-data | What happens to that optimum when there isn't much training data? | In the work on scaling laws for vocabulary size, how does the optimal vocabulary size change when the available training data is the bottleneck? | What happens to the optimum when there isn't much training data? |
+| code-tokenizer-initialisation | In the code study, how were the embeddings for the new tokens set up before that training? | How did Dagan et al. initialise the embeddings of the new tokens when changing a pre-trained code model's tokenizer? | How were the embeddings for the new tokens set up before that training in the code study? |
+| magikarp-norm-indicator | Is there a signal in the weights that spots them without already knowing some? | In Fishing for Magikarp, which embedding-based indicator flags under-trained tokens without needing a set of known untrained tokens? | Is there a signal in the weights that spots the under-trained tokens without already knowing some? |
+| superbpe-mmlu | How much did that help on MMLU? | How much does the SuperBPE model improve over the BPE baseline on MMLU? | How much did the improvement on MMLU look like? |
+| tokenization-latency | Do the longer token sequences also slow processing down, and how does the time grow with length? | In Petrov et al.'s study of tokenizer unfairness across languages, do languages with longer tokenizations also take longer to process, and how does processing time grow with tokenization length? | Do longer token sequences slow processing down, and how does the time grow with length? |
 
 ### Questions: bm25
 
@@ -741,27 +771,35 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | 3 | 0 | 0 |
 | wechsel-neighbours | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | wechsel-neighbours | follow-up | reference rewrite | none | 0/1 | 2 | 0 | 0 |
+| wechsel-neighbours | follow-up | rewriter | none | 0/1 | 4 | 0 | 0 |
 | canine-hashing | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 |
 | canine-hashing | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 1 |
 | canine-hashing | follow-up | reference rewrite | 2 | 1/1 | 2 | 0 | 0 |
+| canine-hashing | follow-up | rewriter | none | 0/1 | 2 | 1 | 0 |
 | digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 |
 | digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 2 | 0 | 0 |
+| digits-fourth-digit | follow-up | rewriter | none | 0/1 | 1 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | 1 | 1/1 | 3 | 0 | 0 |
+| vocabulary-with-scarce-data | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | 0 | 0 | 0 |
 | code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 |
 | code-tokenizer-initialisation | follow-up | reference rewrite | 1 | 1/1 | 2 | 0 | 0 |
+| code-tokenizer-initialisation | follow-up | rewriter | none | 0/1 | 0 | 0 | 0 |
 | magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | magikarp-norm-indicator | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 |
+| magikarp-norm-indicator | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 |
 | superbpe-mmlu | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | superbpe-mmlu | follow-up | reference rewrite | 6 | 0/1 | 4 | 0 | 0 |
+| superbpe-mmlu | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | tokenization-latency | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 |
 | tokenization-latency | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 |
 | tokenization-latency | follow-up | reference rewrite | 1 | 1/1 | 2 | 0 | 0 |
+| tokenization-latency | follow-up | rewriter | none | 0/1 | 1 | 1 | 0 |
 | bpe-english-french | unanswerable | as asked | left out | — | — | — | — |
 | blt-70b-mmlu | unanswerable | as asked | left out | — | — | — | — |
 | blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — |
@@ -783,7 +821,7 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | byt5-span-length | single-paper | as asked | none | 0/1 | 0 | 0 | 0 | 2411.11808v1; 2022.tacl-1.17 + 2105.13626v3 + 2105.13626v1; 2022.findings-emnlp.207 + 2212.07284v1; 2410.11627v2 + 2410.11627v1; 2410.20771v1 |
 | digits-right-to-left | single-paper | as asked | none | 0/1 | 1 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2305.14201v1; 2608.18062v3 + 2608.18062v1; 2604.11582v3 |
 | llama2-70b-vocabulary | single-paper | as asked | 2 | 1/1 | 4 | 0 | 0 | 2407.13623v3; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v1; 2407.13623v3 + 2407.13623v1 |
-| xlm-r-tokens-per-language | single-paper | as asked | none | 0/1 | ungrouped | ungrouped | 0 | 2301.10472v2 + 2301.10472v1; 2608.07727v1; 2609.22097v1; 2607.15209v3 + 2607.15209v1; arXiv:2607.05691v1 |
+| xlm-r-tokens-per-language | single-paper | as asked | none | 0/1 | 0 | 0 | 0 | 2301.10472v2 + 2301.10472v1; 2608.07727v1; 2609.22097v1; 2607.15209v3 + 2607.15209v1; 2607.05691v1 |
 | magikarp-verified-share | single-paper | as asked | none | 0/1 | 4 | 0 | 0 | 2405.05417v1; 2405.05417v1; 2405.05417v1; 2405.05417v1; 2405.05417v1 |
 | superbpe-curriculum | single-paper | as asked | none | 0/1 | 2 | 0 | 0 | 2503.13423v3 + 2503.13423v1; 2610.01984v1; 2503.13423v3; 2503.13423v1; 2025.babylm-main.16 |
 | fast-wordpiece-speed | single-paper | as asked | 2 | 1/1 | 4 | 0 | 0 | 2021.emnlp-main.160 + 2012.15524v1 + 2012.15524v3; 2021.emnlp-main.160 + 2012.15524v3; 2021.emnlp-main.160 + 2012.15524v3; 2012.15524v1; 2021.emnlp-main.160 + 2012.15524v3 + 2012.15524v1 |
@@ -798,27 +836,35 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2311.08849v2; 2024.conll-1.8 + 2407.05841v1 + 2407.05841v2; 2311.08849v1; 2311.05741v2; 1712.01807v1 |
 | wechsel-neighbours | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2025.findings-acl.109; 2410.06898v1 |
 | wechsel-neighbours | follow-up | reference rewrite | none | 0/1 | 1 | 0 | 0 | 2020.lrec-1.475 + 2002.11004v1; 2407.00894v2 + 2407.00894v1; 2025.findings-acl.109; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2112.06598v1 |
+| wechsel-neighbours | follow-up | rewriter | none | 0/1 | 2 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2025.findings-acl.109; 2410.06898v1 |
 | canine-hashing | follow-up | follow-up alone | none | 0/1 | 0 | 0 | 0 | Q17-1026 + 1610.03017v3; 1908.05344v1; 2610.19801v1; 2103.00073v4 + 2103.00073v1; 2607.01239v1 |
 | canine-hashing | follow-up | history + follow-up | none | 0/1 | 2 | 1 | 1 | 2022.tacl-1.5; 2103.06874v4; 2023.mrl-1.6 + 2310.08078v1; 2022.tacl-1.5; 2603.19269v1 |
 | canine-hashing | follow-up | reference rewrite | 2 | 1/1 | 2 | 0 | 0 | 2507.04886v4; 2103.06874v4 + 2103.06874v1; 2022.tacl-1.5 + 2103.06874v1 + 2103.06874v4; 2507.04886v1; 2305.15425v2 |
+| canine-hashing | follow-up | rewriter | none | 0/1 | 0 | 1 | 0 | Q17-1026 + 1610.03017v3; 2603.19269v1; 2103.00073v4 + 2103.00073v1; 1908.05344v1; 2607.01239v1 |
 | digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 0 | 0 | 0 | 1909.07940v2 + 1909.07940v1; 2507.06195v1; 2602.10416v1; 2402.14903v1; 2601.08808v1 |
 | digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2305.14201v1; 2402.14903v1 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 2 | 0 | 0 | 2402.14903v1; 2602.10416v1; 2402.14903v1; 2604.11582v3; 2604.11582v1 |
+| digits-fourth-digit | follow-up | rewriter | none | 0/1 | 0 | 0 | 0 | 1909.07940v2 + 1909.07940v1; 2507.06195v1; 2402.14903v1; 2602.10416v1; 2601.08808v1 |
 | vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2602.13266v1; 2407.16607v4; 2024.repl4nlp-1.10 + 2401.07923v1 + 2401.07923v2; 2603.16077v1; 2024.repl4nlp-1.10 + 2401.07923v2 |
 | vocabulary-with-scarce-data | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2603.20854v1; 2507.15773v2 + 2507.15773v1; 2407.13623v3 + 2407.13623v1 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | 1 | 1/1 | 3 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2605.01188v2 + 2605.01188v1; 2407.13623v3 + 2407.13623v1 |
+| vocabulary-with-scarce-data | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2602.13266v1; 2407.16607v4; 2411.14198v1; 2024.repl4nlp-1.10 + 2401.07923v1 + 2401.07923v2; 2610.19294v1 |
 | code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | 0 | 0 | 0 | 2003.07914v1; 2601.13328v1; 10.1186/s12859-026-06562-5; 2211.08192v1; 2402.14714v1 |
 | code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 | 2024.iwclul-1.13 + 2501.02631v1; 2405.07883v1; 2405.07883v2 + 2405.07883v1; 2607.15232v1; 2607.15232v1 |
 | code-tokenizer-initialisation | follow-up | reference rewrite | 1 | 1/1 | 0 | 0 | 0 | 2402.01035v2 + 2402.01035v1; 2024.iwclul-1.13 + 2501.02631v1; 2406.14670v1; 2607.15232v1; 2605.11774v1 |
+| code-tokenizer-initialisation | follow-up | rewriter | none | 0/1 | 0 | 0 | 0 | 2003.07914v1; 2601.13328v1; 10.1186/s12859-026-06562-5; 2211.08192v1; 2402.14714v1 |
 | magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2510.06244v1; 2610.14427v1; 2608.21106v3 + 2608.21106v1; 2608.21106v1; 2508.11260v1 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2405.05417v1; 2405.05417v1; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2 |
 | magikarp-norm-indicator | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2 |
+| magikarp-norm-indicator | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | W17-4106; 2609.15528v1; 2510.09947v2 + 2510.09947v1; 2609.29045v1; N16-1155 + 1512.00103v1 |
 | superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | 0 | 0 | 0 | 2607.15232v1; 2305.15108v1; 2405.13929v1; 2024.lrec-main.89 + 2404.08018v1; 2107.08091v1 |
 | superbpe-mmlu | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2503.13423v3 + 2503.13423v1; 2503.13423v1; 2503.13423v3; 2503.13423v1; 2610.01984v1 |
 | superbpe-mmlu | follow-up | reference rewrite | 5 | 1/1 | 4 | 0 | 0 | 2503.13423v3; 2503.13423v1; 2503.13423v1; 2503.13423v3; 2503.13423v3 + 2503.13423v1 |
+| superbpe-mmlu | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2506.14761v1; 1808.02608v1; 2401.13660v3; 2412.10924v1; 2412.10924v11 |
 | tokenization-latency | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2409.04599v1; 2411.17669v1; 2024.emnlp-main.925; 2511.04952v1 |
 | tokenization-latency | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 | 2305.13707v1; 2305.13707v1; 2305.15425v1; 2305.15425v2 + 2305.15425v1; 10.1007/s00146-026-02990-2 |
 | tokenization-latency | follow-up | reference rewrite | 1 | 1/1 | 2 | 0 | 0 | 2305.15425v1; 2305.15425v1; 2026.acl-demo.41; 2305.15425v2; 2608.25904v3 + 2608.25904v1 |
+| tokenization-latency | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2409.04599v1; 2024.emnlp-main.925; 2411.17669v1; 2022.findings-acl.194 + 2110.08191v1 + 2110.08191v2 |
 | bpe-english-french | unanswerable | as asked | left out | — | — | — | — | P16-1162 + 1508.07909v5 + 1508.07909v1; 2020.wmt-1.9; 2020.wmt-1.9; 2402.00786v5; 2402.00786v1 |
 | blt-70b-mmlu | unanswerable | as asked | left out | — | — | — | — | 2412.09871v1; 2410.01930v1; 2410.01930v2; 2305.07185v2 + 2305.07185v1; 2412.09871v1 |
 | blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — | 2412.09871v1; 2023.acl-long.402; 2412.09871v1; 2412.09871v1; 2203.09963v1 |
@@ -855,27 +901,35 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 |
 | wechsel-neighbours | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | wechsel-neighbours | follow-up | reference rewrite | 5 | 1/1 | 4 | 0 | 0 |
+| wechsel-neighbours | follow-up | rewriter | none | 0/1 | 4 | 0 | 0 |
 | canine-hashing | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 |
 | canine-hashing | follow-up | history + follow-up | none | 0/1 | 3 | 1 | 2 |
 | canine-hashing | follow-up | reference rewrite | 1 | 1/1 | 3 | 1 | 0 |
+| canine-hashing | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 |
 | digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 2 | 0 | 0 |
+| digits-fourth-digit | follow-up | rewriter | none | 0/1 | 2 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | 3 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | history + follow-up | 4 | 1/1 | 4 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 |
+| vocabulary-with-scarce-data | follow-up | rewriter | none | 0/1 | 3 | 0 | 0 |
 | code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | 3 | 0 | 0 |
 | code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 |
 | code-tokenizer-initialisation | follow-up | reference rewrite | none | 0/1 | 3 | 0 | 0 |
+| code-tokenizer-initialisation | follow-up | rewriter | none | 0/1 | 4 | 0 | 0 |
 | magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | magikarp-norm-indicator | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 |
+| magikarp-norm-indicator | follow-up | rewriter | 1 | 1/1 | 4 | 0 | 0 |
 | superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 |
 | superbpe-mmlu | follow-up | history + follow-up | none | 0/1 | 1 | 0 | 0 |
 | superbpe-mmlu | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 |
+| superbpe-mmlu | follow-up | rewriter | none | 0/1 | 1 | 0 | 0 |
 | tokenization-latency | follow-up | follow-up alone | 1 | 1/1 | 2 | 0 | 0 |
 | tokenization-latency | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | tokenization-latency | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 |
+| tokenization-latency | follow-up | rewriter | 1 | 1/1 | 3 | 0 | 0 |
 | bpe-english-french | unanswerable | as asked | left out | — | — | — | — |
 | blt-70b-mmlu | unanswerable | as asked | left out | — | — | — | — |
 | blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — |
@@ -912,27 +966,35 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 1805.03710v1; 1805.03710v1; K19-1021 + 1909.12375v1; 2020.lrec-1.330; 2022.naacl-main.293 + 2112.06598v1 |
 | wechsel-neighbours | follow-up | history + follow-up | 8 | 0/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2112.06598v1; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2 |
 | wechsel-neighbours | follow-up | reference rewrite | 3 | 1/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2112.06598v1; 2022.naacl-main.293; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2112.06598v2 |
+| wechsel-neighbours | follow-up | rewriter | 8 | 0/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2112.06598v1; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2 |
 | canine-hashing | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2024.findings-acl.302; 2602.21377v1; 2602.21377v1; 2010.09997v1; 2010.12730v1 |
 | canine-hashing | follow-up | history + follow-up | 10 | 0/1 | 3 | 1 | 2 | 2022.tacl-1.5; 2103.06874v4; 2022.tacl-1.5 + 2103.06874v4; 2103.06874v4; 2110.08191v2 + 2110.08191v1 |
 | canine-hashing | follow-up | reference rewrite | 2 | 1/1 | 3 | 1 | 0 | 2022.tacl-1.5 + 2103.06874v4 + 2103.06874v1; 2022.tacl-1.5 + 2103.06874v1 + 2103.06874v4; 2112.10508v1; 2103.06874v1; 2022.tacl-1.5 + 2103.06874v4 |
+| canine-hashing | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 1508.06615v4; 2610.04002v1; 2605.09751v1; 2605.09751v1; 2010.12730v1 |
 | digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 | 2502.19981v1; 2402.14903v1; 2402.14903v1; 2502.19981v1; 2602.10416v1 |
 | digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2602.10416v1; 2402.14903v1; 2402.14903v1 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 2 | 0 | 0 | 2602.10416v1; 2402.14903v1; 2305.14201v1; 2402.14903v1; 2402.14903v1 |
+| digits-fourth-digit | follow-up | rewriter | none | 0/1 | 2 | 0 | 0 | 2502.19981v1; 2402.14903v1; 2402.14903v1; 2602.10416v1; 2602.10416v1 |
 | vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2405.14159v2 + 2405.14159v1; 2405.14159v2 + 2405.14159v1; 1806.09089v2; 2402.02791v1; 2507.22543v1 |
 | vocabulary-with-scarce-data | follow-up | history + follow-up | 4 | 1/1 | 4 | 0 | 0 | 2407.13623v3; 2407.13623v3; 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3; 2407.13623v1; 2407.13623v3 + 2407.13623v1 |
+| vocabulary-with-scarce-data | follow-up | rewriter | none | 0/1 | 2 | 0 | 0 | 2405.14159v2 + 2405.14159v1; 2405.14159v2 + 2405.14159v1; 2402.02791v1; 1806.09089v2; 2405.14159v2 + 2405.14159v1 |
 | code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | 3 | 0 | 0 | 2505.20133v3; 2505.20133v3; 2505.20133v3; 2505.20133v1; 2412.10924v1 |
 | code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 1 | 0 | 0 | 2405.07883v1; 2405.07883v2; 2607.15232v1; 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2510.21954v1 |
 | code-tokenizer-initialisation | follow-up | reference rewrite | none | 0/1 | 1 | 0 | 0 | 2510.21954v1; 2026.findings-eacl.341 + 2512.03989v1 + 2512.03989v2; 2512.03989v1; 2405.07883v2 + 2405.07883v1; 2505.20133v3 |
+| code-tokenizer-initialisation | follow-up | rewriter | none | 0/1 | 4 | 0 | 0 | 2505.20133v3; 2505.20133v3; 2505.20133v3; 2505.20133v1; 2505.20133v1 |
 | magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 | 2010.01003v1; 2112.09348v1; 2506.17942v1; 2010.01003v1; 2010.01003v1 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2 + 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2 |
 | magikarp-norm-indicator | follow-up | reference rewrite | 10 | 0/1 | 4 | 0 | 0 | 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1 |
+| magikarp-norm-indicator | follow-up | rewriter | 1 | 1/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1 |
 | superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 | 2509.15020v1; 2603.15953v1; 2603.15953v1; 2603.15953v1; 2410.09644v1 |
 | superbpe-mmlu | follow-up | history + follow-up | none | 0/1 | 1 | 0 | 0 | 2510.21909v1; 2504.00178v2; 2503.13423v3 + 2503.13423v1; 2604.05192v2 + 2604.05192v1; 2504.00178v1 |
 | superbpe-mmlu | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 | 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3; 2503.13423v1; 2503.13423v3 |
+| superbpe-mmlu | follow-up | rewriter | none | 0/1 | 1 | 0 | 0 | 2603.15953v1; 2410.09644v1; 2603.15953v1; 2509.15020v1; 2607.15232v1 |
 | tokenization-latency | follow-up | follow-up alone | 1 | 1/1 | 2 | 0 | 0 | 2305.15425v2; 2511.04952v1; 2305.15425v1; 2305.15425v1; 2607.26831v1 |
 | tokenization-latency | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2305.13707v1; 2305.13707v1; 2305.13707v1; 2305.13707v1; 2305.13707v1 |
 | tokenization-latency | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 | 2305.15425v2; 2305.15425v1; 2305.15425v1; 2305.15425v2 + 2305.15425v1; 2305.15425v2 |
+| tokenization-latency | follow-up | rewriter | 1 | 1/1 | 3 | 0 | 0 | 2305.15425v2; 2511.04952v1; 2305.15425v1; 2305.15425v1; 2511.04952v1 |
 | bpe-english-french | unanswerable | as asked | left out | — | — | — | — | 2023.icon-1.19; W7218093374; 2505.16868v1; 2020.wmt-1.92; 2505.16868v1 |
 | blt-70b-mmlu | unanswerable | as asked | left out | — | — | — | — | 2412.09871v1; 2501.10322v2 + 2501.10322v1; 2412.09871v1; 2502.14553v1; 2412.09871v1 |
 | blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — | 2402.18376v2 + 2402.18376v1; 2610.01984v2 + 2610.01984v1; 2023.acl-long.353 + 2211.09761v2; 2211.09761v1; 2507.22543v1 |
@@ -969,27 +1031,35 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 1 |
 | wechsel-neighbours | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | wechsel-neighbours | follow-up | reference rewrite | 7 | 0/1 | 4 | 0 | 0 |
+| wechsel-neighbours | follow-up | rewriter | none | 0/1 | 4 | 0 | 0 |
 | canine-hashing | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
 | canine-hashing | follow-up | history + follow-up | none | 0/1 | ungrouped | ungrouped | 1 |
 | canine-hashing | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 |
+| canine-hashing | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 3 | 0 | 0 |
 | digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | ungrouped | ungrouped | 0 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 3 | 0 | 0 |
+| digits-fourth-digit | follow-up | rewriter | none | 0/1 | 3 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | follow-up alone | 8 | 0/1 | ungrouped | ungrouped | 0 |
 | vocabulary-with-scarce-data | follow-up | history + follow-up | 6 | 0/1 | 4 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 |
+| vocabulary-with-scarce-data | follow-up | rewriter | 6 | 0/1 | ungrouped | ungrouped | 0 |
 | code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 |
 | code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 |
 | code-tokenizer-initialisation | follow-up | reference rewrite | none | 0/1 | ungrouped | ungrouped | 0 |
+| code-tokenizer-initialisation | follow-up | rewriter | none | 0/1 | 2 | 0 | 0 |
 | magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | magikarp-norm-indicator | follow-up | reference rewrite | 7 | 0/1 | 4 | 0 | 0 |
+| magikarp-norm-indicator | follow-up | rewriter | 6 | 0/1 | 4 | 0 | 0 |
 | superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 |
 | superbpe-mmlu | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 |
 | superbpe-mmlu | follow-up | reference rewrite | none | 0/1 | ungrouped | ungrouped | 0 |
+| superbpe-mmlu | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | tokenization-latency | follow-up | follow-up alone | 1 | 1/1 | ungrouped | ungrouped | 0 |
 | tokenization-latency | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
 | tokenization-latency | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 |
+| tokenization-latency | follow-up | rewriter | 1 | 1/1 | ungrouped | ungrouped | 0 |
 | bpe-english-french | unanswerable | as asked | left out | — | — | — | — |
 | blt-70b-mmlu | unanswerable | as asked | left out | — | — | — | — |
 | blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — |
@@ -1026,27 +1096,35 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 1 | 2021.findings-emnlp.141; 2010.12730v3; 2025.findings-emnlp.379; 2024.ltedi-1.16; W18-1205 |
 | wechsel-neighbours | follow-up | history + follow-up | 8 | 0/1 | 4 | 0 | 0 | 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1 |
 | wechsel-neighbours | follow-up | reference rewrite | 6 | 0/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v2; 2112.06598v2; 2022.naacl-main.293 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v1 |
+| wechsel-neighbours | follow-up | rewriter | 8 | 0/1 | 4 | 0 | 0 | 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1 |
 | canine-hashing | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2001.05316v1; 2010.09997v1; 1506.02338v1; 1506.02338v3; 2023.acl-long.326 + 2305.05461v1 |
 | canine-hashing | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 1 | 2022.tacl-1.5; 2103.06874v4; 2024.naacl-srw.14 + 2404.18810v2; 2022.tacl-1.5 + 2103.06874v4; 2103.06874v4 |
 | canine-hashing | follow-up | reference rewrite | 2 | 1/1 | ungrouped | ungrouped | 0 | 2022.tacl-1.5 + 2103.06874v4 + 2103.06874v1; 2022.tacl-1.5 + 2103.06874v1 + 2103.06874v4; 2103.06874v4; 2023.findings-eacl.128 + 2210.07111v1; 2103.06874v1 |
+| canine-hashing | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2021.naacl-main.17 + 2008.09396v2 + 2008.09396v1; 1506.02338v3; 1506.02338v1; 2001.05316v1; 2023.acl-long.326 + 2305.05461v1 |
 | digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 3 | 0 | 0 | 2602.10416v1; 2402.14903v1; 2602.10416v1; 2602.10416v1; 2402.14903v1 |
 | digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | ungrouped | ungrouped | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2602.10416v1; 2608.13129v1 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2602.10416v1; 2402.14903v1; 2402.14903v1 |
+| digits-fourth-digit | follow-up | rewriter | none | 0/1 | 3 | 0 | 0 | 2602.10416v1; 2402.14903v1; 2402.14903v1; 2602.10416v1; 2602.10416v1 |
 | vocabulary-with-scarce-data | follow-up | follow-up alone | 7 | 0/1 | ungrouped | ungrouped | 0 | 2405.14159v2 + 2405.14159v1; 2004.06343v1; 2407.13623v3 + 2407.13623v1; 2025.latechclfl-1.22; 2502.20273v1 |
 | vocabulary-with-scarce-data | follow-up | history + follow-up | 6 | 0/1 | 4 | 0 | 0 | 2407.13623v3; 2407.13623v3; 2407.13623v3 + 2407.13623v1; 2407.13623v1; 2407.13623v3 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v1; 2407.13623v3; 2407.13623v3 + 2407.13623v1 |
+| vocabulary-with-scarce-data | follow-up | rewriter | 5 | 1/1 | ungrouped | ungrouped | 0 | 2405.14159v2 + 2405.14159v1; 2004.06343v1; 2025.latechclfl-1.22; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1 |
 | code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 | 2405.07883v2 + 2405.07883v1; 2510.21954v1; 2510.21954v1; 2505.20133v3; 2505.20133v1 |
 | code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 | 2510.21954v1; 2405.07883v2 + 2405.07883v1; 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2512.03989v1; 2405.07883v1 |
 | code-tokenizer-initialisation | follow-up | reference rewrite | none | 0/1 | ungrouped | ungrouped | 0 | 2510.21954v1; 2405.07883v2 + 2405.07883v1; 2510.21954v1; 2608.00582v1; 2512.03989v1 |
+| code-tokenizer-initialisation | follow-up | rewriter | none | 0/1 | 2 | 0 | 0 | 2405.07883v2 + 2405.07883v1; 2510.21954v1; 2510.21954v1; 2505.20133v1; 2505.20133v3 |
 | magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2506.11115v1; 2608.29930v1; 2506.11115v1; 2112.09348v1; 2112.09348v1 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v2 + 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2405.05417v1; 2405.05417v1; 2405.05417v1 |
 | magikarp-norm-indicator | follow-up | reference rewrite | 5 | 1/1 | 4 | 0 | 0 | 2405.05417v1; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2 |
+| magikarp-norm-indicator | follow-up | rewriter | 4 | 1/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1 |
 | superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 | 2603.15953v1; 2603.15953v1; 2603.15953v1; 2410.09644v3; 2607.15232v1 |
 | superbpe-mmlu | follow-up | history + follow-up | none | 0/1 | ungrouped | ungrouped | 0 | 2025.babylm-main.16; 2510.21909v1; 2503.13423v3 + 2503.13423v1; 2510.21909v1; 2026.mellm-1.27 |
 | superbpe-mmlu | follow-up | reference rewrite | none | 0/1 | ungrouped | ungrouped | 0 | 2026.mellm-1.27; 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3; 2503.13423v3 |
+| superbpe-mmlu | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2603.15953v1; 2403.01858v3; 2410.09644v1; 2025.acl-long.100 + 2412.12310v2; 2506.06607v1 |
 | tokenization-latency | follow-up | follow-up alone | 1 | 1/1 | ungrouped | ungrouped | 0 | 2305.15425v2; 2305.15425v1; 2511.20849v2 + 2511.20849v1; 2305.15425v1; 2601.11518v1 |
 | tokenization-latency | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2305.15425v1; 2305.15425v2; 2305.13707v1; 2305.13707v1; 2305.13707v1 |
 | tokenization-latency | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 | 2305.15425v2; 2305.15425v2 + 2305.15425v1; 2305.15425v1; 2305.15425v1; 2305.15425v1 |
+| tokenization-latency | follow-up | rewriter | 1 | 1/1 | ungrouped | ungrouped | 0 | 2305.15425v2; 2511.20849v2 + 2511.20849v1; 2305.15425v1; 2607.26831v1; 2511.04952v1 |
 | bpe-english-french | unanswerable | as asked | left out | — | — | — | — | W18-6459; 2023.icon-1.19; W18-1207; 2020.lrec-1.444 + 2004.13819v1; 1612.04629v1 |
 | blt-70b-mmlu | unanswerable | as asked | left out | — | — | — | — | 2412.09871v1; 2501.10322v2 + 2501.10322v1; 2412.09871v1; 2412.09871v1; 2412.09871v1 |
 | blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — | 2023.emnlp-main.459 + 2305.05480v3; 2026.findings-eacl.341 + 2512.03989v2; 2311.00522v1; 2409.13920v1; 2605.08044v1 |
@@ -1083,27 +1161,35 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
 | wechsel-neighbours | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | wechsel-neighbours | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 |
+| wechsel-neighbours | follow-up | rewriter | none | 0/1 | 4 | 0 | 0 |
 | canine-hashing | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
 | canine-hashing | follow-up | history + follow-up | none | 0/1 | ungrouped | ungrouped | 0 |
 | canine-hashing | follow-up | reference rewrite | none | 0/1 | 3 | 1 | 0 |
+| canine-hashing | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 |
 | digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 |
+| digits-fourth-digit | follow-up | rewriter | none | 0/1 | 2 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
 | vocabulary-with-scarce-data | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 |
+| vocabulary-with-scarce-data | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
 | code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
 | code-tokenizer-initialisation | follow-up | reference rewrite | none | 0/1 | 3 | 0 | 0 |
+| code-tokenizer-initialisation | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | magikarp-norm-indicator | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 |
+| magikarp-norm-indicator | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 1 |
 | superbpe-mmlu | follow-up | history + follow-up | 2 | 1/1 | 4 | 0 | 0 |
 | superbpe-mmlu | follow-up | reference rewrite | 3 | 1/1 | 4 | 0 | 1 |
+| superbpe-mmlu | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 1 |
 | tokenization-latency | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
 | tokenization-latency | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | tokenization-latency | follow-up | reference rewrite | none | 0/1 | ungrouped | ungrouped | 0 |
+| tokenization-latency | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | bpe-english-french | unanswerable | as asked | left out | — | — | — | — |
 | blt-70b-mmlu | unanswerable | as asked | left out | — | — | — | — |
 | blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — |
@@ -1140,27 +1226,35 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 1707.06961v1; 2410.16410v1; 2020.lrec-1.330; 2609.01151v1; 2022.naacl-main.293 + 2112.06598v1 |
 | wechsel-neighbours | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2112.06598v1; 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2112.06598v1 |
 | wechsel-neighbours | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 | 2112.06598v1; 2022.naacl-main.293; 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2112.06598v1 |
+| wechsel-neighbours | follow-up | rewriter | none | 0/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2112.06598v1; 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2112.06598v1 |
 | canine-hashing | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | P16-2058 + 1603.00810v1 + 1603.00810v3; 2023.acl-long.326 + 2305.05461v1; 2010.12730v1; 2206.02608v1; W17-4109 + 1709.00028v1 |
 | canine-hashing | follow-up | history + follow-up | none | 0/1 | ungrouped | ungrouped | 0 | 2103.06874v4; 2024.naacl-srw.14 + 2404.18810v1 + 2404.18810v2; 2022.tacl-1.5 + 2103.06874v4; 10.5121/ijci.2024.130204; 2022.tacl-1.5 |
 | canine-hashing | follow-up | reference rewrite | 10 | 0/1 | 3 | 1 | 0 | 2103.06874v4 + 2103.06874v1; 2022.tacl-1.5; 2112.10508v1; 2103.06874v1; 2103.06874v1 |
+| canine-hashing | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | D18-1278 + 1808.09180v1; P16-2058 + 1603.00810v3 + 1603.00810v1; 2023.acl-long.326 + 2305.05461v1; 2010.12730v1; 2302.14220v1 |
 | digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2602.10416v1; 2402.14903v1; 1909.07940v2 + 1909.07940v1; 1909.07940v2 + 1909.07940v1; 2305.14201v1 |
 | digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2407.00894v2 + 2407.00894v1; 2402.14903v1 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2402.14903v1; 2402.14903v1 |
+| digits-fourth-digit | follow-up | rewriter | none | 0/1 | 2 | 0 | 0 | 2602.10416v1; 2402.14903v1; 1909.07940v2 + 1909.07940v1; 1909.07940v2 + 1909.07940v1; 2402.14903v1 |
 | vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2212.11281v1; 2502.20273v1; 2021.emnlp-main.161 + 2109.02550v1 + 2109.02550v2; 2212.11281v1; 2402.01035v2 + 2402.01035v1 |
 | vocabulary-with-scarce-data | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2407.13623v3; 2407.13623v3; 2407.13623v3 + 2407.13623v1; 2407.13623v3; 2407.13623v1 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v1; 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1 |
+| vocabulary-with-scarce-data | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2502.20273v1; 2502.20273v1; 2608.17325v1; 2004.04002v1; 2022.amta-research.8 + 2204.14268v1 + 2204.14268v2 |
 | code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2607.29065v1; 2021.acl-long.243 + 2012.15613v2; 2022.naacl-main.179 + 2206.02608v1; 2610.04002v1; 2024.mrl-1.1 |
 | code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | ungrouped | ungrouped | 0 | 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2512.03989v1; 2402.01035v2 + 2402.01035v1; 2607.29065v1; 2310.08754v4 + 2310.08754v1 |
 | code-tokenizer-initialisation | follow-up | reference rewrite | none | 0/1 | ungrouped | ungrouped | 0 | 2512.03989v1; 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2402.01035v2 + 2402.01035v1; 2310.08754v4 + 2310.08754v1; 2607.29065v1 |
+| code-tokenizer-initialisation | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2607.29065v1; 2022.naacl-main.179 + 2206.02608v1; 2021.acl-long.243 + 2012.15613v2; 2610.04002v1; 2023.acl-short.1 + 2306.17757v1 |
 | magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2024.emnlp-main.230 + 2408.08541v2; 2024.emnlp-main.230 + 2408.08541v2 + 2408.08541v1; 2024.emnlp-main.230 + 2408.08541v1 + 2408.08541v2; 2024.emnlp-main.230 + 2408.08541v2 + 2408.08541v1; 2024.emnlp-main.230 + 2408.08541v1 + 2408.08541v2 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2 + 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2 |
 | magikarp-norm-indicator | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 | 2405.05417v1; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1; 2024.emnlp-main.649 |
+| magikarp-norm-indicator | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2024.emnlp-main.230 + 2408.08541v2 + 2408.08541v1; 2024.emnlp-main.230 + 2408.08541v2; 2024.emnlp-main.230 + 2408.08541v1 + 2408.08541v2; 2024.emnlp-main.230 + 2408.08541v1 + 2408.08541v2; 2024.emnlp-main.230 + 2408.08541v2 |
 | superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 1 | 2406.11477v3; 2411.18553v1; 2507.04886v4; 2403.16854v1; 2411.18553v1 |
 | superbpe-mmlu | follow-up | history + follow-up | 1 | 1/1 | 4 | 0 | 0 | 2503.13423v3 + 2503.13423v1; 2503.13423v3; 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 |
 | superbpe-mmlu | follow-up | reference rewrite | 2 | 1/1 | 4 | 0 | 1 | 2503.13423v3; 2503.13423v3 + 2503.13423v1; 2503.13423v1; 2503.13423v3; 2503.13423v1 |
+| superbpe-mmlu | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 1 | 2507.04886v4; 2406.11477v3; 2403.01858v1; 2507.04886v1; 2403.01858v3 |
 | tokenization-latency | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2024.emnlp-main.230 + 2408.08541v1 + 2408.08541v2; 2601.11518v1; 2601.11518v1; 2601.11518v1; 2602.05347v1 |
 | tokenization-latency | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2305.13707v1; 2305.13707v1; 2305.13707v1; 2305.13707v1; 2305.13707v1 |
 | tokenization-latency | follow-up | reference rewrite | none | 0/1 | ungrouped | ungrouped | 0 | 2601.11518v1; 2305.15425v2; 2305.15425v1; 2305.15425v2; 2305.15425v2 |
+| tokenization-latency | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2024.emnlp-main.230 + 2408.08541v2 + 2408.08541v1; 2601.11518v1; 2601.11518v1; 2602.05347v1; 2601.11518v1 |
 | bpe-english-french | unanswerable | as asked | left out | — | — | — | — | 2302.14220v1; 2302.14220v1; 2302.14220v1; 2302.14220v1; W18-1207 |
 | blt-70b-mmlu | unanswerable | as asked | left out | — | — | — | — | 2412.09871v1; 2412.09871v1; 2507.04886v4; 2507.04886v1; 2412.09871v1 |
 | blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — | 2412.09871v1; 2310.08754v4; 2023.acl-long.402; 2412.09871v1; 2605.08044v1 |
@@ -1197,27 +1291,35 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 |
 | wechsel-neighbours | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | wechsel-neighbours | follow-up | reference rewrite | 3 | 1/1 | 3 | 0 | 0 |
+| wechsel-neighbours | follow-up | rewriter | none | 0/1 | 4 | 0 | 0 |
 | canine-hashing | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 |
 | canine-hashing | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 2 |
 | canine-hashing | follow-up | reference rewrite | 1 | 1/1 | 3 | 0 | 0 |
+| canine-hashing | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 |
 | digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 3 | 0 | 0 |
+| digits-fourth-digit | follow-up | rewriter | none | 0/1 | 1 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | history + follow-up | 5 | 1/1 | 4 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 |
+| vocabulary-with-scarce-data | follow-up | rewriter | none | 0/1 | 1 | 0 | 0 |
 | code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 |
 | code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 |
 | code-tokenizer-initialisation | follow-up | reference rewrite | 6 | 0/1 | 3 | 0 | 0 |
+| code-tokenizer-initialisation | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | 0 | 0 | 0 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | magikarp-norm-indicator | follow-up | reference rewrite | 3 | 1/1 | 4 | 0 | 0 |
+| magikarp-norm-indicator | follow-up | rewriter | none | 0/1 | 3 | 0 | 0 |
 | superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 |
 | superbpe-mmlu | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
 | superbpe-mmlu | follow-up | reference rewrite | 9 | 0/1 | 4 | 0 | 0 |
+| superbpe-mmlu | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | tokenization-latency | follow-up | follow-up alone | 1 | 1/1 | 2 | 0 | 0 |
 | tokenization-latency | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
 | tokenization-latency | follow-up | reference rewrite | 1 | 1/1 | 3 | 0 | 0 |
+| tokenization-latency | follow-up | rewriter | 2 | 1/1 | ungrouped | ungrouped | 0 |
 | bpe-english-french | unanswerable | as asked | left out | — | — | — | — |
 | blt-70b-mmlu | unanswerable | as asked | left out | — | — | — | — |
 | blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — |
@@ -1254,27 +1356,35 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v1; 2311.08849v2 + 2311.08849v1; 2010.12730v1; 2311.08849v2; 1805.03710v1 |
 | wechsel-neighbours | follow-up | history + follow-up | 9 | 0/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2112.06598v1 |
 | wechsel-neighbours | follow-up | reference rewrite | 3 | 1/1 | 3 | 0 | 0 | 2025.findings-acl.109; 2022.naacl-main.293 + 2112.06598v1; 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2112.06598v2 |
+| wechsel-neighbours | follow-up | rewriter | 9 | 0/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2112.06598v1 |
 | canine-hashing | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2010.12730v1; 2021.findings-emnlp.141 + 2010.12730v3; 2610.04002v1; Q17-1026 + 1610.03017v3; 2024.findings-acl.302 |
 | canine-hashing | follow-up | history + follow-up | 6 | 0/1 | 3 | 0 | 2 | 2022.tacl-1.5; 2103.06874v4; 2022.tacl-1.5; 2103.06874v4; 2023.mrl-1.6 + 2310.08078v1 |
 | canine-hashing | follow-up | reference rewrite | 2 | 1/1 | 1 | 0 | 0 | 2022.tacl-1.5 + 2103.06874v4 + 2103.06874v1; 2022.tacl-1.5 + 2103.06874v1 + 2103.06874v4; 2305.15425v2; 2507.04886v4; 2022.emnlp-main.536 |
+| canine-hashing | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2605.09751v2; 2610.04002v1; 2021.naacl-main.17 + 2008.09396v2; 2610.04002v1; 2010.12730v1 |
 | digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2402.14903v1; 2602.10416v1; 2502.19981v1; 2502.19981v1; 2102.13019v3 |
 | digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2402.14903v1; 2510.06824v1 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2305.14201v1; 2402.14903v1 |
+| digits-fourth-digit | follow-up | rewriter | none | 0/1 | 1 | 0 | 0 | 2402.14903v1; 2602.10416v1; 2502.19981v1; 2502.19981v1; 2102.13019v3 |
 | vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2602.13266v1; 2405.14159v2 + 2405.14159v1; 2407.16607v4; 2024.repl4nlp-1.10 + 2401.07923v1 + 2401.07923v2; 2405.14159v2 + 2405.14159v1 |
 | vocabulary-with-scarce-data | follow-up | history + follow-up | 4 | 1/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v1 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 |
+| vocabulary-with-scarce-data | follow-up | rewriter | none | 0/1 | 1 | 0 | 0 | 2602.13266v1; 2405.14159v2 + 2405.14159v1; 2407.16607v4; 2411.14198v1; 2405.14159v2 + 2405.14159v1 |
 | code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 | 2505.20133v3; 2505.20133v1; 2511.14365v1; 2601.13260v2; 2003.07914v1 |
 | code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 1 | 0 | 0 | 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2607.15232v1; 2024.iwclul-1.13 + 2501.02631v1; 2607.15232v1; 2405.07883v1 |
 | code-tokenizer-initialisation | follow-up | reference rewrite | 4 | 1/1 | 1 | 0 | 0 | 2512.03989v1; 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2607.15232v1; 2402.01035v2 + 2402.01035v1; 2024.iwclul-1.13 + 2501.02631v1 |
+| code-tokenizer-initialisation | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2505.20133v3; 2505.20133v1; 2511.14365v1; 2604.02324v2 + 2604.02324v1; 2003.07914v1 |
 | magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | 0 | 0 | 0 | 2510.06244v1; 2010.01003v1; 2610.14427v1; 2112.09348v1; 2608.21106v3 + 2608.21106v1 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v2 + 2405.05417v1; 2405.05417v1; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2 |
 | magikarp-norm-indicator | follow-up | reference rewrite | 2 | 1/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1; 2024.emnlp-main.649 |
+| magikarp-norm-indicator | follow-up | rewriter | none | 0/1 | 3 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1; 2024.emnlp-main.925 + 2409.04599v1; 2405.05417v1; 2024.emnlp-main.649 |
 | superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | 0 | 0 | 0 | 2510.13481v2 + 2510.13481v1; 2509.05486v1; 2410.18836v1; 2607.15232v1; 2509.15020v1 |
 | superbpe-mmlu | follow-up | history + follow-up | 9 | 0/1 | 3 | 0 | 0 | 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2025.babylm-main.16; 2503.13423v3 + 2503.13423v1; 2503.13423v3 |
 | superbpe-mmlu | follow-up | reference rewrite | 5 | 1/1 | 4 | 0 | 0 | 2503.13423v3; 2503.13423v3 + 2503.13423v1; 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1 |
+| superbpe-mmlu | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2410.18836v1; 2509.15020v1; 2407.12869v2 + 2407.12869v1; 2607.15232v1; 2510.13481v2 + 2510.13481v1 |
 | tokenization-latency | follow-up | follow-up alone | 1 | 1/1 | 2 | 0 | 0 | 2305.15425v2; 2511.04952v1; 2305.15425v1; 2305.15425v1; 2510.15346v2 |
 | tokenization-latency | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2305.13707v1; 2305.13707v1; 2305.15425v1; 2305.13707v1; 2305.13707v1 |
 | tokenization-latency | follow-up | reference rewrite | 1 | 1/1 | 3 | 0 | 0 | 2305.15425v1; 2305.15425v1; 2305.15425v2; 2608.25904v3 + 2608.25904v1; 2305.15425v1 |
+| tokenization-latency | follow-up | rewriter | 2 | 1/1 | ungrouped | ungrouped | 0 | 2511.04952v1; 2305.15425v2; 2510.15346v2; 2305.15425v1; 2602.07698v2 + 2602.07698v1 |
 | bpe-english-french | unanswerable | as asked | left out | — | — | — | — | 2020.wmt-1.9; P16-1162 + 1508.07909v5; 2017.mtsummit-papers.18 + 1704.04520v6 + 1704.04520v1; 2023.icon-1.24; 2004.14280v2 |
 | blt-70b-mmlu | unanswerable | as asked | left out | — | — | — | — | 2412.09871v1; 2412.09871v1; 2305.07185v1; 2412.09871v1; 2605.08044v1 |
 | blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — | 2610.01984v2 + 2610.01984v1; 2402.18376v2 + 2402.18376v1; 2310.08754v4; 2023.emnlp-main.459 + 2305.05480v3; 2004.06343v1 |
@@ -1311,27 +1421,35 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
 | wechsel-neighbours | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | wechsel-neighbours | follow-up | reference rewrite | none | 0/1 | 3 | 0 | 0 |
+| wechsel-neighbours | follow-up | rewriter | none | 0/1 | 4 | 0 | 0 |
 | canine-hashing | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
 | canine-hashing | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 1 |
 | canine-hashing | follow-up | reference rewrite | 1 | 1/1 | 3 | 0 | 0 |
+| canine-hashing | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 1 | 0 | 0 |
 | digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 3 | 0 | 0 |
+| digits-fourth-digit | follow-up | rewriter | none | 0/1 | 1 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | follow-up alone | 1 | 1/1 | 1 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | history + follow-up | 6 | 0/1 | 4 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 |
+| vocabulary-with-scarce-data | follow-up | rewriter | none | 0/1 | 1 | 0 | 0 |
 | code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
 | code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
 | code-tokenizer-initialisation | follow-up | reference rewrite | 7 | 0/1 | 2 | 0 | 0 |
+| code-tokenizer-initialisation | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | magikarp-norm-indicator | follow-up | reference rewrite | 2 | 1/1 | 4 | 0 | 0 |
+| magikarp-norm-indicator | follow-up | rewriter | none | 0/1 | 4 | 0 | 0 |
 | superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | 0 | 0 | 0 |
 | superbpe-mmlu | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
 | superbpe-mmlu | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 |
+| superbpe-mmlu | follow-up | rewriter | none | 0/1 | 0 | 0 | 0 |
 | tokenization-latency | follow-up | follow-up alone | 2 | 1/1 | ungrouped | ungrouped | 0 |
 | tokenization-latency | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
 | tokenization-latency | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 |
+| tokenization-latency | follow-up | rewriter | 3 | 1/1 | ungrouped | ungrouped | 0 |
 | bpe-english-french | unanswerable | as asked | left out | — | — | — | — |
 | blt-70b-mmlu | unanswerable | as asked | left out | — | — | — | — |
 | blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — |
@@ -1368,27 +1486,35 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2021.mrl-1.3; 2311.08849v2; 2021.findings-emnlp.141; 2024.conll-1.8 + 2407.05841v1 + 2407.05841v2; 2010.12730v3 |
 | wechsel-neighbours | follow-up | history + follow-up | 9 | 0/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2112.06598v1 |
 | wechsel-neighbours | follow-up | reference rewrite | 10 | 0/1 | 3 | 0 | 0 | 2112.06598v2; 2022.naacl-main.293 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2410.06898v1; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2 |
+| wechsel-neighbours | follow-up | rewriter | 9 | 0/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2112.06598v1 |
 | canine-hashing | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2010.12730v1; 2021.naacl-main.17 + 2008.09396v2; 2610.04002v1; 2021.findings-emnlp.141 + 2010.12730v3; 2010.12730v1 |
 | canine-hashing | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 2 | 2022.tacl-1.5; 2103.06874v4; 2022.tacl-1.5 + 2103.06874v4; 2023.mrl-1.6 + 2310.08078v1; 2103.06874v4 |
 | canine-hashing | follow-up | reference rewrite | 2 | 1/1 | 3 | 0 | 0 | 2022.tacl-1.5 + 2103.06874v4 + 2103.06874v1; 2022.tacl-1.5 + 2103.06874v1 + 2103.06874v4; 2507.04886v4; 2507.04886v1; 2022.tacl-1.5 + 2103.06874v4 |
+| canine-hashing | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2021.naacl-main.17 + 2008.09396v2 + 2008.09396v1; 2610.04002v1; 2010.12730v1; Q17-1026 + 1610.03017v3; 2603.19269v1 |
 | digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2402.14903v1; 1909.07940v2 + 1909.07940v1; 2602.10416v1; 2502.19981v1; D19-1534 + 1909.07940v1 + 1909.07940v2 |
 | digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2402.14903v1; 2402.14903v1 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2402.14903v1; 2608.18062v3 |
+| digits-fourth-digit | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2402.14903v1; 1909.07940v2 + 1909.07940v1; 2602.10416v1; 2502.19981v1; D19-1534 + 1909.07940v1 + 1909.07940v2 |
 | vocabulary-with-scarce-data | follow-up | follow-up alone | 1 | 1/1 | 0 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2602.13266v1; 2405.14159v2 + 2405.14159v1; 2407.16607v4; 2024.repl4nlp-1.10 + 2401.07923v1 + 2401.07923v2 |
 | vocabulary-with-scarce-data | follow-up | history + follow-up | 4 | 1/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v1 |
+| vocabulary-with-scarce-data | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2602.13266v1; 2405.14159v2 + 2405.14159v1; 2407.16607v4; 2411.14198v1; 2004.06343v1 |
 | code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2505.20133v3; 2505.20133v1; 2510.21954v1; 2608.03494v1; 2003.07914v1 |
 | code-tokenizer-initialisation | follow-up | history + follow-up | 10 | 0/1 | 2 | 0 | 0 | 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2405.07883v2 + 2405.07883v1; 2510.21954v1; 2405.07883v2 + 2405.07883v1; 2405.07883v1 |
 | code-tokenizer-initialisation | follow-up | reference rewrite | 5 | 1/1 | 1 | 0 | 0 | 2607.15232v1; 2512.03989v1; 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2510.21954v1; 2402.01035v2 + 2402.01035v1 |
+| code-tokenizer-initialisation | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2505.20133v1; 2505.20133v3; 2510.21954v1; 2608.03494v1; 2003.07914v1 |
 | magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2024.emnlp-main.230 + 2408.08541v1 + 2408.08541v2; 2024.emnlp-main.230 + 2408.08541v1 + 2408.08541v2; 2609.01386v1; 2510.06244v1; 2506.11115v1 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2405.05417v1; 2405.05417v1; 2405.05417v1 |
 | magikarp-norm-indicator | follow-up | reference rewrite | 2 | 1/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2 |
+| magikarp-norm-indicator | follow-up | rewriter | none | 0/1 | 4 | 0 | 0 | 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2 |
 | superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | 0 | 0 | 0 | 2410.18836v1; 2509.05486v1; 2607.15232v1; 2603.15953v1; 2305.15108v1 |
 | superbpe-mmlu | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2025.babylm-main.16; 2503.13423v3 + 2503.13423v1; 2503.13423v1; 2503.13423v3; 2503.13423v3 + 2503.13423v1 |
 | superbpe-mmlu | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 | 2503.13423v3; 2503.13423v1; 2503.13423v3; 2503.13423v1; 2503.13423v3 + 2503.13423v1 |
+| superbpe-mmlu | follow-up | rewriter | none | 0/1 | 0 | 0 | 0 | 2410.18836v1; 2510.13481v2 + 2510.13481v1; 2405.14159v2; 2509.15020v1; 2607.15232v1 |
 | tokenization-latency | follow-up | follow-up alone | 2 | 1/1 | ungrouped | ungrouped | 0 | 2511.04952v1; 2305.15425v2; 2305.15425v1; 2411.17669v1; 2602.07698v2 + 2602.07698v1 |
 | tokenization-latency | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2305.15425v1; 2305.13707v1; 2305.15425v2 + 2305.15425v1; 2305.13707v1; 2305.13707v1 |
 | tokenization-latency | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 | 2305.15425v1; 2305.15425v2; 2305.15425v1; 2305.15425v2; 2305.15425v1 |
+| tokenization-latency | follow-up | rewriter | 3 | 1/1 | ungrouped | ungrouped | 0 | 2511.04952v1; 2602.07698v2 + 2602.07698v1; 2305.15425v2; 2411.17669v1; 2305.15425v1 |
 | bpe-english-french | unanswerable | as asked | left out | — | — | — | — | 2022.aacl-short.12; P16-1162 + 1508.07909v5; 2110.01938v1; 1711.04457v1; 2017.mtsummit-papers.18 + 1704.04520v6 + 1704.04520v1 |
 | blt-70b-mmlu | unanswerable | as asked | left out | — | — | — | — | 2412.09871v1; 2412.09871v1; 2412.09871v1; 2305.07185v1; 2412.09871v1 |
 | blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — | 2023.emnlp-main.459 + 2305.05480v3; 2203.09963v1; 2310.08754v4; 2412.09871v1; 2402.18376v2 + 2402.18376v1 |
@@ -1425,27 +1551,35 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | 3 | 0 | 0 |
 | wechsel-neighbours | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | wechsel-neighbours | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 |
+| wechsel-neighbours | follow-up | rewriter | none | 0/1 | 4 | 0 | 0 |
 | canine-hashing | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
 | canine-hashing | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 1 |
 | canine-hashing | follow-up | reference rewrite | 1 | 1/1 | 2 | 0 | 0 |
+| canine-hashing | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 |
 | digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 |
+| digits-fourth-digit | follow-up | rewriter | none | 0/1 | 2 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
 | vocabulary-with-scarce-data | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | 10 | 0/1 | 4 | 0 | 0 |
+| vocabulary-with-scarce-data | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
 | code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
 | code-tokenizer-initialisation | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 |
+| code-tokenizer-initialisation | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
 | magikarp-norm-indicator | follow-up | reference rewrite | 3 | 1/1 | 4 | 0 | 0 |
+| magikarp-norm-indicator | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 1 |
 | superbpe-mmlu | follow-up | history + follow-up | 8 | 0/1 | 4 | 0 | 0 |
 | superbpe-mmlu | follow-up | reference rewrite | 2 | 1/1 | 4 | 0 | 0 |
+| superbpe-mmlu | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | tokenization-latency | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
 | tokenization-latency | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
 | tokenization-latency | follow-up | reference rewrite | 2 | 1/1 | ungrouped | ungrouped | 0 |
+| tokenization-latency | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 |
 | bpe-english-french | unanswerable | as asked | left out | — | — | — | — |
 | blt-70b-mmlu | unanswerable | as asked | left out | — | — | — | — |
 | blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — |
@@ -1482,27 +1616,35 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2022.naacl-main.293 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2311.08849v2; 1707.06961v1; 2024.conll-1.8 + 2407.05841v1 + 2407.05841v2 |
 | wechsel-neighbours | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2 |
 | wechsel-neighbours | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 | 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2112.06598v2 |
+| wechsel-neighbours | follow-up | rewriter | none | 0/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2 |
 | canine-hashing | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2010.12730v1; 2610.04002v1; 2021.naacl-main.17 + 2008.09396v2 + 2008.09396v1; Q17-1026 + 1610.03017v3; P16-2058 + 1603.00810v1 + 1603.00810v3 |
 | canine-hashing | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 1 | 2103.06874v4; 2022.tacl-1.5; 2023.mrl-1.6 + 2310.08078v1; 2022.tacl-1.5; 2022.tacl-1.5 + 2103.06874v4 |
 | canine-hashing | follow-up | reference rewrite | 1 | 1/1 | 1 | 1 | 0 | 2103.06874v4 + 2103.06874v1; 2022.emnlp-main.536; 2022.tacl-1.5 + 2103.06874v1 + 2103.06874v4; 2305.15425v2; 2112.10508v1 |
+| canine-hashing | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2010.12730v1; 2610.04002v1; Q17-1026 + 1610.03017v3; D18-1278 + 1808.09180v1; 2603.19269v1 |
 | digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 | 1909.07940v2 + 1909.07940v1; 2602.10416v1; 2402.14903v1; 1909.07940v2 + 1909.07940v1; 2402.14903v1 |
 | digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2402.14903v1; 2402.14903v1 |
 | digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 4 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2402.14903v1; 2402.14903v1 |
+| digits-fourth-digit | follow-up | rewriter | none | 0/1 | 2 | 0 | 0 | 1909.07940v2 + 1909.07940v1; 2602.10416v1; 2402.14903v1; 1909.07940v2 + 1909.07940v1; 2402.14903v1 |
 | vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2212.11281v1; 2402.01035v2 + 2402.01035v1; 2602.13266v1; 2407.16607v4; 2502.20273v1 |
 | vocabulary-with-scarce-data | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3; 2407.13623v1; 2407.13623v3 |
 | vocabulary-with-scarce-data | follow-up | reference rewrite | 7 | 0/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3; 2407.13623v3 + 2407.13623v1 |
+| vocabulary-with-scarce-data | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2212.11281v1; 2407.16607v4; 2402.01035v2 + 2402.01035v1; 2602.13266v1; 2502.20273v1 |
 | code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2003.07914v1; 2607.29065v1; 2601.13328v1; 2021.acl-long.243 + 2012.15613v2; 10.1186/s12859-026-06562-5 |
 | code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | ungrouped | ungrouped | 0 | 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2024.iwclul-1.13 + 2501.02631v1; 2405.07883v2 + 2405.07883v1; 2506.14123v3; 2026.findings-eacl.341 + 2512.03989v1 + 2512.03989v2 |
 | code-tokenizer-initialisation | follow-up | reference rewrite | 7 | 0/1 | 2 | 0 | 0 | 2512.03989v1; 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2026.findings-eacl.341 + 2512.03989v1 + 2512.03989v2; 2406.14670v2; 2024.iwclul-1.13 + 2501.02631v1 |
+| code-tokenizer-initialisation | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2003.07914v1; 2607.29065v1; 2601.13328v1; 2022.naacl-main.179 + 2206.02608v1; 10.1186/s12859-026-06562-5 |
 | magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2024.emnlp-main.230 + 2408.08541v1 + 2408.08541v2; 2024.emnlp-main.230 + 2408.08541v2 + 2408.08541v1; 2510.06244v1; 2024.emnlp-main.230 + 2408.08541v2; 2610.14427v1 |
 | magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2405.05417v1; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2 |
 | magikarp-norm-indicator | follow-up | reference rewrite | 3 | 1/1 | 4 | 0 | 0 | 2405.05417v1; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2 |
+| magikarp-norm-indicator | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2024.emnlp-main.230 + 2408.08541v1 + 2408.08541v2; W17-4106; 2024.emnlp-main.230 + 2408.08541v2 + 2408.08541v1; 2609.15528v1; 2510.09947v2 + 2510.09947v1 |
 | superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 1 | 2509.05486v1; 2406.11477v3; 2023.findings-acl.548; 2023.acl-short.34; 2023.acl-long.699 |
 | superbpe-mmlu | follow-up | history + follow-up | 6 | 0/1 | 3 | 0 | 0 | 2503.13423v3 + 2503.13423v1; 2503.13423v1; 2503.13423v3; 2503.13423v1; 2025.babylm-main.16 |
 | superbpe-mmlu | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 | 2503.13423v3 + 2503.13423v1; 2503.13423v3; 2503.13423v1; 2503.13423v3; 2503.13423v1 |
+| superbpe-mmlu | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2410.18836v1; 2509.05486v1; 2607.15232v1; 2506.14761v1; 2507.04886v4 |
 | tokenization-latency | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2602.07698v2 + 2602.07698v1; 2105.13626v1; 2105.13626v3; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2024.emnlp-main.230 + 2408.08541v1 + 2408.08541v2 |
 | tokenization-latency | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2305.13707v1; 2305.13707v1; 2305.13707v1; 2305.15425v1; 2305.13707v1 |
 | tokenization-latency | follow-up | reference rewrite | 2 | 1/1 | ungrouped | ungrouped | 0 | 2305.15425v1; 2305.15425v1; 2305.15425v2; 2402.10712v3; 2305.15425v2 |
+| tokenization-latency | follow-up | rewriter | none | 0/1 | ungrouped | ungrouped | 0 | 2602.07698v2 + 2602.07698v1; 2105.13626v1; 2105.13626v3; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2024.emnlp-main.230 + 2408.08541v2 + 2408.08541v1 |
 | bpe-english-french | unanswerable | as asked | left out | — | — | — | — | 2020.wmt-1.9; 2020.wmt-1.9; 1711.04457v1; C18-1052; P16-1162 + 1508.07909v5 + 1508.07909v1 |
 | blt-70b-mmlu | unanswerable | as asked | left out | — | — | — | — | 2412.09871v1; 2412.09871v1; 2412.09871v1; 2412.09871v1; 2609.00463v1 |
 | blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — | 2412.09871v1; 2023.acl-long.402; 2610.01984v2 + 2610.01984v1; 2310.08754v4; 2412.09871v1 |
@@ -1518,17 +1660,17 @@ Each retriever's model and index, with how long the index took to build and each
 
 | Retriever | Parameters | Dimension | Index on disk | Built on | Build time | Queries | Queried on | Latency p50 | Latency p95 |
 |---|---:|---:|---:|---|---:|---:|---|---:|---:|
-| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 190.36 ms | 296.50 ms |
-| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 191.03 ms | 286.86 ms |
-| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 27.24 ms | 30.18 ms |
-| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 27.95 ms | 29.09 ms |
-| dense.bge-base | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 52 | mps | 37.27 ms | 41.29 ms |
-| dense.bge-base+collapsed | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 52 | mps | 37.12 ms | 42.03 ms |
-| dense.openscholar | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 52 | mps | 36.36 ms | 41.01 ms |
-| dense.openscholar+collapsed | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 52 | mps | 36.46 ms | 40.41 ms |
-| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 221.58 ms | 334.24 ms |
-| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 220.27 ms | 340.64 ms |
-| hybrid.bm25+bge-base | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 52 | cpu+mps | 236.89 ms | 365.62 ms |
-| hybrid.bm25+bge-base+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 52 | cpu+mps | 239.48 ms | 347.64 ms |
-| hybrid.bm25+openscholar | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 52 | cpu+mps | 238.32 ms | 344.82 ms |
-| hybrid.bm25+openscholar+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 52 | cpu+mps | 236.88 ms | 348.53 ms |
+| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 196.22 ms | 314.26 ms |
+| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 197.42 ms | 318.89 ms |
+| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 28.27 ms | 31.21 ms |
+| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 27.91 ms | 29.45 ms |
+| dense.bge-base | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 37.01 ms | 42.68 ms |
+| dense.bge-base+collapsed | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 37.73 ms | 42.62 ms |
+| dense.openscholar | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 37.51 ms | 41.85 ms |
+| dense.openscholar+collapsed | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 37.31 ms | 40.94 ms |
+| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 223.62 ms | 349.74 ms |
+| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 219.51 ms | 333.90 ms |
+| hybrid.bm25+bge-base | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 231.70 ms | 383.79 ms |
+| hybrid.bm25+bge-base+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 231.59 ms | 358.53 ms |
+| hybrid.bm25+openscholar | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 234.49 ms | 347.44 ms |
+| hybrid.bm25+openscholar+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 230.44 ms | 352.88 ms |

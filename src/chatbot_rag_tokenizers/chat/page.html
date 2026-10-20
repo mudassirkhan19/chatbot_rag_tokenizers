@@ -22,11 +22,15 @@
   main { max-width: 1100px; margin: 0 auto; padding: 16px; }
   .banner { background: var(--bad-bg); color: var(--bad); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; }
   .banner:empty { display: none; }
+  header #save { margin-left: auto; }
+  .notice { background: var(--accent-bg); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; }
+  .notice:empty { display: none; }
+  .notice code { font-size: 13px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
   .question { font-weight: 600; margin-bottom: 10px; }
   .rewrite { color: var(--muted); font-size: 13px; margin: -6px 0 10px; }
   .rewrite em { color: var(--ink); }
-  header button { margin-left: auto; padding: 4px 12px; font-size: 13px; background: transparent; color: var(--accent); }
+  header button { padding: 4px 12px; font-size: 13px; background: transparent; color: var(--accent); }
   .turn { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 18px; }
   @media (max-width: 760px) { .turn { grid-template-columns: minmax(0, 1fr); } }
   .answer { white-space: pre-wrap; }
@@ -37,6 +41,7 @@
   ol.refs { margin: 0; padding-left: 0; list-style: none; }
   ol.refs li { margin-bottom: 6px; }
   .num { display: inline-block; min-width: 2.2em; color: var(--accent); font-weight: 600; }
+  .survey { color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-size: 11px; margin-left: 4px; }
   .chunk { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; font-size: 14px; }
   .chunk.flash { outline: 2px solid var(--accent); }
   .chunk .anchor { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
@@ -53,10 +58,12 @@
 <header><div class="row">
   <strong>Ask the tokenization papers</strong>
   <span class="help" id="setup"></span>
+  <button id="save" type="button" title="Write the conversation as a Markdown transcript under docs/reports">Save transcript</button>
   <button id="reset" type="button" title="Forget the questions so far: the next one is read on its own">New conversation</button>
 </div></header>
 <main>
   <div class="banner" id="banner"></div>
+  <div class="notice" id="notice"></div>
   <div id="turns"></div>
   <form id="ask">
     <textarea id="question" placeholder="Ask about the papers, e.g. Does WECHSEL need to freeze parameters during training?" required></textarea>
@@ -73,10 +80,18 @@ async function loadStatus() {
   $("banner").textContent = status.error || "";
 }
 
+function surveyMark() {
+  const mark = el("span", "survey", "Survey");
+  mark.title = "From a Survey: a Work that restates other Works' findings";
+  return mark;
+}
+
 function chunkCard(turnId, chunk) {
   const card = el("div", "chunk");
   card.id = `${turnId}-chunk-${chunk.number}`;
-  card.append(el("div", "anchor", `[${chunk.number}] ${chunk.title} · ${chunk.anchor}`), el("div", "text", chunk.text));
+  const anchor = el("div", "anchor", `[${chunk.number}] ${chunk.title} · ${chunk.anchor}`);
+  if (chunk.survey) anchor.append(surveyMark());
+  card.append(anchor, el("div", "text", chunk.text));
   return card;
 }
 
@@ -112,7 +127,9 @@ function render(turn, turnId) {
     for (const ref of turn.references) {
       const item = el("li");
       const section = [ref.section_number, ref.section_title].filter(Boolean).join(" ");
-      item.append(el("span", "num", `[${ref.number}]`), `${ref.title}. ${ref.edition}, ${section}` + (ref.pages ? `, ${ref.pages}` : "") + ".");
+      // After the collapse, the Edition shown is followed by the merged Editions: "2112.06598v2, also v1".
+      item.append(el("span", "num", `[${ref.number}]`), `${ref.title}. ${ref.editions ?? ref.edition}, ${section}` + (ref.pages ? `, ${ref.pages}` : "") + ".");
+      if (ref.survey) item.append(surveyMark());
       refs.append(item);
     }
     left.append(refs);
@@ -161,6 +178,18 @@ $("ask").addEventListener("submit", async (event) => {
     $("question").focus();
   }
 });
+$("save").addEventListener("click", async () => {
+  $("notice").replaceChildren();
+  try {
+    const response = await fetch("/save", { method: "POST" });
+    const body = await response.json();
+    if (!response.ok) { $("banner").textContent = body.error; return; }
+    $("banner").textContent = "";
+    $("notice").append("Saved the transcript to ", el("code", null, body.path));
+  } catch (error) {
+    $("banner").textContent = `The chat server is not answering (${error.message}). Is \`just chat\` still running?`;
+  }
+});
 $("reset").addEventListener("click", async () => {
   try {
     const response = await fetch("/reset", { method: "POST" });
@@ -170,6 +199,7 @@ $("reset").addEventListener("click", async () => {
     return;
   }
   $("turns").replaceChildren();
+  $("notice").replaceChildren();
   turns = 0;
   $("banner").textContent = "";
   $("question").focus();

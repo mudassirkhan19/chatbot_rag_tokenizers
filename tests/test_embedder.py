@@ -59,7 +59,7 @@ def chunks(embedders, tmp_path: Path, grobid: FakeGrobid):
         seed_pdf(tmp_path, grobid, "bpe_1508.07909v5.pdf", "missed-table.tei.xml"),
     ]
     run_parse(tmp_path, *files)
-    return load_corpus(load_parse_config(REPO_CONFIG), tmp_path / "cache", tmp_path / "parse-report.md").chunks
+    return load_corpus(load_parse_config(REPO_CONFIG), tmp_path / "cache", tmp_path / "parse-report.md", tmp_path / "manifest.csv").chunks
 
 
 def questions() -> list[str]:

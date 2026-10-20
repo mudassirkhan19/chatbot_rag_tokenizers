@@ -132,8 +132,9 @@ just evaluate     # score the retrievers on the Evaluation set and write the eva
 - **`index` inputs.**
   - The parse report (`data/parse-report.md`, `--parse-report`) decides which files make up the corpus: every file it lists as parsed.
   - Their Chunks come from the parse cache (`--cache`), under the chunking config in `config/parse.toml` (`--parse-config`).
+  - Each file's Chunks cite the pinned id the report lists for it, and that id's Edition in the manifest (`--manifest`), whichever id filled the cache (ADR 0066). `evaluate`, `chat`, `chat-eval` and `eval-check` read them the same way.
   - Each retriever's settings are in `config/retrieval.toml` (`--config`). `--retriever bm25` or `--retriever dense.bge-small` builds only the retrievers named, and a hybrid's members with it; the default is all of them.
-  - `index` stops with a pointer to `just parse` when the report is missing, when the report was written with another GROBID image or chunking config, when the cache holds no Chunks for the report's files, or when it holds them only under another chunking config.
+  - `index` stops with a pointer to `just parse` when the report is missing, when the report was written with another GROBID image or chunking config, when the cache holds no Chunks for the report's files, or when it holds them only under another chunking config. It also stops when the manifest is missing or no longer includes an Edition pinned to a parsed file.
 - **`index` outputs.** Each index goes to the index cache (`data/index-cache/<chunking key>/<retriever key>/`, `--index-cache`, never committed) with a record of:
   - its settings;
   - the corpus it was built over;
@@ -181,9 +182,9 @@ just evaluate     # score the retrievers on the Evaluation set and write the eva
   - Its columns are `edition_id,work_id,survey,title,authors,year,venue,checked_by,note`. Editions with the same `work_id` are one Work; `survey` is `yes` for a Survey's Editions and `no` otherwise. Title, authors, year and venue are for the person grouping and aren't read. `checked_by` names who checked the row by hand, and `note` says why a drafted row needs a closer look (ADR 0047); both are optional.
   - A row with a blank `work_id` has no Work group yet. A Work whose Editions are partly Surveys, an Edition listed twice, or a `survey` other than `yes` or `no` stops `evaluate`.
   - It holds the 209 Editions that BM25, the dense baseline, their hybrid and the three `+collapsed` twins rank in their top 5, in 179 Works. An agent drafted them. The developer checked the first 154 on a local page and approved the draft (ADR 0047 records how). A second agent grouped the other 55 blind, without the draft, and matched it on every row (ADR 0063). To check new rows, run `uv run python hack/check_work_groups.py`, then open http://localhost:8767. The page shows each Work's Editions with their abstracts and links, and Works that may be the same paper. It can merge, split, rename and flag Surveys, and it refuses a save `evaluate` wouldn't load. The eval report says how many rows have a `checked_by`.
-- **The export.** `just evaluate --export-ungrouped ungrouped.csv` also writes every Edition in any retriever's top 5, for any query of an answerable question, that has no Work group, with its title, authors, year and venue from the manifest and `work_id`, `survey`, `checked_by` and `note` left blank. Fill in the first two, add the rows to the Work groups file and check them on the page. Without the flag, `evaluate` still prints the Editions with no Work group.
+- **The export.** `just evaluate --export-ungrouped ungrouped.csv` also writes every Edition in any retriever's top 5, for any query of an answerable question but the rewriter's, that has no Work group, with its title, authors, year and venue from the manifest and `work_id`, `survey`, `checked_by` and `note` left blank. Fill in the first two, add the rows to the Work groups file and check them on the page. Without the flag, `evaluate` still prints the Editions with no Work group.
 - **`evaluate` output.** The eval report (`data/eval/eval-report.md`, `--report`, committed) gives:
-  - the Evaluation set's sha256, the chunking config and each retriever's settings;
+  - the Evaluation set's sha256, the chunking config, each retriever's settings, and the one the chatbot retrieves with, from `[chat]`;
   - a results table per retriever and question type: Recall@5 (per Passage, averaged over questions), MRR@10 (0 when no Chunk in the top 10 holds a Passage) and Hit@5, all on the raw ranking;
   - what crowds the top 5, per retriever, over each answerable question as a user would ask it (a follow-up alone), each as a share of top-5 slots and a share of questions with at least one such slot:
     - **duplicate**: a Chunk from a Work already ranked higher (another Edition, Version or Chunk of it);
@@ -192,16 +193,36 @@ just evaluate     # score the retrievers on the Evaluation set and write the eva
   - duplicates and restatement only over the questions whose top 5 Editions all have a Work group, and the list of Editions that have none;
   - *Before and after* (ADR 0063): one table with each retriever's raw ranking and its Collapsed ranking, giving the duplicate slots (split into another Edition or Version and same file), the grouped questions, and Recall@5, MRR@10 and Hit@5 over the answerable questions as a user asks them;
   - the grouping rule's `work_id` scored against the Work groups (ADR 0060): pairwise precision and recall over the Work groups' Editions with the counts behind them, every pair the two disagree on, and every Work whose Survey flag differs from the rule's;
-  - one line per question: its type, the rank of its first hit, the Passages found in the top 5, and its duplicate, restatement and mostly-numeric slots (`ungrouped` when an Edition in its top 5 has no Work group);
+  - each follow-up's Rewrite beside its reference rewrite, then one line per question: its type, the rank of its first hit, the Passages found in the top 5, and its duplicate, restatement and mostly-numeric slots (`ungrouped` when an Edition in its top 5 has no Work group);
   - the Comparison (ADR 0061): each retriever against the baseline named in `[comparison]` of the retrieval config (`dense.bge-small`), each `+collapsed` twin against the baseline's twin, over the answerable questions as a user asks them. Per metric (Recall@5 and MRR@10), it gives the questions won, tied and lost, a 95% percentile bootstrap interval on the mean and on the paired difference from the baseline (10,000 resamples, seed 55, the same draws for every retriever), and "within noise" when the difference's interval holds 0. It also gives the rank of each question's first hit, one column per retriever. It names no winner. `evaluate` stops if the baseline isn't among the retrievers it scores;
   - the Cost table, last: each retriever's parameters, vector dimension and index size on disk (a hybrid's are its members' summed), its index build time and device, and its query latency (p50 and p95) and device.
 - **Scoring rules.**
-  - Each follow-up is scored three ways, in separate rows: alone, after its history, and as its reference rewrite.
+  - Each follow-up is scored four ways, in separate rows: alone, after its history, as its reference rewrite, and as the chatbot's own Rewrite (`rewriter`, ADR 0067). The rewriter is the `[chat]` answer model with its rewrite prompt, shown the follow-up's stored history as earlier questions with no answers. It needs the `[chat]` table and Ollama with the pinned model (`just init`); without either, `evaluate` prints that the rewriter row is skipped, and the report says so and is otherwise the same.
   - Unanswerable questions are left out of the metrics.
   - A Chunk holds a Passage when at least 65% of the quote's words match the Chunk's in order, and every number in the quote matches (ADR 0041), whichever Edition the Chunk comes from. Before matching, unicode, case, whitespace and hyphenation are normalised and citations are dropped. The 65% was calibrated on three CC BY Seeds with several Versions; `hack/calibrate_matcher.py` reruns the sweep from `data/eval/calibration.jsonl`.
 - **Reproducible.** Two runs on the same index give the same report apart from the times in the Cost table.
 
-The committed Evaluation set has 36 checked questions (ADR 0046), and the committed eval report scores all seven retrievers over the full corpus. ADR 0065 (Proposed) applies the embedding comparison's decision rule to its raw numbers: nothing beats `dense.bge-small` beyond noise, so it stays. The final choice is made on the Collapsed ranking (#61).
+The committed Evaluation set has 36 checked questions (ADR 0046), and the committed eval report scores all seven retrievers over the full corpus.
+
+### The embedding comparison: bge-small stays
+
+The decision rule was fixed in spec #55 before any run: recommend the best *all answerable* Recall@5, unless its lead over a cheaper retriever is within noise (the paired bootstrap interval of the difference holds 0), and keep `dense.bge-small` if nothing beats it beyond noise. ADR 0065 applies it to both rankings and makes the choice on the Collapsed one, which the chatbot will retrieve with. The numbers are the eval report's *Comparison* and *Cost* sections: the 28 answerable questions as a user asks them, against `dense.bge-small` (raw) and `dense.bge-small+collapsed` (collapsed), with 95% intervals from 10,000 resamples, seed 55.
+
+| Retriever | Recall@5 raw | Recall@5 collapsed | Difference, collapsed [95%] | MRR@10 raw | MRR@10 collapsed | Query p50, collapsed |
+|---|---:|---:|---|---:|---:|---:|
+| bm25 | 0.16 | 0.20 | -0.18 [-0.36, +0.00], within noise | 0.118 | 0.138 | about 197 ms |
+| **dense.bge-small** | 0.30 | **0.38** | — | 0.244 | 0.271 | about 28 ms |
+| dense.bge-base | 0.29 | 0.32 | -0.05 [-0.18, +0.07], within noise | 0.211 | 0.258 | about 38 ms |
+| dense.openscholar | 0.07 | 0.08 | -0.29 [-0.49, -0.10], beyond noise | 0.046 | 0.061 | about 37 ms |
+| hybrid.bm25+bge-small | 0.34 | 0.39 | +0.01 [-0.14, +0.16], within noise | 0.257 | 0.277 | about 220 ms |
+| hybrid.bm25+bge-base | 0.34 | 0.35 | -0.02 [-0.20, +0.14], within noise | 0.237 | 0.270 | about 232 ms |
+| hybrid.bm25+openscholar | 0.28 | 0.32 | -0.06 [-0.25, +0.12], within noise | 0.190 | 0.227 | about 230 ms |
+
+- **Recommendation: `dense.bge-small`**, on both rankings. On the collapsed numbers the best Recall@5 is `hybrid.bm25+bge-small`'s 0.39, but its +0.01 lead is within noise, and bge-small is the cheaper of the two: about 28 ms per query against about 220 ms, and its index builds in 1318.64 s against 1327.99 s. Collapsing doesn't change the choice. It narrows the hybrid's raw lead of +0.04 [-0.09, +0.16].
+- **A scientific model doesn't help here.** OpenScholar_Retriever is the only retriever beyond noise, and it is a loss. It finds the right paper about as often as bge-small, but ranks the paper's short Chunks (captions, short lists) above the one holding the Passage (ADR 0065).
+- **Size doesn't help either.** bge-base, three times bge-small's parameters, scores 0.32 against 0.38 and takes twice as long to build.
+- **Keyword search beside vectors: not on this evidence.** The BM25 hybrids never lose much, and they help the follow-ups put as their reference rewrite (0.88 against 0.50 collapsed, 8 questions). But on the *all answerable* row their lead is one question at most, inside the noise, at about eight times bge-small's latency.
+- `[chat]` in `config/retrieval.toml` names `dense.bge-small+collapsed` as the chatbot's retriever: bge-small, on the Collapsed ranking the choice was made on (ADR 0070). Loading the config refuses a name the file doesn't configure, or the `+collapsed` twin of one.
 
 ## Reproduce the baseline
 
@@ -249,15 +270,17 @@ If `evaluate` names Editions with no Work group (a new retriever ranks papers th
 just chat        # serves the chat page and prints its URL, http://localhost:8766 (--port sets another)
 ```
 
-Type a question and the page answers it from the papers. Each question retrieves the top 5 Chunks from the retriever the `[chat]` table of `config/retrieval.toml` names, which is the dense baseline (`dense.bge-small`) until the embedding comparison names its choice. The pinned answer model, `gemma4:e2b-mlx` on Ollama with thinking off and temperature 0, answers from those Chunks only (ADR 0054). An answer takes one to three seconds on an Apple-silicon laptop, and a follow-up a second or two more for its Rewrite.
+Type a question and the page answers it from the papers. Each question retrieves the top 5 Chunks from the retriever the `[chat]` table of `config/retrieval.toml` names, which is `dense.bge-small+collapsed`: the embedding comparison's choice (ADR 0065) on the Collapsed ranking, so the 5 are 5 different passages, each copy of one folded into it (ADR 0070). The pinned answer model, `gemma4:e2b-mlx` on Ollama with thinking off and temperature 0, answers from those Chunks only (ADR 0054). An answer takes one to three seconds on an Apple-silicon laptop, and a follow-up a second or two more for its Rewrite.
 
 - **The answer** carries a numbered marker such as `[2]` for each Chunk it uses. A marker that names no retrieved Chunk is struck through as invalid, never dropped.
-- **The references** under the answer give, for each cited Chunk, the paper's title, its pinned Edition id with Version, the Section number and title, and the pages.
+- **The references** under the answer give, for each cited Chunk, the paper's title, its pinned Edition id with Version, the Section number and title, and the pages. Because `[chat]` names a `+collapsed` twin, a reference also names the files whose copies of the passage were merged into the Chunk, as in "2112.06598v2, also v1", and marks a Survey's Chunk (ADR 0069).
 - **The panel** beside the answer shows each cited Chunk's text and Citation anchor. The retrieved Chunks the answer didn't cite are folded away under it.
 - **An Abstention** is an answer that declines instead of answering. The model is told to write the fixed sentence "The papers in this corpus do not answer this question." when the Chunks don't answer, but it often declines in its own words, as in "The provided chunks do not contain the specific BLEU score …". A reply holding the fixed sentence is an Abstention, and so is one whose text is a single sentence declining in that way (ADR 0064). A decline that goes on to answer, in another sentence or a clause after "but" or ";", or that cites a Chunk after it, is an answer. The retrieved Chunks are still shown.
 - **A follow-up** such as "how much did that help on MMLU?" is understood from the Conversation so far. On every question after the first, the answer model first rewrites it as a standalone question from the earlier questions and answers, and retrieval uses that Rewrite, shown under the question as "Searched as:". The answer model then sees the last three Turns before the Rewrite and its Chunks (`history` in `[chat]`, ADR 0056). **New conversation** forgets the Turns so far, as reloading the page does.
 
-`chat` needs the retriever's index (`just index --retriever dense.bge-small`) and Ollama running with the pinned model (`just init`). When Ollama is stopped, runs another version or lacks the model, `chat` says so in the terminal and on the page, and the next question tries again once Ollama is started.
+**Save transcript** writes the Conversation as Markdown to `docs/reports/<date>-chat-transcript.md` and shows the path on the page (a second save that day adds `-2`; `--transcripts` sets another folder). The file is rendered from the same Turn records the page shows: each Turn's question, its Rewrite, the answer with its markers, the references, the uncited Chunks and the timings (ADR 0068). The committed transcript, [`docs/reports/2026-10-20-chat-transcript.md`](docs/reports/2026-10-20-chat-transcript.md), is a six-Turn Conversation with the pinned model on `dense.bge-small+collapsed`, left as it came (ADR 0070). It has a follow-up that resolves (Turn 2), one whose Rewrite fails to name CANINE, so the bot abstains (Turn 3), and a near-miss and an off-topic question the bot abstains on (Turns 4 and 5).
+
+`chat` needs the retriever's index (`just index --retriever dense.bge-small`), the manifest for the Works the collapse merges (`--manifest`, default `data/manifest.csv`) and Ollama running with the pinned model (`just init`). When Ollama is stopped, runs another version or lacks the model, `chat` says so in the terminal and on the page, and the next question tries again once Ollama is started.
 
 ### Measure the chatbot
 
@@ -275,7 +298,7 @@ The pinned model is not quite deterministic run to run, even at temperature 0 wi
 - **Remeasure the variation:** `chat-eval --runs 3` asks the whole set three times. The report is run 1's, and its Variation section gives each rate in every run with its range, the questions whose verdict changed between runs, and how many Turns changed wording or retrieved other Chunks. The committed report comes from three runs.
 - **Compare against the committed run:** `chat-eval --baseline data/eval/chat-answers.jsonl` reads the baseline's answers and runs file before anything is written, so it may name the file the run overwrites, and works with `--from-answers` too. The report's *Against the baseline* section lists each question whose verdict changed from the baseline's run 1, marked *flaky in the baseline* when the baseline's runs disagreed on it. A change to the prompt or the retriever should be read there: a verdict that also flips between the baseline's own runs is noise, not an effect.
 
-**Check the grounding verdict by hand** (ADR 0066):
+**Check the grounding verdict by hand** (ADR 0071):
 
 ```sh
 just chat-eval --export-check              # asks nothing: samples 20 answered Turns of the committed answers to data/eval/grounding-check.csv
@@ -302,6 +325,25 @@ What it writes:
   - timings, last: p50 and p95 per Turn of retrieval, rewriting (over the Turns that were rewritten) and answering. A re-scored report says they were not measured.
 - **The answers** (`data/eval/chat-answers.jsonl`, `--answers`, committed) start with one line naming what the Turns were asked over (the parser and chunking keys, the retriever, k, the model pin and settings and the prompts' hashes). Then they hold every Turn of run 1, a follow-up's history included, one per line: the question id, the Turn's place in its Conversation and whether it is the scored one, the question and its Rewrite, the retrieved Chunk ids, the model's raw reply, the cited Chunk ids, the invalid markers, the Abstention and grounding verdicts and the Passages found. They hold no timings, so they change only where the model's replies or the scoring do.
 - **The runs file** (`data/eval/chat-answers-runs.jsonl`, beside the answers, committed) holds runs 2..N as full Turns, the same records with a `run` field, so re-scoring rebuilds the Variation section. A single run removes it.
+
+### The final chat numbers
+
+The committed chat report, from `chat-eval --runs 3` on `dense.bge-small+collapsed` with the pinned `gemma4:e2b-mlx` (ADR 0070). The three runs agree on every verdict; brackets are 95% Wilson intervals.
+
+| Question type | Questions | Abstention rate | Grounded rate | Recall@5 |
+|---|---:|---|---|---:|
+| single-paper | 12 | 1/12 (0.08 [0.01, 0.35]) | 11/11 (1.00 [0.74, 1.00]) | 0.75 |
+| multi-paper | 8 | 1/8 (0.12 [0.02, 0.47]) | 6/7 (0.86 [0.49, 0.97]) | 0.06 |
+| follow-up | 8 | 2/8 (0.25 [0.07, 0.59]) | 6/6 (1.00 [0.61, 1.00]) | 0.50 |
+| all answerable | 28 | 4/28 (0.14 [0.06, 0.31]), all false abstentions | 23/24 (0.96 [0.80, 0.99]) | 0.48 |
+| unanswerable: near-miss | 6 | 5/6 (0.83 [0.44, 0.97]) | 1/1 (1.00 [0.21, 1.00]) | — |
+| unanswerable: out-of-topic | 2 | 2/2 (1.00 [0.34, 1.00]) | — | — |
+| all unanswerable | 8 | 7/8 (0.88 [0.53, 0.98]) | 1/1 (1.00 [0.21, 1.00]) | — |
+
+- **Grounded:** 24 of the 25 answers that are not Abstentions (0.96 [0.80, 0.99]). The one that isn't, `gpt-4-number-tokens`, writes "GPT-4" with no cited Chunk holding the 4. It was grounded in only 1 of 3 runs on the raw retriever too.
+- **Unanswerable:** 7 of 8 are Abstentions. The near miss `sentencepiece-korean-speed` is answered, citing its Chunks, though the corpus doesn't hold its answer.
+- **Against the raw retriever** (its chat report, in ADR 0070): Recall@5 rises from 0.41 to 0.48, and the false-abstention rate from 2/28 to 4/28. The report's *Against the baseline* lists the three questions whose verdict changed. `magikarp-norm-indicator` declines with its Passage in its Chunks. `one-sided-regularization` declines with a Chunk at rank 2 that states the answer in the ACL Edition's rewording, which the Passage matcher doesn't count.
+- **Speed:** a Turn takes 1.58 s at p50 and 2.31 s at p95, almost all of it the answer.
 
 ## Measure the Relevance verdict
 

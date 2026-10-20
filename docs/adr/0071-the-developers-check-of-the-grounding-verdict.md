@@ -1,4 +1,4 @@
-# 0066. The developer's check of the grounding verdict
+# 0071. The developer's check of the grounding verdict
 
 - **Date:** 2026-10-20
 - **Status:** Accepted

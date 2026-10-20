@@ -28,6 +28,7 @@ from .parsing import pipeline as parsing
 from .parsing.config import load_parse_config
 from .parsing.grobid import GrobidUnreachable
 from .retrieval import index
+from .retrieval.collapse import Collapsed
 from .retrieval.config import load_retrieval_config
 from .retrieval.corpus import Corpus, CorpusError, load_corpus
 from .retrieval.retriever import RetrieverConfig
@@ -125,7 +126,6 @@ def main(argv: list[str] | None = None) -> None:
     )
     _add_corpus_arguments(index_cmd)
     index_cmd.add_argument("--snapshot", type=Path, default=Path("data/snapshot"), help="where the index record of indexed files goes")
-    index_cmd.add_argument("--manifest", type=Path, default=Path("data/manifest.csv"), help="its Editions whose files are all indexed are marked indexed")
     index_cmd.add_argument("--funnel-report", type=Path, default=Path("data/report.md"), help="the funnel and channel report, rewritten with the indexed count")
 
     evaluate_cmd = commands.add_parser(
@@ -169,6 +169,9 @@ def main(argv: list[str] | None = None) -> None:
     _add_chunk_arguments(chat_cmd)
     chat_cmd.add_argument("--index-cache", type=Path, default=Path("data/index-cache"), help="the index cache (default data/index-cache)")
     chat_cmd.add_argument("--port", type=int, default=8766, help="port on localhost (default 8766)")
+    chat_cmd.add_argument(
+        "--transcripts", type=Path, default=Path("docs/reports"), help="where the page's save writes transcripts (default docs/reports)"
+    )
 
     chat_eval_cmd = commands.add_parser(
         "chat-eval",
@@ -341,6 +344,7 @@ def main(argv: list[str] | None = None) -> None:
                 args.work_groups,
                 retrieval.collapse_pool,
                 retrieval.comparison,
+                args.config,
                 args.export_ungrouped,
             )
         except (EvaluationSetError, WorkGroupsError, index.IndexMissing, BaselineMissing) as error:
@@ -419,13 +423,17 @@ def _chatbot(args: argparse.Namespace) -> tuple[Chatbot, Corpus]:
         built = index.load(args.index_cache, corpus, config.retriever)
     except index.IndexMissing as error:
         sys.exit(f"{args.command}: {error}")
-    return Chatbot(config, built.retriever, {chunk.chunk_id: chunk for chunk in corpus.chunks}), corpus
+    chunks = {chunk.chunk_id: chunk for chunk in corpus.chunks}
+    retriever = built.retriever
+    if config.collapse_pool:
+        retriever = Collapsed(retriever, chunks, read_manifest(args.manifest), config.collapse_pool)
+    return Chatbot(config, retriever, chunks), corpus
 
 
 def _chat(args: argparse.Namespace) -> None:
     chatbot, _ = _chatbot(args)
     try:
-        server = page.make_server(chatbot, args.port)
+        server = page.make_server(chatbot, args.port, args.transcripts)
     except OSError as error:
         sys.exit(f"chat: can't serve on port {args.port} ({error}); pass another with --port")
     page.serve(chatbot, server)
@@ -440,11 +448,17 @@ def _add_corpus_arguments(command: argparse.ArgumentParser) -> None:
 
 
 def _add_chunk_arguments(command: argparse.ArgumentParser) -> None:
-    """Where the corpus's Chunks are: the parse config, cache and report."""
+    """Where the corpus's Chunks are: the parse config, cache and report, and the manifest that names their Editions."""
     command.add_argument("--parse-config", type=Path, default=Path("config/parse.toml"), help="the chunking config the Chunks were cut with")
     command.add_argument("--cache", type=Path, default=Path("data/parse-cache"), help="the parse cache (default data/parse-cache)")
     command.add_argument(
         "--parse-report", type=Path, default=Path("data/parse-report.md"), help="its parsed files make up the corpus (default data/parse-report.md)"
+    )
+    command.add_argument(
+        "--manifest",
+        type=Path,
+        default=Path("data/manifest.csv"),
+        help="the Edition of each parsed file and the Editions of each Work; `index` marks the wholly indexed Editions in it",
     )
 
 
@@ -452,9 +466,6 @@ def _add_evaluation_set_arguments(command: argparse.ArgumentParser) -> None:
     """The arguments `evaluate`, `chat-eval` and `eval-check` share: the Evaluation set and the Passage matching rule."""
     command.add_argument("--evaluation-set", type=Path, default=Path("data/eval/evaluation-set.jsonl"))
     command.add_argument("--eval-config", type=Path, default=Path("config/evaluation.toml"), help="the Passage matching rule")
-    command.add_argument(
-        "--manifest", type=Path, default=Path("data/manifest.csv"), help="links the Editions of a Work, for the multi-paper check"
-    )
 
 
 def _matching_rule(args: argparse.Namespace) -> MatchingRule:
@@ -470,7 +481,7 @@ def _works(args: argparse.Namespace) -> Works:
 
 def _load_corpus(args: argparse.Namespace) -> Corpus:
     try:
-        return load_corpus(load_parse_config(args.parse_config), args.cache, args.parse_report)
+        return load_corpus(load_parse_config(args.parse_config), args.cache, args.parse_report, args.manifest)
     except CorpusError as error:
         sys.exit(f"{args.command}: {error}")
 

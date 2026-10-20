@@ -9,7 +9,7 @@ history's Turns are in the answers file and the latency.
 `--runs N` asks the whole set N times: the first run is the one reported, and the others measure how much the
 answer model varies. `--from-answers` asks nothing: it scores the answers file's Turns again with the current code
 and rewrites the file, so a change to the scoring is measured with no model noise. `--export-check` asks nothing
-either: it draws the developer's sample of answered Turns from the answers file (ADR 0066).
+either: it draws the developer's sample of answered Turns from the answers file (ADR 0071).
 """
 
 from collections.abc import Sequence
