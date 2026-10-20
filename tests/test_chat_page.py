@@ -206,7 +206,10 @@ def test_the_fixed_sentence_without_its_corpus_is_an_abstention(chat, fake_answe
     # As the pinned model declined magikarp-norm-indicator in #86's run.
     fake_answer_model.script[FREEZING] = "The papers do not answer this question."
 
-    assert ask(chat, FREEZING)["abstention"] is True
+    turn = ask(chat, FREEZING)
+
+    assert turn["abstention"] is True
+    assert turn["references"] == [] and len(turn["chunks"]) == 5
 
 
 def test_an_answer_that_only_mentions_abstaining_is_not_an_abstention(chat, fake_answer_model):

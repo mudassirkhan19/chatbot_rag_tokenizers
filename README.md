@@ -351,7 +351,7 @@ Against the run before those three fixes (ADR 0070, on `dense.bge-small+collapse
 |---|---:|---:|
 | Abstention rate, unanswerable | 7/8 (0.88 [0.53, 0.98]) | 7/8 (0.88 [0.53, 0.98]) |
 | False-abstention rate, answerable | 4/28 (0.14 [0.06, 0.31]) | 2/28 (0.07 [0.02, 0.23]) |
-| Grounded rate | 24/25 (0.96 [0.80, 0.99]) | 25/27 (0.93 [0.77, 0.98]) |
+| Grounded rate, every answer (unanswerable included) | 24/25 (0.96 [0.80, 0.99]) | 25/27 (0.93 [0.77, 0.98]) |
 | Recall@5, answerable / single / multi / follow-up | 0.48 / 0.75 / 0.06 / 0.50 | 0.54 / 0.75 / 0.25 / 0.50 |
 | Near-duplicate Turns (#77's `dups.py`) | 15/44 | 2/44 |
 

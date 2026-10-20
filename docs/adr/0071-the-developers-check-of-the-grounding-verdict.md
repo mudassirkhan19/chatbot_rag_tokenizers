@@ -1,7 +1,7 @@
 # 0071. The developer's check of the grounding verdict
 
 - **Date:** 2026-10-20
-- **Status:** Accepted. Amended by [0072](0072-the-hand-check-scores-each-sampled-reply.md): the report scores the automatic check on each sampled reply, not only where the run still gives it. On [0077](0077-the-final-chat-run-after-the-text-collapse-the-rewrite-and-per-paper-retrieval.md)'s run the agreement is unchanged, 16/19.
+- **Status:** Accepted. Amended by [0072](0072-the-hand-check-scores-each-sampled-reply.md): the report scores the automatic check on each sampled reply, not only where the run still gives it.
 
 ## Context
 The chat report's grounded rate comes from an automatic check ([0059](0059-abstention-by-instruction-and-the-chat-report.md)). An answer counts as grounded when it cites a retrieved Chunk, every marker it holds names one, and every number it gives is in a cited Chunk. The check reads markers and numbers only. It can't tell whether a cited Chunk says what the sentence citing it claims. The committed run counts 27 of 27 answers as grounded, so a reviewer can't tell from the report how much that rate overstates. Spec #63 (stories 49–51) asks for a hand check of a sample, in the audit label page's shape ([0020](0020-blind-agent-labels-checked-by-the-developer.md)), and for the agreement with it in the chat report.

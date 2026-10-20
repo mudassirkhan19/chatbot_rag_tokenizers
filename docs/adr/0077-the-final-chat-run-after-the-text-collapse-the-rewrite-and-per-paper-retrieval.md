@@ -14,7 +14,7 @@
 | Abstention rate, unanswerable | 7/8 (0.88 [0.53, 0.98]) | 7/8 (0.88 [0.53, 0.98]) |
 | near-miss / out-of-topic | 5/6 / 2/2 | 5/6 / 2/2 |
 | False-abstention rate, answerable | 4/28 (0.14 [0.06, 0.31]) | 2/28 (0.07 [0.02, 0.23]) |
-| Grounded rate | 24/25 (0.96 [0.80, 0.99]) | 25/27 (0.93 [0.77, 0.98]) |
+| Grounded rate, every answer | 24/25 (0.96 [0.80, 0.99]) | 25/27 (0.93 [0.77, 0.98]) |
 | Recall@5, answerable | 0.48 | 0.54 |
 | Recall@5, single-paper | 0.75 | 0.75 |
 | Recall@5, multi-paper | 0.06 | 0.25 |
@@ -40,7 +40,7 @@ So the false abstentions fall from 4 to 2 (llama2-70b-vocabulary and magikarp-no
 
 **One more decline phrase: "The papers do not answer this question."** In the first run, magikarp-norm-indicator's reply was the fixed sentence without "in this corpus". The decline pattern lacked "papers" and "answer", so the reply counted as an uncited, ungrounded answer. 0064 foresaw this: one more alternative in `_DECLINE`. The subject may now be "papers", and the verb "answer". Re-scored with the new rule, every stored reply in 0070's answers and runs and in this run kept its verdict, except that Turn in all three runs. The committed run is a second `chat-eval` with the rule in place, from the same baseline. Its verdicts are the first run's, apart from that Turn. Between the two processes, about ten replies changed wording, and one follow-up's Chunks changed order.
 
-**The Transcript was asked again.** The committed Transcript's six questions were asked once through the page's endpoints, in one Conversation, and saved as they came, as 0068 and 0070 did. `docs/reports/2026-10-21-chat-transcript.md` replaces `2026-10-20-chat-transcript.md`; the old one is in git history. Turn by Turn:
+**The Transcript was asked again.** The committed Transcript's six questions were asked once through the page's endpoints, in one Conversation, and saved as they came, as 0068 and 0070 did. It was saved between the two `chat-eval` runs, before the decline phrase above was added. No Turn of it is affected: its two Abstentions open "The provided chunks do not contain", and its answers cite Chunks. It was not asked again, since 0068 asks a Transcript once. `docs/reports/2026-10-21-chat-transcript.md` replaces `2026-10-20-chat-transcript.md`; the old one is in git history. Turn by Turn:
 1. CANINE's 50 F1 on Amharic NER is now one reference, "2022.tacl-1.5, also 2103.06874v4", where 0070's Transcript showed it twice.
 2. "it" resolves to CANINE, and the answer cites CANINE's § 3.1, as before.
 3. The Rewrite names both models now, if clumsily: "How does the comparison between CANINE's character handling and ByT5's character handling compare?" Neither model's own paper is retrieved. Two of its Chunks are from "Are Character-level Translations Worth the Wait? Comparing ByT5 and mT5", whose title holds "ByT5". The answer, a grounded one where 0070's bot abstained, cites "A Multi-dimensional Evaluation of Tokenizer-free Multilingual Pretrained Models", whose § 2 describes both: CANINE reads characters, ByT5 reads UTF-8 bytes.
