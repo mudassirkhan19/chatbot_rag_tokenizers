@@ -199,10 +199,10 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
 <header class="masthead">
   <div class="eyebrow">Tokenizer literature RAG · business logic, not code</div>
   <h1>How the corpus is found, judged, parsed, searched, measured and answered from</h1>
-  <p class="lede">One page for a project manager's view of the pipeline so far: six stages, the decisions behind each one, the numbers they produced, how each is checked, and what is still open. Every decision links to its record on GitHub. Software structure is deliberately left out.</p>
+  <p class="lede">One page for a project manager's view of the pipeline as submitted: six stages, the decisions behind each one, the numbers they produced, how each is checked, and what is still open. Every decision links to its record on GitHub. Software structure is deliberately left out. The <a data-file="docs/write-up.md">write-up</a> condenses it.</p>
   <div class="asof">
     <span>As of <b>2026-10-21</b></span>
-    <span>Commit <b class="mono">301e28f</b> on <a data-file="">main</a></span>
+    <span>Commit <b class="mono">0b9815e</b> on <a data-file="">main</a></span>
     <span>Snapshot date <b>2026-10-16</b> (judge and PDF hashes 2026-10-17)</span>
     <span>Status: <span class="chip done">done</span> <span class="chip partial">partial</span> <span class="chip planned">planned</span></span>
   </div>
@@ -321,7 +321,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <div class="arrow">or</div>
       <div class="ent"><b>Abstention</b><span>A plain statement that the corpus does not answer the question</span><span class="ex">7 of 8 unanswerable</span></div>
     </div>
-    <p class="why">Two sets of hand-made truth sit beside the pipeline and never feed it: the <b>Audit set</b> (180 labelled Candidates) that chose the judge, and the <b>Evaluation set</b> with its <b>Work groups</b> (154 Editions in 130 Works) that scores retrieval. Full definitions in <a data-file="GLOSSARY.md">GLOSSARY.md</a>.</p>
+    <p class="why">Two sets of hand-made truth sit beside the pipeline and never feed it: the <b>Audit set</b> (180 labelled Candidates) that chose the judge, and the <b>Evaluation set</b> with its <b>Work groups</b> (209 Editions in 179 Works) that scores retrieval. Full definitions in <a data-file="GLOSSARY.md">GLOSSARY.md</a>.</p>
   </div>
 </section>
 
@@ -665,7 +665,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <h4>Two baselines, both on every Chunk</h4>
       <ul class="plain">
         <li><b>BM25</b>, keyword search: lower-cased letter and digit runs, decimals kept whole, no stemming, no stop words, k1 1.2, b 0.75. Index built in 10 s; a query takes about 200 ms.</li>
-        <li><b>Dense</b>, vector search: bge-small-en-v1.5 (33M parameters, 384 dimensions), exact dot product over float32 vectors, query prefixed with the model's search instruction. Index built in 14 minutes on the laptop GPU; a query takes about 30 ms.</li>
+        <li><b>Dense</b>, vector search: bge-small-en-v1.5 (33M parameters, 384 dimensions), exact dot product over float32 vectors, query prefixed with the model's search instruction. Index built in 22 minutes on the laptop GPU; a query takes about 30 ms.</li>
         <li>Every retriever indexes the context header with the text.</li>
         <li><b>Collapsed ranking</b> (<code>&lt;retriever&gt;+collapsed</code>): takes a retriever's raw top 50 and merges copies of a passage from a Work's other Versions and Editions into one slot, shown from the Canonical Edition's file. Two Chunks are copies when they share at least 40% of their word 5-grams and one is the other's closest Chunk in its file, however the Sections are numbered. A Work's other passages keep their slots, and Surveys are marked, not demoted.</li>
         <li><b>Per-paper retrieval</b> (<code>&lt;retriever&gt;+per-paper+collapsed</code>): the answer model lists the papers, methods and models a question names, and any name the question doesn't hold is dropped. "Goldman et al." finds Works by first author, "MEGABYTE" by title words. When two or more names are different Works, their Chunks fill the slots in rotation before the rest of the ranking, and then copies are merged.</li>
@@ -675,7 +675,8 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
         <li><b>bge-base-en-v1.5</b>, the size control (110M parameters, 768 dimensions): Recall@5 0.29 raw and 0.32 collapsed, built in 48 minutes.</li>
         <li><b>OpenScholar_Retriever</b>, the scientific candidate (Contriever-base trained further on peS2o): Recall@5 0.07 raw and 0.12 collapsed, below bge-small beyond noise on both. It finds the right paper as often as bge-small, but ranks the paper's short Chunks, such as figure captions, above the one holding the Passage.</li>
         <li><b>Three hybrids</b>, BM25 plus each dense model by reciprocal rank fusion: Recall@5 0.34, 0.34 and 0.28 raw, 0.39, 0.35 and 0.32 collapsed.</li>
-        <li>Nothing beats bge-small beyond noise on either ranking, so it stays: 0.30 raw and 0.38 collapsed, and 0.43 with per-paper retrieval on top. That last is the retriever <code>[chat]</code> names.</li>
+        <li>Per-paper twins of all seven: the BM25 + bge-small hybrid is highest at 0.44 against bge-small's 0.43, both within noise of bge-small collapsed, and the hybrid's per-paper query takes 260 ms at the median against bge-small's 42 ms.</li>
+        <li>Nothing beats bge-small beyond noise on any of the three rankings, so it stays: 0.30 raw and 0.38 collapsed, and 0.43 with per-paper retrieval on top. That last is the retriever <code>[chat]</code> names.</li>
       </ul>
       <div class="tbl"><table>
         <caption>bge-small, Recall@5 / MRR@10 on the three rankings. The per-paper step is for multi-paper questions and changes nothing else.</caption>
@@ -700,7 +701,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       </details>
       <details class="dec">
         <summary>Dense baseline behind an embedder boundary, bge-small pinned by revision and weight hash<span class="ref">ADR 0042</span></summary>
-        <div class="body"><p>The dense retriever gets vectors only through one function, which tests replace with a hashed bag of words, so the default test suite never loads a model. bge-small shares BERT's vocabulary with the chunker's counter, so Chunks nearly always fit in 512 tokens (5 of 141,360 were cut).</p><p class="why"><b>Why:</b> swapping the model for the comparison must touch one place, and tests must stay offline. <a data-adr="0042">Read ADR 0042</a>.</p></div>
+        <div class="body"><p>The dense retriever gets vectors only through one function, which tests replace with a hashed bag of words, so the default test suite never loads a model. bge-small shares BERT's vocabulary with the chunker's counter, so Chunks nearly always fit in 512 tokens (5 of 141,360 were cut when it was measured).</p><p class="why"><b>Why:</b> swapping the model for the comparison must touch one place, and tests must stay offline. <a data-adr="0042">Read ADR 0042</a>.</p></div>
       </details>
       <details class="dec">
         <summary>Works are grouped in collect; the collapse merges copies, not Works<span class="ref">ADR 0051, 0057, 0063</span></summary>
@@ -708,11 +709,11 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       </details>
       <details class="dec">
         <summary>Copies are matched by their text, not their place in the Section<span class="ref">ADR 0074</span></summary>
-        <div class="body"><p>The first collapse called two Chunks copies only at the same Section path and the same count of Chunks before it. Real Editions break that four ways: GROBID nests a Section in one Edition only, headings change case, Sections are renumbered, and revisions split paragraphs. Now two Chunks of one Work from different files are copies when they share 40% of their word 5-grams and one is the other's closest Chunk in its file. Near-duplicate chat Turns fell from 15 of 44 to 2, bge-small's copies from another Edition or Version from 33 to 5 of its top-5 slots, and no collapsed Recall@5 dropped.</p><p class="why"><b>Why:</b> the failure diagnosis found duplicates still taking slots on the chatbot's retriever. The closest-Chunk condition keeps a table cut into two Chunks from merging with its own other half. <a data-adr="0074">ADR 0074</a>.</p></div>
+        <div class="body"><p>The first collapse called two Chunks copies only at the same Section path and the same count of Chunks before it. Real Editions break that four ways: GROBID nests a Section in one Edition only, headings change case, Sections are renumbered, and revisions split paragraphs. Now two Chunks of one Work from different files are copies when they share 40% of their word 5-grams and one is the other's closest Chunk in its file. Against ADR 0057's place key (not the raw ranking), bge-small's collapsed top 5 holds copies from another Edition or Version in 5 slots of 130 where it held 13 of 140, no collapsed Recall@5 dropped (MRR@10 0.271 to 0.276), and near-duplicate chat Turns fell from 15 of 44 to 2. The two left are boundary shifts the closest-Chunk condition keeps apart on purpose.</p><p class="why"><b>Why:</b> the failure diagnosis found duplicates still taking slots on the chatbot's retriever. The closest-Chunk condition keeps a table cut into two Chunks from merging with its own other half. <a data-adr="0074">ADR 0074</a>.</p></div>
       </details>
       <details class="dec">
         <summary>Retrieve once for each paper a question names<span class="ref">ADR 0076</span></summary>
-        <div class="body"><p>A comparison question becomes one embedding, which lands near whichever paper restates both sides, so the other side goes missing. The answer model now lists the names in the question; each is looked up among the indexed Works by first author or title words, and the named Works' Chunks fill the slots in rotation before the collapse. On the 8 multi-paper questions bge-small's collapsed Recall@5 goes from 0.06 to 0.25; on all 28 answerable from 0.38 to 0.43, with 3 wins and no losses. The alternative, leaning on BM25's match of the name through the hybrid alone, reached 0.10 on the multi-paper questions.</p><p class="why"><b>Why:</b> the diagnosis showed MEGABYTE's Passage ranks 1st once its title leads the query and 8th inside a comparison. <a data-adr="0076">ADR 0076</a>.</p></div>
+        <div class="body"><p>A comparison question becomes one embedding, which lands near whichever paper restates both sides, so the other side goes missing. The answer model now lists the names in the question; each is looked up among the indexed Works by first author or title words, and the named Works' Chunks fill the slots in rotation before the collapse. On the 8 multi-paper questions bge-small's collapsed Recall@5 goes from 0.06 to 0.25; on all 28 answerable from 0.38 to 0.43, with 3 wins and no losses. The alternative, leaning on BM25's match of the name through the hybrid alone, reached 0.10 on the multi-paper questions; with per-paper retrieval on top, the hybrid's lead over bge-small is within noise, so the chatbot keeps bge-small.</p><p class="why"><b>Why:</b> the diagnosis showed MEGABYTE's Passage ranks 1st once its title leads the query and 8th inside a comparison. <a data-adr="0076">ADR 0076</a>.</p></div>
       </details>
       <details class="dec">
         <summary>The embedding comparison, raw and collapsed: bge-small stays<span class="ref">ADR 0065</span></summary>
@@ -833,7 +834,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
   <div class="sec-head">
     <div class="eyebrow">Stage 6</div>
     <div class="title-row"><h2>Chat: answering from the papers, or saying they don't answer</h2><span class="chip done">done</span></div>
-    <p class="goal">A local multi-turn chat page that answers only from retrieved Chunks, cites paper, Edition, Section and pages for every claim, and abstains plainly when the corpus doesn't hold the answer. Built and measured; the final run (<a data-issue="86">issue 86</a>, ADR 0077) is on the chatbot as built, after the fixes of #80–#82. #83 and #85 are enhancements, not needed for it.</p>
+    <p class="goal">A local multi-turn chat page that answers only from retrieved Chunks, cites paper, Edition, Section and pages for every claim, and abstains plainly when the corpus doesn't hold the answer. Built and measured. The final run (<a data-issue="86">issue 86</a>, ADR 0077) is on the chatbot as built, after the text collapse (#80), per-paper retrieval (#81) and the Rewrite that names the paper (#82). The <a data-file="docs/reports/2026-10-21-failure-analysis.md">failure analysis</a> traces what it still gets wrong, and the <a data-file="docs/reports/2026-10-21-chat-transcript.md">Transcript</a> shows one Conversation.</p>
   </div>
   <div class="panel">
     <div class="block">
@@ -847,9 +848,9 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
         <dt>Turn</dt><dd>One question and its answer, with the Chunks retrieved for it.</dd>
         <dt>Rewrite</dt><dd>The standalone question formed from a follow-up and the Conversation before it; what retrieval sees.</dd>
         <dt>Citation</dt><dd>A marker naming one Chunk retrieved for its Turn. A marker naming any other Chunk is struck through as invalid, never dropped.</dd>
-        <dt>Abstention</dt><dd>The fixed sentence "The papers in this corpus do not answer this question.", or a one-sentence decline in the model's own words that cites nothing and goes on to answer nothing.</dd>
+        <dt>Abstention</dt><dd>The fixed sentence "The papers in this corpus do not answer this question.", or a one-sentence decline in the model's own words, such as "The provided chunks do not contain …" or "The papers do not answer this question.", that cites nothing and goes on to answer nothing.</dd>
         <dt>Grounded</dt><dd>An answer that cites at least one Chunk, every Citation valid, and every number in it found in a cited Chunk.</dd>
-        <dt>Claim</dt><dd>A sentence of an answer that cites a Chunk; the unit an LLM grounding judge would score.</dd>
+        <dt>Claim</dt><dd>A sentence of an answer that cites a Chunk, without its markers; the unit the grounding judge scores, against each Chunk it cites.</dd>
         <dt>Transcript</dt><dd>A Conversation saved from the page as Markdown, rendered from the records the page shows.</dd>
       </dl>
       <h4>What one Turn does</h4>
@@ -857,7 +858,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
         <li><b>Rewrite</b> (follow-ups only): the answer model gets the last 3 Turns and the follow-up, and replaces each word that points back with the paper, method or model it names.</li>
         <li><b>Names</b>: the same model lists the papers the question names, for per-paper retrieval.</li>
         <li><b>Retrieve</b>: the top 5 Chunks from <code>dense.bge-small+per-paper+collapsed</code>, whatever their scores.</li>
-        <li><b>Answer</b>: gemma4:e2b-mlx on Ollama, pinned with its runtime, temperature 0, answers from those 5 Chunks only, or abstains by instruction. About 1.5 s per answer on a laptop, and a quarter second more for a follow-up's Rewrite.</li>
+        <li><b>Answer</b>: gemma4:e2b-mlx on Ollama, pinned with its runtime, temperature 0, answers from those 5 Chunks only, or abstains by instruction. A whole Turn takes 0.75 s at the median and 1.43 s at p95 on a laptop; a follow-up's Rewrite is about 0.2 s of it.</li>
         <li><b>Show</b>: each reference names the title, Edition and Version, Section and pages, the other Editions whose copies were merged into it ("P16-1162, also 1508.07909v5"), and a Survey mark.</li>
       </ul>
     </div>
@@ -898,16 +899,20 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
         <div class="body"><p>The answer model with its own prompt rewrites each follow-up from the last 3 Turns, earlier answers shown without their markers. The prompt now asks that each pointing word be replaced by the paper, method or model as the Conversation names it. <code>evaluate</code> scores the chatbot's Rewrite as a fourth row beside the hand-written one.</p><p class="why"><b>Why:</b> asked alone, "how does it …" names nothing; the first prompt replaced "it" with "the model", which retrieves nothing better. <a data-adr="0056">ADR 0056</a>, <a data-adr="0067">ADR 0067</a>, <a data-adr="0073">ADR 0073</a>.</p></div>
       </details>
       <details class="dec">
-        <summary>Abstention by instruction, with a wider reading of the model's own declines<span class="ref">ADR 0059, 0064</span></summary>
-        <div class="body"><p>Every Turn sends its 5 Chunks whatever their scores, and the system prompt says to reply with the fixed sentence when they don't answer. No score threshold or second model decides. A one-sentence decline such as "The provided chunks do not contain …" also counts, unless it goes on to answer or cites a Chunk.</p><p class="why"><b>Why:</b> the model often declined in its own words, and those were being scored as answers. The false-abstention rate is reported beside the abstention rate, so a bot that abstains on everything shows. <a data-adr="0059">ADR 0059</a>, <a data-adr="0064">ADR 0064</a>.</p></div>
+        <summary>Abstention by instruction, with a wider reading of the model's own declines<span class="ref">ADR 0059, 0064, 0077</span></summary>
+        <div class="body"><p>Every Turn sends its 5 Chunks whatever their scores, and the system prompt says to reply with the fixed sentence when they don't answer. No score threshold or second model decides. A one-sentence decline such as "The provided chunks do not contain …" also counts, unless it goes on to answer or cites a Chunk. The final run added one more: the fixed sentence without "in this corpus", which magikarp-norm-indicator gave and which had been scored as an uncited answer.</p><p class="why"><b>Why:</b> the model often declined in its own words, and those were being scored as answers. The false-abstention rate is reported beside the abstention rate, so a bot that abstains on everything shows. <a data-adr="0059">ADR 0059</a>, <a data-adr="0064">ADR 0064</a>, <a data-adr="0077">ADR 0077</a>.</p></div>
       </details>
       <details class="dec">
         <summary>Re-scoring from the answers, run-to-run variation, Wilson intervals<span class="ref">ADR 0062</span></summary>
-        <div class="body"><p>The model is not quite deterministic at temperature 0: one run changed the wording of 14 of 44 replies. Rather than force it, scoring is made exactly reproducible from the stored replies, variation is measured over three runs, and every rate carries an interval.</p><p class="why"><b>Why:</b> with 8 unanswerable questions one verdict moves the rate by 0.12, far more than the model's noise. <a data-adr="0062">ADR 0062</a>.</p></div>
+        <div class="body"><p>The model is not quite deterministic at temperature 0: one early run changed the wording of 14 of 44 replies, and the final run's three runs changed 5 of 44. Rather than force it, scoring is made exactly reproducible from the stored replies, variation is measured over three runs, and every rate carries an interval.</p><p class="why"><b>Why:</b> with 8 unanswerable questions one verdict moves the rate by 0.12, far more than the model's noise. <a data-adr="0062">ADR 0062</a>.</p></div>
       </details>
       <details class="dec">
         <summary>The chatbot retrieves collapsed, and citations name the merged Editions<span class="ref">ADR 0069, 0070, 0076</span></summary>
         <div class="body"><p><code>[chat]</code> names a twin, so the 5 Chunks are 5 different passages. A reference reads "2112.06598v2, also v1" when copies were merged, and marks a Survey. ADR 0076 adds per-paper retrieval on top.</p><p class="why"><b>Why:</b> copies of one passage were taking slots a comparison needed for its other paper. <a data-adr="0069">ADR 0069</a>, <a data-adr="0070">ADR 0070</a>, <a data-adr="0076">ADR 0076</a>.</p></div>
+      </details>
+      <details class="dec">
+        <summary>The final chat run is one run on the merged main<span class="ref">ADR 0077</span></summary>
+        <div class="body"><p>After #80–#82 merged, <code>evaluate</code> and <code>chat-eval --runs 3 --judge</code> were run once more, against the run before them as the baseline. Four questions gained a Passage (three from per-paper retrieval, wechsel-neighbours from the Rewrite naming WECHSEL) and magikarp-norm-indicator lost its one, so Recall@5 went from 0.48 to 0.54, all of it multi-paper. Three verdicts changed: one-sided-regularization and superbpe-mmlu now answer, the second with the wrong benchmark, and canine-hashing lost its markers.</p><p class="why"><b>Why:</b> the submitted numbers must come from the code as submitted, and the baseline marks which changes are effects and which are noise. <a data-adr="0077">ADR 0077</a>.</p></div>
       </details>
       <details class="dec">
         <summary>The Transcript is saved from the page, not written by hand<span class="ref">ADR 0068, 0077</span></summary>
@@ -915,7 +920,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       </details>
       <details class="dec">
         <summary>The grounding verdict checked by hand, and an LLM judge measured, not adopted<span class="ref">ADR 0071, 0072, 0075</span></summary>
-        <div class="body"><p><code>chat-eval --export-check</code> samples 20 answered Turns; the developer labels each on a local page; the report gives the agreement and every disagreement with its note, scored on the sampled reply itself so a later run doesn't drop labels. <code>--judge</code> has Tev1 give P(yes) for each Claim and cited Chunk, threshold 0.5 set before looking.</p><p class="why"><b>Why:</b> a check that reads only markers and numbers can't see a borrowed explanation. Tev1 caught none of the three misses either, so the grounded rate stays the automatic check's. <a data-adr="0071">ADR 0071</a>, <a data-adr="0072">ADR 0072</a>, <a data-adr="0075">ADR 0075</a>.</p></div>
+        <div class="body"><p><code>chat-eval --export-check</code> samples 20 answered Turns; the developer labels each on a local page; the report gives the agreement and every disagreement with its note, scored on the sampled reply as stored, so a later run can't drop labels or move the agreement (ADR 0072). <code>--judge</code> has Tev1 4B, the scope judge with the same pin, give P(yes) for each Claim and cited Chunk, averaged per Turn, at a threshold of 0.5 set before looking. It agrees with the hand labels on 16 of 19, the same as the automatic check.</p><p class="why"><b>Why:</b> a check that reads only markers and numbers can't see a borrowed explanation. Tev1 caught none of the three misses either, so the grounded rate stays the automatic check's. <a data-adr="0071">ADR 0071</a>, <a data-adr="0072">ADR 0072</a>, <a data-adr="0075">ADR 0075</a>.</p></div>
       </details>
 
       <div class="risk"><b>What could be wrong</b>
@@ -960,8 +965,8 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
 <section id="remaining">
   <div class="sec-head">
     <div class="eyebrow">The brief, requirement by requirement</div>
-    <div class="title-row"><h2>What's left, and what already exists toward it</h2><span class="chip partial">partial</span></div>
-    <p class="goal">Each of the brief's requirements, where it stands, and what is still to do before submission. Enhancement issues are listed but don't block it.</p>
+    <div class="title-row"><h2>What's left, and what already exists toward it</h2><span class="chip done">done</span></div>
+    <p class="goal">Each of the brief's requirements and where it stands. Enhancement issues are listed but don't block submission.</p>
   </div>
   <div class="plans">
     <div class="plan done">
@@ -985,16 +990,15 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <p><b>Built:</b> see <a href="#chat">Stage 6</a>. On the final run (<a data-issue="86">86</a>, ADR 0077), 7/8 unanswerable questions abstained on, 25/27 answers grounded, 2/28 false abstentions (4/28 before #80–#82), and the grounding verdict agrees with the developer on 16/19. <b>Enhancements, not needed:</b> Claims kept to their own paper (<a data-issue="83">83</a>), a larger answer model (<a data-issue="85">85</a>), a reranker (<a data-issue="62">62</a>), asking again for missing markers (<a data-issue="87">87</a>), a Rewrite that also replaces "them" (<a data-issue="88">88</a>).</p>
       <p><a data-issue="63">Spec issue 63</a></p>
     </div>
-    <div class="plan">
+    <div class="plan done">
       <div class="eyebrow">Brief: deliverables</div>
-      <div class="head"><h3>Write-up, transcript, failure analysis</h3><span class="chip planned">to write</span></div>
+      <div class="head"><h3>Write-up, transcript, failure analysis</h3><span class="chip done">done</span></div>
       <p>2–3 pages on design decisions with a results table; one conversation of at least five turns with a follow-up and an unanswerable; at least three questions the system still gets wrong, and why.</p>
-      <p><b>Exists:</b> a six-Turn Transcript with two follow-ups and two Abstentions, on the chatbot as built (<a data-file="docs/reports/2026-10-21-chat-transcript.md">2026-10-21</a>); the failure diagnosis (<a data-file="docs/reports/2026-10-21-chat-failure-diagnosis.md">2026-10-21</a>), which traces nine kinds of failure to where each first goes wrong; the failure analysis (<a data-file="docs/reports/2026-10-21-failure-analysis.md">2026-10-21</a>), six questions the final run still gets wrong, each traced to the diagnosis, with its fix (<a data-issue="62">62</a>, <a data-issue="83">83</a>, <a data-issue="85">85</a>, <a data-issue="87">87</a>, <a data-issue="88">88</a>); this page and 77 ADRs as the source of the write-up.</p>
-      <p><b>Not written yet:</b> the 2–3 page write-up with its results table, linked from the top of the README.</p>
+      <p><b>Done:</b> the <a data-file="docs/write-up.md">write-up</a>, linked from the top of the README: the design decisions with their ADRs, a results table (corpus, retrieval raw 0.30, collapsed 0.38 and per paper 0.43, chat), why bge-small, why Work grouping and the Collapsed ranking and what they might wrongly merge, and the failure cases; a six-Turn Transcript with two follow-ups and two Abstentions, on the chatbot as built (<a data-file="docs/reports/2026-10-21-chat-transcript.md">2026-10-21</a>); the failure diagnosis (<a data-file="docs/reports/2026-10-21-chat-failure-diagnosis.md">2026-10-21</a>), which traces nine kinds of failure to where each first goes wrong; the failure analysis (<a data-file="docs/reports/2026-10-21-failure-analysis.md">2026-10-21</a>), six questions the final run still gets wrong, each traced to the diagnosis, with its fix (<a data-issue="62">62</a>, <a data-issue="83">83</a>, <a data-issue="85">85</a>, <a data-issue="87">87</a>, <a data-issue="88">88</a>); and this page and 77 ADRs behind them.</p>
       <p><a data-issue="79">Write-up, issue 79</a> · <a data-issue="78">failure analysis, issue 78</a></p>
     </div>
   </div>
-  <p class="why order"><b>Order before submission:</b> <a data-issue="86">#86</a> the final run and <a data-issue="78">#78</a> the failure analysis on its answers are in; next <a data-issue="79">#79</a> the write-up, which quotes both. Each refreshes this page's numbers as it lands.</p>
+  <p class="why order"><b>Before submission:</b> nothing is left. <a data-issue="86">#86</a> the final run, <a data-issue="78">#78</a> the failure analysis on its answers and <a data-issue="79">#79</a> the write-up that quotes both are in. What remains are enhancement issues, none blocking: <a data-issue="62">#62</a>, <a data-issue="83">#83</a>, <a data-issue="85">#85</a>, <a data-issue="87">#87</a>, <a data-issue="88">#88</a>, and the parse clean-up of <a data-issue="39">#39</a>, <a data-issue="40">#40</a>, <a data-issue="42">#42</a> and <a data-issue="43">#43</a>.</p>
 </section>
 
 <!-- ============================ EXAMPLE ============================ -->
@@ -1011,12 +1015,12 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <div class="step"><div class="s">Discover<small>stage 1</small></div><div class="w"><p>Found by 20 Discovery channels: three arXiv queries, the OpenAlex query, three Semantic Scholar queries, the Seed itself, two Seeds' citation lists and eleven Seeds' reference lists. Two Editions: the arXiv preprint <code>1808.06226v1</code> (one Version, arXiv's non-exclusive licence) and the EMNLP demo paper <code>D18-2012</code> (CC BY 4.0), kept as separate rows.</p></div></div>
       <div class="step"><div class="s">Judge<small>stage 2</small></div><div class="w"><p>Rules: pass (title contains "tokenizer" and "subword"). Judge: P(Yes) 0.9971 ≥ 0.8. Verdict: included, stage judge, on both Editions.</p></div></div>
       <div class="step"><div class="s">Acquire &amp; parse<small>stage 3</small></div><div class="w"><p>Two pinned files, <code>1808.06226v1.pdf</code> (sha256 8a81eb…) and <code>D18-2012.pdf</code> (cf056a…). Both parsed: 12 Sections each; 24 Chunks (1 table, 3 captions) and 26 Chunks (0 tables, 4 captions). Docling had failed on this PDF in the spike; GROBID did not.</p></div></div>
-      <div class="step"><div class="s">Retrieve<small>stage 4</small></div><div class="w"><p>Both Editions indexed, so a SentencePiece query can return the same sentence twice. collect puts them in one Work, so the Collapsed ranking shows one slot for both, read from the Canonical venue Edition and labelled "D18-2012 + 1808.06226v1".</p></div></div>
+      <div class="step"><div class="s">Retrieve<small>stage 4</small></div><div class="w"><p>Both Editions indexed, so a SentencePiece query can return the same sentence twice. collect puts them in one Work, so the Collapsed ranking shows one slot for both, read from the Canonical venue Edition, and the chatbot's Citation reads "D18-2012, also 1808.06226v1".</p></div></div>
       <div class="step"><div class="s">Evaluate<small>stage 5</small></div><div class="w"><p>Question <code>sentencepiece-whitespace</code> asks what the library does with spaces. Its Passage, checked by the developer, is in <code>1808.06226v1</code> § 3.1 Lossless Tokenization:</p><blockquote>SentencePiece first escapes the whitespace with a meta symbol _ (U+2581)</blockquote><p>BM25 does not find it in the top 10. Dense finds it at rank 4 with a duplicate slot in its top 5; on the Collapsed ranking, at rank 3 with none.</p></div></div>
     </div>
     <div class="trace">
       <h3>Backwards: two questions and what they test</h3>
-      <div class="step"><div class="s">Follow-up<small>canine-hashing</small></div><div class="w"><p>History: "What score does CANINE reach on Amharic named entities, a language it never saw in pre-training, and why can it read that script at all?" Follow-up: <em>"How does it give every possible character an embedding without an enormous table?"</em> Rewrite: "How does CANINE embed every Unicode codepoint without a vocabulary-sized embedding matrix?"</p><p>Passage in <code>2103.06874v4</code> § 3.1 Model. Asked alone, neither retriever finds it: "it" names nothing. With the reference rewrite, BM25 finds it at rank 2 and dense at rank 1. The chatbot's own Rewrite, "How does CANINE give every possible character an embedding without an enormous table?", also puts it at rank 1 for dense, and it is Turn 2 of the committed Transcript.</p></div></div>
+      <div class="step"><div class="s">Follow-up<small>canine-hashing</small></div><div class="w"><p>History: "What score does CANINE reach on Amharic named entities, a language it never saw in pre-training, and why can it read that script at all?" Follow-up: <em>"How does it give every possible character an embedding without an enormous table?"</em> Rewrite: "How does CANINE embed every Unicode codepoint without a vocabulary-sized embedding matrix?"</p><p>Passage in <code>2103.06874v4</code> § 3.1 Model. Asked alone, neither retriever finds it: "it" names nothing. With the reference rewrite, BM25 finds it at rank 2 and dense at rank 1. The chatbot's own Rewrite, "How does CANINE give every possible character an embedding without an enormous table?", also puts it at rank 1 for dense, and at rank 3 on the chatbot's <code>dense.bge-small+per-paper+collapsed</code>; it is Turn 2 of the committed Transcript.</p></div></div>
       <div class="step"><div class="s">Unanswerable<small>bpe-english-french</small></div><div class="w"><p><em>"What BLEU score did Sennrich et al.'s subword NMT paper report for English→French translation?"</em> The paper reports English→German and English→Russian only. The absence evidence lists the top 10 Chunks from both retrievers for the question and for probe queries; the first hits are the paper's own English→German results and other systems' French scores. The developer confirmed none answers it. The chatbot must say so rather than quote the German figure; on the committed run it abstains.</p></div></div>
       <div class="step"><div class="s">Why trace<small>in this order</small></div><div class="w"><p>Reading the vocabulary forwards shows how a record becomes a citable Chunk. Reading a question backwards shows what the score actually rewards: a quote found in any copy of the paper, counted once.</p></div></div>
     </div>
@@ -1024,7 +1028,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
 </section>
 
 <footer>
-  <p>Hand-curated. Refreshed by the issue that changes a stage's status or a headline number, as ADR 0048 records. Sources: <a data-file="GLOSSARY.md">GLOSSARY.md</a>, <a data-file="docs/adr/README.md">the decision log</a>, <a data-file="data/report.md">data/report.md</a>, <a data-file="data/audit/report.md">data/audit/report.md</a>, <a data-file="data/parse-report.md">data/parse-report.md</a>, <a data-file="data/eval/eval-report.md">data/eval/eval-report.md</a>, <a data-file="data/eval/chat-report.md">data/eval/chat-report.md</a>, <a data-file="docs/ASSIGNMENT.md">the brief</a>.</p>
+  <p>Hand-curated. Refreshed by the issue that changes a stage's status or a headline number, as ADR 0048 records. Sources: <a data-file="GLOSSARY.md">GLOSSARY.md</a>, <a data-file="docs/adr/README.md">the decision log</a>, <a data-file="data/report.md">data/report.md</a>, <a data-file="data/audit/report.md">data/audit/report.md</a>, <a data-file="data/parse-report.md">data/parse-report.md</a>, <a data-file="data/eval/eval-report.md">data/eval/eval-report.md</a>, <a data-file="data/eval/chat-report.md">data/eval/chat-report.md</a>, <a data-file="docs/reports/2026-10-21-failure-analysis.md">the failure analysis</a>, <a data-file="docs/reports/2026-10-21-chat-transcript.md">the Transcript</a>, <a data-file="docs/write-up.md">the write-up</a>, <a data-file="docs/ASSIGNMENT.md">the brief</a>.</p>
 </footer>
 
 </div>
