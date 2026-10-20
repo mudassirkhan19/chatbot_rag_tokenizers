@@ -18,7 +18,7 @@ Left to decide: does restamping change the corpus fingerprint, and so rebuild al
 ## Decision
 **`load_corpus` restamps each report row's Chunks** with that row's pinned id, and with the Edition id and Version `parse` would give it:
 - A report parsed from the full-text record takes them from the manifest, as `parse` does: each included Edition's `pdf_files`, read back through `pinned_id_of_file`. So `index`, `evaluate`, `chat`, `chat-eval` and `eval-check` all take `--manifest` (default `data/manifest.csv`).
-- A `--files` report takes them from the pinned ids, by the rule `parse --files` uses (`editions_by_name`, shared with `from_paths`).
+- A `--files` report takes them from the pinned ids, by the rule `parse --files` uses (`editions_by_name`, shared with `from_paths`). It reads every file the report lists, the failed ones too, since `parse` took the Editions from every file given: a v1 whose v2 failed the quality gate still cites Edition v2.
 - A record report whose manifest is missing, or no longer includes an Edition pinned to one of its files, stops the load with a pointer to `just parse` or `--manifest`. Its Chunks can't be stamped as the parse stamped them.
 
 **The fingerprint stays over the Chunks as the cache holds them**, with the formula unchanged. An index holds Chunk ids, headers and text, and no Edition id, so restamping leaves every index as it was. The seven built indexes stay valid, and nothing is rebuilt.

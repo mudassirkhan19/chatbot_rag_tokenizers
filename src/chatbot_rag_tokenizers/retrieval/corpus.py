@@ -64,7 +64,7 @@ def load_corpus(config: ParseConfig, cache_root: Path, report_path: Path, manife
             f"the parse report {report_path} was parsed from the full-text record, so the manifest names its files' Editions,"
             f" and there is no manifest at {manifest_path}. Pass the manifest it was parsed with (--manifest)."
         )
-    editions = editions_in_manifest(manifest_path) if run.from_record else editions_by_name([pinned_id for pinned_id, _ in run.parsed])
+    editions = editions_in_manifest(manifest_path) if run.from_record else editions_by_name(run.listed)
     if unknown := [pinned_id for pinned_id, _ in run.parsed if pinned_id not in editions]:
         raise CorpusError(
             f"the manifest {manifest_path} includes no Edition pinned to {_count(len(unknown))} in {report_path}: {', '.join(unknown)}. {rerun}"
@@ -95,8 +95,9 @@ def load_corpus(config: ParseConfig, cache_root: Path, report_path: Path, manife
     return Corpus(config.grobid.parser_key, config.chunking, tuple(run.parsed), tuple(chunks), run.from_record, fingerprint)
 
 
-def _fingerprint(parser_key: str, files: list[str], chunks: list[Chunk]) -> str:
-    digest = hashlib.sha256("\n".join([parser_key, *sorted(files)]).encode())
+def _fingerprint(parser_key: str, sha256s: list[str], chunks: list[Chunk]) -> str:
+    """The `Corpus.fingerprint` of the parser, the files' sha256s and their Chunks as the cache holds them."""
+    digest = hashlib.sha256("\n".join([parser_key, *sorted(sha256s)]).encode())
     for chunk in chunks:
         digest.update(json.dumps(asdict(chunk), sort_keys=True, ensure_ascii=False).encode())
     return digest.hexdigest()

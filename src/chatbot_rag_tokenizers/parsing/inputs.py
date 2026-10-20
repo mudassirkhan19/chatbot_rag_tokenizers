@@ -64,10 +64,11 @@ def editions_by_name(pinned_ids: list[str]) -> dict[str, tuple[str, str]]:
         arxiv_id = pinned_id.removesuffix(version)
         if version and int(version[1:]) > int(latest.get(arxiv_id, "v0")[1:]):
             latest[arxiv_id] = version
-    return {
-        pinned_id: (pinned_id.removesuffix(version) + latest[pinned_id.removesuffix(version)] if version else pinned_id, version)
-        for pinned_id, version in versions.items()
-    }
+    editions = {}
+    for pinned_id, version in versions.items():
+        arxiv_id = pinned_id.removesuffix(version)
+        editions[pinned_id] = (arxiv_id + latest[arxiv_id] if version else pinned_id, version)
+    return editions
 
 
 def editions_in_manifest(manifest_path: Path) -> dict[str, tuple[str, str]]:

@@ -8,9 +8,10 @@ from pathlib import Path
 
 import pytest
 
+from chatbot_rag_tokenizers.parsing.chunker import Chunk
 from chatbot_rag_tokenizers.parsing.config import load_parse_config
 from chatbot_rag_tokenizers.retrieval.corpus import Corpus, CorpusError, load_corpus
-from parse_support import REPO_CONFIG, FakeGrobid, FetchedCorpus, sha256
+from parse_support import REPO_CONFIG, FakeGrobid, FetchedCorpus, run_parse, seed_pdf, sha256
 
 
 @pytest.fixture
@@ -22,7 +23,7 @@ def loaded(corpus: FetchedCorpus, cache: Path | None = None) -> Corpus:
     return load_corpus(load_parse_config(REPO_CONFIG), cache or corpus.root / "cache", corpus.root / "parse-report.md", corpus.manifest)
 
 
-def cited(chunks, pdf: bytes) -> list[tuple[str, str, str]]:
+def cited(chunks: tuple[Chunk, ...], pdf: bytes) -> list[tuple[str, str, str]]:
     """The (Edition id, pinned id, Version) of each Chunk of the file, in the corpus's order, each run of them once."""
     runs: list[tuple[str, str, str]] = []
     for chunk in chunks:
@@ -77,3 +78,15 @@ def test_a_pinned_id_the_manifest_no_longer_includes_stops_the_load(corpus):
 
     with pytest.raises(CorpusError, match="includes no Edition pinned to 1 file .*: 2607.05691v1. Run `just parse`"):
         loaded(corpus)
+
+
+def test_a_files_run_takes_each_edition_from_every_file_given_as_parse_did_failed_ones_too(tmp_path, grobid):
+    v1 = seed_pdf(tmp_path, grobid, "wechsel_2112.06598v1.pdf", "wechsel_2112.06598v2.tei.xml")
+    # The latest Version fails the quality gate, so it has no Chunks, but it still names the Edition.
+    seed_pdf(tmp_path, grobid, "wechsel_2112.06598v2.pdf", "scanned.tei.xml")
+    with pytest.raises(SystemExit):
+        run_parse(tmp_path, v1, tmp_path / "pdfs" / "wechsel_2112.06598v2.pdf")
+
+    chunks = load_corpus(load_parse_config(REPO_CONFIG), tmp_path / "cache", tmp_path / "parse-report.md", tmp_path / "manifest.csv").chunks
+
+    assert cited(chunks, v1.read_bytes()) == [("2112.06598v2", "2112.06598v1", "v1")]
