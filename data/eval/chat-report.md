@@ -17,10 +17,11 @@ Written by `chat-eval`. Every question of the Evaluation set is asked of the cha
 
 ## Chatbot
 
-- Retriever: dense.bge-small+collapsed (`dense-784e5a0da1b5`), collapse pool 50, 5 Chunks per Turn
+- Retriever: dense.bge-small+per-paper+collapsed (`dense-784e5a0da1b5`), collapse pool 50, overlap 0.4, 5 Chunks per Turn
 - Answer model: gemma4:e2b-mlx@e98b54fe1913 on Ollama 0.40.5, thinking off, temperature 0.0
 - System prompt sha256: `1597fe607c1e22bb9b25a827ee6fd0067c4b635628c5bff5c74b3a79710b23eb` (with the Abstention sentence filled in)
-- Rewrite prompt sha256: `667083844bf2a3deeb25ed76510b41f884d360d9767a39e098829b30c6c1dfab`
+- Rewrite prompt sha256: `a55b1f544689263b5369feb47da5d246675078f5c8ee93fcdff60dffaebc13f7`
+- Names prompt sha256: `531471f2e894a13dd2742e00f1f6af4cb5d8e651e2e316367842771845b81bbb`
 - Abstention sentence: "The papers in this corpus do not answer this question."
 - Earlier Turns shown on a follow-up: 3
 
@@ -37,18 +38,18 @@ Written by `chat-eval`. Every question of the Evaluation set is asked of the cha
 | Question type | Questions | Abstained | Abstention rate | 95% interval | Answers | Grounded | Grounded rate | 95% interval | Recall@5 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | single-paper | 12 | 1 | 0.08 | [0.01, 0.35] | 11 | 11 | 1.00 | [0.74, 1.00] | 0.75 |
-| multi-paper | 8 | 1 | 0.12 | [0.02, 0.47] | 7 | 6 | 0.86 | [0.49, 0.97] | 0.06 |
-| follow-up | 8 | 2 | 0.25 | [0.07, 0.59] | 6 | 6 | 1.00 | [0.61, 1.00] | 0.50 |
-| all answerable | 28 | 4 | 0.14 | [0.06, 0.31] | 24 | 23 | 0.96 | [0.80, 0.99] | 0.48 |
+| multi-paper | 8 | 0 | 0.00 | [0.00, 0.32] | 8 | 7 | 0.88 | [0.53, 0.98] | 0.25 |
+| follow-up | 8 | 1 | 0.12 | [0.02, 0.47] | 7 | 6 | 0.86 | [0.49, 0.97] | 0.50 |
+| all answerable | 28 | 2 | 0.07 | [0.02, 0.23] | 26 | 24 | 0.92 | [0.76, 0.98] | 0.54 |
 | unanswerable: near-miss | 6 | 5 | 0.83 | [0.44, 0.97] | 1 | 1 | 1.00 | [0.21, 1.00] | — |
 | unanswerable: out-of-topic | 2 | 2 | 1.00 | [0.34, 1.00] | 0 | 0 | — | — | — |
 | all unanswerable | 8 | 7 | 0.88 | [0.53, 0.98] | 1 | 1 | 1.00 | [0.21, 1.00] | — |
-| all | 36 | 11 | 0.31 | [0.18, 0.47] | 25 | 24 | 0.96 | [0.80, 0.99] | 0.48 |
+| all | 36 | 9 | 0.25 | [0.14, 0.41] | 27 | 25 | 0.93 | [0.77, 0.98] | 0.54 |
 
 - Abstention rate on the unanswerable questions: 7/8 (0.88 [0.53, 0.98]); near-miss 5/6 (0.83 [0.44, 0.97]), out-of-topic 2/2 (1.00 [0.34, 1.00])
-- False-abstention rate on the answerable questions: 4/28 (0.14 [0.06, 0.31])
-- Grounded rate over every answer that is not an Abstention: 24/25 (0.96 [0.80, 0.99])
-- Not grounded: 0 uncited, 0 with an invalid Citation, 1 with a number in no cited Chunk (an answer may be counted under more than one)
+- False-abstention rate on the answerable questions: 2/28 (0.07 [0.02, 0.23])
+- Grounded rate over every answer that is not an Abstention: 25/27 (0.93 [0.77, 0.98])
+- Not grounded: 1 uncited, 0 with an invalid Citation, 1 with a number in no cited Chunk (an answer may be counted under more than one)
 
 ## Questions
 
@@ -70,19 +71,19 @@ Grounded is yes, no, or — for an Abstention. Passages in its Chunks counts the
 | fast-wordpiece-speed | single-paper | no | yes | — | — | 1/1: 1 |
 | bpe-and-wechsel-vocabularies | multi-paper | no | yes | — | — | 0/2 |
 | compression-and-accuracy | multi-paper | no | yes | — | — | 0/3 |
-| one-sided-regularization | multi-paper | yes | — | — | — | 0/3 |
-| tokenizer-swap-budget | multi-paper | no | yes | — | — | 0/2 |
-| megabyte-and-blt-patches | multi-paper | no | yes | — | — | 0/2 |
+| one-sided-regularization | multi-paper | no | yes | — | — | 0/3 |
+| tokenizer-swap-budget | multi-paper | no | yes | — | — | 1/2: 1 |
+| megabyte-and-blt-patches | multi-paper | no | yes | — | — | 1/2: 1 |
 | api-cost-by-language | multi-paper | no | yes | — | — | 1/2: 2 |
-| renyi-efficiency | multi-paper | no | yes | — | — | 0/2 |
+| renyi-efficiency | multi-paper | no | yes | — | — | 1/2: 2 |
 | gpt-4-number-tokens | multi-paper | no | no | — | 4 | 0/2 |
-| wechsel-neighbours | follow-up | no | yes | — | — | 0/1 |
-| canine-hashing | follow-up | no | yes | — | — | 1/1: 1 |
+| wechsel-neighbours | follow-up | no | yes | — | — | 1/1: 1 |
+| canine-hashing | follow-up | no | no | — | — | 1/1: 1 |
 | digits-fourth-digit | follow-up | no | yes | — | — | 0/1 |
 | vocabulary-with-scarce-data | follow-up | no | yes | — | — | 1/1: 1 |
 | code-tokenizer-initialisation | follow-up | no | yes | — | — | 0/1 |
-| magikarp-norm-indicator | follow-up | yes | — | — | — | 1/1: 1 |
-| superbpe-mmlu | follow-up | yes | — | — | — | 0/1 |
+| magikarp-norm-indicator | follow-up | yes | — | — | — | 0/1 |
+| superbpe-mmlu | follow-up | no | yes | — | — | 0/1 |
 | tokenization-latency | follow-up | no | yes | — | — | 1/1: 1 |
 | bpe-english-french | unanswerable | yes | — | — | — | — |
 | blt-70b-mmlu | unanswerable | yes | — | — | — | — |
@@ -154,9 +155,9 @@ The developer's labels on a seeded sample of answered Turns (`chat-eval --export
 | Abstention rate, unanswerable | 7/8 | 7/8 | 7/8 | 0.88–0.88 |
 | Abstention rate, near-miss | 5/6 | 5/6 | 5/6 | 0.83–0.83 |
 | Abstention rate, out-of-topic | 2/2 | 2/2 | 2/2 | 1.00–1.00 |
-| False-abstention rate, answerable | 4/28 | 4/28 | 4/28 | 0.14–0.14 |
-| Grounded rate | 24/25 | 24/25 | 24/25 | 0.96–0.96 |
-| Recall@5, answerable | 0.48 | 0.48 | 0.48 | 0.48–0.48 |
+| False-abstention rate, answerable | 2/28 | 2/28 | 2/28 | 0.07–0.07 |
+| Grounded rate | 25/27 | 25/27 | 25/27 | 0.93–0.93 |
+| Recall@5, answerable | 0.54 | 0.54 | 0.54 | 0.54–0.54 |
 
 ### Questions whose verdict changed
 
@@ -165,20 +166,20 @@ The developer's labels on a seeded sample of answered Turns (`chat-eval --export
 | Question | Type | Abstained | Grounded | Verdicts |
 |---|---|---:|---:|---|
 
-- Turns whose reply changed wording from run 1: 16 of 44 (byt5-span-length, xlm-r-tokens-per-language, fast-wordpiece-speed, bpe-and-wechsel-vocabularies, compression-and-accuracy, tokenizer-swap-budget, megabyte-and-blt-patches, api-cost-by-language, renyi-efficiency, gpt-4-number-tokens, wechsel-neighbours Turn 1, wechsel-neighbours Turn 2, digits-fourth-digit Turn 2, magikarp-norm-indicator Turn 2, tokenization-latency Turn 1, tokenization-latency Turn 2)
-- Turns whose retrieved Chunks changed from run 1: 2 of 44 (wechsel-neighbours Turn 2, tokenization-latency Turn 2) (a follow-up's can move, as its history's replies feed the rewriter)
+- Turns whose reply changed wording from run 1: 5 of 44 (sentencepiece-whitespace, api-cost-by-language, renyi-efficiency, canine-hashing Turn 2, tokenization-latency Turn 2)
+- Turns whose retrieved Chunks changed from run 1: 0 of 44 (a follow-up's can move, as its history's replies feed the rewriter)
 
 ## Against the baseline
 
 Baseline: `data/eval/chat-answers.jsonl`, 3 runs, its verdicts as stored. Each question whose verdict here differs from the baseline's run 1 is listed, marked flaky in the baseline when its runs disagreed on it, so a change the baseline already varied on is not read as an effect.
 
-The baseline was asked over other settings: collapse_pool None, here 50.
+The baseline was asked over other settings: per_paper None, here True; collapse_overlap None, here 0.4; rewrite_prompt_sha256 '667083844bf2a3deeb25ed76510b41f884d360d9767a39e098829b30c6c1dfab', here 'a55b1f544689263b5369feb47da5d246675078f5c8ee93fcdff60dffaebc13f7'; names_prompt_sha256 None, here '531471f2e894a13dd2742e00f1f6af4cb5d8e651e2e316367842771845b81bbb'.
 
 | Question | Type | Baseline | Now | Note |
 |---|---|---|---|---|
-| one-sided-regularization | multi-paper | grounded | abstained | — |
-| gpt-4-number-tokens | multi-paper | grounded | not grounded | flaky in the baseline: grounded, not grounded, not grounded |
-| magikarp-norm-indicator | follow-up | grounded | abstained | — |
+| one-sided-regularization | multi-paper | abstained | grounded | — |
+| canine-hashing | follow-up | grounded | not grounded | — |
+| superbpe-mmlu | follow-up | abstained | grounded | — |
 
 ## Timings
 
@@ -186,7 +187,7 @@ These depend on the machine and change from run to run. They count every Turn of
 
 | Step | Turns | p50 | p95 |
 |---|---:|---:|---:|
-| retrieval | 44 | 0.06 s | 0.06 s |
-| rewriting | 8 | 0.25 s | 0.29 s |
-| answering | 44 | 1.53 s | 2.12 s |
-| whole Turn | 44 | 1.58 s | 2.31 s |
+| retrieval | 44 | 0.16 s | 0.50 s |
+| rewriting | 8 | 0.18 s | 0.27 s |
+| answering | 44 | 0.46 s | 0.84 s |
+| whole Turn | 44 | 0.75 s | 1.43 s |

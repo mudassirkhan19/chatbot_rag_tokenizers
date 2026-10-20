@@ -202,6 +202,13 @@ def test_a_decline_in_the_models_own_words_is_an_abstention(chat, fake_answer_mo
     assert turn["references"] == [] and len(turn["chunks"]) == 5
 
 
+def test_the_fixed_sentence_without_its_corpus_is_an_abstention(chat, fake_answer_model):
+    # As the pinned model declined magikarp-norm-indicator in #86's run.
+    fake_answer_model.script[FREEZING] = "The papers do not answer this question."
+
+    assert ask(chat, FREEZING)["abstention"] is True
+
+
 def test_an_answer_that_only_mentions_abstaining_is_not_an_abstention(chat, fake_answer_model):
     fake_answer_model.script[FREEZING] = "WECHSEL does not need freezing [1]. The papers in this corpus do not answer whether it helps."
 

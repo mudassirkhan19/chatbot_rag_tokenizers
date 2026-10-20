@@ -1,7 +1,7 @@
 # 0064. A decline in the model's own words is an Abstention
 
 - **Date:** 2026-10-20
-- **Status:** Accepted; amends [0054](0054-pinned-local-answer-model-and-the-chat-page.md)'s and [0059](0059-abstention-by-instruction-and-the-chat-report.md)'s rule for what an Abstention is
+- **Status:** Accepted; amends [0054](0054-pinned-local-answer-model-and-the-chat-page.md)'s and [0059](0059-abstention-by-instruction-and-the-chat-report.md)'s rule for what an Abstention is. Amended by [0077](0077-the-final-chat-run-after-the-text-collapse-the-rewrite-and-per-paper-retrieval.md): "papers" and "answer" join the decline pattern.
 
 ## Context
 ADR 0054 counts a reply as an Abstention only when it holds the fixed sentence, "The papers in this corpus do not answer this question." ADR 0059's run found that the pinned model (gemma4:e2b-mlx) mostly declines in its own words instead: "The provided chunks do not contain the specific BLEU score …". The committed #67 run has seven such declines, the same in all three of #75's runs:

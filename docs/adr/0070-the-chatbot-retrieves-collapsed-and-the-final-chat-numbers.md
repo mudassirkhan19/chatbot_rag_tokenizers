@@ -1,7 +1,7 @@
 # 0070. The chatbot retrieves with bge-small's `+collapsed` twin, and the final chat numbers
 
 - **Date:** 2026-10-20
-- **Status:** Accepted; amends [0068](0068-the-transcript-saved-from-the-chat-page.md), whose committed Transcript it replaces
+- **Status:** Accepted; amends [0068](0068-the-transcript-saved-from-the-chat-page.md), whose committed Transcript it replaces. Amended by [0076](0076-retrieve-once-for-each-paper-a-question-names.md) (the retriever) and [0077](0077-the-final-chat-run-after-the-text-collapse-the-rewrite-and-per-paper-retrieval.md) (the final chat numbers and the Transcript).
 
 ## Context
 [0065](0065-the-embedding-comparison-on-the-raw-ranking.md) chose `dense.bge-small` on the Collapsed ranking, and [0069](0069-citations-name-the-merged-editions-after-the-collapse.md) let `[chat]` name a `+collapsed` twin. But `[chat]` still named the raw retriever, so the chat report, its answers and the Transcript described a bot that ranks copies of one passage in separate slots. Spec #63 (story 58) and issue #72 ask for the final numbers on the retriever #61 chose, collapsed: in the chat report, the answers file, the eval report's rewriter row and the Transcript, each saying so in its header.

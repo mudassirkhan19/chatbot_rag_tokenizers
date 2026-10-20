@@ -2388,24 +2388,24 @@ Each retriever's model and index, with how long the index took to build and each
 
 | Retriever | Parameters | Dimension | Index on disk | Built on | Build time | Queries | Queried on | Latency p50 | Latency p95 |
 |---|---:|---:|---:|---|---:|---:|---|---:|---:|
-| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 229.53 ms | 343.46 ms |
-| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 245.30 ms | 353.41 ms |
-| bm25+per-paper+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 250.85 ms | 462.77 ms |
-| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 28.71 ms | 31.51 ms |
-| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 40.09 ms | 60.49 ms |
-| dense.bge-small+per-paper+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 42.11 ms | 200.32 ms |
-| dense.bge-base | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 38.76 ms | 43.29 ms |
-| dense.bge-base+collapsed | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 50.65 ms | 77.10 ms |
-| dense.bge-base+per-paper+collapsed | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 52.01 ms | 212.32 ms |
-| dense.openscholar | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 38.34 ms | 42.97 ms |
-| dense.openscholar+collapsed | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 47.52 ms | 67.64 ms |
-| dense.openscholar+per-paper+collapsed | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 50.23 ms | 183.06 ms |
-| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 233.00 ms | 372.14 ms |
-| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 252.88 ms | 384.54 ms |
-| hybrid.bm25+bge-small+per-paper+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 248.19 ms | 355.45 ms |
-| hybrid.bm25+bge-base | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 252.35 ms | 392.29 ms |
-| hybrid.bm25+bge-base+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 267.31 ms | 391.67 ms |
-| hybrid.bm25+bge-base+per-paper+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 271.23 ms | 392.52 ms |
-| hybrid.bm25+openscholar | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 256.43 ms | 384.63 ms |
-| hybrid.bm25+openscholar+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 280.53 ms | 387.81 ms |
-| hybrid.bm25+openscholar+per-paper+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 267.60 ms | 371.38 ms |
+| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 222.96 ms | 325.77 ms |
+| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 244.00 ms | 349.83 ms |
+| bm25+per-paper+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 245.01 ms | 447.06 ms |
+| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 28.89 ms | 32.68 ms |
+| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 40.93 ms | 63.36 ms |
+| dense.bge-small+per-paper+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 42.20 ms | 188.16 ms |
+| dense.bge-base | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 38.67 ms | 43.58 ms |
+| dense.bge-base+collapsed | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 49.63 ms | 76.38 ms |
+| dense.bge-base+per-paper+collapsed | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 49.75 ms | 200.63 ms |
+| dense.openscholar | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 39.13 ms | 42.67 ms |
+| dense.openscholar+collapsed | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 48.89 ms | 66.46 ms |
+| dense.openscholar+per-paper+collapsed | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 49.67 ms | 192.23 ms |
+| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 245.51 ms | 388.67 ms |
+| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 263.19 ms | 379.85 ms |
+| hybrid.bm25+bge-small+per-paper+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 260.19 ms | 376.70 ms |
+| hybrid.bm25+bge-base | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 282.02 ms | 417.80 ms |
+| hybrid.bm25+bge-base+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 275.20 ms | 412.09 ms |
+| hybrid.bm25+bge-base+per-paper+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 270.73 ms | 398.79 ms |
+| hybrid.bm25+openscholar | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 259.59 ms | 402.01 ms |
+| hybrid.bm25+openscholar+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 274.20 ms | 391.05 ms |
+| hybrid.bm25+openscholar+per-paper+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 285.29 ms | 402.47 ms |
