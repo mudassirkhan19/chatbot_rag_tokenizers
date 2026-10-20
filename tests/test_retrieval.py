@@ -1022,7 +1022,7 @@ def test_a_collapsed_hit_carries_its_work_merged_editions_and_copies_and_keeps_i
     bm25 = load_retrieval_config(RETRIEVAL_CONFIG).bm25
     raw = index.load(with_venue_edition / "index-cache", corpus, bm25).retriever
     chunks = {chunk.chunk_id: chunk for chunk in corpus.chunks}
-    collapsed = Collapsed(raw, chunks, read_csv(MANIFEST), pool=50)
+    collapsed = Collapsed(raw, chunks, read_csv(MANIFEST), pool=50, overlap=0.5)
     text = "What vocabulary size do the translation systems use?"
 
     collapse = collapsed.collapse(text, 5)
@@ -1046,7 +1046,7 @@ def test_the_report_records_the_pool_and_how_many_pools_held_fewer_distinct_chun
     report = run_evaluate(with_venue_edition, retrieval_config=config)
 
     retrievers = report.split("## Retrievers\n", 1)[1].split("\n## ", 1)[0]
-    assert "- bm25+collapsed: bm25's index, with copies from other files of a Work merged\n  - pool: `10`" in retrievers
+    assert "- bm25+collapsed: bm25's index, with copies from other files of a Work merged\n  - pool: `10`\n  - overlap: `0.4`" in retrievers
     crowded = report.split("### Crowding: bm25+collapsed\n", 1)[1].split("\n### ", 1)[0]
     found = re.search(r"- Pool: the top 10 raw Chunks held fewer than 5 distinct Chunks, once copies were merged, for (\d+) of 4"
                       r" questions, and fewer than 10, the depth each query asks for, for (\d+)\.", crowded)

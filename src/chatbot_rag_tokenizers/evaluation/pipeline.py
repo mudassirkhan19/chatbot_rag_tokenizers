@@ -73,6 +73,7 @@ def evaluate(
     manifest: Iterable[Mapping[str, str]],
     work_groups: Path,
     pool: int,
+    overlap: float,
     comparison: ComparisonConfig,
     chat_config: Path,
     export: Path | None = None,
@@ -80,7 +81,7 @@ def evaluate(
     """Raises EvaluationSetError for a set that fails `eval-check` (ADR 0041), WorkGroupsError for a malformed Work
     groups file, BaselineMissing when the Comparison's baseline isn't one of `configs` and index.IndexMissing when a
     retriever isn't built. `pool` is the raw Chunks each Collapsed ranking
-    merges copies in, and `chat_config` holds the [chat] table of the rewriter's model and prompt. With `export`, also writes there every Edition in a top 5 that has no Work group."""
+    merges copies in, `overlap` the share of word 5-grams that makes two Chunks copies, and `chat_config` holds the [chat] table of the rewriter's model and prompt. With `export`, also writes there every Edition in a top 5 that has no Work group."""
     check_baseline(comparison.baseline, [config.name for config in configs])
     rows = {row["edition_id"]: row for row in manifest}
     works = Works(rows.values())
@@ -93,10 +94,10 @@ def evaluate(
     chunks = {chunk.chunk_id: chunk for chunk in corpus.chunks}
     runs = []
     for config, built in indexes:
-        collapsed = Collapsed(built.retriever, chunks, rows.values(), pool)
+        collapsed = Collapsed(built.retriever, chunks, rows.values(), pool, overlap)
         for run in (
             RetrieverRun(config, built, score(questions, built.retriever, chunks, rule, rewriter.rewrites)),
-            RetrieverRun(config, built, score(questions, collapsed, chunks, rule, rewriter.rewrites), pool),
+            RetrieverRun(config, built, score(questions, collapsed, chunks, rule, rewriter.rewrites), pool, overlap),
         ):
             runs.append(run)
             if overall := metrics(all_answerable(run.scored)):

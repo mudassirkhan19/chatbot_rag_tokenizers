@@ -70,6 +70,7 @@ class ChatConfig:
     history: int  # the earlier Turns the answer model and the rewriter are shown on a follow-up
     rewrite_prompt: str
     collapse_pool: int | None = None  # the raw Chunks the Collapsed ranking merges copies in; None for the raw ranking
+    collapse_overlap: float | None = None  # the share of word 5-grams that makes two Chunks copies (ADR 0074); None for the raw ranking
     judge: GroundingJudgeConfig | None = None  # [chat.judge], for `chat-eval --judge`; None without the table
 
     @property
@@ -109,6 +110,7 @@ def load_chat_config(path: Path = DEFAULT_PATH) -> ChatConfig:
         history=fields["history"],
         rewrite_prompt=fields["rewrite_prompt"],
         collapse_pool=retrieval.collapse_pool if fields["retriever"].endswith(SUFFIX) else None,
+        collapse_overlap=retrieval.collapse_overlap if fields["retriever"].endswith(SUFFIX) else None,
         judge=_judge(raw, path) if "judge" in raw.get("chat", {}) else None,
     )
 

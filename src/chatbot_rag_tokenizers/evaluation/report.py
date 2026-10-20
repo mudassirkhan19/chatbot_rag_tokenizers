@@ -70,6 +70,7 @@ class RetrieverRun:
     index: Index  # what was queried, with its build time and device
     scored: list[Scored]
     pool: int | None = None  # for a Collapsed ranking, the raw Chunks it merged copies in
+    overlap: float | None = None  # for a Collapsed ranking, the share of word 5-grams that made two Chunks copies
 
     @property
     def name(self) -> str:
@@ -128,10 +129,11 @@ def write_eval_report(
         f" matches (ADR 0041). A match running into the Chunk's first or last word counts only the quote's words on the"
         f" Chunk's side, and must cover at least {rule.edge_min_words} words. The Chunk may come from any Edition.",
         "- A retriever's own ranking is scored raw: duplicates of one Work all take their slots.",
-        f"- Its `{SUFFIX}` twin is scored on the Collapsed ranking (ADRs 0053 and 0057) over the same index: from the"
-        " raw top *pool* Chunks, with Works from the manifest's work_id (an Edition with none is its own Work), in the"
-        " raw order, it merges copies: the Chunks of a Work from different files at the same place in the same Section"
-        " (another Version's or Edition's copy of the passage), into the slot of the best-ranked one, shown from the"
+        f"- Its `{SUFFIX}` twin is scored on the Collapsed ranking (ADRs 0053, 0057 and 0074) over the same index: from"
+        " the raw top *pool* Chunks, with Works from the manifest's work_id (an Edition with none is its own Work), in"
+        " the raw order, it merges copies: the Chunks of a Work from different files that share at least *overlap* of"
+        " their word 5-grams, counted on the smaller Chunk's, where one is the other's closest Chunk in its file"
+        " (another Version's or Edition's copy of the passage, wherever its file puts it), into the slot of the best-ranked one, shown from the"
         " Canonical Edition's file when the pool holds a copy from it, else from an Edition's latest file, else as"
         " ranked. A Work's other Chunks keep their slots. Surveys are not demoted.",
         "- Unanswerable questions are run but left out of the metrics.",
@@ -200,7 +202,7 @@ def write_eval_report(
 
 def _retriever(run: RetrieverRun) -> list[str]:
     if run.pool:
-        return [f"- {run.name}: {run.config.name}'s index, with copies from other files of a Work merged", f"  - pool: `{run.pool}`"]
+        return [f"- {run.name}: {run.config.name}'s index, with copies from other files of a Work merged", f"  - pool: `{run.pool}`", f"  - overlap: `{run.overlap}`"]
     return [f"- {run.name}: `{run.config.key}`", *[f"  - {name}: `{value}`" for name, value in run.config.describe().items()]]
 
 

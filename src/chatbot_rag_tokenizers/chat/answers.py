@@ -2,7 +2,7 @@
 how a Turn is scored and scored again from it.
 
 The file is JSON Lines. Its first line names what the Turns were asked over: the parser and chunking keys of the
-Chunks, and the chatbot's retriever and collapse pool, k, model pin, settings and prompts' hashes. Then one Turn
+Chunks, and the chatbot's retriever and collapse pool and overlap, k, model pin, settings and prompts' hashes. Then one Turn
 per line in the order asked, with no timings, so two runs that get the same replies write the same file. A run
 of `--runs N` writes runs 2..N to the runs file beside it, each Turn the same record with a `run` field.
 
@@ -80,6 +80,7 @@ def asked_over(corpus: Corpus, config: ChatConfig) -> dict[str, Any]:
         "chunking": corpus.chunking_key,
         "retriever": config.retriever.key,
         "collapse_pool": config.collapse_pool,  # None for the raw ranking, as files written before the collapse read
+        "collapse_overlap": config.collapse_overlap,  # None for the raw ranking, and in files written before ADR 0074
         "k": config.k,
         "model": config.model.model,
         "revision": config.model.revision,
