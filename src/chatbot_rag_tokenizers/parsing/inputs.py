@@ -47,20 +47,38 @@ def from_paths(paths: list[Path]) -> list[InputFile]:
     for path in paths:
         pdf = path.read_bytes()
         seed = SEED_NAME.fullmatch(path.stem)
-        pinned_id = seed["pinned_id"] if seed else path.stem
-        versioned = VERSION.fullmatch(pinned_id)
-        named.append((path, pdf, pinned_id, versioned["version"] if versioned else ""))
+        named.append((path, pdf, seed["pinned_id"] if seed else path.stem))
+    editions = editions_by_name([pinned_id for _, _, pinned_id in named])
+    return [
+        InputFile(path, ParsedFile(editions[pinned_id][0], pinned_id, editions[pinned_id][1], hashlib.sha256(pdf).hexdigest()), pdf)
+        for path, pdf, pinned_id in named
+    ]
+
+
+def editions_by_name(pinned_ids: list[str]) -> dict[str, tuple[str, str]]:
+    """The (Edition id, Version) of each pinned id of files passed by hand, the way `from_paths` takes them: an arXiv
+    Version's Edition is the latest Version of the same arXiv id among them, and any other id is its own Edition."""
+    versions = {pinned_id: versioned["version"] if (versioned := VERSION.fullmatch(pinned_id)) else "" for pinned_id in pinned_ids}
     latest: dict[str, str] = {}
-    for _, _, pinned_id, version in named:
+    for pinned_id, version in versions.items():
         arxiv_id = pinned_id.removesuffix(version)
         if version and int(version[1:]) > int(latest.get(arxiv_id, "v0")[1:]):
             latest[arxiv_id] = version
-    files = []
-    for path, pdf, pinned_id, version in named:
+    editions = {}
+    for pinned_id, version in versions.items():
         arxiv_id = pinned_id.removesuffix(version)
-        edition_id = arxiv_id + latest[arxiv_id] if version else pinned_id
-        files.append(InputFile(path, ParsedFile(edition_id, pinned_id, version, hashlib.sha256(pdf).hexdigest()), pdf))
-    return files
+        editions[pinned_id] = (arxiv_id + latest[arxiv_id] if version else pinned_id, version)
+    return editions
+
+
+def editions_in_manifest(manifest_path: Path) -> dict[str, tuple[str, str]]:
+    """The (Edition id, Version) of each pinned id the manifest's included Editions hold a file of, as `from_record`
+    gives them."""
+    editions = {}
+    for file, edition_id in included_files(manifest_path).items():
+        pinned_id, version = pinned_id_of_file(edition_id, file)
+        editions[pinned_id] = (edition_id, version)
+    return editions
 
 
 def included_files(manifest_path: Path) -> dict[str, str]:

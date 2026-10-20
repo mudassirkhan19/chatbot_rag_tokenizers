@@ -405,13 +405,13 @@ What takes the top 5 slots of each answerable question, as a user would ask it (
 
 | Measure | Top-5 slots | Share of slots | Questions | Share of questions |
 |---|---:|---:|---:|---:|
-| duplicate | 38/135 | 0.28 | 19/27 | 0.70 |
-| duplicate: another Edition or Version | 12/135 | 0.09 | 12/27 | 0.44 |
-| duplicate: same file | 26/135 | 0.19 | 15/27 | 0.56 |
-| restatement | 0/135 | 0.00 | 0/27 | 0.00 |
+| duplicate | 38/140 | 0.27 | 19/28 | 0.68 |
+| duplicate: another Edition or Version | 12/140 | 0.09 | 12/28 | 0.43 |
+| duplicate: same file | 26/140 | 0.19 | 15/28 | 0.54 |
+| restatement | 0/140 | 0.00 | 0/28 | 0.00 |
 | mostly numeric | 2/140 | 0.01 | 1/28 | 0.04 |
 
-- Grouped: 27 of 28 questions have a Work group for every Edition in their top 5.
+- Grouped: 28 of 28 questions have a Work group for every Edition in their top 5.
 - Mostly-numeric slots holding a Passage: 0 of 2
 - Pool: the top 50 raw Chunks held fewer than 5 distinct Chunks, once copies were merged, for 0 of 28 questions, and fewer than 10, the depth each query asks for, for 0.
 
@@ -584,7 +584,7 @@ Each retriever's raw ranking and its Collapsed ranking, over the answerable ques
 | Retriever | Ranking | Duplicate | Another Edition or Version | Same file | Grouped questions | Recall@5 | MRR@10 | Hit@5 |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
 | bm25 | raw | 59/140 | 38/140 | 21/140 | 28/28 | 0.16 | 0.118 | 0.18 |
-| bm25 | collapsed | 38/135 | 12/135 | 26/135 | 27/28 | 0.20 | 0.138 | 0.21 |
+| bm25 | collapsed | 38/140 | 12/140 | 26/140 | 28/28 | 0.20 | 0.138 | 0.21 |
 | dense.bge-small | raw | 70/140 | 33/140 | 37/140 | 28/28 | 0.30 | 0.244 | 0.32 |
 | dense.bge-small | collapsed | 57/140 | 13/140 | 44/140 | 28/28 | 0.38 | 0.271 | 0.39 |
 | dense.bge-base | raw | 57/100 | 24/100 | 33/100 | 20/28 | 0.29 | 0.211 | 0.29 |
@@ -708,7 +708,6 @@ Editions in any retriever's top 5 for an answerable question, in any query, with
 - W17-4109
 - W18-1205
 - W19-4602
-- arXiv:2607.05691v1
 
 ## Questions
 
@@ -783,7 +782,7 @@ First hit is the rank of the first Chunk holding a Passage, within the top 10; P
 | byt5-span-length | single-paper | as asked | none | 0/1 | 0 | 0 | 0 | 2411.11808v1; 2022.tacl-1.17 + 2105.13626v3 + 2105.13626v1; 2022.findings-emnlp.207 + 2212.07284v1; 2410.11627v2 + 2410.11627v1; 2410.20771v1 |
 | digits-right-to-left | single-paper | as asked | none | 0/1 | 1 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2305.14201v1; 2608.18062v3 + 2608.18062v1; 2604.11582v3 |
 | llama2-70b-vocabulary | single-paper | as asked | 2 | 1/1 | 4 | 0 | 0 | 2407.13623v3; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v1; 2407.13623v3 + 2407.13623v1 |
-| xlm-r-tokens-per-language | single-paper | as asked | none | 0/1 | ungrouped | ungrouped | 0 | 2301.10472v2 + 2301.10472v1; 2608.07727v1; 2609.22097v1; 2607.15209v3 + 2607.15209v1; arXiv:2607.05691v1 |
+| xlm-r-tokens-per-language | single-paper | as asked | none | 0/1 | 0 | 0 | 0 | 2301.10472v2 + 2301.10472v1; 2608.07727v1; 2609.22097v1; 2607.15209v3 + 2607.15209v1; 2607.05691v1 |
 | magikarp-verified-share | single-paper | as asked | none | 0/1 | 4 | 0 | 0 | 2405.05417v1; 2405.05417v1; 2405.05417v1; 2405.05417v1; 2405.05417v1 |
 | superbpe-curriculum | single-paper | as asked | none | 0/1 | 2 | 0 | 0 | 2503.13423v3 + 2503.13423v1; 2610.01984v1; 2503.13423v3; 2503.13423v1; 2025.babylm-main.16 |
 | fast-wordpiece-speed | single-paper | as asked | 2 | 1/1 | 4 | 0 | 0 | 2021.emnlp-main.160 + 2012.15524v1 + 2012.15524v3; 2021.emnlp-main.160 + 2012.15524v3; 2021.emnlp-main.160 + 2012.15524v3; 2012.15524v1; 2021.emnlp-main.160 + 2012.15524v3 + 2012.15524v1 |
@@ -1518,17 +1517,17 @@ Each retriever's model and index, with how long the index took to build and each
 
 | Retriever | Parameters | Dimension | Index on disk | Built on | Build time | Queries | Queried on | Latency p50 | Latency p95 |
 |---|---:|---:|---:|---|---:|---:|---|---:|---:|
-| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 190.36 ms | 296.50 ms |
-| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 191.03 ms | 286.86 ms |
-| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 27.24 ms | 30.18 ms |
-| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 27.95 ms | 29.09 ms |
-| dense.bge-base | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 52 | mps | 37.27 ms | 41.29 ms |
-| dense.bge-base+collapsed | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 52 | mps | 37.12 ms | 42.03 ms |
-| dense.openscholar | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 52 | mps | 36.36 ms | 41.01 ms |
-| dense.openscholar+collapsed | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 52 | mps | 36.46 ms | 40.41 ms |
-| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 221.58 ms | 334.24 ms |
-| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 220.27 ms | 340.64 ms |
-| hybrid.bm25+bge-base | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 52 | cpu+mps | 236.89 ms | 365.62 ms |
-| hybrid.bm25+bge-base+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 52 | cpu+mps | 239.48 ms | 347.64 ms |
-| hybrid.bm25+openscholar | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 52 | cpu+mps | 238.32 ms | 344.82 ms |
-| hybrid.bm25+openscholar+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 52 | cpu+mps | 236.88 ms | 348.53 ms |
+| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 225.13 ms | 336.86 ms |
+| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 52 | cpu | 218.51 ms | 330.11 ms |
+| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 29.29 ms | 33.13 ms |
+| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 52 | mps | 28.75 ms | 30.60 ms |
+| dense.bge-base | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 52 | mps | 38.65 ms | 43.75 ms |
+| dense.bge-base+collapsed | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 52 | mps | 38.29 ms | 43.63 ms |
+| dense.openscholar | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 52 | mps | 40.20 ms | 45.96 ms |
+| dense.openscholar+collapsed | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 52 | mps | 38.01 ms | 42.91 ms |
+| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 274.25 ms | 395.24 ms |
+| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 52 | cpu+mps | 253.91 ms | 395.40 ms |
+| hybrid.bm25+bge-base | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 52 | cpu+mps | 275.13 ms | 410.37 ms |
+| hybrid.bm25+bge-base+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 52 | cpu+mps | 259.89 ms | 396.64 ms |
+| hybrid.bm25+openscholar | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 52 | cpu+mps | 277.07 ms | 404.28 ms |
+| hybrid.bm25+openscholar+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 52 | cpu+mps | 286.06 ms | 405.94 ms |

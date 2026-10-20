@@ -112,6 +112,7 @@ class ReportedRun:
     chunking: dict[str, str]  # each setting `ChunkingConfig.describe` gives, as the report prints it
     parsed: list[tuple[str, str]]  # (pinned id, sha256) of each parsed file, in the report's order
     from_record: bool  # parsed from the full-text record, not `--files` (ADR 0045)
+    listed: list[str]  # the pinned id of every file, parsed or failed, which together name a `--files` run's Editions
 
 
 class UnreadableReport(ValueError):
@@ -132,5 +133,6 @@ def read_report(path: Path) -> ReportedRun:
     if not image or not found:
         raise UnreadableReport(f"{path} is not a parse report: it names no GROBID image or chunking config")
     chunking = {match[1]: match[2] for line in rest.split("\n## ", 1)[0].splitlines() if (match := _SETTING.match(line))}
-    parsed = [(pinned_id, sha256) for pinned_id, sha256, status in _FILE.findall(text) if status == "parsed"]
-    return ReportedRun(image[1], chunking, parsed, f"\n- Input: {_FROM_RECORD}\n" in text)
+    files = _FILE.findall(text)
+    parsed = [(pinned_id, sha256) for pinned_id, sha256, status in files if status == "parsed"]
+    return ReportedRun(image[1], chunking, parsed, f"\n- Input: {_FROM_RECORD}\n" in text, [pinned_id for pinned_id, _, _ in files])

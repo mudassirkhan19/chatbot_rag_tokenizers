@@ -70,6 +70,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0063](0063-versions-and-near-duplicates-measured-before-and-after.md) | Versions and near-duplicates, measured before and after | Accepted |
 | [0064](0064-a-decline-in-the-models-own-words-is-an-abstention.md) | A decline in the model's own words is an Abstention | Accepted |
 | [0065](0065-the-embedding-comparison-on-the-raw-ranking.md) | The embedding comparison, raw and collapsed: bge-small stays | Accepted |
+| [0066](0066-chunks-cite-the-parse-reports-ids-whatever-filled-the-cache.md) | Chunks cite the parse report's ids, whatever filled the parse cache | Accepted |
 
 ## Template
 

@@ -669,7 +669,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <h4>Decisions</h4>
       <details class="dec">
         <summary>The corpus is the parse report's parsed files; the index cache is local and keyed<span class="ref">ADR 0039</span></summary>
-        <div class="body"><p>Index and evaluate read only the files the committed parse report lists, not everything in the cache, which also holds Chunks of withdrawn and re-pinned files. The cache folder is named by chunking key and retriever key, so a change to either builds beside the old one.</p><p class="why"><b>Why:</b> the thing being scored must be exactly the corpus, and the report checks against the config so a stale cache stops the run. <a data-adr="0039">Read ADR 0039</a>.</p></div>
+        <div class="body"><p>Index and evaluate read only the files the committed parse report lists, not everything in the cache, which also holds Chunks of withdrawn and re-pinned files. The cache folder is named by chunking key and retriever key, so a change to either builds beside the old one. Each file's Chunks cite the report's pinned id and the manifest's Edition, whichever id filled the cache, and the index fingerprint stays over the cached Chunks, so restamping rebuilds nothing.</p><p class="why"><b>Why:</b> the thing being scored must be exactly the corpus, and the report checks against the config so a stale cache stops the run. <a data-adr="0039">Read ADR 0039</a>, <a data-adr="0066">ADR 0066</a>.</p></div>
       </details>
       <details class="dec">
         <summary>Dense baseline behind an embedder boundary, bge-small pinned by revision and weight hash<span class="ref">ADR 0042</span></summary>
@@ -917,7 +917,8 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
     "0060":"0060-the-grouping-rule-scored-against-the-work-groups",
     "0061":"0061-the-comparison-paired-bootstrap-against-a-baseline",
     "0063":"0063-versions-and-near-duplicates-measured-before-and-after",
-    "0065":"0065-the-embedding-comparison-on-the-raw-ranking"
+    "0065":"0065-the-embedding-comparison-on-the-raw-ranking",
+    "0066":"0066-chunks-cite-the-parse-reports-ids-whatever-filled-the-cache"
   };
   document.querySelectorAll("a[data-adr]").forEach(function (a) {
     var n = a.getAttribute("data-adr");
