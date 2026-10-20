@@ -43,7 +43,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0036](0036-a-dropped-grobid-connection-stops-the-run.md) | A reset or dropped GROBID connection stops the run, like a refused one | Accepted |
 | [0037](0037-withdrawn-preprints-are-excluded.md) | Withdrawn arXiv preprints are excluded from the corpus | Accepted |
 | [0038](0038-parse-only-the-files-of-included-editions.md) | Parse only the files of included Editions | Accepted |
-| [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) | Retrieval tracer: BM25, the index cache and the evaluate harness | Accepted, Passage matching and the loader's shape checks superseded by 0041; amended by 0043, 0053, 0058 and 0061 |
+| [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) | Retrieval tracer: BM25, the index cache and the evaluate harness | Accepted, Passage matching and the loader's shape checks superseded by 0041; amended by 0043, 0053, 0058, 0061 and 0067 |
 | [0040](0040-the-corpus-keeps-only-papers.md) | The corpus keeps only papers | Accepted |
 | [0041](0041-passage-matcher-eval-check-and-calibration.md) | The Passage matcher, eval-check and the v1/vN calibration | Accepted, amended by 0051 |
 | [0042](0042-dense-baseline-bge-small-behind-the-embedder-boundary.md) | Dense baseline: bge-small behind the embedder boundary, on MPS by default | Accepted, amended by 0050 |
@@ -60,7 +60,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0053](0053-collapsed-ranking-and-collapsed-twins.md) | The Collapsed ranking: one Chunk per Work, scored as a `+collapsed` twin of every retriever | Accepted, the Chunk a Work shows superseded by 0055, one Chunk per Work by 0057 |
 | [0054](0054-pinned-local-answer-model-and-the-chat-page.md) | The pinned local answer model, the shared Ollama module and the chat page | Accepted, amended by 0056 and 0064 |
 | [0055](0055-a-work-shows-its-best-ranked-section.md) | A collapsed Work shows its best-ranked Chunk's Section; the Canonical Edition only picks the copy | Superseded by 0057 |
-| [0056](0056-follow-ups-the-conversation-and-the-rewrite.md) | Follow-ups: the Conversation and the Rewrite | Accepted |
+| [0056](0056-follow-ups-the-conversation-and-the-rewrite.md) | Follow-ups: the Conversation and the Rewrite | Accepted, amended by 0067 |
 | [0057](0057-the-collapse-merges-copies-not-works.md) | The collapse merges copies of a passage across a Work's files, not whole Works | Accepted |
 | [0058](0058-bm25-dense-hybrids-by-reciprocal-rank-fusion.md) | BM25 + dense hybrids by reciprocal rank fusion, stored as a record that points to their members | Accepted |
 | [0059](0059-abstention-by-instruction-and-the-chat-report.md) | Abstention by instruction, and the chat report that measures it | Accepted, reproducibility amended by 0062, the Abstention rule by 0064 |
@@ -71,6 +71,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0064](0064-a-decline-in-the-models-own-words-is-an-abstention.md) | A decline in the model's own words is an Abstention | Accepted |
 | [0065](0065-the-embedding-comparison-on-the-raw-ranking.md) | The embedding comparison, raw and collapsed: bge-small stays | Accepted |
 | [0066](0066-chunks-cite-the-parse-reports-ids-whatever-filled-the-cache.md) | Chunks cite the parse report's ids, whatever filled the parse cache | Accepted |
+| [0067](0067-the-rewriter-row-of-evaluate.md) | The rewriter row of `evaluate`: the chatbot's Rewrite of each stored follow-up, skipped without the model | Accepted |
 
 ## Template
 

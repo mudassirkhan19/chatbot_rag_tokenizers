@@ -3,14 +3,15 @@
 It names what was scored (the Evaluation set, the chunking config and corpus, each retriever's settings),
 then gives a results table per retriever and question type, each retriever's raw ranking followed by its
 Collapsed ranking (ADR 0053), the Comparison against a baseline (ADR 0061), what crowds the top 5 (ADR 0044),
-the two rankings side by side (ADR 0063), the grouping rule scored against the Work groups (ADR 0060) and a line
-per question, then the Cost table. Everything above the Cost table, which comes last, depends only on the inputs, so two runs on the same index give the same
+the two rankings side by side (ADR 0063), the grouping rule scored against the Work groups (ADR 0060), each
+follow-up's Rewrite beside its reference rewrite (ADR 0067) and a line per question, then the Cost table. Everything above the Cost table, which comes last, depends only on the inputs, so two runs on the same index give the same
 report up to that section, and the Cost table differs only in its times.
 """
 
+import hashlib
 import statistics
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..retrieval.collapse import SUFFIX
@@ -33,6 +34,7 @@ from .harness import (
     MRR_DEPTH,
     RECALL_DEPTH,
     REWRITE,
+    REWRITER,
     WITH_HISTORY,
     Scored,
     all_answerable,
@@ -44,6 +46,20 @@ from .work_groups import WorkGroup, WorkGroups
 
 NONE = "—"
 ALL_ANSWERABLE = f"{AS_ASKED}, follow-ups alone"  # the all-answerable row: see harness.all_answerable
+
+
+@dataclass(frozen=True)
+class Rewriter:
+    """What the rewriter wrote for the follow-ups (ADR 0067), or why it was skipped."""
+
+    model: str  # the answer model and how it is run, as the chat report names them
+    prompt: str
+    rewrites: Mapping[str, str] = field(default_factory=dict)  # each follow-up's Rewrite, by question id
+    skipped: str = ""  # why the answer model couldn't answer, when it couldn't
+
+    @property
+    def ran(self) -> bool:
+        return not self.skipped
 
 
 @dataclass(frozen=True)
@@ -70,6 +86,7 @@ def write_eval_report(
     grouping: GroupingScore | None,
     ungrouped: Sequence[str],
     comparison: ComparisonConfig,
+    rewriter: Rewriter,
 ) -> None:
     counts = ", ".join(f"{sum(1 for q in questions if q.type == kind)} {kind}" for kind in QUESTION_TYPES)
     lines = [
@@ -115,12 +132,15 @@ def write_eval_report(
         " Canonical Edition's file when the pool holds a copy from it, else from an Edition's latest file, else as"
         " ranked. A Work's other Chunks keep their slots. Surveys are not demoted.",
         "- Unanswerable questions are run but left out of the metrics.",
-        f"- A follow-up is run three ways: {FOLLOW_UP_ALONE}, {WITH_HISTORY} (its prior turns, then the follow-up, joined by"
-        f" spaces) and {REWRITE}. The *all answerable* row takes each follow-up alone, as a user would ask it.",
+        f"- A follow-up is run four ways: {FOLLOW_UP_ALONE}, {WITH_HISTORY} (its prior turns, then the follow-up, joined by"
+        f" spaces), {REWRITE} and {REWRITER}, the chatbot's Rewrite: the answer model, given the `[chat]` rewrite prompt,"
+        " the last `history` prior turns as earlier questions with no answers, and the follow-up (ADR 0067). The *all"
+        " answerable* row takes each follow-up alone, as a user would ask it.",
+        *_rewriter(rewriter),
         "",
         "## Results",
         "",
-        *[line for run in runs for line in _results(run)],
+        *[line for run in runs for line in _results(run, rewriter)],
         *_comparison(runs, comparison),
         "## Crowding",
         "",
@@ -144,7 +164,8 @@ def write_eval_report(
         *_grouping(grouping, groups.editions),
         "## Editions without a Work group",
         "",
-        f"Editions in any retriever's top {CROWDING_DEPTH} for an answerable question, in any query, with no Work group."
+        f"Editions in any retriever's top {CROWDING_DEPTH} for an answerable question, in any query but the {REWRITER}'s,"
+        " with no Work group."
         " `evaluate --export-ungrouped` writes them, with their titles, for grouping.",
         "",
         *([f"- {edition_id}" for edition_id in ungrouped] or ["None."]),
@@ -157,6 +178,7 @@ def write_eval_report(
         f" ranking's lines name the file of each top-{CROWDING_DEPTH} Chunk, with the other files of its Work in the pool"
         " after a +.",
         "",
+        *_rewrites(questions, rewriter),
         *[line for run in runs for line in _questions(run, groups.editions)],
         "## Cost",
         "",
@@ -179,14 +201,33 @@ def _retriever(run: RetrieverRun) -> list[str]:
     return [f"- {run.name}: `{run.config.key}`", *[f"  - {name}: `{value}`" for name, value in run.config.describe().items()]]
 
 
-def _results(run: RetrieverRun) -> list[str]:
+def _rewriter(rewriter: Rewriter) -> list[str]:
+    if not rewriter.ran:
+        return [f"- The {REWRITER} row is skipped: {rewriter.skipped}"]
+    return [
+        f"- Rewriter: {rewriter.model}, rewrite prompt sha256"
+        f" `{hashlib.sha256(rewriter.prompt.encode()).hexdigest()}`"
+    ]
+
+
+def _rewrites(questions: Sequence[Question], rewriter: Rewriter) -> list[str]:
+    lines = ["### Rewrites", "", f"Each follow-up's {REWRITE} and the {REWRITER}'s Rewrite, which are its last two queries below.", ""]
+    if not rewriter.ran:
+        return [*lines, f"None: the {REWRITER} row is skipped.", ""]
+    rows = [
+        f"| {q.id} | {q.question} | {q.rewrite} | {rewriter.rewrites[q.id]} |" for q in questions if q.id in rewriter.rewrites
+    ]
+    return [*lines, "| Question | Follow-up | Reference rewrite | Rewrite |", "|---|---|---|---|", *rows, ""]
+
+
+def _results(run: RetrieverRun, rewriter: Rewriter) -> list[str]:
     def chosen(kind: str, query: str) -> list[Scored]:
         return [s for s in run.scored if s.question.type == kind and s.query_kind == query]
 
     rows = [
         ("single-paper", AS_ASKED, chosen("single-paper", AS_ASKED)),
         ("multi-paper", AS_ASKED, chosen("multi-paper", AS_ASKED)),
-        *[("follow-up", query, chosen("follow-up", query)) for query in FOLLOW_UP_QUERIES],
+        *[("follow-up", query, chosen("follow-up", query)) for query in FOLLOW_UP_QUERIES if query != REWRITER or rewriter.ran],
         ("all answerable", ALL_ANSWERABLE, all_answerable(run.scored)),
     ]
     unanswerable = sum(1 for s in run.scored if not s.question.answerable)

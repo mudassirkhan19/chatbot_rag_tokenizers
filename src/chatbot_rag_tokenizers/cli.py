@@ -314,6 +314,7 @@ def main(argv: list[str] | None = None) -> None:
                 args.work_groups,
                 retrieval.collapse_pool,
                 retrieval.comparison,
+                args.config,
                 args.export_ungrouped,
             )
         except (EvaluationSetError, WorkGroupsError, index.IndexMissing, BaselineMissing) as error:
