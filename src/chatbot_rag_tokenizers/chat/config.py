@@ -49,7 +49,7 @@ class ChatConfig:
     history: int  # the earlier Turns the answer model and the rewriter are shown on a follow-up
     rewrite_prompt: str
     collapse_pool: int | None = None  # the raw Chunks the Collapsed ranking merges copies in; None for the raw ranking
-    collapse_overlap: float | None = None  # the share of word 5-grams that makes two Chunks copies (ADR 0073); None for the raw ranking
+    collapse_overlap: float | None = None  # the share of word 5-grams that makes two Chunks copies (ADR 0074); None for the raw ranking
 
     @property
     def retriever_name(self) -> str:

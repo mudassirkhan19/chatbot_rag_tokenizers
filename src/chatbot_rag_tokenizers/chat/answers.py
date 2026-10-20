@@ -80,7 +80,7 @@ def asked_over(corpus: Corpus, config: ChatConfig) -> dict[str, Any]:
         "chunking": corpus.chunking_key,
         "retriever": config.retriever.key,
         "collapse_pool": config.collapse_pool,  # None for the raw ranking, as files written before the collapse read
-        "collapse_overlap": config.collapse_overlap,  # None for the raw ranking, and in files written before ADR 0073
+        "collapse_overlap": config.collapse_overlap,  # None for the raw ranking, and in files written before ADR 0074
         "k": config.k,
         "model": config.model.model,
         "revision": config.model.revision,

@@ -129,7 +129,7 @@ def write_eval_report(
         f" matches (ADR 0041). A match running into the Chunk's first or last word counts only the quote's words on the"
         f" Chunk's side, and must cover at least {rule.edge_min_words} words. The Chunk may come from any Edition.",
         "- A retriever's own ranking is scored raw: duplicates of one Work all take their slots.",
-        f"- Its `{SUFFIX}` twin is scored on the Collapsed ranking (ADRs 0053, 0057 and 0073) over the same index: from"
+        f"- Its `{SUFFIX}` twin is scored on the Collapsed ranking (ADRs 0053, 0057 and 0074) over the same index: from"
         " the raw top *pool* Chunks, with Works from the manifest's work_id (an Edition with none is its own Work), in"
         " the raw order, it merges copies: the Chunks of a Work from different files that share at least *overlap* of"
         " their word 5-grams, counted on the smaller Chunk's, where one is the other's closest Chunk in its file"

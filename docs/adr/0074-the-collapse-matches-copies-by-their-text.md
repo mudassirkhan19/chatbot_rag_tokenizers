@@ -1,4 +1,4 @@
-# 0073. The collapse matches copies by their text, not their place in the Section
+# 0074. The collapse matches copies by their text, not their place in the Section
 
 - **Date:** 2026-10-21
 - **Status:** Accepted. Supersedes the merge key of [0057](0057-the-collapse-merges-copies-not-works.md) (the same Section path and the same count of Chunks before it); the rest of 0057 stands.

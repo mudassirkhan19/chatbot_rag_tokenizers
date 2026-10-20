@@ -1,11 +1,11 @@
-"""The Collapsed ranking (ADRs 0053, 0057 and 0073): each Chunk once, however many files of its Work hold a copy.
+"""The Collapsed ranking (ADRs 0053, 0057 and 0074): each Chunk once, however many files of its Work hold a copy.
 
 The wrapper asks the retriever it wraps for a pool of Chunks and merges copies: Chunks of one Work, through the
 manifest's work_id, from different files, that share at least `overlap` of their word 5-grams, counted on the
 smaller Chunk's, where one of the two is the other's closest Chunk in its file. That is what a paper's arXiv
 Versions and its preprint and venue Editions repeat, wherever their files put it: GROBID nests a Section in one
 Edition only, headings change case, Sections are renumbered and a revision adds paragraphs, so the place in the
-Section is no key (ADR 0073). Going down the pool, a Chunk joins the best-ranked slot of its Work that holds a copy
+Section is no key (ADR 0074). Going down the pool, a Chunk joins the best-ranked slot of its Work that holds a copy
 of it and no Chunk of its file; else it opens a slot. A Chunk whose Edition has no work_id is its Edition's own Work, so nothing the collapse can't place is
 dropped. A Work's other Chunks are other text and keep their own slots, as the raw ranking gave them.
 

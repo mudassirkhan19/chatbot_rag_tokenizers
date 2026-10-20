@@ -1,4 +1,4 @@
-"""The Collapsed ranking on hand-built Chunks (#80, ADR 0073): copies of a passage are matched by their text, wherever
+"""The Collapsed ranking on hand-built Chunks (#80, ADR 0074): copies of a passage are matched by their text, wherever
 their files put them in the Section."""
 
 from pathlib import Path
