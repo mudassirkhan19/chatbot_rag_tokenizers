@@ -4,9 +4,9 @@ import argparse
 import sys
 from pathlib import Path
 
-from .chat import page
+from .chat import grounding_check, page
 from .chat.answers import AnswersMismatch
-from .chat.chat_eval import chat_eval, rescore_answers
+from .chat.chat_eval import chat_eval, export_check, rescore_answers
 from .chat.config import ChatConfig, load_chat_config
 from .chat.conversation import Chatbot
 from .chat.model import AnswerModelUnavailable
@@ -205,6 +205,32 @@ def main(argv: list[str] | None = None) -> None:
     chat_eval_cmd.add_argument(
         "--runs", type=_at_least_one, default=1, help="ask the whole set this many times and report the variation (default 1)"
     )
+    chat_eval_cmd.add_argument(
+        "--check",
+        type=Path,
+        default=Path("data/eval/grounding-check.csv"),
+        help="the developer's hand-checked sample of answers, compared with the automatic grounding verdict in the report (committed)",
+    )
+    chat_eval_cmd.add_argument(
+        "--export-check",
+        action="store_true",
+        help="ask nothing: draw a sample of the --answers file's answered Turns to --check, the automatic verdict as the draft label",
+    )
+    chat_eval_cmd.add_argument("--sample-size", type=_at_least_one, default=20, help="with --export-check, Turns to sample (default 20)")
+    chat_eval_cmd.add_argument("--seed", type=int, default=0, help="with --export-check, the sample's random seed (default 0)")
+    chat_eval_cmd.add_argument("--force", action="store_true", help="with --export-check, replace an existing --check file and its labels")
+
+    chat_label_cmd = commands.add_parser(
+        "chat-label",
+        help="serve a local page for checking the grounding verdict on the sample of answers one Turn at a time",
+        description=(
+            "Shows each Turn of the sample `chat-eval --export-check` drew, with its answer, Citations and cited Chunks'"
+            " text, and the automatic verdict as the draft. Each save rewrites that row of the file with the label and"
+            " note and marks it checked_by=developer."
+        ),
+    )
+    chat_label_cmd.add_argument("--check", type=Path, default=Path("data/eval/grounding-check.csv"), help="the sample to label (committed)")
+    chat_label_cmd.add_argument("--port", type=int, default=8767, help="port on localhost (default 8767)")
 
     eval_check_cmd = commands.add_parser(
         "eval-check",
@@ -328,15 +354,34 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "chat-eval":
         if args.from_answers and args.runs != 1:
             sys.exit("chat-eval: --from-answers asks nothing, so it takes the runs the answers file holds, not --runs")
+        if args.export_check and (args.from_answers or args.runs != 1 or args.baseline):
+            sys.exit("chat-eval: --export-check only draws the sample from --answers; it takes no --from-answers, --runs or --baseline")
         try:
-            if args.from_answers:
+            if args.export_check:
                 config, corpus = _chat_config(args), _load_corpus(args)
-                rescore_answers(config, corpus, args.evaluation_set, args.report, args.answers, _matching_rule(args), _works(args), args.baseline)
+                export_check(
+                    config, corpus, args.evaluation_set, args.answers, args.check, _matching_rule(args), _works(args), args.sample_size, args.seed, args.force
+                )
+            elif args.from_answers:
+                config, corpus = _chat_config(args), _load_corpus(args)
+                rescore_answers(
+                    config, corpus, args.evaluation_set, args.report, args.answers, _matching_rule(args), _works(args), args.baseline, args.check
+                )
             else:
                 chatbot, corpus = _chatbot(args)
-                chat_eval(chatbot, corpus, args.evaluation_set, args.report, args.answers, _matching_rule(args), _works(args), args.runs, args.baseline)
-        except (EvaluationSetError, AnswerModelUnavailable, AnswersMismatch) as error:
+                chat_eval(
+                    chatbot, corpus, args.evaluation_set, args.report, args.answers, _matching_rule(args), _works(args), args.runs, args.baseline, args.check
+                )
+        except (EvaluationSetError, AnswerModelUnavailable, AnswersMismatch, grounding_check.CheckExists) as error:
             sys.exit(f"chat-eval: {error}")
+    elif args.command == "chat-label":
+        if not args.check.exists():
+            sys.exit(f"chat-label: {args.check} doesn't exist; draw the sample with `chat-eval --export-check`")
+        try:
+            server = grounding_check.make_server(args.check, args.port)
+        except OSError as error:
+            sys.exit(f"chat-label: can't serve on port {args.port} ({error}); pass another with --port")
+        grounding_check.serve(server, args.check)
     elif args.command == "eval-check":
         rule = _matching_rule(args)
         try:

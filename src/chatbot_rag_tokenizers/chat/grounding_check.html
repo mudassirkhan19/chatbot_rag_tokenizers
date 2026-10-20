@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grounding Check</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #fff; --ink: #1c1c1a; --muted: #6b6b66; --line: #e2e2dc;
+    --yes: #1f7a4a; --yes-bg: #e3f3ea; --no: #a8322d; --no-bg: #f8e4e2; --warn-bg: #fff4d6; --accent: #2f5fd0; --mark: #fff0a8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161615; --card: #20201e; --ink: #ecece8; --muted: #9a9a93; --line: #34342f;
+      --yes: #5fcf8f; --yes-bg: #183626; --no: #f0807a; --no-bg: #3d1d1b; --warn-bg: #3a3218; --accent: #8aa8ff; --mark: #4a4220; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 -apple-system, system-ui, sans-serif; }
+  header { position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; z-index: 1; }
+  header .pos { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .bar { flex: 1; min-width: 120px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .bar div { height: 100%; background: var(--accent); }
+  select, input, button, textarea { font: inherit; color: inherit; }
+  select, input[type=number] { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; }
+  main { max-width: 860px; margin: 0 auto; padding: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; }
+  .meta { color: var(--muted); font-size: 13px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--line); border-radius: 99px; padding: 0 8px; }
+  h1 { font-size: 20px; line-height: 1.35; margin: 8px 0 6px; }
+  .rewrite { color: var(--muted); font-size: 14px; margin-bottom: 10px; }
+  .answer { white-space: pre-wrap; font-size: 16px; }
+  .answer .num { background: var(--mark); border-radius: 3px; padding: 0 2px; }
+  .marker { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .marker.invalid { color: var(--no); text-decoration: line-through; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 8px; }
+  .verdict { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; }
+  .verdict dt { color: var(--muted); }
+  .verdict dd { margin: 0; }
+  .note { background: var(--warn-bg); border-radius: 8px; padding: 8px 12px; margin-top: 10px; white-space: pre-wrap; }
+  .chunk { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
+  .chunk:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+  .chunk .head { font-weight: 600; }
+  .chunk .id { color: var(--muted); font-size: 13px; }
+  .chunk .text { white-space: pre-wrap; margin-top: 4px; }
+  .chunk .num { background: var(--mark); border-radius: 3px; padding: 0 2px; }
+  .choices { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .choices button { flex: 1; padding: 10px; border-radius: 8px; border: 2px solid var(--line); background: var(--card); cursor: pointer; font-weight: 600; }
+  .choices button.yes.on { border-color: var(--yes); background: var(--yes-bg); color: var(--yes); }
+  .choices button.no.on { border-color: var(--no); background: var(--no-bg); color: var(--no); }
+  .choices button.skip.on { border-color: var(--muted); }
+  textarea { width: 100%; min-height: 64px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); resize: vertical; }
+  .nav { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+  .nav button { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); cursor: pointer; }
+  .nav .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .status { color: var(--muted); font-size: 13px; margin-left: auto; }
+  .help { color: var(--muted); font-size: 13px; }
+  kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; font-size: 12px; }
+  details { margin-top: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <span class="pos" id="pos"></span>
+  <div class="bar"><div id="progress"></div></div>
+  <span id="count" class="help"></span>
+  <label class="help">Show
+    <select id="filter">
+      <option value="all">all Turns</option>
+      <option value="todo">not checked by the developer</option>
+      <option value="developer">checked by the developer</option>
+      <option value="changed">label differs from the automatic verdict</option>
+      <option value="grounded">automatically grounded</option>
+      <option value="not grounded">automatically not grounded</option>
+    </select>
+  </label>
+  <label class="help">Row <input id="jump" type="number" min="0" style="width:64px"></label>
+</header>
+<main>
+  <div class="card">
+    <div class="meta" id="meta"></div>
+    <h1 id="question"></h1>
+    <div class="rewrite" id="rewrite"></div>
+    <h2>The answer</h2>
+    <div class="answer" id="answer"></div>
+  </div>
+
+  <div class="card">
+    <h2>What the automatic check decided (draft)</h2>
+    <dl class="verdict" id="verdict"></dl>
+    <div class="note" id="note"></div>
+  </div>
+
+  <div class="card">
+    <h2>Cited Chunks, as the answer model was shown them</h2>
+    <div id="chunks"></div>
+  </div>
+
+  <div class="card">
+    <h2>Your label</h2>
+    <div class="choices">
+      <button class="yes" data-label="grounded">Grounded <kbd>G</kbd></button>
+      <button class="no" data-label="not grounded">Not grounded <kbd>N</kbd></button>
+      <button class="skip" data-label="">Unsure / skip <kbd>U</kbd></button>
+    </div>
+    <textarea id="text" placeholder="Note: which claim isn't supported, or why it is (Ctrl/⌘+Enter saves and moves on)"></textarea>
+    <div class="nav">
+      <button id="prev">← Prev</button>
+      <button id="next" class="primary">Save &amp; next →</button>
+      <span class="status" id="status"></span>
+    </div>
+    <details>
+      <summary class="help">The question you answer</summary>
+      <p class="help"><b>Is every claim in the answer supported by the Chunk it cites?</b> Read each sentence against the Chunks its markers name.<br>
+      <b>Grounded:</b> every claim, and every number, is stated in a cited Chunk, and the markers point at the Chunks that say it.<br>
+      <b>Not grounded:</b> a claim or number is in no cited Chunk, a marker points at a Chunk that doesn't say what it is cited for, or the answer cites nothing.<br>
+      Numbers in the answer are highlighted, and so are the same numbers in the Chunks. A struck-through marker names no retrieved Chunk.</p>
+      <p class="help">Keys: <kbd>G</kbd> <kbd>N</kbd> <kbd>U</kbd> set the label · <kbd>R</kbd> edit the note · <kbd>Enter</kbd> save &amp; next · <kbd>←</kbd> <kbd>→</kbd> move without saving</p>
+    </details>
+  </div>
+</main>
+<script>
+const SOURCES = {
+  draft: "the automatic check (not yet checked)",
+  agent: "a labelling agent",
+  developer: "the developer",
+};
+// As the grounding check cuts numbers: a word that starts with a digit, such as 50k, 0.1 or 32,000.
+const NUMBER = /(?<![\p{L}\p{N}])\p{N}[\p{L}\p{N}.,]*(?<![.,])/gu;
+const MARKER = /\[\s*(\d+(?:\s*,\s*\d+)*)\s*\]/g;
+let rows = [], view = [], at = 0, label = "";
+const $ = (id) => document.getElementById(id);
+const checked = (r) => r.checked_by === "developer";
+
+function applyFilter() {
+  const f = $("filter").value;
+  const current = view[at];
+  view = rows.filter((r) =>
+    f === "all" ? true :
+    f === "todo" ? !checked(r) :
+    f === "developer" ? checked(r) :
+    f === "changed" ? r.label !== r.draft_label :
+    r.draft_label === f).map((r) => r.index);
+  at = Math.max(0, view.indexOf(current));
+  render();
+}
+
+// Text with its numbers highlighted, appended to an element.
+function appendText(el, text, numbers) {
+  let end = 0;
+  for (const m of text.matchAll(NUMBER)) {
+    if (numbers && !numbers.has(m[0].toLowerCase())) continue;
+    el.append(text.slice(end, m.index));
+    const s = document.createElement("span"); s.className = "num"; s.textContent = m[0]; el.append(s);
+    end = m.index + m[0].length;
+  }
+  el.append(text.slice(end));
+}
+
+function renderAnswer(r) {
+  const cited = new Set(r.cited_chunks.map((c) => c.number));
+  const el = $("answer"); el.innerHTML = "";
+  let end = 0;
+  for (const m of r.reply.matchAll(MARKER)) {
+    appendText(el, r.reply.slice(end, m.index));
+    for (const n of m[1].split(",").map((x) => +x)) {
+      const a = document.createElement("a");
+      a.textContent = `[${n}]`;
+      a.className = cited.has(n) ? "marker" : "marker invalid";
+      if (cited.has(n)) a.href = `#chunk-${n}`;
+      el.append(a);
+    }
+    end = m.index + m[0].length;
+  }
+  appendText(el, r.reply.slice(end));
+}
+
+function renderChunks(r) {
+  const numbers = new Set([...r.reply.replace(MARKER, "").matchAll(NUMBER)].map((m) => m[0].toLowerCase()));
+  const el = $("chunks"); el.innerHTML = "";
+  if (!r.cited_chunks.length) { el.innerHTML = '<p class="help">The answer cites no retrieved Chunk.</p>'; return; }
+  for (const c of r.cited_chunks) {
+    const div = document.createElement("div"); div.className = "chunk"; div.id = `chunk-${c.number}`;
+    const head = document.createElement("div"); head.className = "head"; head.textContent = `[${c.number}] ${c.header}`;
+    const id = document.createElement("div"); id.className = "id"; id.textContent = c.chunk_id;
+    const text = document.createElement("div"); text.className = "text"; appendText(text, c.text, numbers);
+    div.append(head, id, text); el.append(div);
+  }
+}
+
+function render() {
+  const done = rows.filter(checked).length;
+  $("progress").style.width = `${(100 * done) / rows.length}%`;
+  $("count").textContent = `${done}/${rows.length} checked by the developer · ${rows.filter((r) => r.label !== r.draft_label).length} differ from the automatic verdict`;
+  if (!view.length) { $("pos").textContent = "No Turns in this view"; return; }
+  const r = rows[view[at]];
+  label = r.label;
+  $("pos").textContent = `${at + 1} / ${view.length}  (row ${r.index})`;
+  $("meta").innerHTML = "";
+  for (const t of [r.question_id, r.type, checked(r) ? "✓ checked by the developer" : "not checked by the developer"]) {
+    const s = document.createElement("span"); s.className = "chip"; s.textContent = t; $("meta").append(s);
+  }
+  $("question").textContent = r.question;
+  $("rewrite").textContent = r.rewrite ? `Rewritten for retrieval as: ${r.rewrite}` : "";
+  renderAnswer(r);
+  renderChunks(r);
+  $("verdict").innerHTML = "";
+  for (const [k, v] of [["Draft label", r.draft_label], ["Why", r.draft_reason]]) {
+    const dt = document.createElement("dt"); dt.textContent = k;
+    const dd = document.createElement("dd"); dd.textContent = v;
+    $("verdict").append(dt, dd);
+  }
+  $("note").textContent = `Current label (below) is from ${SOURCES[r.checked_by] || r.checked_by}.`;
+  $("text").value = r.note;
+  paintChoice();
+  $("jump").value = r.index;
+  $("status").textContent = "";
+}
+
+function paintChoice() {
+  document.querySelectorAll(".choices button").forEach((b) => b.classList.toggle("on", b.dataset.label === label));
+}
+
+async function save() {
+  const r = rows[view[at]];
+  const note = $("text").value.trim();
+  $("status").textContent = "Saving…";
+  const res = await fetch("/save", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ index: r.index, label, note }) });
+  if (res.ok) Object.assign(r, { label, note, checked_by: "developer" });
+  $("status").textContent = res.ok ? "Saved to the sample file" : "Save failed!";
+  return res.ok;
+}
+
+async function saveAndNext() {
+  if (await save()) { if (at < view.length - 1) at++; render(); }
+}
+function move(d) { at = Math.min(view.length - 1, Math.max(0, at + d)); render(); }
+function setLabel(l) { label = l; paintChoice(); }
+
+document.querySelectorAll(".choices button").forEach((b) => b.onclick = () => setLabel(b.dataset.label));
+$("next").onclick = saveAndNext;
+$("prev").onclick = () => move(-1);
+$("filter").onchange = applyFilter;
+$("jump").onchange = () => { $("filter").value = "all"; applyFilter(); at = Math.max(0, view.indexOf(+$("jump").value)); render(); };
+$("text").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveAndNext(); }
+  if (e.key === "Escape") $("text").blur();
+});
+document.addEventListener("keydown", (e) => {
+  // Buttons handle their own Enter; typing in a field must not trigger shortcuts.
+  if (["TEXTAREA", "INPUT", "SELECT", "BUTTON"].includes(e.target.tagName) || e.metaKey || e.ctrlKey) return;
+  const k = e.key.toLowerCase();
+  if (k === "g") setLabel("grounded");
+  else if (k === "n") setLabel("not grounded");
+  else if (k === "u") setLabel("");
+  else if (k === "r") { e.preventDefault(); $("text").focus(); }
+  else if (k === "enter") saveAndNext();
+  else if (k === "arrowright") move(1);
+  else if (k === "arrowleft") move(-1);
+});
+
+fetch("/rows").then((r) => r.json()).then((d) => { rows = d.rows; document.title = `Grounding Check · ${d.file}`; applyFilter(); });
+</script>
+</body>
+</html>

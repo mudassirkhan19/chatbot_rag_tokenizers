@@ -3,7 +3,8 @@ eval report's style.
 
 It names what was scored (the Evaluation set, the Chunks, the retriever, the answer model's pin and the prompts'
 hashes), then gives the grounded, abstention and false-abstention rates with their Wilson intervals and Recall@k
-per question type, a line per question, the variation over the runs, the questions whose verdict changed from a
+per question type, a line per question, the grounding verdict's agreement with the developer's hand-checked
+sample, the variation over the runs, the questions whose verdict changed from a
 baseline when one is given, and the timings last. Everything above the timings depends only on the inputs and the
 model's replies, so re-scoring the stored replies reproduces it exactly.
 """
@@ -20,6 +21,7 @@ from ..evaluation.comparison import CONFIDENCE
 from ..evaluation.report import NONE
 from ..retrieval.corpus import Corpus
 from .answers import Asked, Baseline, Run, asked_over
+from .grounding_check import compare, read_check
 from .config import ChatConfig
 from .model import pin
 
@@ -36,9 +38,10 @@ def write_chat_report(
     runs: Sequence[Run],
     baseline: Baseline | None,
     rescored_from: Path | None,
+    check: Path | None = None,
 ) -> None:
     """The report on runs[0], the run reported, against ``baseline`` when one is given. ``rescored_from`` names the answers file a re-scored report was
-    scored from, which holds no timings."""
+    scored from, which holds no timings. ``check`` is the developer's hand-checked sample, compared when it exists."""
     k = config.k
     asked = runs[0]
     scored = [item for item in asked if item.scored]
@@ -113,6 +116,7 @@ def write_chat_report(
         "|---|---|---|---|---|---|---:|",
         *[_question(item) for item in scored],
         "",
+        *_hand_check(scored, check),
         *_variation(runs, k),
         *([] if baseline is None else _against(scored, baseline, asked_over(corpus, config))),
         "## Timings",
@@ -282,6 +286,47 @@ def _against(scored: Sequence[Asked], baseline: Baseline, here: dict[str, Any]) 
         flaky = f"flaky in the baseline: {', '.join(verdicts)}" if len(set(verdicts)) > 1 else NONE
         rows.append(f"| {item.question.id} | {item.question.type} | {verdicts[0]} | {item.verdict} | {flaky} |")
     return [*lines, "| Question | Type | Baseline | Now | Note |", "|---|---|---|---|---|", *rows, ""]
+
+
+def _hand_check(scored: Sequence[Asked], check: Path | None) -> list[str]:
+    """The automatic verdict's agreement with the developer's labels on the sample, and every disagreement (ADR 0071)."""
+    lines = [
+        "## Grounding checked by hand",
+        "",
+        "The developer's labels on a seeded sample of answered Turns (`chat-eval --export-check`, labelled on the"
+        " `chat-label` page) against this run's automatic verdict. A row is compared when the developer gave it a label"
+        " and this run asked its question with the same reply over the same Chunks.",
+        "",
+    ]
+    if check is None or not check.exists():
+        return [*lines, "No sample to compare with: `chat-eval --export-check` draws one, and `chat-label` serves the page to label it.", ""]
+    rows = read_check(check)
+    result = compare(scored, rows)
+    by_hand = [d for d in result.disagreements if d.label == "grounded"]
+    lines += [
+        f"- Sample: `{check}`, {result.rows} Turns: {result.labelled} labelled by the developer, {result.unsure} left unsure,"
+        f" {result.rows - result.labelled - result.unsure} not checked by the developer",
+        f"- Agreement with the automatic verdict: {_counted(result.agreed, result.compared)}",
+        f"- Grounded by the automatic check but not by hand: {len(result.disagreements) - len(by_hand)}; not grounded by the"
+        f" check but grounded by hand: {len(by_hand)}",
+    ]
+    if result.stale:
+        lines.append(f"- Not compared, as this run's reply or Chunks differ from the sample's, or its reply is now an Abstention: {', '.join(result.stale)}")
+    lines.append("")
+    if not result.disagreements:
+        return [*lines, "No disagreements.", ""]
+    return [
+        *lines,
+        "| Question | Type | Automatic | By hand | Note |",
+        "|---|---|---|---|---|",
+        *[f"| {d.item.question.id} | {d.item.question.type} | {d.item.verdict} | {d.label} | {_cell(d.note) or NONE} |" for d in result.disagreements],
+        "",
+    ]
+
+
+def _cell(text: str) -> str:
+    """Free text as one Markdown table cell: line breaks joined, pipes escaped."""
+    return " ".join(text.split()).replace("|", "\\|")
 
 
 def _abstained(scored: Sequence[Asked], test: Callable[[Question], bool]) -> tuple[int, int]:
