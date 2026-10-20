@@ -68,19 +68,20 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0061](0061-the-comparison-paired-bootstrap-against-a-baseline.md) | The Comparison: wins, ties, losses and paired bootstrap intervals against a baseline, and the Cost table | Accepted |
 | [0062](0062-re-scoring-run-to-run-variation-and-wilson-intervals.md) | Re-scoring from the answers, run-to-run variation, and Wilson intervals on the chat report's rates | Accepted |
 | [0063](0063-versions-and-near-duplicates-measured-before-and-after.md) | Versions and near-duplicates, measured before and after | Accepted |
-| [0064](0064-a-decline-in-the-models-own-words-is-an-abstention.md) | A decline in the model's own words is an Abstention | Accepted |
+| [0064](0064-a-decline-in-the-models-own-words-is-an-abstention.md) | A decline in the model's own words is an Abstention | Accepted, decline pattern amended by 0077 |
 | [0065](0065-the-embedding-comparison-on-the-raw-ranking.md) | The embedding comparison, raw and collapsed: bge-small stays | Accepted |
 | [0066](0066-chunks-cite-the-parse-reports-ids-whatever-filled-the-cache.md) | Chunks cite the parse report's ids, whatever filled the parse cache | Accepted |
 | [0067](0067-the-rewriter-row-of-evaluate.md) | The rewriter row of `evaluate`: the chatbot's Rewrite of each stored follow-up, skipped without the model | Accepted |
-| [0068](0068-the-transcript-saved-from-the-chat-page.md) | The transcript, saved from the chat page under docs/reports from the page's own Turn records | Accepted, its Transcript replaced by 0070's |
+| [0068](0068-the-transcript-saved-from-the-chat-page.md) | The transcript, saved from the chat page under docs/reports from the page's own Turn records | Accepted, its Transcript replaced by 0070's, then 0077's |
 | [0069](0069-citations-name-the-merged-editions-after-the-collapse.md) | Citations name the merged Editions and mark Surveys after the collapse | Accepted |
-| [0070](0070-the-chatbot-retrieves-collapsed-and-the-final-chat-numbers.md) | The chatbot retrieves with bge-small's `+collapsed` twin, and the final chat numbers | Accepted, the retriever amended by 0076 |
+| [0070](0070-the-chatbot-retrieves-collapsed-and-the-final-chat-numbers.md) | The chatbot retrieves with bge-small's `+collapsed` twin, and the final chat numbers | Accepted, the retriever amended by 0076; the numbers and Transcript by 0077 |
 | [0071](0071-the-developers-check-of-the-grounding-verdict.md) | The developer's check of the grounding verdict: a sample from the answers, a label page and the agreement in the chat report | Accepted, comparison amended by 0072 |
 | [0072](0072-the-hand-check-scores-each-sampled-reply.md) | The hand check scores the automatic check on each sampled reply, not only where the run still gives it | Accepted |
 | [0073](0073-the-rewrite-names-the-paper-the-conversation-is-about.md) | The rewrite prompt names the paper, method or model a follow-up points back to | Accepted |
 | [0074](0074-the-collapse-matches-copies-by-their-text.md) | The collapse matches copies by their text, not their place in the Section | Accepted |
 | [0075](0075-tev1-as-a-grounding-judge-measured-against-the-hand-labels.md) | Tev1 as a grounding judge: P(yes) per claim and cited Chunk, averaged per Turn, measured against the hand labels | Accepted |
 | [0076](0076-retrieve-once-for-each-paper-a-question-names.md) | Retrieve once for each paper a question names: the names from the answer model, a turn each at the slots | Accepted |
+| [0077](0077-the-final-chat-run-after-the-text-collapse-the-rewrite-and-per-paper-retrieval.md) | The final chat run after the text collapse, the Rewrite and per-paper retrieval | Accepted |
 
 ## Template
 

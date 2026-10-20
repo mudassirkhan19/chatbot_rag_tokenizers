@@ -275,10 +275,10 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <div class="stat"><div class="v">36</div><div class="k">Evaluation questions, every one checked by a person</div></div>
       <div class="stat"><div class="v">0.30 → 0.38 → 0.43</div><div class="k">Recall@5 of bge-small raw, collapsed, and per paper: the chatbot's retriever (all answerable)</div></div>
       <div class="stat"><div class="v">23–27% → 3–4%</div><div class="k">Top-5 slots holding another Edition or Version of a paper already ranked, raw and collapsed (BM25, bge-small and their hybrid)</div></div>
-      <div class="stat"><div class="v">7/8 · 24/25</div><div class="k">Unanswerable questions abstained on · answers grounded, on the committed chat run</div></div>
+      <div class="stat"><div class="v">7/8 · 25/27</div><div class="k">Unanswerable questions abstained on · answers grounded, on the final chat run</div></div>
       <div class="stat"><div class="v">16/19</div><div class="k">Grounding verdicts that agree with the developer's hand labels</div></div>
       <div class="stat"><div class="v">180</div><div class="k">Audit-set Candidates that chose the judge</div></div>
-      <div class="stat"><div class="v">76</div><div class="k">Decision records (ADRs)</div></div>
+      <div class="stat"><div class="v">77</div><div class="k">Decision records (ADRs)</div></div>
     </div>
   </div>
 
@@ -832,8 +832,8 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
 <section id="chat">
   <div class="sec-head">
     <div class="eyebrow">Stage 6</div>
-    <div class="title-row"><h2>Chat: answering from the papers, or saying they don't answer</h2><span class="chip partial">partial</span></div>
-    <p class="goal">A local multi-turn chat page that answers only from retrieved Chunks, cites paper, Edition, Section and pages for every claim, and abstains plainly when the corpus doesn't hold the answer. Built and measured; the final run waits on <a data-issue="86">issue 86</a>, which regenerates it with the fixes of #80–#82 and marks this stage done. #83 and #85 are enhancements, not needed for it.</p>
+    <div class="title-row"><h2>Chat: answering from the papers, or saying they don't answer</h2><span class="chip done">done</span></div>
+    <p class="goal">A local multi-turn chat page that answers only from retrieved Chunks, cites paper, Edition, Section and pages for every claim, and abstains plainly when the corpus doesn't hold the answer. Built and measured; the final run (<a data-issue="86">issue 86</a>, ADR 0077) is on the chatbot as built, after the fixes of #80–#82. #83 and #85 are enhancements, not needed for it.</p>
   </div>
   <div class="panel">
     <div class="block">
@@ -864,15 +864,16 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
     <div class="block">
       <h4>Numbers</h4>
       <div class="tbl"><table>
-        <caption>The committed chat run, with 95% Wilson intervals. It retrieved with <code>dense.bge-small+collapsed</code> before #80–#82; three runs agreed on every verdict.</caption>
-        <thead><tr><th>Measure</th><th class="n">Result</th></tr></thead>
+        <caption>The final chat run on <code>dense.bge-small+per-paper+collapsed</code>, with 95% Wilson intervals, beside the run before #80–#82 (ADR 0070). Three runs agreed on every verdict.</caption>
+        <thead><tr><th>Measure</th><th class="n">Before</th><th class="n">Final</th></tr></thead>
         <tbody>
-          <tr><td>Abstained on unanswerable</td><td class="n">7/8 · 0.88 [0.53, 0.98]</td></tr>
-          <tr><td>… near-miss / out-of-topic</td><td class="n">5/6 · 2/2</td></tr>
-          <tr><td>Abstained on answerable (false)</td><td class="n">4/28 · 0.14 [0.06, 0.31]</td></tr>
-          <tr><td>Answers grounded</td><td class="n">24/25 · 0.96 [0.80, 0.99]</td></tr>
-          <tr><td>Recall@5 of the Chunks it retrieved</td><td class="n">0.48 (single-paper 0.75)</td></tr>
-          <tr class="sum"><td>Grounding verdict agrees with the developer</td><td class="n">16/19 · 0.84 [0.62, 0.94]</td></tr>
+          <tr><td>Abstained on unanswerable</td><td class="n">7/8 · 0.88 [0.53, 0.98]</td><td class="n">7/8 · 0.88 [0.53, 0.98]</td></tr>
+          <tr><td>… near-miss / out-of-topic</td><td class="n">5/6 · 2/2</td><td class="n">5/6 · 2/2</td></tr>
+          <tr><td>Abstained on answerable (false)</td><td class="n">4/28 · 0.14 [0.06, 0.31]</td><td class="n">2/28 · 0.07 [0.02, 0.23]</td></tr>
+          <tr><td>Answers grounded</td><td class="n">24/25 · 0.96 [0.80, 0.99]</td><td class="n">25/27 · 0.93 [0.77, 0.98]</td></tr>
+          <tr><td>Recall@5 of the Chunks it retrieved</td><td class="n">0.48 (multi-paper 0.06)</td><td class="n">0.54 (multi-paper 0.25)</td></tr>
+          <tr><td>Turns holding a near-duplicate pair</td><td class="n">15/44</td><td class="n">2/44</td></tr>
+          <tr class="sum"><td>Grounding verdict agrees with the developer</td><td class="n">16/19 · 0.84 [0.62, 0.94]</td><td class="n">16/19 · 0.84 [0.62, 0.94]</td></tr>
         </tbody>
       </table></div>
       <p class="why">Reading: the automatic check reads only markers and numbers. All three disagreements are answers it passed that the developer did not: one borrows another paper's explanation, one claims more than its Chunks say, and one answers an unanswerable question. Tev1 4B as an LLM judge agrees on the same 16 of 19 with the same three misses, so it is measured, not used. Full report: <a data-file="data/eval/chat-report.md">data/eval/chat-report.md</a>.</p>
@@ -908,8 +909,8 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
         <div class="body"><p><code>[chat]</code> names a twin, so the 5 Chunks are 5 different passages. A reference reads "2112.06598v2, also v1" when copies were merged, and marks a Survey. ADR 0076 adds per-paper retrieval on top.</p><p class="why"><b>Why:</b> copies of one passage were taking slots a comparison needed for its other paper. <a data-adr="0069">ADR 0069</a>, <a data-adr="0070">ADR 0070</a>, <a data-adr="0076">ADR 0076</a>.</p></div>
       </details>
       <details class="dec">
-        <summary>The Transcript is saved from the page, not written by hand<span class="ref">ADR 0068</span></summary>
-        <div class="body"><p>A save button renders the Conversation's Turn records to Markdown in <code>docs/reports</code>, with the question, Rewrite, answer, references, invalid markers and uncited Chunks. The committed one has six Turns: a follow-up whose "it" resolves to CANINE, and three Abstentions, one on an off-topic question. It is not edited.</p><p class="why"><b>Why:</b> the brief asks for a real conversation, and one renderer for page and file keeps them saying the same thing. <a data-adr="0068">ADR 0068</a>.</p></div>
+        <summary>The Transcript is saved from the page, not written by hand<span class="ref">ADR 0068, 0077</span></summary>
+        <div class="body"><p>A save button renders the Conversation's Turn records to Markdown in <code>docs/reports</code>, with the question, Rewrite, answer, references, invalid markers and uncited Chunks. The committed one (ADR 0077) has six Turns: a follow-up whose "it" resolves to CANINE, a second whose Rewrite names CANINE and ByT5, and two Abstentions, a near miss and an off-topic question. It is not edited.</p><p class="why"><b>Why:</b> the brief asks for a real conversation, and one renderer for page and file keeps them saying the same thing. <a data-adr="0068">ADR 0068</a>.</p></div>
       </details>
       <details class="dec">
         <summary>The grounding verdict checked by hand, and an LLM judge measured, not adopted<span class="ref">ADR 0071, 0072, 0075</span></summary>
@@ -918,7 +919,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
 
       <div class="risk"><b>What could be wrong</b>
         <ul>
-          <li>The committed run predates the text collapse, per-paper retrieval and the new rewrite prompt, so its numbers are not yet the chatbot's as built. <a data-issue="86">Issue 86</a>.</li>
+          <li>A grounded answer can answer another question: in the final run, superbpe-mmlu gives SuperBPE's CommonsenseQA gain when asked about MMLU, and the check passes it. ADR 0077.</li>
           <li>The grounded rate overstates grounding: the check passes misattributed and borrowed claims, as 3 of 19 hand labels show.</li>
           <li>The answer model can attach one paper's claim to another in a comparison. <a data-issue="83">Issue 83</a>.</li>
           <li>A 5B model answers some near-miss questions it should abstain on, and gives incomplete answers; a larger one is untested. <a data-issue="85">Issue 85</a>.</li>
@@ -977,21 +978,21 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
     </div>
     <div class="plan done">
       <div class="eyebrow">Brief: core</div>
-      <div class="head"><h3>A grounded chatbot</h3><span class="chip partial">final run left</span></div>
+      <div class="head"><h3>A grounded chatbot</h3><span class="chip done">done</span></div>
       <p>Multi-turn, so "how does that compare with WordPiece?" resolves; every answer cites paper and Section; says plainly when the corpus does not support an answer. Measure grounding and the handling of unanswerable questions.</p>
-      <p><b>Built:</b> see <a href="#chat">Stage 6</a>. On the committed run, 7/8 unanswerable questions abstained on, 24/25 answers grounded, 4/28 false abstentions, and the grounding verdict agrees with the developer on 16/19. <b>Left:</b> the final run on the chatbot as built (<a data-issue="86">86</a>), which also regenerates the Transcript. <b>Enhancements, not needed:</b> Claims kept to their own paper (<a data-issue="83">83</a>), a larger answer model (<a data-issue="85">85</a>), a reranker (<a data-issue="62">62</a>).</p>
+      <p><b>Built:</b> see <a href="#chat">Stage 6</a>. On the final run (<a data-issue="86">86</a>, ADR 0077), 7/8 unanswerable questions abstained on, 25/27 answers grounded, 2/28 false abstentions (4/28 before #80–#82), and the grounding verdict agrees with the developer on 16/19. <b>Enhancements, not needed:</b> Claims kept to their own paper (<a data-issue="83">83</a>), a larger answer model (<a data-issue="85">85</a>), a reranker (<a data-issue="62">62</a>).</p>
       <p><a data-issue="63">Spec issue 63</a></p>
     </div>
     <div class="plan">
       <div class="eyebrow">Brief: deliverables</div>
       <div class="head"><h3>Write-up, transcript, failure analysis</h3><span class="chip planned">to write</span></div>
       <p>2–3 pages on design decisions with a results table; one conversation of at least five turns with a follow-up and an unanswerable; at least three questions the system still gets wrong, and why.</p>
-      <p><b>Exists:</b> a six-Turn Transcript with a follow-up and Abstentions (<a data-file="docs/reports/2026-10-20-chat-transcript.md">2026-10-20</a>), to be regenerated by #86; the failure diagnosis (<a data-file="docs/reports/2026-10-21-chat-failure-diagnosis.md">2026-10-21</a>), which traces nine kinds of failure to where each first goes wrong; this page and 76 ADRs as the source of the write-up.</p>
+      <p><b>Exists:</b> a six-Turn Transcript with two follow-ups and two Abstentions, on the chatbot as built (<a data-file="docs/reports/2026-10-21-chat-transcript.md">2026-10-21</a>); the failure diagnosis (<a data-file="docs/reports/2026-10-21-chat-failure-diagnosis.md">2026-10-21</a>), which traces nine kinds of failure to where each first goes wrong; this page and 77 ADRs as the source of the write-up.</p>
       <p><b>Not written yet:</b> the failure analysis, at least three questions the system still gets wrong, built from the diagnosis on #86's answers; and the 2–3 page write-up with its results table, linked from the top of the README.</p>
       <p><a data-issue="79">Write-up, issue 79</a> · <a data-issue="78">failure analysis, issue 78</a></p>
     </div>
   </div>
-  <p class="why order"><b>Order before submission:</b> <a data-issue="86">#86</a> the final run, then <a data-issue="78">#78</a> the failure analysis on its answers, then <a data-issue="79">#79</a> the write-up, which quotes both. Each refreshes this page's numbers as it lands.</p>
+  <p class="why order"><b>Order before submission:</b> <a data-issue="86">#86</a> the final run is in; next <a data-issue="78">#78</a> the failure analysis on its answers, then <a data-issue="79">#79</a> the write-up, which quotes both. Each refreshes this page's numbers as it lands.</p>
 </section>
 
 <!-- ============================ EXAMPLE ============================ -->
@@ -1075,7 +1076,8 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
     "0073":"0073-the-rewrite-names-the-paper-the-conversation-is-about",
     "0074":"0074-the-collapse-matches-copies-by-their-text",
     "0075":"0075-tev1-as-a-grounding-judge-measured-against-the-hand-labels",
-    "0076":"0076-retrieve-once-for-each-paper-a-question-names"
+    "0076":"0076-retrieve-once-for-each-paper-a-question-names",
+    "0077":"0077-the-final-chat-run-after-the-text-collapse-the-rewrite-and-per-paper-retrieval"
   };
   document.querySelectorAll("a[data-adr]").forEach(function (a) {
     var n = a.getAttribute("data-adr");

@@ -23,10 +23,11 @@ from .model import Message
 _MARKER = re.compile(r"\[\s*(\d+(?:\s*,\s*\d+)*)\s*\]")
 # The space a marker leaves before the punctuation that followed it: "freezing [1]." reads "freezing .".
 _BEFORE_PUNCTUATION = re.compile(r" +([.,;:!?)])")
-# How the model declines in its own words, on the matcher's words: "the provided chunks do not explicitly state".
+# How the model declines in its own words, on the matcher's words: "the provided chunks do not explicitly state",
+# or the fixed sentence without "in this corpus": "the papers do not answer this question" (#86).
 _DECLINE = re.compile(
-    r"(?:the )?(?:(?:provided|given|retrieved) )?(?:chunks|excerpts) (?:do not|does not|don t|doesn t) "
-    r"(?:(?:explicitly|specifically|directly|clearly) )?(?:contain|state|mention|include|provide|specify|say)\b"
+    r"(?:the )?(?:(?:provided|given|retrieved) )?(?:chunks|excerpts|papers) (?:do not|does not|don t|doesn t) "
+    r"(?:(?:explicitly|specifically|directly|clearly) )?(?:contain|state|mention|include|provide|specify|say|answer)\b"
 )
 # A sentence ends at ".", "!" or "?" followed by a space or a line break.
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
