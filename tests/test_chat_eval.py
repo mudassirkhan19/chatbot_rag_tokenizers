@@ -298,7 +298,7 @@ def test_the_report_names_the_retriever_the_model_pin_the_prompts_hashes_and_the
 
     assert f"- sha256: `{hashlib.sha256(EVALUATION_SET.read_bytes()).hexdigest()}`" in report
     # The twin retrieves over its retriever's index, so the key is the raw retriever's; the pool tells them apart.
-    assert f"- Retriever: dense.bge-small+collapsed (`{config.retriever.key}`), collapse pool 50, 5 Chunks per Turn" in report
+    assert f"- Retriever: dense.bge-small+collapsed (`{config.retriever.key}`), collapse pool 50, overlap 0.4, 5 Chunks per Turn" in report
     # Built from the [chat] revision the model was checked against, so a re-scored report names it without Ollama.
     assert "- Answer model: gemma4:e2b-mlx@e98b54fe1913 on Ollama 0.40.5, thinking off, temperature 0.0" in report
     assert f"`{hashlib.sha256(config.system_prompt.encode()).hexdigest()}`" in report
@@ -318,6 +318,17 @@ def test_a_raw_chatbot_is_named_by_its_retriever_alone_and_its_answers_are_not_r
     with pytest.raises(SystemExit) as stopped:
         run_chat_eval(indexed, EVALUATION_SET, "chat", "--from-answers")
     assert "collapse_pool None, not 50" in str(stopped.value.code)
+
+
+def test_answers_collapsed_with_another_overlap_are_not_rescored_as_these(indexed, fake_answer_model):
+    script(fake_answer_model)
+    config = indexed / "retrieval-overlap.toml"
+    config.write_text(RETRIEVAL_CONFIG.read_text().replace("overlap = 0.4", "overlap = 0.9"))
+    run_chat_eval(indexed, EVALUATION_SET, "chat", "--config", str(config))
+
+    with pytest.raises(SystemExit) as stopped:
+        run_chat_eval(indexed, EVALUATION_SET, "chat", "--from-answers")
+    assert "collapse_overlap 0.9, not 0.4" in str(stopped.value.code)
 
 
 def edit_answers(path: Path, edit) -> None:

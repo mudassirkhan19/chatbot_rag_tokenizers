@@ -1,7 +1,7 @@
 # 0057. The collapse merges copies of a passage across a Work's files, not whole Works
 
 - **Date:** 2026-10-19
-- **Status:** Accepted. Supersedes "one Chunk per Work" in [0053](0053-collapsed-ranking-and-collapsed-twins.md) and the Section rule of [0055](0055-a-work-shows-its-best-ranked-section.md); spec #49 and issue #52 are updated to match.
+- **Status:** Accepted. Supersedes "one Chunk per Work" in [0053](0053-collapsed-ranking-and-collapsed-twins.md) and the Section rule of [0055](0055-a-work-shows-its-best-ranked-section.md); spec #49 and issue #52 are updated to match. Its merge key (the same Section path and count of Chunks before it) is superseded by [0074](0074-the-collapse-matches-copies-by-their-text.md), which matches copies by their text.
 
 ## Context
 [0053](0053-collapsed-ranking-and-collapsed-twins.md) kept one Chunk per Work, and [0055](0055-a-work-shows-its-best-ranked-section.md) made that Chunk the Work's best-ranked Section. Even so, BM25's collapsed Hit@5 was 0.07 against 0.18 raw, and multi-paper questions, which the collapse was for, gained nothing. Keeping one Chunk per Work also drops a paper's other Sections, and those are often the ones that answer. The assignment asks for something narrower: arXiv Versions, a preprint and its conference version, and Surveys "crowding the top results", with "Paper A, latest version *(3 versions merged)*" as its example. It does not ask to collapse different passages of one paper, and grades "awareness of what it might wrongly merge".

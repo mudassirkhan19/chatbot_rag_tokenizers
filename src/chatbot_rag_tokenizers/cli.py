@@ -343,6 +343,7 @@ def main(argv: list[str] | None = None) -> None:
                 read_manifest(args.manifest),
                 args.work_groups,
                 retrieval.collapse_pool,
+                retrieval.collapse_overlap,
                 retrieval.comparison,
                 args.config,
                 args.export_ungrouped,
@@ -425,8 +426,8 @@ def _chatbot(args: argparse.Namespace) -> tuple[Chatbot, Corpus]:
         sys.exit(f"{args.command}: {error}")
     chunks = {chunk.chunk_id: chunk for chunk in corpus.chunks}
     retriever = built.retriever
-    if config.collapse_pool:
-        retriever = Collapsed(retriever, chunks, read_manifest(args.manifest), config.collapse_pool)
+    if config.collapse_pool and config.collapse_overlap:
+        retriever = Collapsed(retriever, chunks, read_manifest(args.manifest), config.collapse_pool, config.collapse_overlap)
     return Chatbot(config, retriever, chunks), corpus
 
 

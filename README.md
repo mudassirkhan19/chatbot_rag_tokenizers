@@ -210,13 +210,13 @@ The decision rule was fixed in spec #55 before any run: recommend the best *all 
 
 | Retriever | Recall@5 raw | Recall@5 collapsed | Difference, collapsed [95%] | MRR@10 raw | MRR@10 collapsed | Query p50, collapsed |
 |---|---:|---:|---|---:|---:|---:|
-| bm25 | 0.16 | 0.20 | -0.18 [-0.36, +0.00], within noise | 0.118 | 0.138 | about 197 ms |
-| **dense.bge-small** | 0.30 | **0.38** | — | 0.244 | 0.271 | about 28 ms |
-| dense.bge-base | 0.29 | 0.32 | -0.05 [-0.18, +0.07], within noise | 0.211 | 0.258 | about 38 ms |
-| dense.openscholar | 0.07 | 0.08 | -0.29 [-0.49, -0.10], beyond noise | 0.046 | 0.061 | about 37 ms |
-| hybrid.bm25+bge-small | 0.34 | 0.39 | +0.01 [-0.14, +0.16], within noise | 0.257 | 0.277 | about 220 ms |
-| hybrid.bm25+bge-base | 0.34 | 0.35 | -0.02 [-0.20, +0.14], within noise | 0.237 | 0.270 | about 232 ms |
-| hybrid.bm25+openscholar | 0.28 | 0.32 | -0.06 [-0.25, +0.12], within noise | 0.190 | 0.227 | about 230 ms |
+| bm25 | 0.16 | 0.21 | -0.17 [-0.36, +0.01], within noise | 0.118 | 0.133 | about 197 ms |
+| **dense.bge-small** | 0.30 | **0.38** | — | 0.244 | 0.276 | about 28 ms |
+| dense.bge-base | 0.29 | 0.32 | -0.05 [-0.18, +0.07], within noise | 0.211 | 0.261 | about 38 ms |
+| dense.openscholar | 0.07 | 0.12 | -0.26 [-0.45, -0.07], beyond noise | 0.046 | 0.070 | about 37 ms |
+| hybrid.bm25+bge-small | 0.34 | 0.39 | +0.01 [-0.14, +0.16], within noise | 0.257 | 0.282 | about 220 ms |
+| hybrid.bm25+bge-base | 0.34 | 0.35 | -0.02 [-0.20, +0.14], within noise | 0.237 | 0.271 | about 232 ms |
+| hybrid.bm25+openscholar | 0.28 | 0.32 | -0.06 [-0.25, +0.12], within noise | 0.190 | 0.230 | about 230 ms |
 
 - **Recommendation: `dense.bge-small`**, on both rankings. On the collapsed numbers the best Recall@5 is `hybrid.bm25+bge-small`'s 0.39, but its +0.01 lead is within noise, and bge-small is the cheaper of the two: about 28 ms per query against about 220 ms, and its index builds in 1318.64 s against 1327.99 s. Collapsing doesn't change the choice. It narrows the hybrid's raw lead of +0.04 [-0.09, +0.16].
 - **A scientific model doesn't help here.** OpenScholar_Retriever is the only retriever beyond noise, and it is a loss. It finds the right paper about as often as bge-small, but ranks the paper's short Chunks (captions, short lists) above the one holding the Passage (ADR 0065).
@@ -249,9 +249,9 @@ Plain `just index` builds all seven in one go (2.5 to 3 h on an M1 Max; build ti
 The index holds a paper several times on purpose: the v1 and the latest Version of a preprint, a preprint and its venue Edition, and every Chunk of each file. Two mechanisms keep those copies from crowding the top 5 (spec #49, ADR 0063):
 
 - **The grouping rule**, in `collect`: it fills the manifest's `work_id`, `canonical` and `survey` columns from the Snapshot alone (see *Collect the corpus* above). The funnel report's *Works* section counts the Works by the signal that joined them, and lists the Suspected pairs it declined to join.
-- **The Collapsed ranking**, `<retriever>+collapsed`, which `evaluate` builds for every retriever it scores (ADRs 0053 and 0057). It asks the retriever for its top 50 Chunks (`pool` in `[collapse]` of `config/retrieval.toml`). It then merges the copies of each passage, meaning a Work's Chunks from different files at the same place in the same Section, into the slot of the best-ranked copy. That slot is shown from the Canonical Edition's file when the pool holds its copy, else from an Edition's latest file. It fills the top k in the raw order. A Work's other passages keep their slots, an Edition with no `work_id` is its own Work, and Surveys are marked, not demoted. Each hit carries its Work, the merged Editions and the merged copies' Chunk ids, so a citation can say "3 copies merged".
+- **The Collapsed ranking**, `<retriever>+collapsed`, which `evaluate` builds for every retriever it scores (ADRs 0053, 0057 and 0074). It asks the retriever for its top 50 Chunks (`pool` in `[collapse]` of `config/retrieval.toml`). It then merges the copies of each passage into the slot of the best-ranked copy. Copies are a Work's Chunks from different files that share at least 40% of their word 5-grams (`overlap`), where one is the other's closest Chunk in its file, wherever their Sections are numbered or nested. That slot is shown from the Canonical Edition's file when the pool holds its copy, else from an Edition's latest file. It fills the top k in the raw order. A Work's other passages keep their slots, an Edition with no `work_id` is its own Work, and Surveys are marked, not demoted. Each hit carries its Work, the merged Editions and the merged copies' Chunk ids, so a citation can say "3 copies merged".
 
-The eval report's *Before and after* table puts each retriever's raw and collapsed rows side by side. It measures duplicates against the checked Work groups, never the rule's own `work_id`, and the *Grouping* section scores the rule against the same groups. On the committed run, collapsing takes BM25's duplicate slots from 59 to 38 of 140 and its Recall@5 from 0.16 to 0.20, and the dense baseline's from 70 to 57 and from 0.30 to 0.38. The rule joins exactly the Work groups' 30 pairs.
+The eval report's *Before and after* table puts each retriever's raw and collapsed rows side by side. It measures duplicates against the checked Work groups, never the rule's own `work_id`, and the *Grouping* section scores the rule against the same groups. On the committed run, collapsing takes BM25's duplicate slots from 59 of 140 to 30 of 125 and its Recall@5 from 0.16 to 0.21, and the dense baseline's from 70 of 140 to 52 of 130 and from 0.30 to 0.38. Duplicates from another Edition or Version fall from 38 to 5 and from 33 to 5; the rest are other passages of a paper already ranked. The collapsed rows count 25 and 26 of the 28 questions, since the merges let Editions with no Work group into the top 5 (ADR 0074). The rule joins exactly the Work groups' 30 pairs.
 
 To rerun it on a corpus that is already parsed (see *Reproduce the baseline* for a clone):
 

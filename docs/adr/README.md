@@ -61,7 +61,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0054](0054-pinned-local-answer-model-and-the-chat-page.md) | The pinned local answer model, the shared Ollama module and the chat page | Accepted, amended by 0056, 0064 and 0069 |
 | [0055](0055-a-work-shows-its-best-ranked-section.md) | A collapsed Work shows its best-ranked Chunk's Section; the Canonical Edition only picks the copy | Superseded by 0057 |
 | [0056](0056-follow-ups-the-conversation-and-the-rewrite.md) | Follow-ups: the Conversation and the Rewrite | Accepted, amended by 0067 and 0073; the transcript in 0068 |
-| [0057](0057-the-collapse-merges-copies-not-works.md) | The collapse merges copies of a passage across a Work's files, not whole Works | Accepted |
+| [0057](0057-the-collapse-merges-copies-not-works.md) | The collapse merges copies of a passage across a Work's files, not whole Works | Accepted, merge key superseded by 0074 |
 | [0058](0058-bm25-dense-hybrids-by-reciprocal-rank-fusion.md) | BM25 + dense hybrids by reciprocal rank fusion, stored as a record that points to their members | Accepted |
 | [0059](0059-abstention-by-instruction-and-the-chat-report.md) | Abstention by instruction, and the chat report that measures it | Accepted, reproducibility amended by 0062, the Abstention rule by 0064 |
 | [0060](0060-the-grouping-rule-scored-against-the-work-groups.md) | The grouping rule scored against the Work groups, pair by pair | Accepted |
@@ -78,6 +78,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0071](0071-the-developers-check-of-the-grounding-verdict.md) | The developer's check of the grounding verdict: a sample from the answers, a label page and the agreement in the chat report | Accepted, comparison amended by 0072 |
 | [0072](0072-the-hand-check-scores-each-sampled-reply.md) | The hand check scores the automatic check on each sampled reply, not only where the run still gives it | Accepted |
 | [0073](0073-the-rewrite-names-the-paper-the-conversation-is-about.md) | The rewrite prompt names the paper, method or model a follow-up points back to | Accepted |
+| [0074](0074-the-collapse-matches-copies-by-their-text.md) | The collapse matches copies by their text, not their place in the Section | Accepted |
 
 ## Template
 

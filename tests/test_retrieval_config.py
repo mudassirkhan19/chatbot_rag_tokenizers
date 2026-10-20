@@ -77,6 +77,17 @@ def test_the_collapse_pool_must_be_at_least_one_chunk(tmp_path):
         load_retrieval_config(path)
 
 
+@pytest.mark.parametrize("overlap", ["0.0", "1.5"])
+def test_the_collapse_overlap_is_a_share_above_0_and_at_most_1(tmp_path, overlap):
+    config = RETRIEVAL_CONFIG.read_text()
+    assert load_retrieval_config(RETRIEVAL_CONFIG).collapse_overlap == 0.4
+    path = tmp_path / "retrieval.toml"
+    path.write_text(config.replace("overlap = 0.4", f"overlap = {overlap}"))
+
+    with pytest.raises(ConfigError, match=rf"\[collapse\] overlap {overlap} must be above 0 and at most 1"):
+        load_retrieval_config(path)
+
+
 def test_a_dense_table_written_the_old_way_is_named_and_told_how_to_change(tmp_path):
     path = with_bge_small(tmp_path, "[dense.bge-small]", "[dense]")
 
