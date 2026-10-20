@@ -80,7 +80,7 @@ def queries(question: Question, rewrites: Mapping[str, str]) -> list[tuple[str, 
 
 
 def score(
-    questions: Sequence[Question], retriever: Retriever, chunks: Mapping[str, Chunk], rule: MatchingRule, rewrites: Mapping[str, str] = {}
+    questions: Sequence[Question], retriever: Retriever, chunks: Mapping[str, Chunk], rule: MatchingRule, rewrites: Mapping[str, str]
 ) -> list[Scored]:
     scored = []
     for question in questions:

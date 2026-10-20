@@ -401,7 +401,7 @@ def test_unanswerable_questions_are_left_out_of_the_metrics(indexed, tmp_path):
     assert with_unanswerable["all answerable", "as asked, follow-ups alone"][0] == "4"
 
 
-def test_a_follow_up_is_scored_alone_with_its_history_and_as_its_reference_rewrite(indexed):
+def test_a_follow_up_is_scored_alone_with_its_history_as_its_reference_rewrite_and_as_the_rewriters(indexed):
     report = run_evaluate(indexed)
 
     lines = {query: line for (question, query), line in questions(report).items() if question == "neighbours"}
@@ -460,6 +460,17 @@ def test_with_no_answer_model_the_rewriter_row_is_skipped_and_the_other_rows_are
     # Every table that takes the follow-up as a user asks it is the same without the rewriter.
     for heading in ("## Comparison", "## Crowding", "## Before and after", "## Grouping", "## Editions without a Work group"):
         assert section(without, heading) == section(with_rewriter, heading)
+
+
+def test_with_no_chat_table_the_rewriter_row_is_skipped(indexed, tmp_path, capsys):
+    config = tmp_path / "no-chat.toml"
+    config.write_text(RETRIEVAL_CONFIG.read_text().split("\n[chat]\n")[0])
+
+    report = run_evaluate(indexed, retrieval_config=config)
+
+    assert f"evaluate: the rewriter row is skipped: {config} has no [chat] table" in capsys.readouterr().out
+    assert f"- The rewriter row is skipped: {config} has no [chat] table" in report
+    assert ("follow-up", "rewriter") not in results(report)
 
 
 def test_two_runs_give_the_same_report_apart_from_timings(indexed):

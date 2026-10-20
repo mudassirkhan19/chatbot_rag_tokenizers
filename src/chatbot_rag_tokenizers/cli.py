@@ -315,7 +315,7 @@ def main(argv: list[str] | None = None) -> None:
                 args.work_groups,
                 retrieval.collapse_pool,
                 retrieval.comparison,
-                _chat_config(args),
+                args.config,
                 args.export_ungrouped,
             )
         except (EvaluationSetError, WorkGroupsError, index.IndexMissing, BaselineMissing) as error:

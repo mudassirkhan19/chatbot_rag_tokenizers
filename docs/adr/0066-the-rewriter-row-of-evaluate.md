@@ -1,7 +1,7 @@
 # 0066. The rewriter row of `evaluate`
 
 - **Date:** 2026-10-20
-- **Status:** Accepted. Amends [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) (a follow-up is run four ways) and [0056](0056-follow-ups-the-conversation-and-the-rewrite.md) (a Turn with no answer is shown to the rewriter as its question only).
+- **Status:** Accepted; amends [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) (a follow-up is run four ways) and [0056](0056-follow-ups-the-conversation-and-the-rewrite.md) (a Turn with no answer is shown to the rewriter as its question only).
 
 ## Context
 `evaluate` scores each follow-up three ways: alone (the floor), its history and the follow-up joined, and its hand-written reference rewrite (the ceiling). Spec #63 and issue #66 ask for a fourth, "rewriter": the chatbot's own Rewrite of the stored history and the follow-up, so the rewriter's gain sits in the same table. The row needs the pinned answer model. Without Ollama, `evaluate` must say the row is skipped and write the rest.
@@ -13,7 +13,7 @@ An Evaluation-set follow-up stores its history as questions only. The rewriter o
 
 **Each follow-up is rewritten once per run, not once per retriever.** `evaluate` checks the model against its pin and writes every Rewrite before scoring. Every retriever and every `+collapsed` twin is then queried with the same Rewrites. The model runs at temperature 0 with a fixed seed. Three runs over the 8 follow-ups gave the same Rewrites.
 
-**Without the model, the row is skipped, not failed.** If the answer model can't be reached or doesn't match its pin, `evaluate` prints `the rewriter row is skipped: <reason>`. The report says the same under *Metrics*, leaves the row out of every Results table, and writes "None" under *Rewrites*. Every other row and section is unchanged.
+**Without the model, the row is skipped, not failed.** If the retrieval config has no readable `[chat]` table, or the answer model can't be reached or doesn't match its pin, `evaluate` prints `the rewriter row is skipped: <reason>`. The report says the same under *Metrics*, leaves the row out of every Results table, and writes "None" under *Rewrites*. Every other row and section is unchanged.
 
 **The report prints the Rewrites once.** A *Rewrites* table at the head of *Questions* gives each follow-up, its reference rewrite and its Rewrite. Each retriever's per-question table gives the `rewriter` query its own line, as it does the other three. *Metrics* names the rewriter's model, its settings and the rewrite prompt's sha256.
 

@@ -57,6 +57,10 @@ class Rewriter:
     rewrites: Mapping[str, str] = field(default_factory=dict)  # each follow-up's Rewrite, by question id
     skipped: str = ""  # why the answer model couldn't answer, when it couldn't
 
+    @property
+    def ran(self) -> bool:
+        return not self.skipped
+
 
 @dataclass(frozen=True)
 class RetrieverRun:
@@ -198,7 +202,7 @@ def _retriever(run: RetrieverRun) -> list[str]:
 
 
 def _rewriter(rewriter: Rewriter) -> list[str]:
-    if rewriter.skipped:
+    if not rewriter.ran:
         return [f"- The {REWRITER} row is skipped: {rewriter.skipped}"]
     return [
         f"- Rewriter: {rewriter.model}, rewrite prompt sha256"
@@ -208,7 +212,7 @@ def _rewriter(rewriter: Rewriter) -> list[str]:
 
 def _rewrites(questions: Sequence[Question], rewriter: Rewriter) -> list[str]:
     lines = ["### Rewrites", "", f"Each follow-up's {REWRITE} and the {REWRITER}'s Rewrite, which are its last two queries below.", ""]
-    if rewriter.skipped:
+    if not rewriter.ran:
         return [*lines, f"None: the {REWRITER} row is skipped.", ""]
     rows = [
         f"| {q.id} | {q.question} | {q.rewrite} | {rewriter.rewrites[q.id]} |" for q in questions if q.id in rewriter.rewrites
@@ -223,7 +227,7 @@ def _results(run: RetrieverRun, rewriter: Rewriter) -> list[str]:
     rows = [
         ("single-paper", AS_ASKED, chosen("single-paper", AS_ASKED)),
         ("multi-paper", AS_ASKED, chosen("multi-paper", AS_ASKED)),
-        *[("follow-up", query, chosen("follow-up", query)) for query in FOLLOW_UP_QUERIES if query != REWRITER or not rewriter.skipped],
+        *[("follow-up", query, chosen("follow-up", query)) for query in FOLLOW_UP_QUERIES if query != REWRITER or rewriter.ran],
         ("all answerable", ALL_ANSWERABLE, all_answerable(run.scored)),
     ]
     unanswerable = sum(1 for s in run.scored if not s.question.answerable)

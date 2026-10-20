@@ -8,7 +8,8 @@ from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 
 from ..chat import model as answer_model
-from ..chat.config import ChatConfig
+from ..chat.config import load_chat_config
+from ..config import ConfigError
 from ..chat.model import AnswerModelUnavailable
 from ..chat.rewrite import rewrite
 from ..retrieval import index
@@ -40,10 +41,15 @@ def checked_questions(evaluation_set: Path, corpus: Corpus, rule: MatchingRule, 
     return questions
 
 
-def rewrites(questions: Sequence[Question], chat: ChatConfig) -> Rewriter:
-    """The rewriter's Rewrite of every follow-up, from its stored history's questions, the last ``chat.history`` of
-    them, as a Conversation's earlier Turns with no answers. Skipped, with the reason, when the answer model can't
-    answer, so the other rows are scored without it."""
+def rewrite_follow_ups(questions: Sequence[Question], chat_config: Path) -> Rewriter:
+    """The rewriter's Rewrite of every follow-up, from its stored history's questions, the last `history` of them,
+    as a Conversation's earlier Turns with no answers, by the answer model of the [chat] table in ``chat_config``.
+    Skipped, with the reason, when that table can't be read or the answer model can't answer, so the other rows are
+    scored without it."""
+    try:
+        chat = load_chat_config(chat_config)
+    except ConfigError as error:
+        return Rewriter("", "", skipped=str(error))
     settings = f"thinking {'on' if chat.model.think else 'off'}, temperature {chat.model.temperature}"
     try:
         model = answer_model.load_answer_model(chat.model)
@@ -68,21 +74,21 @@ def evaluate(
     work_groups: Path,
     pool: int,
     comparison: ComparisonConfig,
-    chat: ChatConfig,
+    chat_config: Path,
     export: Path | None = None,
 ) -> None:
     """Raises EvaluationSetError for a set that fails `eval-check` (ADR 0041), WorkGroupsError for a malformed Work
     groups file, BaselineMissing when the Comparison's baseline isn't one of `configs` and index.IndexMissing when a
     retriever isn't built. `pool` is the raw Chunks each Collapsed ranking
-    merges copies in, and `chat` the rewriter's model and prompt. With `export`, also writes there every Edition in a top 5 that has no Work group."""
+    merges copies in, and `chat_config` holds the [chat] table of the rewriter's model and prompt. With `export`, also writes there every Edition in a top 5 that has no Work group."""
     check_baseline(comparison.baseline, [config.name for config in configs])
     rows = {row["edition_id"]: row for row in manifest}
     works = Works(rows.values())
     groups = load_work_groups(work_groups)
     questions = checked_questions(evaluation_set, corpus, rule, works)
     indexes = [(config, index.load(index_root, corpus, config)) for config in configs]
-    rewriter = rewrites(questions, chat)
-    if rewriter.skipped:
+    rewriter = rewrite_follow_ups(questions, chat_config)
+    if not rewriter.ran:
         print(f"evaluate: the rewriter row is skipped: {rewriter.skipped}")
     chunks = {chunk.chunk_id: chunk for chunk in corpus.chunks}
     runs = []
