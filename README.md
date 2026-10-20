@@ -132,8 +132,9 @@ just evaluate     # score the retrievers on the Evaluation set and write the eva
 - **`index` inputs.**
   - The parse report (`data/parse-report.md`, `--parse-report`) decides which files make up the corpus: every file it lists as parsed.
   - Their Chunks come from the parse cache (`--cache`), under the chunking config in `config/parse.toml` (`--parse-config`).
+  - Each file's Chunks cite the pinned id the report lists for it, and that id's Edition in the manifest (`--manifest`), whichever id filled the cache (ADR 0066). `evaluate`, `chat`, `chat-eval` and `eval-check` read them the same way.
   - Each retriever's settings are in `config/retrieval.toml` (`--config`). `--retriever bm25` or `--retriever dense.bge-small` builds only the retrievers named, and a hybrid's members with it; the default is all of them.
-  - `index` stops with a pointer to `just parse` when the report is missing, when the report was written with another GROBID image or chunking config, when the cache holds no Chunks for the report's files, or when it holds them only under another chunking config.
+  - `index` stops with a pointer to `just parse` when the report is missing, when the report was written with another GROBID image or chunking config, when the cache holds no Chunks for the report's files, or when it holds them only under another chunking config. It also stops when the manifest is missing or no longer includes an Edition pinned to a parsed file.
 - **`index` outputs.** Each index goes to the index cache (`data/index-cache/<chunking key>/<retriever key>/`, `--index-cache`, never committed) with a record of:
   - its settings;
   - the corpus it was built over;
