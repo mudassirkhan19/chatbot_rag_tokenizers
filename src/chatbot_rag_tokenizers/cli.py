@@ -4,11 +4,12 @@ import argparse
 import sys
 from pathlib import Path
 
-from .chat import grounding_check, page
+from .chat import grounding_check, grounding_judge, page
 from .chat.answers import AnswersMismatch
 from .chat.chat_eval import chat_eval, export_check, rescore_answers
 from .chat.config import ChatConfig, load_chat_config
 from .chat.conversation import Chatbot
+from .chat.grounding_judge import GroundingJudge, JudgeUnavailable
 from .chat.model import AnswerModelUnavailable
 from .collection import audit, audit_label, fulltext, indexed
 from .config import ConfigError
@@ -219,6 +220,11 @@ def main(argv: list[str] | None = None) -> None:
     chat_eval_cmd.add_argument("--sample-size", type=_at_least_one, default=20, help="with --export-check, Turns to sample (default 20)")
     chat_eval_cmd.add_argument("--seed", type=int, default=0, help="with --export-check, the sample's random seed (default 0)")
     chat_eval_cmd.add_argument("--force", action="store_true", help="with --export-check, replace an existing --check file and its labels")
+    chat_eval_cmd.add_argument(
+        "--judge",
+        action="store_true",
+        help="have the [chat.judge] decision model score the --check sample's labelled Turns too, and report its agreement with the hand labels; needs Ollama",
+    )
 
     chat_label_cmd = commands.add_parser(
         "chat-label",
@@ -354,8 +360,8 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "chat-eval":
         if args.from_answers and args.runs != 1:
             sys.exit("chat-eval: --from-answers asks nothing, so it takes the runs the answers file holds, not --runs")
-        if args.export_check and (args.from_answers or args.runs != 1 or args.baseline):
-            sys.exit("chat-eval: --export-check only draws the sample from --answers; it takes no --from-answers, --runs or --baseline")
+        if args.export_check and (args.from_answers or args.runs != 1 or args.baseline or args.judge):
+            sys.exit("chat-eval: --export-check only draws the sample from --answers; it takes no --from-answers, --runs, --baseline or --judge")
         try:
             if args.export_check:
                 config, corpus = _chat_config(args), _load_corpus(args)
@@ -364,15 +370,17 @@ def main(argv: list[str] | None = None) -> None:
                 )
             elif args.from_answers:
                 config, corpus = _chat_config(args), _load_corpus(args)
+                judge = _grounding_judge(args, config)
                 rescore_answers(
-                    config, corpus, args.evaluation_set, args.report, args.answers, _matching_rule(args), _works(args), args.baseline, args.check
+                    config, corpus, args.evaluation_set, args.report, args.answers, _matching_rule(args), _works(args), args.baseline, args.check, judge
                 )
             else:
                 chatbot, corpus = _chatbot(args)
+                judge = _grounding_judge(args, chatbot.config)
                 chat_eval(
-                    chatbot, corpus, args.evaluation_set, args.report, args.answers, _matching_rule(args), _works(args), args.runs, args.baseline, args.check
+                    chatbot, corpus, args.evaluation_set, args.report, args.answers, _matching_rule(args), _works(args), args.runs, args.baseline, args.check, judge
                 )
-        except (EvaluationSetError, AnswerModelUnavailable, AnswersMismatch, grounding_check.CheckExists) as error:
+        except (EvaluationSetError, AnswerModelUnavailable, AnswersMismatch, grounding_check.CheckExists, JudgeUnavailable) as error:
             sys.exit(f"chat-eval: {error}")
     elif args.command == "chat-label":
         if not args.check.exists():
@@ -407,6 +415,16 @@ def _chat_config(args: argparse.Namespace) -> ChatConfig:
         return load_chat_config(args.config)
     except ConfigError as error:
         sys.exit(f"{args.command}: {error}")
+
+
+def _grounding_judge(args: argparse.Namespace, config: ChatConfig) -> GroundingJudge | None:
+    """With --judge, the [chat.judge] decision model, checked against its pin before anything is asked. Raises
+    JudgeUnavailable."""
+    if not args.judge:
+        return None
+    if config.judge is None:
+        sys.exit(f"chat-eval: --judge needs a [chat.judge] table in {args.config}")
+    return grounding_judge.load_grounding_judge(config.judge)
 
 
 def _at_least_one(text: str) -> int:

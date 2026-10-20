@@ -9,7 +9,8 @@ history's Turns are in the answers file and the latency.
 `--runs N` asks the whole set N times: the first run is the one reported, and the others measure how much the
 answer model varies. `--from-answers` asks nothing: it scores the answers file's Turns again with the current code
 and rewrites the file, so a change to the scoring is measured with no model noise. `--export-check` asks nothing
-either: it draws the developer's sample of answered Turns from the answers file (ADR 0071).
+either: it draws the developer's sample of answered Turns from the answers file (ADR 0071). `--judge` has the
+decision model score the sample too (ADR 0075).
 """
 
 from collections.abc import Sequence
@@ -24,6 +25,7 @@ from .answers import Asked, Baseline, Run, read_baseline, rescore, runs_path, sc
 from .chat_report import write_chat_report
 from .config import ChatConfig
 from .conversation import Chatbot
+from .grounding_judge import GroundingJudge
 from . import grounding_check
 
 
@@ -38,14 +40,16 @@ def chat_eval(
     runs: int = 1,
     baseline: Path | None = None,
     check: Path | None = None,
+    judge: GroundingJudge | None = None,
 ) -> None:
     """Raises EvaluationSetError for a set that fails `eval-check`, AnswerModelUnavailable when the answer model
-    can't answer, and AnswersMismatch for a baseline that isn't an answers file, before any question is asked."""
+    can't answer, and AnswersMismatch for a baseline that isn't an answers file, before any question is asked, and
+    JudgeUnavailable when the judge fails on the sample."""
     questions = checked_questions(evaluation_set, corpus, rule, works)
     compared = None if baseline is None else read_baseline(baseline)
     chatbot.model()  # checked against its pin before anything is asked
     asked = [ask_all(questions, chatbot, rule) for _ in range(runs)]
-    _write(chatbot.config, corpus, evaluation_set, questions, report, answers, asked, compared, check, rescored=False)
+    _write(chatbot.config, corpus, evaluation_set, questions, report, answers, asked, compared, check, judge, rescored=False)
 
 
 def rescore_answers(
@@ -58,13 +62,14 @@ def rescore_answers(
     works: Works,
     baseline: Path | None = None,
     check: Path | None = None,
+    judge: GroundingJudge | None = None,
 ) -> None:
-    """Raises EvaluationSetError for a set that fails `eval-check`, and AnswersMismatch for an answers file asked
-    over other Chunks, another chatbot or another set."""
+    """Raises EvaluationSetError for a set that fails `eval-check`, AnswersMismatch for an answers file asked
+    over other Chunks, another chatbot or another set, and JudgeUnavailable."""
     questions = checked_questions(evaluation_set, corpus, rule, works)
     compared = None if baseline is None else read_baseline(baseline)
     runs = rescore(answers, questions, corpus, config, rule)
-    _write(config, corpus, evaluation_set, questions, report, answers, runs, compared, check, rescored=True)
+    _write(config, corpus, evaluation_set, questions, report, answers, runs, compared, check, judge, rescored=True)
 
 
 def export_check(
@@ -96,10 +101,11 @@ def _write(
     runs: Sequence[Run],
     baseline: Baseline | None,
     check: Path | None,
+    judge: GroundingJudge | None,
     rescored: bool,
 ) -> None:
     write_answers(answers, corpus, config, runs)
-    write_chat_report(report, evaluation_set, questions, corpus, config, runs, baseline, answers if rescored else None, check)
+    write_chat_report(report, evaluation_set, questions, corpus, config, runs, baseline, answers if rescored else None, check, judge)
     turns = sum(1 for item in runs[0] if not item.scored)
     stored = f"answers in {answers}" + (f" and runs 2..{len(runs)} in {runs_path(answers)}" if len(runs) > 1 else "")
     print(

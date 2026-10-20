@@ -77,6 +77,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0070](0070-the-chatbot-retrieves-collapsed-and-the-final-chat-numbers.md) | The chatbot retrieves with bge-small's `+collapsed` twin, and the final chat numbers | Accepted |
 | [0071](0071-the-developers-check-of-the-grounding-verdict.md) | The developer's check of the grounding verdict: a sample from the answers, a label page and the agreement in the chat report | Accepted, comparison amended by 0072 |
 | [0072](0072-the-hand-check-scores-each-sampled-reply.md) | The hand check scores the automatic check on each sampled reply, not only where the run still gives it | Accepted |
+| [0075](0075-tev1-as-a-grounding-judge-measured-against-the-hand-labels.md) | Tev1 as a grounding judge: P(yes) per claim and cited Chunk, averaged per Turn, measured against the hand labels | Accepted |
 
 ## Template
 

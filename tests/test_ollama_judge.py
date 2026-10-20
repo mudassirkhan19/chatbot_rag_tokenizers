@@ -51,7 +51,7 @@ class StubOllama:
             # Ollama 0.40.5's answer when a decision model's input is longer than its context.
             error = f"prompt 0 has {tokens} tokens; expected 1\u2013{self.max_tokens} (input is never truncated)"
             return httpx.Response(400, json={"error": error})
-        return httpx.Response(200, json={"answers": {"in_scope": {"type": "noul", "noul": self.noul}}})
+        return httpx.Response(200, json={"answers": {name: {"type": "noul", "noul": self.noul} for name in self.requests[-1]["questions"]}})
 
 
 def client(server: StubOllama) -> httpx.Client:
