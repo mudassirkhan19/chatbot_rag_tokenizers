@@ -1,4 +1,4 @@
-"""The chat page (ADRs 0054 and 0056): `chat` serves it on localhost with the standard library's threading HTTP
+"""The chat page (ADRs 0054, 0056 and 0067): `chat` serves it on localhost with the standard library's threading HTTP
 server, as `audit label` serves its page. The server holds one Conversation.
 
     GET  /        the page
@@ -11,7 +11,7 @@ A Turn comes back as its question and its Rewrite (null on the first Turn), its 
 order, numbered as the model saw it and marked cited or not, the model's raw reply, and the seconds spent
 retrieving, rewriting and answering. The page folds the uncited Chunks away.
 
-When the retriever is a `+collapsed` twin, its side table goes into each anchor too (#71): the merged Editions,
+When the retriever is a `+collapsed` twin, its side table goes into each anchor too (ADR 0067): the merged Editions,
 the files whose copies of the passage were folded into the Chunk, follow the Edition shown, as in "2112.06598v2,
 also v1 and 2022.naacl-main.293", and a Survey's Chunk is flagged. A raw retriever's Turn has no side table, and
 its anchors are as they were.
@@ -139,8 +139,8 @@ def anchor(chunk: Chunk, merged: dict[str, Merged] | None = None) -> dict[str, A
     else:
         pages = f"pp. {chunk.page_start}–{chunk.page_end}"
     section = " ".join(part for part in (chunk.section_number, chunk.section_title) if part)
-    behind = None if merged is None else merged[chunk.chunk_id]
-    editions = chunk.pinned_id if behind is None else editions_written(chunk.pinned_id, behind.editions)
+    folded = None if merged is None else merged[chunk.chunk_id]
+    editions = chunk.pinned_id if folded is None else editions_written(chunk.pinned_id, folded.editions)
     fields = {
         "title": title(chunk),
         "edition": chunk.pinned_id,
@@ -149,7 +149,7 @@ def anchor(chunk: Chunk, merged: dict[str, Merged] | None = None) -> dict[str, A
         "pages": pages,
         "anchor": " · ".join(part for part in (editions, section, pages) if part),
     }
-    return fields if behind is None else {**fields, "editions": editions, "also": list(behind.editions), "survey": behind.survey}
+    return fields if folded is None else {**fields, "editions": editions, "also": list(folded.editions), "survey": folded.survey}
 
 
 def editions_written(shown: str, also: tuple[str, ...]) -> str:

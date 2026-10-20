@@ -1,4 +1,4 @@
-"""The chatbot's config: the `[chat]` table of the retrieval config (ADRs 0054 and 0056).
+"""The chatbot's config: the `[chat]` table of the retrieval config (ADRs 0054, 0056 and 0067).
 
 It names the retriever the chatbot asks, out of the retrievers the same file configures or their `+collapsed`
 twins (ADR 0053), which retrieve over their retriever's index with the `[collapse]` pool, how many Chunks a Turn
