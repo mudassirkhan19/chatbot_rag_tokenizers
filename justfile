@@ -211,3 +211,7 @@ chat *args:
 # Ask the chatbot every question of the Evaluation set and write the chat report and answers; extra arguments go to the CLI
 chat-eval *args:
     uv run chatbot-rag-tokenizers chat-eval "$@"
+
+# Serve the page for checking the grounding verdict on the exported sample of answers; extra arguments go to the CLI
+chat-label *args:
+    uv run chatbot-rag-tokenizers chat-label "$@"

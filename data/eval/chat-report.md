@@ -93,6 +93,16 @@ Grounded is yes, no, or — for an Abstention. Passages in its Chunks counts the
 | vitamin-d | unanswerable | yes | — | — | — | — |
 | world-cup-2018 | unanswerable | yes | — | — | — | — |
 
+## Grounding checked by hand
+
+The developer's labels on a seeded sample of answered Turns (`chat-eval --export-check`, labelled on the `chat-label` page) against this run's automatic verdict. A row is compared when the developer gave it a label and this run asked its question with the same reply over the same Chunks.
+
+- Sample: `data/eval/grounding-check.csv`, 20 Turns: 0 labelled by the developer, 0 left unsure, 20 not checked by the developer
+- Agreement with the automatic verdict: 0/0 (—)
+- Grounded by the automatic check but not by hand: 0; not grounded by the check but grounded by hand: 0
+
+No disagreements.
+
 ## Variation
 
 3 runs of the whole set, one after another in one process; the report above is run 1's, and the answers file's runs file holds the others. A range is the lowest and highest rate over the runs.

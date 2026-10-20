@@ -70,6 +70,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0063](0063-versions-and-near-duplicates-measured-before-and-after.md) | Versions and near-duplicates, measured before and after | Accepted |
 | [0064](0064-a-decline-in-the-models-own-words-is-an-abstention.md) | A decline in the model's own words is an Abstention | Accepted |
 | [0065](0065-the-embedding-comparison-on-the-raw-ranking.md) | The embedding comparison on the raw ranking: bge-small stays | Proposed, until #61 scores it on the Collapsed ranking |
+| [0066](0066-the-developers-check-of-the-grounding-verdict.md) | The developer's check of the grounding verdict: a sample from the answers, a label page and the agreement in the chat report | Accepted |
 
 ## Template
 

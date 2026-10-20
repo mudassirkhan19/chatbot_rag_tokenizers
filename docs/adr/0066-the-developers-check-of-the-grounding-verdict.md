@@ -1,0 +1,25 @@
+# 0066. The developer's check of the grounding verdict
+
+- **Date:** 2026-10-20
+- **Status:** Accepted
+
+## Context
+The chat report's grounded rate comes from an automatic check ([0059](0059-abstention-by-instruction-and-the-chat-report.md)). An answer counts as grounded when it cites a retrieved Chunk, every marker it holds names one, and every number it gives is in a cited Chunk. The check reads markers and numbers only. It can't tell whether a cited Chunk says what the sentence citing it claims. The committed run counts 27 of 27 answers as grounded, so a reviewer can't tell from the report how much that rate overstates. Spec #63 (stories 49–51) asks for a hand check of a sample, in the audit label page's shape ([0020](0020-blind-agent-labels-checked-by-the-developer.md)), and for the agreement with it in the chat report.
+
+## Decision
+- **The sample is drawn from the answers file, not from a new run.** `chat-eval --export-check` asks nothing. It re-scores the answers file's run 1 with the current code, as `--from-answers` does. It draws `--sample-size` (default 20) of the scored Turns that are not Abstentions, with `--seed` (default 0), and writes them in the Evaluation set's order to `data/eval/grounding-check.csv`. An Abstention is neither grounded nor not, so it has nothing to check. The same answers and seed give the same file. An existing file is replaced only with `--force`, because it may hold labels.
+- **Each row reads on its own.** A row holds the question, its Rewrite, the raw reply, the retrieved Chunk ids, and each cited Chunk's number, id, context header and text as JSON. It also holds the automatic verdict as `draft_label`, with its reason in words, and copies it into `label`. `checked_by` is `draft`, `agent` or `developer`, as `labelled_by` is in the Audit set. A reviewer can read the file without the parse cache.
+- **A page for labelling.** `chat-label` serves one Turn per screen. It shows the answer with its markers (a marker naming no retrieved Chunk is struck through) and its numbers highlighted, the automatic verdict and its reason, and the cited Chunks with the answer's numbers highlighted in them. Each save rewrites that row with `label` (grounded, not grounded, or empty for unsure), the note, and `checked_by=developer`. The server rejects any other label. The question asked is stricter than the check: is every claim supported by the Chunk it cites?
+- **The report compares only labels that still apply.** The chat report's *Grounding checked by hand* section takes the rows the developer labelled. It compares each with the reported run's verdict for that question, but only when the run's reply and retrieved Chunks are the row's: a label judges one reply. It gives the agreement with its Wilson interval, the disagreements split by direction, and a table of each one with the developer's note. It also names the labelled rows it could not compare because a later run changed them. With no sample file, it says how to draw one. The section depends only on the inputs and the file, so `--from-answers` reproduces it.
+- **The committed report was spliced, not re-run.** The committed report's *Against the baseline* section compares with an answers file its own run overwrote, and its timings were measured. Re-scoring would lose both. So the new section was cut from a `--from-answers` report of the committed answers and spliced in, after checking that everything above it came out byte for byte as committed.
+
+## Alternatives considered
+- **Export from a fresh `chat-eval` run.** That would need Ollama, and the labels would judge replies other than the committed ones.
+- **Store Chunk ids only, and have the page read the parse cache.** The file would be smaller. But the page would need the corpus, and a reviewer reading the committed file couldn't see what was checked.
+- **Stratify by the automatic verdict, as the Audit set is by stratum.** Every committed answer is automatically grounded, so there is only one stratum. A uniform seeded sample does the same now, and stays simple when not-grounded answers appear.
+- **Match a label to the run by question id alone.** A rerun usually rewords a third of the replies ([0062](0062-re-scoring-run-to-run-variation-and-wilson-intervals.md)). A label on the old wording would then be scored against a reply nobody read.
+
+## Consequences
+- With every draft grounded, the sample measures only how often an automatically grounded answer really is grounded, which is the check's precision. Its recall needs not-grounded answers in the sample, which the committed run does not have.
+- A new `chat-eval` run leaves the labelled rows whose reply changed uncompared, and the report names them. Exporting again with `--force` throws the labels away. Re-labelling only the changed rows is left for when it's needed.
+- 20 rows give a wide interval: 20 of 20 in agreement is [0.84, 1.00].
