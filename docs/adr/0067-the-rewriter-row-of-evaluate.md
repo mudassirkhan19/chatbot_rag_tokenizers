@@ -1,4 +1,4 @@
-# 0066. The rewriter row of `evaluate`
+# 0067. The rewriter row of `evaluate`
 
 - **Date:** 2026-10-20
 - **Status:** Accepted; amends [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) (a follow-up is run four ways) and [0056](0056-follow-ups-the-conversation-and-the-rewrite.md) (a Turn with no answer is shown to the rewriter as its question only).

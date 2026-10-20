@@ -807,7 +807,7 @@ def test_a_hybrid_ranks_by_the_sum_of_its_members_reciprocal_ranks(indexed, tmp_
     config = tmp_path / "retrieval-tiny.toml"
     config.write_text(RETRIEVAL_CONFIG.read_text() + TINY_HYBRID)
     run_index(indexed, retrieval_config=config, options=("--retriever", "hybrid.tiny"))
-    corpus = load_corpus(load_parse_config(REPO_CONFIG), indexed / "cache", indexed / "parse-report.md")
+    corpus = load_corpus(load_parse_config(REPO_CONFIG), indexed / "cache", indexed / "parse-report.md", MANIFEST)
     retrievers = load_retrieval_config(config).retrievers
 
     query = "byte pair encoding merges"
@@ -1008,7 +1008,7 @@ def test_a_survey_keeps_its_slot(with_venue_edition, tmp_path):
 
 
 def test_a_collapsed_hit_carries_its_work_merged_editions_and_copies_and_keeps_its_citation_anchor(with_venue_edition):
-    corpus = load_corpus(load_parse_config(REPO_CONFIG), with_venue_edition / "cache", with_venue_edition / "parse-report.md")
+    corpus = load_corpus(load_parse_config(REPO_CONFIG), with_venue_edition / "cache", with_venue_edition / "parse-report.md", MANIFEST)
     bm25 = load_retrieval_config(RETRIEVAL_CONFIG).bm25
     raw = index.load(with_venue_edition / "index-cache", corpus, bm25).retriever
     chunks = {chunk.chunk_id: chunk for chunk in corpus.chunks}

@@ -132,8 +132,9 @@ just evaluate     # score the retrievers on the Evaluation set and write the eva
 - **`index` inputs.**
   - The parse report (`data/parse-report.md`, `--parse-report`) decides which files make up the corpus: every file it lists as parsed.
   - Their Chunks come from the parse cache (`--cache`), under the chunking config in `config/parse.toml` (`--parse-config`).
+  - Each file's Chunks cite the pinned id the report lists for it, and that id's Edition in the manifest (`--manifest`), whichever id filled the cache (ADR 0066). `evaluate`, `chat`, `chat-eval` and `eval-check` read them the same way.
   - Each retriever's settings are in `config/retrieval.toml` (`--config`). `--retriever bm25` or `--retriever dense.bge-small` builds only the retrievers named, and a hybrid's members with it; the default is all of them.
-  - `index` stops with a pointer to `just parse` when the report is missing, when the report was written with another GROBID image or chunking config, when the cache holds no Chunks for the report's files, or when it holds them only under another chunking config.
+  - `index` stops with a pointer to `just parse` when the report is missing, when the report was written with another GROBID image or chunking config, when the cache holds no Chunks for the report's files, or when it holds them only under another chunking config. It also stops when the manifest is missing or no longer includes an Edition pinned to a parsed file.
 - **`index` outputs.** Each index goes to the index cache (`data/index-cache/<chunking key>/<retriever key>/`, `--index-cache`, never committed) with a record of:
   - its settings;
   - the corpus it was built over;
@@ -196,12 +197,32 @@ just evaluate     # score the retrievers on the Evaluation set and write the eva
   - the Comparison (ADR 0061): each retriever against the baseline named in `[comparison]` of the retrieval config (`dense.bge-small`), each `+collapsed` twin against the baseline's twin, over the answerable questions as a user asks them. Per metric (Recall@5 and MRR@10), it gives the questions won, tied and lost, a 95% percentile bootstrap interval on the mean and on the paired difference from the baseline (10,000 resamples, seed 55, the same draws for every retriever), and "within noise" when the difference's interval holds 0. It also gives the rank of each question's first hit, one column per retriever. It names no winner. `evaluate` stops if the baseline isn't among the retrievers it scores;
   - the Cost table, last: each retriever's parameters, vector dimension and index size on disk (a hybrid's are its members' summed), its index build time and device, and its query latency (p50 and p95) and device.
 - **Scoring rules.**
-  - Each follow-up is scored four ways, in separate rows: alone, after its history, as its reference rewrite, and as the chatbot's own Rewrite (`rewriter`, ADR 0066). The rewriter is the `[chat]` answer model with its rewrite prompt, shown the follow-up's stored history as earlier questions with no answers. It needs the `[chat]` table and Ollama with the pinned model (`just init`); without either, `evaluate` prints that the rewriter row is skipped, and the report says so and is otherwise the same.
+  - Each follow-up is scored four ways, in separate rows: alone, after its history, as its reference rewrite, and as the chatbot's own Rewrite (`rewriter`, ADR 0067). The rewriter is the `[chat]` answer model with its rewrite prompt, shown the follow-up's stored history as earlier questions with no answers. It needs the `[chat]` table and Ollama with the pinned model (`just init`); without either, `evaluate` prints that the rewriter row is skipped, and the report says so and is otherwise the same.
   - Unanswerable questions are left out of the metrics.
   - A Chunk holds a Passage when at least 65% of the quote's words match the Chunk's in order, and every number in the quote matches (ADR 0041), whichever Edition the Chunk comes from. Before matching, unicode, case, whitespace and hyphenation are normalised and citations are dropped. The 65% was calibrated on three CC BY Seeds with several Versions; `hack/calibrate_matcher.py` reruns the sweep from `data/eval/calibration.jsonl`.
 - **Reproducible.** Two runs on the same index give the same report apart from the times in the Cost table.
 
-The committed Evaluation set has 36 checked questions (ADR 0046), and the committed eval report scores all seven retrievers over the full corpus. ADR 0065 (Proposed) applies the embedding comparison's decision rule to its raw numbers: nothing beats `dense.bge-small` beyond noise, so it stays. The final choice is made on the Collapsed ranking (#61).
+The committed Evaluation set has 36 checked questions (ADR 0046), and the committed eval report scores all seven retrievers over the full corpus.
+
+### The embedding comparison: bge-small stays
+
+The decision rule was fixed in spec #55 before any run: recommend the best *all answerable* Recall@5, unless its lead over a cheaper retriever is within noise (the paired bootstrap interval of the difference holds 0), and keep `dense.bge-small` if nothing beats it beyond noise. ADR 0065 applies it to both rankings and makes the choice on the Collapsed one, which the chatbot will retrieve with. The numbers are the eval report's *Comparison* and *Cost* sections: the 28 answerable questions as a user asks them, against `dense.bge-small` (raw) and `dense.bge-small+collapsed` (collapsed), with 95% intervals from 10,000 resamples, seed 55.
+
+| Retriever | Recall@5 raw | Recall@5 collapsed | Difference, collapsed [95%] | MRR@10 raw | MRR@10 collapsed | Query p50, collapsed |
+|---|---:|---:|---|---:|---:|---:|
+| bm25 | 0.16 | 0.20 | -0.18 [-0.36, +0.00], within noise | 0.118 | 0.138 | about 190 ms |
+| **dense.bge-small** | 0.30 | **0.38** | — | 0.244 | 0.271 | about 28 ms |
+| dense.bge-base | 0.29 | 0.32 | -0.05 [-0.18, +0.07], within noise | 0.211 | 0.258 | about 37 ms |
+| dense.openscholar | 0.07 | 0.08 | -0.29 [-0.49, -0.10], beyond noise | 0.046 | 0.061 | about 36 ms |
+| hybrid.bm25+bge-small | 0.34 | 0.39 | +0.01 [-0.14, +0.16], within noise | 0.257 | 0.277 | about 220 ms |
+| hybrid.bm25+bge-base | 0.34 | 0.35 | -0.02 [-0.20, +0.14], within noise | 0.237 | 0.270 | about 240 ms |
+| hybrid.bm25+openscholar | 0.28 | 0.32 | -0.06 [-0.25, +0.12], within noise | 0.190 | 0.227 | about 237 ms |
+
+- **Recommendation: `dense.bge-small`**, on both rankings. On the collapsed numbers the best Recall@5 is `hybrid.bm25+bge-small`'s 0.39, but its +0.01 lead is within noise, and bge-small is the cheaper of the two: about 28 ms per query against about 220 ms, and its index builds in 1318.64 s against 1327.99 s. Collapsing doesn't change the choice. It narrows the hybrid's raw lead of +0.04 [-0.09, +0.16].
+- **A scientific model doesn't help here.** OpenScholar_Retriever is the only retriever beyond noise, and it is a loss. It finds the right paper about as often as bge-small, but ranks the paper's short Chunks (captions, short lists) above the one holding the Passage (ADR 0065).
+- **Size doesn't help either.** bge-base, three times bge-small's parameters, scores 0.32 against 0.38 and takes twice as long to build.
+- **Keyword search beside vectors: not on this evidence.** The BM25 hybrids never lose much, and they help the follow-ups put as their reference rewrite (0.88 against 0.50 collapsed, 8 questions). But on the *all answerable* row their lead is one question at most, inside the noise, at about eight times bge-small's latency.
+- `[chat]` in `config/retrieval.toml` names `dense.bge-small` as the chatbot's retriever. Loading the config refuses a name the file doesn't configure.
 
 ## Reproduce the baseline
 
@@ -249,7 +270,7 @@ If `evaluate` names Editions with no Work group (a new retriever ranks papers th
 just chat        # serves the chat page and prints its URL, http://localhost:8766 (--port sets another)
 ```
 
-Type a question and the page answers it from the papers. Each question retrieves the top 5 Chunks from the retriever the `[chat]` table of `config/retrieval.toml` names, which is the dense baseline (`dense.bge-small`) until the embedding comparison names its choice. The pinned answer model, `gemma4:e2b-mlx` on Ollama with thinking off and temperature 0, answers from those Chunks only (ADR 0054). An answer takes one to three seconds on an Apple-silicon laptop, and a follow-up a second or two more for its Rewrite.
+Type a question and the page answers it from the papers. Each question retrieves the top 5 Chunks from the retriever the `[chat]` table of `config/retrieval.toml` names, which is `dense.bge-small`, the embedding comparison's choice (ADR 0065). The pinned answer model, `gemma4:e2b-mlx` on Ollama with thinking off and temperature 0, answers from those Chunks only (ADR 0054). An answer takes one to three seconds on an Apple-silicon laptop, and a follow-up a second or two more for its Rewrite.
 
 - **The answer** carries a numbered marker such as `[2]` for each Chunk it uses. A marker that names no retrieved Chunk is struck through as invalid, never dropped.
 - **The references** under the answer give, for each cited Chunk, the paper's title, its pinned Edition id with Version, the Section number and title, and the pages.

@@ -4,7 +4,7 @@ It names what was scored (the Evaluation set, the chunking config and corpus, ea
 then gives a results table per retriever and question type, each retriever's raw ranking followed by its
 Collapsed ranking (ADR 0053), the Comparison against a baseline (ADR 0061), what crowds the top 5 (ADR 0044),
 the two rankings side by side (ADR 0063), the grouping rule scored against the Work groups (ADR 0060), each
-follow-up's Rewrite beside its reference rewrite (ADR 0066) and a line per question, then the Cost table. Everything above the Cost table, which comes last, depends only on the inputs, so two runs on the same index give the same
+follow-up's Rewrite beside its reference rewrite (ADR 0067) and a line per question, then the Cost table. Everything above the Cost table, which comes last, depends only on the inputs, so two runs on the same index give the same
 report up to that section, and the Cost table differs only in its times.
 """
 
@@ -50,7 +50,7 @@ ALL_ANSWERABLE = f"{AS_ASKED}, follow-ups alone"  # the all-answerable row: see 
 
 @dataclass(frozen=True)
 class Rewriter:
-    """What the rewriter wrote for the follow-ups (ADR 0066), or why it was skipped."""
+    """What the rewriter wrote for the follow-ups (ADR 0067), or why it was skipped."""
 
     model: str  # the answer model and how it is run, as the chat report names them
     prompt: str
@@ -134,7 +134,7 @@ def write_eval_report(
         "- Unanswerable questions are run but left out of the metrics.",
         f"- A follow-up is run four ways: {FOLLOW_UP_ALONE}, {WITH_HISTORY} (its prior turns, then the follow-up, joined by"
         f" spaces), {REWRITE} and {REWRITER}, the chatbot's Rewrite: the answer model, given the `[chat]` rewrite prompt,"
-        " the last `history` prior turns as earlier questions with no answers, and the follow-up (ADR 0066). The *all"
+        " the last `history` prior turns as earlier questions with no answers, and the follow-up (ADR 0067). The *all"
         " answerable* row takes each follow-up alone, as a user would ask it.",
         *_rewriter(rewriter),
         "",

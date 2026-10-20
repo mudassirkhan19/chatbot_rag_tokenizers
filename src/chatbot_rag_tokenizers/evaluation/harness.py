@@ -6,7 +6,7 @@
 
 Unanswerable questions are run, so they get a line and a latency, but are left out of the metrics. A
 follow-up is run three ways: alone, after its history, and as its reference rewrite, and a fourth, as the chatbot's
-Rewrite, when `evaluate` has the answer model (ADR 0066). Each query keeps its
+Rewrite, when `evaluate` has the answer model (ADR 0067). Each query keeps its
 top 5, for measuring what crowds it (crowding.py). A Collapsed ranking (ADR 0053) is scored the same way, and
 its query also keeps the Editions merged into each slot and how many distinct Chunks its pool held.
 """

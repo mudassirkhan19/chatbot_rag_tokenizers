@@ -125,7 +125,6 @@ def main(argv: list[str] | None = None) -> None:
     )
     _add_corpus_arguments(index_cmd)
     index_cmd.add_argument("--snapshot", type=Path, default=Path("data/snapshot"), help="where the index record of indexed files goes")
-    index_cmd.add_argument("--manifest", type=Path, default=Path("data/manifest.csv"), help="its Editions whose files are all indexed are marked indexed")
     index_cmd.add_argument("--funnel-report", type=Path, default=Path("data/report.md"), help="the funnel and channel report, rewritten with the indexed count")
 
     evaluate_cmd = commands.add_parser(
@@ -396,11 +395,17 @@ def _add_corpus_arguments(command: argparse.ArgumentParser) -> None:
 
 
 def _add_chunk_arguments(command: argparse.ArgumentParser) -> None:
-    """Where the corpus's Chunks are: the parse config, cache and report."""
+    """Where the corpus's Chunks are: the parse config, cache and report, and the manifest that names their Editions."""
     command.add_argument("--parse-config", type=Path, default=Path("config/parse.toml"), help="the chunking config the Chunks were cut with")
     command.add_argument("--cache", type=Path, default=Path("data/parse-cache"), help="the parse cache (default data/parse-cache)")
     command.add_argument(
         "--parse-report", type=Path, default=Path("data/parse-report.md"), help="its parsed files make up the corpus (default data/parse-report.md)"
+    )
+    command.add_argument(
+        "--manifest",
+        type=Path,
+        default=Path("data/manifest.csv"),
+        help="the Edition of each parsed file and the Editions of each Work; `index` marks the wholly indexed Editions in it",
     )
 
 
@@ -408,9 +413,6 @@ def _add_evaluation_set_arguments(command: argparse.ArgumentParser) -> None:
     """The arguments `evaluate`, `chat-eval` and `eval-check` share: the Evaluation set and the Passage matching rule."""
     command.add_argument("--evaluation-set", type=Path, default=Path("data/eval/evaluation-set.jsonl"))
     command.add_argument("--eval-config", type=Path, default=Path("config/evaluation.toml"), help="the Passage matching rule")
-    command.add_argument(
-        "--manifest", type=Path, default=Path("data/manifest.csv"), help="links the Editions of a Work, for the multi-paper check"
-    )
 
 
 def _matching_rule(args: argparse.Namespace) -> MatchingRule:
@@ -426,7 +428,7 @@ def _works(args: argparse.Namespace) -> Works:
 
 def _load_corpus(args: argparse.Namespace) -> Corpus:
     try:
-        return load_corpus(load_parse_config(args.parse_config), args.cache, args.parse_report)
+        return load_corpus(load_parse_config(args.parse_config), args.cache, args.parse_report, args.manifest)
     except CorpusError as error:
         sys.exit(f"{args.command}: {error}")
 

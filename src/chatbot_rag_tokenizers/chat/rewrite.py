@@ -4,7 +4,7 @@ The answer model gets the config's rewrite prompt, then one user message holding
 answer texts, never their Chunks, and the follow-up. Its reply, cut to its first line without quotes, is the
 Rewrite. A reply with nothing left falls back to the follow-up as asked, so retrieval always has a query.
 `evaluate` rewrites a stored follow-up from its history's questions alone, which have no answers: an earlier Turn
-with an empty answer is shown as its question only (ADR 0066).
+with an empty answer is shown as its question only (ADR 0067).
 """
 
 from .answer import Earlier
