@@ -37,6 +37,7 @@
   ol.refs { margin: 0; padding-left: 0; list-style: none; }
   ol.refs li { margin-bottom: 6px; }
   .num { display: inline-block; min-width: 2.2em; color: var(--accent); font-weight: 600; }
+  .survey { color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-size: 11px; margin-left: 4px; }
   .chunk { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; font-size: 14px; }
   .chunk.flash { outline: 2px solid var(--accent); }
   .chunk .anchor { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
@@ -73,10 +74,18 @@ async function loadStatus() {
   $("banner").textContent = status.error || "";
 }
 
+function surveyMark() {
+  const mark = el("span", "survey", "Survey");
+  mark.title = "From a Survey: a Work that restates other Works' findings";
+  return mark;
+}
+
 function chunkCard(turnId, chunk) {
   const card = el("div", "chunk");
   card.id = `${turnId}-chunk-${chunk.number}`;
-  card.append(el("div", "anchor", `[${chunk.number}] ${chunk.title} · ${chunk.anchor}`), el("div", "text", chunk.text));
+  const anchor = el("div", "anchor", `[${chunk.number}] ${chunk.title} · ${chunk.anchor}`);
+  if (chunk.survey) anchor.append(surveyMark());
+  card.append(anchor, el("div", "text", chunk.text));
   return card;
 }
 
@@ -112,7 +121,9 @@ function render(turn, turnId) {
     for (const ref of turn.references) {
       const item = el("li");
       const section = [ref.section_number, ref.section_title].filter(Boolean).join(" ");
-      item.append(el("span", "num", `[${ref.number}]`), `${ref.title}. ${ref.edition}, ${section}` + (ref.pages ? `, ${ref.pages}` : "") + ".");
+      // After the collapse, the Edition shown is followed by the merged Editions: "2112.06598v2, also v1".
+      item.append(el("span", "num", `[${ref.number}]`), `${ref.title}. ${ref.editions ?? ref.edition}, ${section}` + (ref.pages ? `, ${ref.pages}` : "") + ".");
+      if (ref.survey) item.append(surveyMark());
       refs.append(item);
     }
     left.append(refs);

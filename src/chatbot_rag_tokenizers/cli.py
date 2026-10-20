@@ -28,6 +28,7 @@ from .parsing import pipeline as parsing
 from .parsing.config import load_parse_config
 from .parsing.grobid import GrobidUnreachable
 from .retrieval import index
+from .retrieval.collapse import Collapsed
 from .retrieval.config import load_retrieval_config
 from .retrieval.corpus import Corpus, CorpusError, load_corpus
 from .retrieval.retriever import RetrieverConfig
@@ -373,7 +374,11 @@ def _chatbot(args: argparse.Namespace) -> tuple[Chatbot, Corpus]:
         built = index.load(args.index_cache, corpus, config.retriever)
     except index.IndexMissing as error:
         sys.exit(f"{args.command}: {error}")
-    return Chatbot(config, built.retriever, {chunk.chunk_id: chunk for chunk in corpus.chunks}), corpus
+    chunks = {chunk.chunk_id: chunk for chunk in corpus.chunks}
+    retriever = built.retriever
+    if config.collapse_pool:
+        retriever = Collapsed(retriever, chunks, read_manifest(args.manifest), config.collapse_pool)
+    return Chatbot(config, retriever, chunks), corpus
 
 
 def _chat(args: argparse.Namespace) -> None:

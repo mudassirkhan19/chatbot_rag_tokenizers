@@ -943,7 +943,7 @@ def test_a_collapsed_hit_carries_its_work_merged_editions_and_copies_and_keeps_i
     assert chunks[shown].pinned_id == "P16-1162"
     copies = tuple(c for c in pool if chunks[c].pinned_id == "1508.07909v5" and chunks[c].text == chunks[shown].text)
     assert len(copies) == 1
-    assert collapse.merged[shown] == Merged("sennrich-2016-neural-machine-translation", ("1508.07909v5",), copies)
+    assert collapse.merged[shown] == Merged("sennrich-2016-neural-machine-translation", ("1508.07909v5",), copies, survey=False)
     # The raw (chunk id, score) shape, and the Chunk itself with its citation anchor, as the raw ranking gives them.
     assert dict(collapse.ranking)[shown] == dict(raw.query(text, 50))[shown]
     assert collapsed.query(text, 5) == collapse.ranking

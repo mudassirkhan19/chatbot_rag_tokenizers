@@ -305,6 +305,21 @@ def test_the_report_names_the_retriever_the_model_pin_the_prompts_hashes_and_the
     assert report.index("## Questions") < report.index("## Timings") and report.rstrip().endswith("s |")
 
 
+def test_a_collapsed_chatbot_is_named_by_its_twin_and_pool_and_its_answers_are_not_rescored_as_the_raw_ones(indexed, fake_answer_model):
+    script(fake_answer_model)
+    config = indexed / "retrieval-collapsed.toml"
+    config.write_text(RETRIEVAL_CONFIG.read_text().replace('retriever = "dense.bge-small"', 'retriever = "dense.bge-small+collapsed"'))
+    key = load_chat_config(RETRIEVAL_CONFIG).retriever.key
+
+    report, _ = run_chat_eval(indexed, EVALUATION_SET, "chat", "--config", str(config))
+
+    # The twin retrieves over its retriever's index, so the key is the raw retriever's; the pool tells them apart.
+    assert f"- Retriever: dense.bge-small+collapsed (`{key}`), collapse pool 50, 5 Chunks per Turn" in report
+    with pytest.raises(SystemExit) as stopped:
+        run_chat_eval(indexed, EVALUATION_SET, "chat", "--from-answers")
+    assert "collapse_pool 50, not None" in str(stopped.value.code)
+
+
 def edit_answers(path: Path, edit) -> None:
     """Rewrite the answers file with ``edit`` applied to each Turn's record, its first line left as it is."""
     first, *records = path.read_text(encoding="utf-8").splitlines()

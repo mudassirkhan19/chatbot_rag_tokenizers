@@ -66,7 +66,7 @@ def write_chat_report(
         "",
         "## Chatbot",
         "",
-        f"- Retriever: {config.retriever.name} (`{config.retriever.key}`), {k} Chunks per Turn",
+        f"- Retriever: {config.retriever_name} (`{config.retriever.key}`),{_pool(config)} {k} Chunks per Turn",
         f"- Answer model: {pin(config.model)}, thinking {'on' if config.model.think else 'off'}, temperature {config.model.temperature}",
         f"- System prompt sha256: `{_sha256(config.system_prompt)}` (with the Abstention sentence filled in)",
         f"- Rewrite prompt sha256: `{_sha256(config.rewrite_prompt)}`",
@@ -338,3 +338,8 @@ def _percentile(seconds: Sequence[float], percent: int) -> str:
     ordered = sorted(seconds)
     value = statistics.quantiles(ordered, n=100, method="inclusive")[percent - 1] if len(ordered) > 1 else ordered[0]
     return f"{value:.2f} s"
+
+
+def _pool(config: ChatConfig) -> str:
+    """The collapse pool of a `+collapsed` twin, which retrieves over its retriever's index and so has its key."""
+    return f" collapse pool {config.collapse_pool}," if config.collapse_pool else ""
