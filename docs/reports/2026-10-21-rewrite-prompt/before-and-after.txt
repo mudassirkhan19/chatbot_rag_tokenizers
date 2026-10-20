@@ -1,0 +1,54 @@
+== before
+  questions: Recall@5 0.25
+  answers: Recall@5 0.50
+  wechsel-neighbours
+    Q: [0] When a model is transferred to a new language with WECHSEL, do its non-embedding weights have to be held fixed early in training? When it builds the new subword embeddings from similar source subwords, what temperature and how many neighbours does it use?
+    A: [0] When the process builds new subword embeddings from similar source subwords, what temperature and how many neighbours does it use?
+  canine-hashing
+    Q: [0] How does the model give every possible character an embedding without an enormous table?
+    A: [1] How does CANINE give every possible character an embedding without an enormous table?
+  digits-fourth-digit
+    Q: [0] When the answer is longer than the numbers being added, where does the left-to-right version go wrong?
+    A: [0] When the answer is longer than the numbers being added, where does the left-to-right version go wrong?
+  vocabulary-with-scarce-data
+    Q: [0] What happens to the optimum when there isn't much training data?
+    A: [1] What happens to the predicted optimal vocabulary size when there isn't much training data?
+  code-tokenizer-initialisation
+    Q: [0] How were the embeddings for the new tokens set up before that training in the code study?
+    A: [0] How were the embeddings for the new tokens set up before that training in the code study?
+  magikarp-norm-indicator
+    Q: [1] Is there a signal in the weights that spots the under-trained tokens without already knowing some?
+    A: [1] Is there a signal in the weights that spots severely under-trained tokens without already knowing some?
+  superbpe-mmlu
+    Q: [0] How much did the improvement on MMLU look like?
+    A: [0] How much did the two-pass tokenization strategy help on MMLU?
+  tokenization-latency
+    Q: [1] Do longer token sequences slow processing down, and how does the time grow with length?
+    A: [1] Do longer token sequences also slow processing down, and how does the time grow with length?
+== C
+  questions: Recall@5 0.38
+  answers: Recall@5 0.62
+  wechsel-neighbours
+    Q: [0] When the model is transferred to a new language with WECHSEL, do its non-embedding weights have to be held fixed early in training? When the model builds the new subword embeddings from similar source subwords, what temperature and how many neighbours does it use?
+    A: [1] When the WECHSEL method builds the new subword embeddings from similar source subwords, what temperature and how many neighbours does it use?
+  canine-hashing
+    Q: [1] How does CANINE give every possible character an embedding without an enormous table?
+    A: [1] How does CANINE give every possible character an embedding without an enormous table?
+  digits-fourth-digit
+    Q: [0] How were the models made to split numbers starting from the right in the study of how number tokenization direction affects GPT arithmetic? And when the answer is longer than the numbers being added, where does the left-to-right version go wrong in the GPT arithmetic study?
+    A: [0] And when the answer is longer than the numbers being added, where does the left-to-right version of the GPT arithmetic model go wrong?
+  vocabulary-with-scarce-data
+    Q: [1] What happens to the optimum when there isn't much training data for the work on scaling laws for vocabulary size?
+    A: [1] What happens to the predicted optimal vocabulary size when there isn't much training data for the work on scaling laws for vocabulary size?
+  code-tokenizer-initialisation
+    Q: [0] How were the embeddings for the new tokens set up before the continued training, according to Dagan et al.'s code study?
+    A: [0] How were the embeddings for the new tokens set up before the continued training described in Dagan et al.'s code study?
+  magikarp-norm-indicator
+    Q: [0] Is there a signal in the weights that spots the under-trained tokens without already knowing some, according to Fishing for Magikarp?
+    A: [1] Is there a signal in the weights that spots the severely under-trained tokens without already knowing some?
+  superbpe-mmlu
+    Q: [0] How much did SuperBPE help on MMLU?
+    A: [0] How much did SuperBPE help on MMLU?
+  tokenization-latency
+    Q: [1] How does the time grow with length for the longer token sequences discussed in the paper on tokenization?
+    A: [1] Do the longer token sequences also slow processing down, and how does the time grow with length for the commercial language model API usage discussed in the answer?
