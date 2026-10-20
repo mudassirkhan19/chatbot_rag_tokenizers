@@ -76,6 +76,7 @@ def write_chat_report(
         f"- Answer model: {pin(config.model)}, thinking {'on' if config.model.think else 'off'}, temperature {config.model.temperature}",
         f"- System prompt sha256: `{_sha256(config.system_prompt)}` (with the Abstention sentence filled in)",
         f"- Rewrite prompt sha256: `{_sha256(config.rewrite_prompt)}`",
+        *([f"- Names prompt sha256: `{_sha256(config.names_prompt)}`"] if config.per_paper else []),
         f"- Abstention sentence: \"{config.abstention}\"",
         f"- Earlier Turns shown on a follow-up: {config.history}",
         "",

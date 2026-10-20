@@ -451,15 +451,29 @@ def test_with_no_answer_model_the_rewriter_row_is_skipped_and_the_other_rows_are
     monkeypatch.setattr(answer_model, "load_answer_model", unreachable)
     without = run_evaluate(indexed, report="without.md")
 
-    assert "evaluate: the rewriter row is skipped: Ollama is not answering" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "evaluate: the rewriter row is skipped: Ollama is not answering" in out
+    assert "evaluate: the per-paper twins are skipped: Ollama is not answering" in out
     assert "- The rewriter row is skipped: Ollama is not answering at http://localhost:11434." in without
+    assert "- The per-paper twins are skipped: Ollama is not answering at http://localhost:11434." in without
+    assert not [heading for heading in headings(without) if "+per-paper" in heading]
+    assert "None: the per-paper twins are skipped." in section(without, "## Questions")
     assert rewrites(without) == "None: the rewriter row is skipped."
     rows = results(with_rewriter)
     assert rows.pop(("follow-up", "rewriter")) == ["1", "1.00", "0.500", "1.00"]
     assert results(without) == rows
-    # Every table that takes the follow-up as a user asks it is the same without the rewriter.
-    for heading in ("## Comparison", "## Crowding", "## Before and after", "## Grouping", "## Editions without a Work group"):
-        assert section(without, heading) == section(with_rewriter, heading)
+    # Every table that takes the follow-up as a user asks it is the same without the rewriter, but for the per-paper twins.
+    for heading in ("## Crowding", "## Before and after", "## Grouping", "## Editions without a Work group"):
+        assert section(without, heading) == without_per_paper(section(with_rewriter, heading))
+    for heading in ("### Comparison: Recall@5", "### Comparison: MRR@10"):
+        assert table(without, heading) == [row for row in table(with_rewriter, heading) if "+per-paper" not in row[0]]
+
+
+def without_per_paper(text: str) -> str:
+    """The report text without its per-paper twins: their ### subsections and their table rows."""
+    kept = [part for part in text.split("\n### ") if not part.split("\n", 1)[0].endswith("+per-paper+collapsed")]
+    rows = ("| per paper, collapsed |", "+per-paper+collapsed |")
+    return "\n".join(line for line in "\n### ".join(kept).splitlines() if not (line.startswith("|") and any(row in line for row in rows))) + "\n"
 
 
 def test_with_no_chat_table_the_rewriter_row_is_skipped(indexed, tmp_path, capsys):
@@ -872,20 +886,45 @@ def headings(report: str) -> list[str]:
     return [line for line in report.splitlines() if line.startswith("### ")]
 
 
-def test_every_retriever_gets_a_collapsed_twin_in_every_table(indexed):
+TWINS = ("", "+collapsed", "+per-paper+collapsed")
+
+
+def test_every_retriever_gets_a_collapsed_twin_and_a_per_paper_collapsed_twin_in_every_table(indexed):
     report = run_evaluate(indexed)
 
     names = ["bm25", "dense.bge-small", "dense.bge-base", "dense.openscholar"]
     names += ["hybrid.bm25+bge-small", "hybrid.bm25+bge-base", "hybrid.bm25+openscholar"]
     for section in ("Results", "Crowding", "Questions"):
         assert [h for h in headings(report) if h.startswith(f"### {section}: ")] == [
-            f"### {section}: {name}{twin}" for name in names for twin in ("", "+collapsed")
+            f"### {section}: {name}{twin}" for name in names for twin in TWINS
         ]
     retrievers = report.split("## Retrievers\n", 1)[1].split("\n## ", 1)[0]
-    assert list(cost(report)) == [f"{name}{twin}" for name in names for twin in ("", "+collapsed")]
+    assert list(cost(report)) == [f"{name}{twin}" for name in names for twin in TWINS]
     for name in names:
         assert f"- {name}+collapsed: {name}'s index, with copies from other files of a Work merged" in retrievers
-        assert cost(report)[f"{name}+collapsed"][3] == "cpu"
+        assert f"- {name}+per-paper+collapsed: {name}'s index, the papers the query names in rotation, then copies merged" in retrievers
+        assert cost(report)[f"{name}+collapsed"][3] == cost(report)[f"{name}+per-paper+collapsed"][3] == "cpu"
+
+
+def test_a_question_naming_two_papers_alternates_their_files_in_the_per_paper_twin(indexed, tmp_path, fake_answer_model):
+    [vocabulary] = [line for line in EVALUATION_SET.read_text().splitlines() if '"id": "vocabulary-sizes"' in line]
+    question = "Compare the vocabulary size of WECHSEL's tokenizers with the subword units Sennrich et al. learn."
+    evaluation_set = tmp_path / "comparison.jsonl"
+    evaluation_set.write_text(json.dumps({**json.loads(vocabulary), "question": question}) + "\n")
+    fake_answer_model.names[question] = "WECHSEL\nSennrich et al."
+
+    report = run_evaluate(indexed, evaluation_set)
+
+    collapsed = collapsed_lines(report, "dense.bge-small")["vocabulary-sizes", "as asked"][3]
+    per_paper = collapsed_lines(report, "dense.bge-small+per-paper")["vocabulary-sizes", "as asked"][3]
+    assert collapsed.split("; ")[:2] != ["2112.06598v2", "1508.07909v5"]
+    assert per_paper.split("; ") == ["2112.06598v2", "1508.07909v5"] * 2 + ["2112.06598v2"]
+    # The names are asked for once per query, not once per retriever.
+    assert [chat[-1]["content"] for chat in fake_answer_model.namings] == [question]
+    assert table(report, "### Names") == [
+        ["vocabulary-sizes", "as asked", "WECHSEL (minixhofer-2022-wechsel-effective-initialization); Sennrich et al. (sennrich-2016-neural-machine-translation)"]
+    ]
+    assert re.search(r"- Names: fake-answer-model, thinking off, temperature 0\.0, names prompt sha256 `[0-9a-f]{64}`", report)
 
 
 def collapsed_lines(report: str, retriever: str = "bm25") -> dict[tuple[str, str], list[str]]:
@@ -913,15 +952,15 @@ def test_the_collapse_merges_copies_from_other_files_and_keeps_a_works_other_chu
         assert collapsed["duplicate: same file"][0] == collapsed["duplicate"][0]
 
 
-def test_before_and_after_puts_each_retrievers_raw_and_collapsed_ranking_in_one_table(with_venue_edition):
+def test_before_and_after_puts_each_retrievers_raw_collapsed_and_per_paper_ranking_in_one_table(with_venue_edition):
     report = run_evaluate(with_venue_edition)
 
     rows = {(row[0], row[1]): row[2:] for row in table(report, "## Before and after")}
     names = [h.removeprefix("### Results: ") for h in headings(report) if h.startswith("### Results: ") and not h.endswith("+collapsed")]
-    assert list(rows) == [(name, ranking) for name in names for ranking in ("raw", "collapsed")]
+    assert list(rows) == [(name, ranking) for name in names for ranking in ("raw", "collapsed", "per paper, collapsed")]
     assert report.index("## Crowding") < report.index("## Before and after") < report.index("## Grouping")
     for name in names:
-        for ranking, twin in (("raw", name), ("collapsed", f"{name}+collapsed")):
+        for ranking, twin in (("raw", name), ("collapsed", f"{name}+collapsed"), ("per paper, collapsed", f"{name}+per-paper+collapsed")):
             crowded = {row[0]: row[1] for row in table(report, f"### Crowding: {twin}")}
             scored = {row[0]: row[3:] for row in table(report, f"### Results: {twin}")}["all answerable"]
             grouped = report.split(f"### Crowding: {twin}\n", 1)[1].split("- Grouped: ", 1)[1].split(" questions", 1)[0]

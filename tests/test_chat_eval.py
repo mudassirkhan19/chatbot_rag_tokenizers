@@ -298,18 +298,19 @@ def test_the_report_names_the_retriever_the_model_pin_the_prompts_hashes_and_the
 
     assert f"- sha256: `{hashlib.sha256(EVALUATION_SET.read_bytes()).hexdigest()}`" in report
     # The twin retrieves over its retriever's index, so the key is the raw retriever's; the pool tells them apart.
-    assert f"- Retriever: dense.bge-small+collapsed (`{config.retriever.key}`), collapse pool 50, overlap 0.4, 5 Chunks per Turn" in report
+    assert f"- Retriever: dense.bge-small+per-paper+collapsed (`{config.retriever.key}`), collapse pool 50, overlap 0.4, 5 Chunks per Turn" in report
     # Built from the [chat] revision the model was checked against, so a re-scored report names it without Ollama.
     assert "- Answer model: gemma4:e2b-mlx@e98b54fe1913 on Ollama 0.40.5, thinking off, temperature 0.0" in report
     assert f"`{hashlib.sha256(config.system_prompt.encode()).hexdigest()}`" in report
     assert f"`{hashlib.sha256(config.rewrite_prompt.encode()).hexdigest()}`" in report
+    assert f"- Names prompt sha256: `{hashlib.sha256(config.names_prompt.encode()).hexdigest()}`" in report
     assert report.index("## Questions") < report.index("## Timings") and report.rstrip().endswith("s |")
 
 
 def test_a_raw_chatbot_is_named_by_its_retriever_alone_and_its_answers_are_not_rescored_as_the_collapsed_ones(indexed, fake_answer_model):
     script(fake_answer_model)
     config = indexed / "retrieval-raw.toml"
-    config.write_text(RETRIEVAL_CONFIG.read_text().replace('retriever = "dense.bge-small+collapsed"', 'retriever = "dense.bge-small"'))
+    config.write_text(RETRIEVAL_CONFIG.read_text().replace('retriever = "dense.bge-small+per-paper+collapsed"', 'retriever = "dense.bge-small"'))
     key = load_chat_config(config).retriever.key
 
     report, _ = run_chat_eval(indexed, EVALUATION_SET, "chat", "--config", str(config))
@@ -318,6 +319,26 @@ def test_a_raw_chatbot_is_named_by_its_retriever_alone_and_its_answers_are_not_r
     with pytest.raises(SystemExit) as stopped:
         run_chat_eval(indexed, EVALUATION_SET, "chat", "--from-answers")
     assert "collapse_pool None, not 50" in str(stopped.value.code)
+
+
+@pytest.mark.parametrize(
+    "old, new, differs",
+    [
+        ('retriever = "dense.bge-small+per-paper+collapsed"', 'retriever = "dense.bge-small+collapsed"', "per_paper False, not True"),
+        ("names_prompt = \"\"\"You list", "names_prompt = \"\"\"Please list", "names_prompt_sha256"),
+    ],
+    ids=["not-per-paper", "other-names-prompt"],
+)
+def test_answers_retrieved_other_than_per_paper_with_this_names_prompt_are_not_rescored_as_these(indexed, fake_answer_model, old, new, differs):
+    script(fake_answer_model)
+    config = indexed / "retrieval-other.toml"
+    assert RETRIEVAL_CONFIG.read_text().count(old) == 1
+    config.write_text(RETRIEVAL_CONFIG.read_text().replace(old, new))
+    run_chat_eval(indexed, EVALUATION_SET, "chat", "--config", str(config))
+
+    with pytest.raises(SystemExit) as stopped:
+        run_chat_eval(indexed, EVALUATION_SET, "chat", "--from-answers")
+    assert differs in str(stopped.value.code)
 
 
 def test_answers_collapsed_with_another_overlap_are_not_rescored_as_these(indexed, fake_answer_model):

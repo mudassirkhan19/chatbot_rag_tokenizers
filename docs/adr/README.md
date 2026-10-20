@@ -43,7 +43,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0036](0036-a-dropped-grobid-connection-stops-the-run.md) | A reset or dropped GROBID connection stops the run, like a refused one | Accepted |
 | [0037](0037-withdrawn-preprints-are-excluded.md) | Withdrawn arXiv preprints are excluded from the corpus | Accepted |
 | [0038](0038-parse-only-the-files-of-included-editions.md) | Parse only the files of included Editions | Accepted |
-| [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) | Retrieval tracer: BM25, the index cache and the evaluate harness | Accepted, Passage matching and the loader's shape checks superseded by 0041; amended by 0043, 0053, 0058, 0061 and 0067 |
+| [0039](0039-retrieval-tracer-bm25-index-and-evaluate.md) | Retrieval tracer: BM25, the index cache and the evaluate harness | Accepted, Passage matching and the loader's shape checks superseded by 0041; amended by 0043, 0053, 0058, 0061, 0067 and 0076 |
 | [0040](0040-the-corpus-keeps-only-papers.md) | The corpus keeps only papers | Accepted |
 | [0041](0041-passage-matcher-eval-check-and-calibration.md) | The Passage matcher, eval-check and the v1/vN calibration | Accepted, amended by 0051 |
 | [0042](0042-dense-baseline-bge-small-behind-the-embedder-boundary.md) | Dense baseline: bge-small behind the embedder boundary, on MPS by default | Accepted, amended by 0050 |
@@ -74,12 +74,13 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0067](0067-the-rewriter-row-of-evaluate.md) | The rewriter row of `evaluate`: the chatbot's Rewrite of each stored follow-up, skipped without the model | Accepted |
 | [0068](0068-the-transcript-saved-from-the-chat-page.md) | The transcript, saved from the chat page under docs/reports from the page's own Turn records | Accepted, its Transcript replaced by 0070's |
 | [0069](0069-citations-name-the-merged-editions-after-the-collapse.md) | Citations name the merged Editions and mark Surveys after the collapse | Accepted |
-| [0070](0070-the-chatbot-retrieves-collapsed-and-the-final-chat-numbers.md) | The chatbot retrieves with bge-small's `+collapsed` twin, and the final chat numbers | Accepted |
+| [0070](0070-the-chatbot-retrieves-collapsed-and-the-final-chat-numbers.md) | The chatbot retrieves with bge-small's `+collapsed` twin, and the final chat numbers | Accepted, the retriever amended by 0076 |
 | [0071](0071-the-developers-check-of-the-grounding-verdict.md) | The developer's check of the grounding verdict: a sample from the answers, a label page and the agreement in the chat report | Accepted, comparison amended by 0072 |
 | [0072](0072-the-hand-check-scores-each-sampled-reply.md) | The hand check scores the automatic check on each sampled reply, not only where the run still gives it | Accepted |
 | [0073](0073-the-rewrite-names-the-paper-the-conversation-is-about.md) | The rewrite prompt names the paper, method or model a follow-up points back to | Accepted |
 | [0074](0074-the-collapse-matches-copies-by-their-text.md) | The collapse matches copies by their text, not their place in the Section | Accepted |
 | [0075](0075-tev1-as-a-grounding-judge-measured-against-the-hand-labels.md) | Tev1 as a grounding judge: P(yes) per claim and cited Chunk, averaged per Turn, measured against the hand labels | Accepted |
+| [0076](0076-retrieve-once-for-each-paper-a-question-names.md) | Retrieve once for each paper a question names: the names from the answer model, a turn each at the slots | Accepted |
 
 ## Template
 
