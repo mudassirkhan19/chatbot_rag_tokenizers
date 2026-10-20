@@ -80,12 +80,17 @@ members = ["bm25", "dense.openscholar"]
 k = 60
 pool = 100
 
-# The Collapsed ranking (ADRs 0053 and 0057): `evaluate` scores every retriever above beside its `<name>+collapsed`
+# The Collapsed ranking (ADRs 0053, 0057 and 0072): `evaluate` scores every retriever above beside its `<name>+collapsed`
 # twin, which asks the retriever for its top `pool` Chunks, merges copies of a passage from a Work's other files
 # (the manifest's work_id), and fills the top k from them in the raw order. A pool that holds fewer than k distinct
 # Chunks leaves the top k short; the eval report counts the queries where it did. It changes no index.
+#   pool     how many raw Chunks the twin merges copies in
+#   overlap  two Chunks of one Work from different files are copies when they share at least this share of their
+#            word 5-grams (lower-cased runs of letters and digits), counted on the smaller Chunk's, and one of
+#            them is the other's closest Chunk in its file
 [collapse]
 pool = 50
+overlap = 0.4
 
 # The eval report's Comparison (spec #55, ADR 0061): every retriever against `baseline`, and every `+collapsed` twin
 # against the baseline's twin, on the answerable questions as a user asks them. It counts the questions each wins,

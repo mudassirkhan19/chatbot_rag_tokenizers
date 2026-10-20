@@ -386,5 +386,5 @@ def _percentile(seconds: Sequence[float], percent: int) -> str:
 
 
 def _pool(config: ChatConfig) -> str:
-    """The collapse pool of a `+collapsed` twin, which retrieves over its retriever's index and so has its key."""
-    return f" collapse pool {config.collapse_pool}," if config.collapse_pool else ""
+    """The collapse pool and overlap of a `+collapsed` twin, which retrieves over its retriever's index and so has its key."""
+    return f" collapse pool {config.collapse_pool}, overlap {config.collapse_overlap}," if config.collapse_pool else ""

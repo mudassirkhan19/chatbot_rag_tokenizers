@@ -1,4 +1,4 @@
-"""The retrieval config file: each retriever's settings (ADRs 0039, 0042, 0050 and 0058), the Collapsed ranking's pool (ADR 0053)
+"""The retrieval config file: each retriever's settings (ADRs 0039, 0042, 0050 and 0058), the Collapsed ranking's pool and overlap (ADRs 0053 and 0072)
 and the eval report's Comparison (ADR 0061)."""
 
 import re
@@ -35,6 +35,7 @@ class RetrievalConfig:
     dense: list[DenseConfig]  # one per [dense.<name>] table, in the file's order
     hybrid: list[HybridConfig]  # one per [hybrid.<name>] table, in the file's order
     collapse_pool: int  # the raw Chunks the Collapsed ranking merges copies in
+    collapse_overlap: float  # the share of word 5-grams two Chunks of a Work share to be copies (ADR 0072)
     comparison: ComparisonConfig  # how the eval report compares the retrievers (ADR 0061)
 
     @property
@@ -55,9 +56,12 @@ def load_retrieval_config(path: Path = DEFAULT_PATH) -> RetrievalConfig:
     tables = raw.get("dense", {})
     if not isinstance(tables, dict) or not tables:
         raise ConfigError(f"{path} has no [dense.<name>] table")
-    pool = read_table(raw, "collapse", {"pool": int}, path)["pool"]
+    collapse = read_table(raw, "collapse", {"pool": int, "overlap": float}, path)
+    pool, overlap = collapse["pool"], collapse["overlap"]
     if pool < 1:
         raise ConfigError(f"[collapse] pool {pool} must be at least 1")
+    if not 0 < overlap <= 1:
+        raise ConfigError(f"[collapse] overlap {overlap} must be above 0 and at most 1")
     dense = [_load_dense_table(raw, table, path) for table in tables]
     hybrid = [_load_hybrid_table(raw, table, path, bm25, dense) for table in raw.get("hybrid", {})]
     comparison = ComparisonConfig(**read_table(raw, "comparison", {"baseline": str, "resamples": int, "seed": int}, path))
@@ -66,7 +70,7 @@ def load_retrieval_config(path: Path = DEFAULT_PATH) -> RetrievalConfig:
         raise ConfigError(f"[comparison] baseline {comparison.baseline!r} is not a retriever in {path}; it configures {', '.join(configured)}")
     if comparison.resamples < 1:
         raise ConfigError(f"[comparison] resamples {comparison.resamples} must be at least 1")
-    return RetrievalConfig(bm25=bm25, dense=dense, hybrid=hybrid, collapse_pool=pool, comparison=comparison)
+    return RetrievalConfig(bm25=bm25, dense=dense, hybrid=hybrid, collapse_pool=pool, collapse_overlap=overlap, comparison=comparison)
 
 
 def _load_dense_table(raw: dict, table: str, path: Path) -> DenseConfig:
