@@ -649,7 +649,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
 <section id="retrieve">
   <div class="sec-head">
     <div class="eyebrow">Stage 4</div>
-    <div class="title-row"><h2>Retrieve: how a question finds Chunks</h2><span class="chip partial">partial</span></div>
+    <div class="title-row"><h2>Retrieve: how a question finds Chunks</h2><span class="chip done">done</span></div>
     <p class="goal">Rank the 141,348 Chunks for a question. Two baselines exist so every later choice has a number to beat. Every retriever has a Collapsed twin that merges copies of a passage across a Work's files, and a per-paper twin that gives each paper a question names its share of the slots. The embedding comparison has run on both rankings, and bge-small stays: the chatbot retrieves with <code>dense.bge-small+per-paper+collapsed</code>.</p>
   </div>
   <div class="panel">
@@ -683,9 +683,9 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
           <tr class="sum"><td>All answerable</td><td class="n">28</td><td class="n">0.30 / 0.244</td><td class="n">0.38 / 0.276</td><td class="n">0.43 / 0.329</td></tr>
         </tbody>
       </table></div>
-      <h4>Not yet built</h4>
+      <h4>Optional, not built</h4>
       <ul class="plain">
-        <li>Optional: a reranker (<a data-issue="62">issue 62</a>), year and venue filters.</li>
+        <li>A reranker (<a data-issue="62">issue 62</a>), year and venue filters.</li>
       </ul>
     </div>
     <div class="block">
@@ -829,7 +829,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
   <div class="sec-head">
     <div class="eyebrow">Stage 6</div>
     <div class="title-row"><h2>Chat: answering from the papers, or saying they don't answer</h2><span class="chip partial">partial</span></div>
-    <p class="goal">A local multi-turn chat page that answers only from retrieved Chunks, cites paper, Edition, Section and pages for every claim, and abstains plainly when the corpus doesn't hold the answer. Built and measured; the final run waits on <a data-issue="86">issue 86</a>, which regenerates it with the fixes of #80–#82.</p>
+    <p class="goal">A local multi-turn chat page that answers only from retrieved Chunks, cites paper, Edition, Section and pages for every claim, and abstains plainly when the corpus doesn't hold the answer. Built and measured; the final run waits on <a data-issue="86">issue 86</a>, which regenerates it with the fixes of #80–#82 and marks this stage done. #83 and #85 are enhancements, not needed for it.</p>
   </div>
   <div class="panel">
     <div class="block">
