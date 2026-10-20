@@ -18,7 +18,7 @@ from chatbot_rag_tokenizers.chat import grounding_check
 from chatbot_rag_tokenizers.cli import main
 from conftest import read_rows
 import test_chat_eval
-from test_chat_eval import EVALUATION_SET, MANIFEST, corpus_arguments, edit_answers, run_chat_eval, script
+from test_chat_eval import ABSTENTION, EVALUATION_SET, MANIFEST, corpus_arguments, edit_answers, run_chat_eval, script
 from test_chat_page import SOCKETS
 
 indexed = test_chat_eval.indexed  # the fixture corpus, parsed and indexed in tmp_path
@@ -161,6 +161,10 @@ def label(check: Path, **labels: tuple[str, str]) -> None:
         if row["question_id"].replace("-", "_") in labels:
             row["label"], row["note"] = labels[row["question_id"].replace("-", "_")]
             row["checked_by"] = "developer"
+    write_rows(check, rows)
+
+
+def write_rows(check: Path, rows: list[dict[str, str]]) -> None:
     with check.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0]), lineterminator="\n")
         writer.writeheader()
@@ -215,10 +219,7 @@ def test_the_check_is_scored_on_the_reply_as_stored_in_the_sample_not_the_runs(e
     for row in rows:
         if row["question_id"] == "freezing":
             row["reply"] = row["reply"].rstrip(".") + " in 1987."
-    with exported.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0]), lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(rows)
+    write_rows(exported, rows)
     label(exported, freezing=("not grounded", ""))
 
     report, turns = run_chat_eval(exported.parent, EVALUATION_SET, "chat", "--from-answers", "--check", str(exported))
@@ -227,6 +228,24 @@ def test_the_check_is_scored_on_the_reply_as_stored_in_the_sample_not_the_runs(e
     section = hand_check(report)
     assert "Agreement with the automatic verdict: 1/1 (1.00 [0.21, 1.00])" in section
     assert "No disagreements." in section
+
+
+def test_a_sampled_reply_that_now_reads_as_an_abstention_is_counted_as_one(exported):
+    """A reply read again with today's Abstention sentence can decline; it is neither grounded nor not by the check."""
+    rows = read_rows(exported)
+    for row in rows:
+        if row["question_id"] == "freezing":
+            row["reply"] = ABSTENTION
+    write_rows(exported, rows)
+    label(exported, freezing=("not grounded", ""))
+
+    report, _ = run_chat_eval(exported.parent, EVALUATION_SET, "chat", "--from-answers", "--check", str(exported))
+
+    section = hand_check(report)
+    assert "Agreement with the automatic verdict: 0/1 (0.00 [0.00, 0.79])" in section
+    assert "Grounded by the automatic check but not by hand: 0; not grounded by the check but grounded by hand: 0;" in section
+    assert "an Abstention by the check: 1" in section
+    assert "| freezing | single-paper | abstained | not grounded | — |" in section
 
 
 def test_a_row_whose_chunks_the_corpus_no_longer_has_is_not_compared(exported):

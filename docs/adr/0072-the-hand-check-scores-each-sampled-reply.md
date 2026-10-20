@@ -10,6 +10,7 @@ The chat report's *Grounding checked by hand* section compared a developer's lab
 - **The check is scored on each labelled row as stored in the sample.** The row's reply is read again with the current Abstention sentence, and grounded over the row's retrieved Chunk ids looked up in the corpus, as `--from-answers` re-scores a stored Turn. The run's reply for that question plays no part, so a later run no longer removes labels from the comparison.
 - **Only a row whose Chunks the corpus no longer has is left out.** The check reads the Chunks' header and text, which the corpus holds, so a row naming a Chunk it lacks can't be scored. The report names those rows.
 - **A disagreement row gives the verdict on the sampled reply.** It is the check's verdict on what the developer read, not the run's.
+- **A sampled reply that now reads as an Abstention stays compared.** Read again with a changed Abstention sentence, a labelled reply can decline. The check gives it no grounding verdict, so it counts as a disagreement. The report counts it on its own line, not as grounded or not grounded by the check.
 
 ## Alternatives considered
 - **Use the stored draft label as the automatic verdict.** It is the verdict of the code that drew the sample. Scoring again uses the current check, as every re-scored measure in the report does, so a change to the check shows up in the agreement.
