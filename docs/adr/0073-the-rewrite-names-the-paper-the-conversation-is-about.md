@@ -1,4 +1,4 @@
-# 0072. The Rewrite names the paper the Conversation is about
+# 0073. The Rewrite names the paper the Conversation is about
 
 - **Date:** 2026-10-21
 - **Status:** Accepted; amends [0056](0056-follow-ups-the-conversation-and-the-rewrite.md) (the rewrite prompt).

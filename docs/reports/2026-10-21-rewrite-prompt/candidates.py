@@ -1,4 +1,4 @@
-"""The rewrite prompts tried for #82, as rewrites.py reads them. C is the one adopted (ADR 0072), and
+"""The rewrite prompts tried for #82, as rewrites.py reads them. C is the one adopted (ADR 0073), and
 "before" is the prompt it replaced."""
 
 PROMPTS = {

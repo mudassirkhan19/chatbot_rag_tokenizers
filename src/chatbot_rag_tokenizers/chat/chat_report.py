@@ -116,7 +116,7 @@ def write_chat_report(
         "|---|---|---|---|---|---|---:|",
         *[_question(item) for item in scored],
         "",
-        *_hand_check(scored, check),
+        *_hand_check(corpus, config, check),
         *_variation(runs, k),
         *([] if baseline is None else _against(scored, baseline, asked_over(corpus, config))),
         "## Timings",
@@ -288,30 +288,33 @@ def _against(scored: Sequence[Asked], baseline: Baseline, here: dict[str, Any]) 
     return [*lines, "| Question | Type | Baseline | Now | Note |", "|---|---|---|---|---|", *rows, ""]
 
 
-def _hand_check(scored: Sequence[Asked], check: Path | None) -> list[str]:
-    """The automatic verdict's agreement with the developer's labels on the sample, and every disagreement (ADR 0071)."""
+def _hand_check(corpus: Corpus, config: ChatConfig, check: Path | None) -> list[str]:
+    """The automatic verdict's agreement with the developer's labels on the sample, and every disagreement (ADRs 0071
+    and 0072)."""
     lines = [
         "## Grounding checked by hand",
         "",
         "The developer's labels on a seeded sample of answered Turns (`chat-eval --export-check`, labelled on the"
-        " `chat-label` page) against this run's automatic verdict. A row is compared when the developer gave it a label"
-        " and this run asked its question with the same reply over the same Chunks.",
+        " `chat-label` page) against the automatic verdict on the same reply. A row is compared when the developer gave it a"
+        " label, and the check is scored on its reply over its Chunks as stored in the sample, whatever this run answered.",
         "",
     ]
     if check is None or not check.exists():
         return [*lines, "No sample to compare with: `chat-eval --export-check` draws one, and `chat-label` serves the page to label it.", ""]
     rows = read_check(check)
-    result = compare(scored, rows)
-    by_hand = [d for d in result.disagreements if d.label == "grounded"]
+    result = compare(rows, {chunk.chunk_id: chunk for chunk in corpus.chunks}, config.abstention)
+    by_check = {automatic: sum(1 for d in result.disagreements if d.automatic == automatic) for automatic in ("grounded", "not grounded", "abstained")}
     lines += [
         f"- Sample: `{check}`, {result.rows} Turns: {result.labelled} labelled by the developer, {result.unsure} left unsure,"
         f" {result.rows - result.labelled - result.unsure} not checked by the developer",
         f"- Agreement with the automatic verdict: {_counted(result.agreed, result.compared)}",
-        f"- Grounded by the automatic check but not by hand: {len(result.disagreements) - len(by_hand)}; not grounded by the"
-        f" check but grounded by hand: {len(by_hand)}",
+        f"- Grounded by the automatic check but not by hand: {by_check['grounded']}; not grounded by the check but grounded by"
+        f" hand: {by_check['not grounded']}"
+        # A sampled reply read again with today's Abstention sentence can decline, which the check does not judge.
+        + (f"; labelled by hand but an Abstention by the check: {by_check['abstained']}" if by_check["abstained"] else ""),
     ]
-    if result.stale:
-        lines.append(f"- Not compared, as this run's reply or Chunks differ from the sample's, or its reply is now an Abstention: {', '.join(result.stale)}")
+    if result.dropped:
+        lines.append(f"- Not compared, as the corpus no longer has every Chunk the sampled reply was given: {', '.join(result.dropped)}")
     lines.append("")
     if not result.disagreements:
         return [*lines, "No disagreements.", ""]
@@ -319,7 +322,7 @@ def _hand_check(scored: Sequence[Asked], check: Path | None) -> list[str]:
         *lines,
         "| Question | Type | Automatic | By hand | Note |",
         "|---|---|---|---|---|",
-        *[f"| {d.item.question.id} | {d.item.question.type} | {d.item.verdict} | {d.label} | {_cell(d.note) or NONE} |" for d in result.disagreements],
+        *[f"| {d.question_id} | {d.type} | {d.automatic} | {d.label} | {_cell(d.note) or NONE} |" for d in result.disagreements],
         "",
     ]
 
