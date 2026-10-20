@@ -885,6 +885,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
         <li><code>--runs 3</code> measures the model's run-to-run variation; <code>--baseline</code> marks a verdict that also flipped within the baseline's own runs as noise.</li>
         <li>A seeded sample of 20 answered Turns is labelled by the developer on a local page (<code>chat-label</code>): is every claim supported by the Chunk it cites?</li>
         <li>A failure diagnosis traced each kind of failure in those labels to where it first goes wrong, and filed #80–#85: <a data-file="docs/reports/2026-10-21-chat-failure-diagnosis.md">2026-10-21 diagnosis</a>.</li>
+        <li>On the final run, a failure analysis traces six questions still wrong to that diagnosis, and filed #87 and #88: <a data-file="docs/reports/2026-10-21-failure-analysis.md">2026-10-21 failure analysis</a>.</li>
       </ul>
 
       <h4>Decisions</h4>
@@ -923,6 +924,7 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
           <li>The grounded rate overstates grounding: the check passes misattributed and borrowed claims, as 3 of 19 hand labels show.</li>
           <li>The answer model can attach one paper's claim to another in a comparison. <a data-issue="83">Issue 83</a>.</li>
           <li>A 5B model answers some near-miss questions it should abstain on, and gives incomplete answers; a larger one is untested. <a data-issue="85">Issue 85</a>.</li>
+          <li>A right answer can cite nothing: canine-hashing in the final run, in all three runs. <a data-issue="87">Issue 87</a>.</li>
         </ul>
       </div>
       <p class="repro">Reproduce: <code>just chat</code> serves the page; <code>just chat-eval</code> asks the set (Ollama with the pinned model), <code>just chat-eval --from-answers</code> re-scores the committed replies without it.</p>
@@ -980,19 +982,19 @@ footer { padding-top: 1.6rem; font-size: 0.85rem; color: var(--fg-2); max-width:
       <div class="eyebrow">Brief: core</div>
       <div class="head"><h3>A grounded chatbot</h3><span class="chip done">done</span></div>
       <p>Multi-turn, so "how does that compare with WordPiece?" resolves; every answer cites paper and Section; says plainly when the corpus does not support an answer. Measure grounding and the handling of unanswerable questions.</p>
-      <p><b>Built:</b> see <a href="#chat">Stage 6</a>. On the final run (<a data-issue="86">86</a>, ADR 0077), 7/8 unanswerable questions abstained on, 25/27 answers grounded, 2/28 false abstentions (4/28 before #80–#82), and the grounding verdict agrees with the developer on 16/19. <b>Enhancements, not needed:</b> Claims kept to their own paper (<a data-issue="83">83</a>), a larger answer model (<a data-issue="85">85</a>), a reranker (<a data-issue="62">62</a>).</p>
+      <p><b>Built:</b> see <a href="#chat">Stage 6</a>. On the final run (<a data-issue="86">86</a>, ADR 0077), 7/8 unanswerable questions abstained on, 25/27 answers grounded, 2/28 false abstentions (4/28 before #80–#82), and the grounding verdict agrees with the developer on 16/19. <b>Enhancements, not needed:</b> Claims kept to their own paper (<a data-issue="83">83</a>), a larger answer model (<a data-issue="85">85</a>), a reranker (<a data-issue="62">62</a>), asking again for missing markers (<a data-issue="87">87</a>), a Rewrite that also replaces "them" (<a data-issue="88">88</a>).</p>
       <p><a data-issue="63">Spec issue 63</a></p>
     </div>
     <div class="plan">
       <div class="eyebrow">Brief: deliverables</div>
       <div class="head"><h3>Write-up, transcript, failure analysis</h3><span class="chip planned">to write</span></div>
       <p>2–3 pages on design decisions with a results table; one conversation of at least five turns with a follow-up and an unanswerable; at least three questions the system still gets wrong, and why.</p>
-      <p><b>Exists:</b> a six-Turn Transcript with two follow-ups and two Abstentions, on the chatbot as built (<a data-file="docs/reports/2026-10-21-chat-transcript.md">2026-10-21</a>); the failure diagnosis (<a data-file="docs/reports/2026-10-21-chat-failure-diagnosis.md">2026-10-21</a>), which traces nine kinds of failure to where each first goes wrong; this page and 77 ADRs as the source of the write-up.</p>
-      <p><b>Not written yet:</b> the failure analysis, at least three questions the system still gets wrong, built from the diagnosis on #86's answers; and the 2–3 page write-up with its results table, linked from the top of the README.</p>
+      <p><b>Exists:</b> a six-Turn Transcript with two follow-ups and two Abstentions, on the chatbot as built (<a data-file="docs/reports/2026-10-21-chat-transcript.md">2026-10-21</a>); the failure diagnosis (<a data-file="docs/reports/2026-10-21-chat-failure-diagnosis.md">2026-10-21</a>), which traces nine kinds of failure to where each first goes wrong; the failure analysis (<a data-file="docs/reports/2026-10-21-failure-analysis.md">2026-10-21</a>), six questions the final run still gets wrong, each traced to the diagnosis, with its fix (#62, #83, #85, #87, #88); this page and 77 ADRs as the source of the write-up.</p>
+      <p><b>Not written yet:</b> the 2–3 page write-up with its results table, linked from the top of the README.</p>
       <p><a data-issue="79">Write-up, issue 79</a> · <a data-issue="78">failure analysis, issue 78</a></p>
     </div>
   </div>
-  <p class="why order"><b>Order before submission:</b> <a data-issue="86">#86</a> the final run is in; next <a data-issue="78">#78</a> the failure analysis on its answers, then <a data-issue="79">#79</a> the write-up, which quotes both. Each refreshes this page's numbers as it lands.</p>
+  <p class="why order"><b>Order before submission:</b> <a data-issue="86">#86</a> the final run and <a data-issue="78">#78</a> the failure analysis on its answers are in; next <a data-issue="79">#79</a> the write-up, which quotes both. Each refreshes this page's numbers as it lands.</p>
 </section>
 
 <!-- ============================ EXAMPLE ============================ -->
