@@ -146,7 +146,7 @@ def test_saving_a_label_rewrites_only_that_row_and_marks_it_the_developers(base_
 
 def test_saving_rejects_a_label_other_than_grounded_not_grounded_or_empty(base_url, exported):
     before = exported.read_bytes()
-    for payload in ({"index": 0, "label": "yes"}, {"index": 0, "label": "maybe", "note": ""}, {"index": 9, "label": "grounded"}):
+    for payload in ({"index": 0, "label": "yes"}, {"index": 0, "label": "maybe", "note": ""}, {"index": 9, "label": "grounded"}, {"index": True, "label": "grounded"}):
         with pytest.raises(urllib.error.HTTPError, match="400"):
             save(base_url, **payload)
     assert exported.read_bytes() == before
@@ -202,7 +202,7 @@ def test_a_row_whose_reply_changed_since_the_sample_is_not_compared_and_unsure_r
     section = hand_check(report)
     assert "4 Turns: 2 labelled by the developer, 1 left unsure, 1 not checked by the developer" in section
     assert "Agreement with the automatic verdict: 1/1 (1.00 [0.21, 1.00])" in section
-    assert "Not compared, as this run's reply or Chunks differ from the sample's: freezing" in section
+    assert "Not compared, as this run's reply or Chunks differ from the sample's, or its reply is now an Abstention: freezing" in section
     assert "No disagreements." in section
 
 

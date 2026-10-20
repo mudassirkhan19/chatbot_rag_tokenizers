@@ -302,16 +302,16 @@ def _hand_check(scored: Sequence[Asked], check: Path | None) -> list[str]:
         return [*lines, "No sample to compare with: `chat-eval --export-check` draws one, and `chat-label` serves the page to label it.", ""]
     rows = read_check(check)
     result = compare(scored, rows)
-    automatic = [d for d in result.disagreements if d.item.verdict == "grounded"]
+    by_hand = [d for d in result.disagreements if d.label == "grounded"]
     lines += [
         f"- Sample: `{check}`, {result.rows} Turns: {result.labelled} labelled by the developer, {result.unsure} left unsure,"
         f" {result.rows - result.labelled - result.unsure} not checked by the developer",
         f"- Agreement with the automatic verdict: {_counted(result.agreed, result.compared)}",
-        f"- Grounded by the automatic check but not by hand: {len(automatic)}; not grounded by the check but grounded by"
-        f" hand: {len(result.disagreements) - len(automatic)}",
+        f"- Grounded by the automatic check but not by hand: {len(result.disagreements) - len(by_hand)}; not grounded by the"
+        f" check but grounded by hand: {len(by_hand)}",
     ]
     if result.stale:
-        lines.append(f"- Not compared, as this run's reply or Chunks differ from the sample's: {', '.join(result.stale)}")
+        lines.append(f"- Not compared, as this run's reply or Chunks differ from the sample's, or its reply is now an Abstention: {', '.join(result.stale)}")
     lines.append("")
     if not result.disagreements:
         return [*lines, "No disagreements.", ""]

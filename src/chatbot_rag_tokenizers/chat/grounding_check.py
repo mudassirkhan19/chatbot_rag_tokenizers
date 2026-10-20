@@ -27,6 +27,7 @@ from importlib import resources
 from pathlib import Path
 
 from .answers import Asked
+from .grounding import Grounding
 
 COLUMNS = [
     "question_id",
@@ -61,7 +62,9 @@ def export(answered: Sequence[Asked], check: Path, size: int, seed: int, force: 
 
 
 def _row(item: Asked) -> dict[str, str]:
+    """A sampled Turn, which is not an Abstention."""
     turn = item.turn
+    assert item.grounding is not None
     cited = [
         {"number": number, "chunk_id": turn.retrieved[number - 1].chunk_id, "header": turn.retrieved[number - 1].header, "text": turn.retrieved[number - 1].text}
         for number in turn.answer.cited
@@ -75,7 +78,7 @@ def _row(item: Asked) -> dict[str, str]:
         "retrieved": " ".join(chunk.chunk_id for chunk in turn.retrieved),
         "cited_chunks": json.dumps(cited, ensure_ascii=False),
         "draft_label": item.verdict,
-        "draft_reason": reason(item),
+        "draft_reason": _reason(item.grounding),
         "label": item.verdict,
         "checked_by": "draft",
         "note": "",
@@ -110,26 +113,31 @@ def compare(scored: Sequence[Asked], rows: Sequence[dict[str, str]]) -> Comparis
     asked it with the same reply over the same Chunks, as a label is a judgement of one reply."""
     turns = {item.question.id: item for item in scored}
     labelled = [row for row in rows if row["checked_by"] == "developer" and row["label"]]
-    current = [(row, turns[row["question_id"]]) for row in labelled if _same(row, turns.get(row["question_id"]))]
+    current: list[tuple[dict[str, str], Asked]] = []
+    stale = []
+    for row in labelled:
+        item = turns.get(row["question_id"])
+        if item is not None and _same(row, item):
+            current.append((row, item))
+        else:
+            stale.append(row["question_id"])
     return Comparison(
         rows=len(rows),
         labelled=len(labelled),
         unsure=sum(1 for row in rows if row["checked_by"] == "developer" and not row["label"]),
         compared=len(current),
         disagreements=tuple(Disagreement(item, row["label"], row["note"]) for row, item in current if row["label"] != item.verdict),
-        stale=tuple(row["question_id"] for row in labelled if not _same(row, turns.get(row["question_id"]))),
+        stale=tuple(stale),
     )
 
 
-def _same(row: dict[str, str], item: Asked | None) -> bool:
-    return item is not None and row["reply"] == item.turn.reply and row["retrieved"].split() == [chunk.chunk_id for chunk in item.turn.retrieved]
+def _same(row: dict[str, str], item: Asked) -> bool:
+    """The run answered with the row's reply over its Chunks, and the reply is still an answer, not an Abstention."""
+    return item.grounding is not None and row["reply"] == item.turn.reply and row["retrieved"].split() == [chunk.chunk_id for chunk in item.turn.retrieved]
 
 
-def reason(item: Asked) -> str:
-    """Why the automatic check gave its verdict, in words."""
-    grounding = item.grounding
-    if grounding is None:
-        return "an Abstention"
+def _reason(grounding: Grounding) -> str:
+    """Why the automatic check gave an answer its verdict, in words."""
     if grounding.grounded:
         return "cites a retrieved Chunk, and every number is in a cited Chunk"
     reasons = []
@@ -189,12 +197,14 @@ def make_server(check: Path, port: int = 8767) -> ThreadingHTTPServer:
                 self._send(b'{"ok":false}', "application/json", HTTPStatus.NOT_FOUND)
                 return
             payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            if not isinstance(payload, dict):
+                payload = {}
             index, label, note = payload.get("index"), payload.get("label"), payload.get("note", "")
             rows = check_file.read()
-            if label not in LABELS or not isinstance(index, int) or not 0 <= index < len(rows):
+            if not isinstance(index, int) or isinstance(index, bool) or not 0 <= index < len(rows) or label not in LABELS or not isinstance(note, str):
                 self._send(b'{"ok":false}', "application/json", HTTPStatus.BAD_REQUEST)
                 return
-            check_file.save_label(index, label, str(note).strip())
+            check_file.save_label(index, label, note.strip())
             self._send(b'{"ok":true}', "application/json")
 
         def log_message(self, format: str, *args: object) -> None:
