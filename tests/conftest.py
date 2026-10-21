@@ -13,7 +13,7 @@ from chatbot_rag_tokenizers.chat import model as answer_model
 from chatbot_rag_tokenizers.chat.config import load_chat_config
 from chatbot_rag_tokenizers.collection import judge
 from chatbot_rag_tokenizers.collection.snapshot import SnapshotStore
-from chatbot_rag_tokenizers.retrieval import embedder
+from chatbot_rag_tokenizers.retrieval import embedder, rerank
 from chatbot_rag_tokenizers.retrieval.bm25 import tokenise
 from parse_support import FakeGrobid, fake_pdf
 
@@ -224,6 +224,33 @@ def fake_embedder(monkeypatch: pytest.MonkeyPatch) -> list[FakeEmbedder]:
         return made[-1]
 
     monkeypatch.setattr(embedder, "load_embedder", load)
+    return made
+
+
+class FakeScorer:
+    """Word overlap in place of the cross-encoder: a text scores the number of the query's distinct tokens it holds."""
+
+    def __init__(self, model: str, revision: str) -> None:
+        self.model = model
+        self.revision = revision
+        self.device = "cpu"
+        self.parameters = 1000
+
+    def score(self, query: str, texts: Sequence[str]) -> list[float]:
+        words = set(tokenise(query))
+        return [float(len(words & set(tokenise(text)))) for text in texts]
+
+
+@pytest.fixture(autouse=True)
+def fake_scorer(monkeypatch: pytest.MonkeyPatch) -> list[FakeScorer]:
+    """Every test reranks with FakeScorer, so none downloads or loads the cross-encoder. Returns the scorers made."""
+    made: list[FakeScorer] = []
+
+    def load(config, device=None):
+        made.append(FakeScorer(config.model, config.revision))
+        return made[-1]
+
+    monkeypatch.setattr(rerank, "load_scorer", load)
     return made
 
 

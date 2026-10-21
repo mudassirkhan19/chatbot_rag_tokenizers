@@ -3,7 +3,8 @@ crowds the top 5 measured against the Work groups (ADR 0044). Every retriever is
 Collapsed ranking over the same index (ADR 0053). A follow-up is scored a fourth way, as the chatbot's Rewrite of its
 stored history and itself, when the [chat] answer model answers at its pin; otherwise that row is skipped (ADR 0067).
 With the same model, every retriever is scored a third time, per paper and collapsed: the papers each query names,
-listed once per query, fill the slots in rotation (ADR 0076)."""
+listed once per query, fill the slots in rotation (ADR 0076). Each retriever [rerank] names is scored three times more,
+reranked: its top `pool` Chunks reordered by the cross-encoder, then collapsed, and per paper and collapsed (#62)."""
 
 import hashlib
 from collections.abc import Iterable, Mapping, Sequence
@@ -15,12 +16,13 @@ from ..config import ConfigError
 from ..chat.model import AnswerModelUnavailable
 from ..chat.names import name_papers
 from ..chat.rewrite import rewrite
-from ..retrieval import index
+from ..retrieval import index, rerank as reranking
 from ..retrieval.collapse import Collapsed
 from ..retrieval.config import ComparisonConfig
 from ..retrieval.corpus import Corpus
 from ..retrieval.per_paper import NamedWorks, PerPaper
-from ..retrieval.retriever import RetrieverConfig
+from ..retrieval.rerank import RerankConfig, Reranked
+from ..retrieval.retriever import Retriever, RetrieverConfig
 from .check import check
 from .comparison import check_baseline
 from .crowding import ungrouped
@@ -99,13 +101,15 @@ def evaluate(
     pool: int,
     overlap: float,
     comparison: ComparisonConfig,
+    rerank: RerankConfig,
     chat_config: Path,
     export: Path | None = None,
 ) -> None:
     """Raises EvaluationSetError for a set that fails `eval-check` (ADR 0041), WorkGroupsError for a malformed Work
     groups file, BaselineMissing when the Comparison's baseline isn't one of `configs` and index.IndexMissing when a
     retriever isn't built. `pool` is the raw Chunks each Collapsed ranking
-    merges copies in, `overlap` the share of word 5-grams that makes two Chunks copies, and `chat_config` holds the [chat] table of the rewriter's model and prompt. With `export`, also writes there every Edition in a top 5 that has no Work group."""
+    merges copies in, `overlap` the share of word 5-grams that makes two Chunks copies, `rerank` the cross-encoder and the
+    retrievers it reranks, and `chat_config` holds the [chat] table of the rewriter's model and prompt. With `export`, also writes there every Edition in a top 5 that has no Work group."""
     check_baseline(comparison.baseline, [config.name for config in configs])
     rows = {row["edition_id"]: row for row in manifest}
     works = Works(rows.values())
@@ -120,21 +124,29 @@ def evaluate(
     names = name_queries(questions, rewriter.rewrites, chat_config, named_works)
     if not names.ran:
         print(f"evaluate: the per-paper twins are skipped: {names.skipped}")
+    # One cross-encoder for every reranked twin, loaded only when a retriever it reranks is scored.
+    reranked = [config.name for config, _ in indexes if config.name in rerank.retrievers]
+    scorer = reranking.load_scorer(rerank) if reranked else None
     runs = []
     for config, built in indexes:
-        collapsed = Collapsed(built.retriever, chunks, rows.values(), pool, overlap)
-        twins = [
-            RetrieverRun(config, built, score(questions, built.retriever, chunks, rule, rewriter.rewrites)),
-            RetrieverRun(config, built, score(questions, collapsed, chunks, rule, rewriter.rewrites), pool, overlap),
-        ]
-        if names.ran:
-            split = PerPaper(built.retriever, chunks, named_works, lambda text: names.names[text])
-            per_paper = Collapsed(split, chunks, rows.values(), pool, overlap)
-            twins.append(RetrieverRun(config, built, score(questions, per_paper, chunks, rule, rewriter.rewrites), pool, overlap, per_paper=True))
-        for run in twins:
-            runs.append(run)
-            if overall := metrics(all_answerable(run.scored)):
-                print(f"evaluate: {run.name}: Recall@5 {overall.recall:.2f}, MRR@10 {overall.mrr:.3f}, Hit@5 {overall.hit:.2f}")
+        rankings: list[tuple[Retriever, RerankConfig | None]] = [(built.retriever, None)]
+        if scorer and config.name in reranked:
+            rankings.append((Reranked(built.retriever, chunks, scorer, rerank.pool), rerank))
+        for retriever, reranker in rankings:
+            collapsed = Collapsed(retriever, chunks, rows.values(), pool, overlap)
+            twins = [
+                RetrieverRun(config, built, retriever, score(questions, retriever, chunks, rule, rewriter.rewrites), rerank=reranker),
+                RetrieverRun(config, built, collapsed, score(questions, collapsed, chunks, rule, rewriter.rewrites), pool, overlap, rerank=reranker),
+            ]
+            if names.ran:
+                split = PerPaper(retriever, chunks, named_works, lambda text: names.names[text])
+                per_paper = Collapsed(split, chunks, rows.values(), pool, overlap)
+                scored = score(questions, per_paper, chunks, rule, rewriter.rewrites)
+                twins.append(RetrieverRun(config, built, per_paper, scored, pool, overlap, per_paper=True, rerank=reranker))
+            for run in twins:
+                runs.append(run)
+                if overall := metrics(all_answerable(run.scored)):
+                    print(f"evaluate: {run.name}: Recall@5 {overall.recall:.2f}, MRR@10 {overall.mrr:.3f}, Hit@5 {overall.hit:.2f}")
     # The rewriter's queries are left out, so the Editions to group don't depend on whether the answer model answered.
     grouped_queries = (s for run in runs for s in run.scored if s.question.answerable and s.query_kind != REWRITER)
     missing = sorted(ungrouped(grouped_queries, groups.editions))

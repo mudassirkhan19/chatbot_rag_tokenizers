@@ -14,12 +14,13 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..retrieval import per_paper
+from ..retrieval import per_paper, rerank as reranking
 from ..retrieval.collapse import SUFFIX
 from ..retrieval.config import ComparisonConfig
 from ..retrieval.corpus import Corpus
 from ..retrieval.index import Index
-from ..retrieval.retriever import RetrieverConfig
+from ..retrieval.rerank import RerankConfig
+from ..retrieval.retriever import Retriever, RetrieverConfig
 from ..parsing.report import NUMERIC_SHARE
 from .comparison import CONFIDENCE, compare, draws
 from .crowding import Share, crowding, totals
@@ -86,19 +87,27 @@ class PaperNames:
 class RetrieverRun:
     config: RetrieverConfig
     index: Index  # what was queried, with its build time and device
+    retriever: Retriever  # the ranking scored: the index's retriever, or a wrapper of it
     scored: list[Scored]
     pool: int | None = None  # for a Collapsed ranking, the raw Chunks it merged copies in
     overlap: float | None = None  # for a Collapsed ranking, the share of word 5-grams that made two Chunks copies
     per_paper: bool = False  # the papers a query names filled the slots in rotation before copies were merged (ADR 0076)
+    rerank: RerankConfig | None = None  # the cross-encoder that reordered the retriever's top Chunks first (#62)
 
     @property
     def name(self) -> str:
-        return self.config.name + (per_paper.SUFFIX if self.per_paper else "") + (SUFFIX if self.pool else "")
+        return (
+            self.config.name
+            + (reranking.SUFFIX if self.rerank else "")
+            + (per_paper.SUFFIX if self.per_paper else "")
+            + (SUFFIX if self.pool else "")
+        )
 
     @property
     def ranking(self) -> str:
         """Which of its retriever's rankings this is, in a word or two."""
-        return ("per paper, " if self.per_paper else "") + ("collapsed" if self.pool else "raw")
+        steps = ["reranked"] * bool(self.rerank) + ["per paper"] * self.per_paper + ["collapsed"] * bool(self.pool)
+        return ", ".join(steps or ["raw"])
 
 
 def write_eval_report(
@@ -175,6 +184,12 @@ def write_eval_report(
         f" rotation, each Chunk once, then the rest of the raw ranking, before copies are merged as in the `{SUFFIX}` twin; otherwise the query is ranked as"
         " it is (ADR 0076). A hybrid ranks only its members' pools, so a name's Chunks outside them are not reached.",
         *_names(names),
+        f"- A retriever `[rerank]` names has three twins more, `{reranking.SUFFIX}`, `{reranking.SUFFIX}{SUFFIX}` and"
+        f" `{reranking.SUFFIX}{per_paper.SUFFIX}{SUFFIX}`: the retriever's top *pool* Chunks are reordered by the"
+        " cross-encoder's score for the query and each Chunk's context header and text, a tie to the raw order, with the"
+        " rest of the raw ranking after them; then copies are merged, or the names fill the slots and copies are merged,"
+        f" as in the other twins (#62). A `{reranking.SUFFIX}` twin is compared with the baseline's raw ranking, the others"
+        f" with its `{SUFFIX}` twin.",
         "",
         "## Results",
         "",
@@ -223,7 +238,8 @@ def write_eval_report(
         "",
         "Each retriever's model and index, with how long the index took to build and each query took. A hybrid's"
         " parameters, dimension and index are its members' summed (BM25 has no model and no vectors), and its build"
-        f" time is theirs; a `{SUFFIX}` twin uses its retriever's index. The times depend on the machine and change"
+        f" time is theirs; a `{SUFFIX}` twin uses its retriever's index. A `{reranking.SUFFIX}` twin's parameters are its retriever's"
+        " and the cross-encoder's, summed, and its latency includes the cross-encoder's pass over the pool. The times depend on the machine and change"
         " from run to run.",
         "",
         "| Retriever | Parameters | Dimension | Index on disk | Built on | Build time | Queries | Queried on | Latency p50 | Latency p95 |",
@@ -235,10 +251,20 @@ def write_eval_report(
 
 
 def _retriever(run: RetrieverRun) -> list[str]:
+    reranked = ", reranked" if run.rerank else ""
     if run.per_paper:
-        return [f"- {run.name}: {run.config.name}'s index, the papers the query names in rotation, then copies merged"]
+        return [f"- {run.name}: {run.config.name}'s index{reranked}, the papers the query names in rotation, then copies merged"]
     if run.pool:
-        return [f"- {run.name}: {run.config.name}'s index, with copies from other files of a Work merged", f"  - pool: `{run.pool}`", f"  - overlap: `{run.overlap}`"]
+        return [
+            f"- {run.name}: {run.config.name}'s index{reranked}, with copies from other files of a Work merged",
+            f"  - pool: `{run.pool}`",
+            f"  - overlap: `{run.overlap}`",
+        ]
+    if run.rerank:
+        return [
+            f"- {run.name}: {run.config.name}'s index, its top {run.rerank.pool} Chunks reordered by the cross-encoder",
+            *[f"  - {name}: `{value}`" for name, value in run.rerank.describe().items()],
+        ]
     return [f"- {run.name}: `{run.config.key}`", *[f"  - {name}: `{value}`" for name, value in run.config.describe().items()]]
 
 
@@ -525,7 +551,7 @@ def _count_or_ungrouped(count: int | None) -> str:
 
 
 def _cost(run: RetrieverRun) -> str:
-    retriever = run.index.retriever
+    retriever = run.retriever
     milliseconds = sorted(s.seconds * 1000 for s in run.scored)
     p95 = statistics.quantiles(milliseconds, n=20, method="inclusive")[-1] if len(milliseconds) > 1 else milliseconds[0]
     cells = [

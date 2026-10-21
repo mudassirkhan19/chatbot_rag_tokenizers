@@ -201,3 +201,32 @@ def test_the_repo_config_compares_against_bge_small_with_a_seeded_bootstrap_of_1
 def test_a_bad_comparison_table_stops_with_a_message_naming_it(tmp_path, old, new, message):
     with pytest.raises(ConfigError, match=message):
         load_retrieval_config(with_line(tmp_path, old, new))
+
+
+def test_the_repo_config_reranks_bge_smalls_top_50_with_the_pinned_openscholar_reranker():
+    rerank = load_retrieval_config(RETRIEVAL_CONFIG).rerank
+
+    # The pin is the repo's commit on 2026-10-21 and the sha256 Hugging Face lists for its model.safetensors.
+    assert (rerank.model, rerank.revision) == ("OpenSciLM/OpenScholar_Reranker", "f371d9d9a5c47d5b89dfa130d8d6fa303f27126e")
+    assert rerank.model_sha256 == "a094204493283b1a87cf2d59674fe0db1f04891f0667b6d84368042a51c07e90"
+    assert (rerank.max_tokens, rerank.pool, rerank.retrievers) == (512, 50, ("dense.bge-small",))
+
+
+@pytest.mark.parametrize(
+    "old, new, message",
+    [
+        ('revision = "f371d9d9', 'revision = "main', r"\[rerank\] revision 'main.*' is not a 40-hex commit"),
+        ('model_sha256 = "a0942044', 'model_sha256 = "a09', r"\[rerank\] model_sha256 'a09.*' is not 64 hex digits"),
+        ("pool = 50\nmax_tokens", "pool = 0\nmax_tokens", r"\[rerank\] pool 0 must be at least 1"),
+        ("max_tokens = 512\nretrievers", "max_tokens = 0\nretrievers", r"\[rerank\] max_tokens 0 must be at least 1"),
+        (
+            'retrievers = ["dense.bge-small"]',
+            'retrievers = ["dense.e5"]',
+            r"\[rerank\] retriever 'dense.e5' is not a retriever in .*; it configures bm25, dense.bge-small",
+        ),
+    ],
+    ids=["unpinned-revision", "short-sha256", "no-pool", "no-tokens", "unknown-retriever"],
+)
+def test_a_bad_rerank_table_stops_with_a_message_naming_it(tmp_path, old, new, message):
+    with pytest.raises(ConfigError, match=message):
+        load_retrieval_config(with_line(tmp_path, old, new))

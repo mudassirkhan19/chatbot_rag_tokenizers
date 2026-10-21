@@ -1,5 +1,5 @@
-"""The retrieval config file: each retriever's settings (ADRs 0039, 0042, 0050 and 0058), the Collapsed ranking's pool and overlap (ADRs 0053 and 0074)
-and the eval report's Comparison (ADR 0061)."""
+"""The retrieval config file: each retriever's settings (ADRs 0039, 0042, 0050 and 0058), the Collapsed ranking's pool and overlap (ADRs 0053 and 0074),
+the reranker (#62) and the eval report's Comparison (ADR 0061)."""
 
 import re
 import tomllib
@@ -13,6 +13,7 @@ from .bm25 import BM25Config
 from .dense import DenseConfig
 from .embedder import POOLINGS
 from .hybrid import HybridConfig
+from .rerank import RerankConfig
 from .retriever import RetrieverConfig
 
 DEFAULT_PATH = Path("config/retrieval.toml")
@@ -36,6 +37,7 @@ class RetrievalConfig:
     hybrid: list[HybridConfig]  # one per [hybrid.<name>] table, in the file's order
     collapse_pool: int  # the raw Chunks the Collapsed ranking merges copies in
     collapse_overlap: float  # the share of word 5-grams two Chunks of a Work share to be copies (ADR 0074)
+    rerank: RerankConfig  # the cross-encoder and the retrievers `evaluate` scores reranked (#62)
     comparison: ComparisonConfig  # how the eval report compares the retrievers (ADR 0061)
 
     @property
@@ -64,13 +66,14 @@ def load_retrieval_config(path: Path = DEFAULT_PATH) -> RetrievalConfig:
         raise ConfigError(f"[collapse] overlap {overlap} must be above 0 and at most 1")
     dense = [_load_dense_table(raw, table, path) for table in tables]
     hybrid = [_load_hybrid_table(raw, table, path, bm25, dense) for table in raw.get("hybrid", {})]
-    comparison = ComparisonConfig(**read_table(raw, "comparison", {"baseline": str, "resamples": int, "seed": int}, path))
     configured = [bm25.name, *(config.name for config in dense), *(config.name for config in hybrid)]
+    rerank = _load_rerank_table(raw, path, configured)
+    comparison = ComparisonConfig(**read_table(raw, "comparison", {"baseline": str, "resamples": int, "seed": int}, path))
     if comparison.baseline not in configured:
         raise ConfigError(f"[comparison] baseline {comparison.baseline!r} is not a retriever in {path}; it configures {', '.join(configured)}")
     if comparison.resamples < 1:
         raise ConfigError(f"[comparison] resamples {comparison.resamples} must be at least 1")
-    return RetrievalConfig(bm25=bm25, dense=dense, hybrid=hybrid, collapse_pool=pool, collapse_overlap=overlap, comparison=comparison)
+    return RetrievalConfig(bm25=bm25, dense=dense, hybrid=hybrid, collapse_pool=pool, collapse_overlap=overlap, rerank=rerank, comparison=comparison)
 
 
 def _load_dense_table(raw: dict, table: str, path: Path) -> DenseConfig:
@@ -110,3 +113,19 @@ def _load_hybrid_table(raw: dict, table: str, path: Path, bm25: BM25Config, dens
         if fields[field] < 1:
             raise ConfigError(f"[{name}] {field} {fields[field]} must be at least 1")
     return HybridConfig(table=table, members=members, k=fields["k"], pool=fields["pool"])
+
+
+def _load_rerank_table(raw: dict, path: Path, configured: list[str]) -> RerankConfig:
+    fields = read_table(raw, "rerank", {"model": str, "revision": str, "model_sha256": str, "pool": int, "max_tokens": int, "retrievers": list}, path)
+    rerank = RerankConfig(**{**fields, "retrievers": tuple(fields["retrievers"])})
+    if not COMMIT.fullmatch(rerank.revision):
+        raise ConfigError(f"[rerank] revision {rerank.revision!r} is not a 40-hex commit")
+    if not SHA256.fullmatch(rerank.model_sha256):
+        raise ConfigError(f"[rerank] model_sha256 {rerank.model_sha256!r} is not 64 hex digits")
+    for field in ("pool", "max_tokens"):
+        if getattr(rerank, field) < 1:
+            raise ConfigError(f"[rerank] {field} {getattr(rerank, field)} must be at least 1")
+    for name in rerank.retrievers:
+        if name not in configured:
+            raise ConfigError(f"[rerank] retriever {name!r} is not a retriever in {path}; it configures {', '.join(configured)}")
+    return rerank

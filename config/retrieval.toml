@@ -92,6 +92,23 @@ pool = 100
 pool = 50
 overlap = 0.4
 
+# The reranker (#62): `evaluate` scores each retriever named in `retrievers` beside its `<name>+rerank` twin, which asks
+# the retriever for its top `pool` Chunks and reorders them by a cross-encoder's score for the query and the Chunk's
+# context header plus text, a tie to the raw order, with the rest of the raw ranking after them. Its `+rerank+collapsed`
+# twin merges copies in the reranked ranking, and its `+rerank+per-paper+collapsed` twin fills the slots per paper from
+# it too. The cross-encoder is pinned as the dense tables are: repo, revision and the sha256 of model.safetensors.
+#   max_tokens  a query and Chunk longer than this have the Chunk cut
+# OpenScholar_Reranker is BAAI/bge-reranker-large (XLM-RoBERTa large, 560M parameters) fine-tuned on scientific
+# passages for OpenScholar, which reranks its first stage's passages with it as here. Its tokenizer is a SentencePiece
+# model, so it needs the sentencepiece and protobuf packages. It runs on MPS when the machine has it.
+[rerank]
+model = "OpenSciLM/OpenScholar_Reranker"
+revision = "f371d9d9a5c47d5b89dfa130d8d6fa303f27126e"
+model_sha256 = "a094204493283b1a87cf2d59674fe0db1f04891f0667b6d84368042a51c07e90"
+pool = 50
+max_tokens = 512
+retrievers = ["dense.bge-small"]
+
 # The eval report's Comparison (spec #55, ADR 0061): every retriever against `baseline`, and every `+collapsed` twin
 # against the baseline's twin, on the answerable questions as a user asks them. It counts the questions each wins,
 # ties and loses on Recall@5 and on MRR@10, and gives 95% percentile bootstrap intervals on each mean and on the

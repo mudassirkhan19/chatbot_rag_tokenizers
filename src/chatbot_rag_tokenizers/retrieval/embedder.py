@@ -74,7 +74,7 @@ class TransformersEmbedder:
         self._pooling, self._max_tokens = settings.pooling, settings.max_tokens
         weights = weights_file(settings.model, settings.revision)
         self.weights_file = weights.name  # the file the pin's sha256 was checked against
-        if (found := _sha256(weights)) != settings.sha256:
+        if (found := sha256(weights)) != settings.sha256:
             raise ConfigError(f"the weights of {settings.model}@{settings.revision} have sha256 {found[:12]}, not the pinned {settings.sha256[:12]}")
         print(f"embedder: loading {settings.model}@{settings.revision[:12]} on {device}", file=sys.stderr)
         self.tokenizer = AutoTokenizer.from_pretrained(settings.model, revision=settings.revision)
@@ -153,7 +153,7 @@ def check_loading(model: str, loading: dict) -> None:
         raise ConfigError(f"{model} did not load: {'; '.join(loading['error_msgs'])}")
 
 
-def _sha256(path: Path) -> str:
+def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as f:
         for block in iter(lambda: f.read(1 << 20), b""):
