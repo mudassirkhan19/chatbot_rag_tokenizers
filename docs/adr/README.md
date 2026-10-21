@@ -82,7 +82,7 @@ One file per decision, numbered in the order they were made. If a decision is re
 | [0075](0075-tev1-as-a-grounding-judge-measured-against-the-hand-labels.md) | Tev1 as a grounding judge: P(yes) per claim and cited Chunk, averaged per Turn, measured against the hand labels | Accepted |
 | [0076](0076-retrieve-once-for-each-paper-a-question-names.md) | Retrieve once for each paper a question names: the names from the answer model, a turn each at the slots | Accepted |
 | [0077](0077-the-final-chat-run-after-the-text-collapse-the-rewrite-and-per-paper-retrieval.md) | The final chat run after the text collapse, the Rewrite and per-paper retrieval | Accepted |
-| [0078](0078-a-cross-encoder-reranker-measured-and-not-adopted.md) | A cross-encoder reranker over bge-small: measured, and not adopted by the chatbot | Accepted; adoption is #89 |
+| [0078](0078-a-cross-encoder-reranker-measured-and-not-adopted.md) | A cross-encoder reranker over bge-small: measured, and not adopted by the chatbot | Accepted, corrected the same day |
 
 ## Template
 
