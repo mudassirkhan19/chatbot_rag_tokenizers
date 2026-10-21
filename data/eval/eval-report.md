@@ -43,6 +43,18 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
   - pool: `50`
   - overlap: `0.4`
 - dense.bge-small+per-paper+collapsed: dense.bge-small's index, the papers the query names in rotation, then copies merged
+- dense.bge-small+rerank: dense.bge-small's index, its top 50 Chunks reordered by the cross-encoder
+  - model: `OpenSciLM/OpenScholar_Reranker`
+  - revision: `f371d9d9a5c47d5b89dfa130d8d6fa303f27126e`
+  - model_sha256: `a094204493283b1a87cf2d59674fe0db1f04891f0667b6d84368042a51c07e90`
+  - max_tokens: `512`
+  - pool: `50`
+  - input: `the query, then the Chunk's context header and text, the Chunk cut to fit max_tokens`
+  - score: `the cross-encoder's logit; a tie goes to the retriever's order, and the Chunks past the pool follow in it`
+- dense.bge-small+rerank+collapsed: dense.bge-small's index, reranked, with copies from other files of a Work merged
+  - pool: `50`
+  - overlap: `0.4`
+- dense.bge-small+rerank+per-paper+collapsed: dense.bge-small's index, reranked, the papers the query names in rotation, then copies merged
 - dense.bge-base: `dense-7fa306867c3e`
   - model: `BAAI/bge-base-en-v1.5`
   - revision: `a5beb1e3e68b9ab74eb54cfd186867f64f240e1a`
@@ -109,6 +121,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 - Rewriter: gemma4:e2b-mlx@e98b54fe1913 on Ollama 0.40.5, thinking off, temperature 0.0, rewrite prompt sha256 `a55b1f544689263b5369feb47da5d246675078f5c8ee93fcdff60dffaebc13f7`
 - Its `+per-paper+collapsed` twin asks the answer model, given the `[chat]` names prompt and the query alone, for the papers, methods and models the query names, and keeps the names the query holds. A name "<Surname> et al." could be any Work whose Edition's first author has that surname, any other name any Work whose Edition's title holds all its words. When two or more names could be different Works, the raw ranking is split by name into the Chunks of each name's Works, in the raw order, and the names fill the slots in rotation, each Chunk once, then the rest of the raw ranking, before copies are merged as in the `+collapsed` twin; otherwise the query is ranked as it is (ADR 0076). A hybrid ranks only its members' pools, so a name's Chunks outside them are not reached.
 - Names: gemma4:e2b-mlx@e98b54fe1913 on Ollama 0.40.5, thinking off, temperature 0.0, names prompt sha256 `531471f2e894a13dd2742e00f1f6af4cb5d8e651e2e316367842771845b81bbb`
+- A retriever `[rerank]` names has three twins more, `+rerank`, `+rerank+collapsed` and `+rerank+per-paper+collapsed`: the retriever's top *pool* Chunks are reordered by the cross-encoder's score for the query and each Chunk's context header and text, a tie to the raw order, with the rest of the raw ranking after them; then copies are merged, or the names fill the slots and copies are merged, as in the other twins (#62). In the Comparison, each is set against the baseline's same ranking without the reranker: `+rerank` against its raw ranking, `+rerank+collapsed` against its `+collapsed` twin and `+rerank+per-paper+collapsed` against its `+per-paper+collapsed` twin. Past the pool the raw scores follow the cross-encoder's, so only the order is comparable; a name's Chunks past the pool keep the raw order.
 
 ## Results
 
@@ -188,6 +201,45 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 | follow-up | reference rewrite | 8 | 0.50 | 0.370 | 0.50 |
 | follow-up | rewriter | 8 | 0.25 | 0.143 | 0.25 |
 | all answerable | as asked, follow-ups alone | 28 | 0.43 | 0.329 | 0.50 |
+| unanswerable | left out | 8 | — | — | — |
+
+### Results: dense.bge-small+rerank
+
+| Question type | Query | Questions | Recall@5 | MRR@10 | Hit@5 |
+|---|---|---:|---:|---:|---:|
+| single-paper | as asked | 12 | 0.83 | 0.725 | 0.83 |
+| multi-paper | as asked | 8 | 0.25 | 0.141 | 0.50 |
+| follow-up | follow-up alone | 8 | 0.12 | 0.031 | 0.12 |
+| follow-up | history + follow-up | 8 | 0.38 | 0.275 | 0.38 |
+| follow-up | reference rewrite | 8 | 0.75 | 0.448 | 0.75 |
+| follow-up | rewriter | 8 | 0.62 | 0.438 | 0.62 |
+| all answerable | as asked, follow-ups alone | 28 | 0.46 | 0.360 | 0.54 |
+| unanswerable | left out | 8 | — | — | — |
+
+### Results: dense.bge-small+rerank+collapsed
+
+| Question type | Query | Questions | Recall@5 | MRR@10 | Hit@5 |
+|---|---|---:|---:|---:|---:|
+| single-paper | as asked | 12 | 0.83 | 0.764 | 0.83 |
+| multi-paper | as asked | 8 | 0.29 | 0.177 | 0.62 |
+| follow-up | follow-up alone | 8 | 0.12 | 0.031 | 0.12 |
+| follow-up | history + follow-up | 8 | 0.38 | 0.310 | 0.38 |
+| follow-up | reference rewrite | 8 | 0.75 | 0.500 | 0.75 |
+| follow-up | rewriter | 8 | 0.62 | 0.562 | 0.62 |
+| all answerable | as asked, follow-ups alone | 28 | 0.48 | 0.387 | 0.57 |
+| unanswerable | left out | 8 | — | — | — |
+
+### Results: dense.bge-small+rerank+per-paper+collapsed
+
+| Question type | Query | Questions | Recall@5 | MRR@10 | Hit@5 |
+|---|---|---:|---:|---:|---:|
+| single-paper | as asked | 12 | 0.83 | 0.764 | 0.83 |
+| multi-paper | as asked | 8 | 0.29 | 0.298 | 0.62 |
+| follow-up | follow-up alone | 8 | 0.12 | 0.031 | 0.12 |
+| follow-up | history + follow-up | 8 | 0.50 | 0.341 | 0.50 |
+| follow-up | reference rewrite | 8 | 0.75 | 0.500 | 0.75 |
+| follow-up | rewriter | 8 | 0.62 | 0.562 | 0.62 |
+| all answerable | as asked, follow-ups alone | 28 | 0.48 | 0.421 | 0.57 |
 | unanswerable | left out | 8 | — | — | — |
 
 ### Results: dense.bge-base
@@ -387,7 +439,7 @@ Written by `evaluate`. Each retriever ranks the Chunks for every question of the
 
 ## Comparison
 
-Each retriever against the baseline, dense.bge-small, and each `+collapsed` twin against dense.bge-small+collapsed, on the 28 answerable questions as a user asks them (the *all answerable* row's queries). The report names no winner: the decision rule of spec #55 is applied in an ADR.
+Each retriever against the baseline, dense.bge-small, each `+collapsed` twin against dense.bge-small+collapsed, and each `+rerank` twin against the baseline's same ranking without the reranker, on the 28 answerable questions as a user asks them (the *all answerable* row's queries). The report names no winner: the decision rule of spec #55 is applied in an ADR.
 
 - Wins, ties and losses count the questions where the retriever's Recall@5 (or reciprocal rank, for MRR@10) is higher than the baseline's, the same, or lower.
 - The intervals are 95% percentile bootstrap intervals: the questions drawn with replacement, 10000 times, by NumPy's default generator seeded with 55. Every retriever is scored on the same draws, so a difference is paired question by question.
@@ -403,6 +455,9 @@ Each retriever against the baseline, dense.bge-small, and each `+collapsed` twin
 | dense.bge-small | dense.bge-small | 0.30 | [0.14, 0.48] | +0.00 | [+0.00, +0.00] | within noise | 0 | 28 | 0 |
 | dense.bge-small+collapsed | dense.bge-small+collapsed | 0.38 | [0.20, 0.55] | +0.00 | [+0.00, +0.00] | within noise | 0 | 28 | 0 |
 | dense.bge-small+per-paper+collapsed | dense.bge-small+collapsed | 0.43 | [0.27, 0.61] | +0.05 | [+0.00, +0.11] | within noise | 3 | 25 | 0 |
+| dense.bge-small+rerank | dense.bge-small | 0.46 | [0.29, 0.64] | +0.16 | [+0.05, +0.29] | beyond noise | 6 | 22 | 0 |
+| dense.bge-small+rerank+collapsed | dense.bge-small+collapsed | 0.48 | [0.31, 0.64] | +0.10 | [+0.02, +0.20] | beyond noise | 5 | 23 | 0 |
+| dense.bge-small+rerank+per-paper+collapsed | dense.bge-small+per-paper+collapsed | 0.48 | [0.31, 0.64] | +0.05 | [-0.03, +0.14] | within noise | 3 | 24 | 1 |
 | dense.bge-base | dense.bge-small | 0.29 | [0.14, 0.46] | -0.02 | [-0.12, +0.09] | within noise | 1 | 25 | 2 |
 | dense.bge-base+collapsed | dense.bge-small+collapsed | 0.32 | [0.14, 0.50] | -0.05 | [-0.18, +0.07] | within noise | 1 | 24 | 3 |
 | dense.bge-base+per-paper+collapsed | dense.bge-small+collapsed | 0.36 | [0.20, 0.54] | -0.02 | [-0.16, +0.11] | within noise | 3 | 22 | 3 |
@@ -429,6 +484,9 @@ Each retriever against the baseline, dense.bge-small, and each `+collapsed` twin
 | dense.bge-small | dense.bge-small | 0.244 | [0.114, 0.393] | +0.000 | [+0.000, +0.000] | within noise | 0 | 28 | 0 |
 | dense.bge-small+collapsed | dense.bge-small+collapsed | 0.276 | [0.147, 0.421] | +0.000 | [+0.000, +0.000] | within noise | 0 | 28 | 0 |
 | dense.bge-small+per-paper+collapsed | dense.bge-small+collapsed | 0.329 | [0.191, 0.477] | +0.054 | [-0.004, +0.143] | within noise | 3 | 24 | 1 |
+| dense.bge-small+rerank | dense.bge-small | 0.360 | [0.211, 0.521] | +0.115 | [-0.013, +0.257] | within noise | 9 | 14 | 5 |
+| dense.bge-small+rerank+collapsed | dense.bge-small+collapsed | 0.387 | [0.238, 0.545] | +0.111 | [-0.005, +0.233] | within noise | 9 | 16 | 3 |
+| dense.bge-small+rerank+per-paper+collapsed | dense.bge-small+per-paper+collapsed | 0.421 | [0.266, 0.580] | +0.092 | [-0.023, +0.217] | within noise | 7 | 18 | 3 |
 | dense.bge-base | dense.bge-small | 0.211 | [0.083, 0.358] | -0.033 | [-0.125, +0.041] | within noise | 4 | 18 | 6 |
 | dense.bge-base+collapsed | dense.bge-small+collapsed | 0.261 | [0.128, 0.408] | -0.015 | [-0.098, +0.058] | within noise | 5 | 17 | 6 |
 | dense.bge-base+per-paper+collapsed | dense.bge-small+collapsed | 0.315 | [0.172, 0.464] | +0.039 | [-0.070, +0.151] | within noise | 7 | 15 | 6 |
@@ -449,71 +507,71 @@ Each retriever against the baseline, dense.bge-small, and each `+collapsed` twin
 
 The rank of each question's first hit within the top 10, by retriever.
 
-| Question | Type | bm25 | dense.bge-small | dense.bge-base | dense.openscholar | hybrid.bm25+bge-small | hybrid.bm25+bge-base | hybrid.bm25+openscholar |
-|---|---|---:|---:|---:|---:|---:|---:|---:|
-| wechsel-freezing | single-paper | 5 | 2 | 4 | none | 1 | 3 | 1 |
-| sentencepiece-whitespace | single-paper | none | 4 | 3 | none | none | 10 | none |
-| bpe-dropout-rate | single-paper | 8 | 2 | 1 | 6 | 1 | 1 | 2 |
-| bpe-cyrillic | single-paper | none | 1 | 1 | none | 4 | 3 | none |
-| canine-amharic | single-paper | 1 | 1 | 1 | 2 | 1 | 1 | 1 |
-| byt5-span-length | single-paper | none | 6 | none | none | 6 | 9 | none |
-| digits-right-to-left | single-paper | none | none | none | none | none | none | none |
-| llama2-70b-vocabulary | single-paper | 2 | none | 5 | none | 2 | 2 | 2 |
-| xlm-r-tokens-per-language | single-paper | none | 1 | none | none | 3 | 3 | 3 |
-| magikarp-verified-share | single-paper | none | none | none | 9 | none | none | 6 |
-| superbpe-curriculum | single-paper | none | 8 | none | 3 | 5 | 10 | 4 |
-| fast-wordpiece-speed | single-paper | 4 | 1 | 1 | none | 1 | 1 | 3 |
-| bpe-and-wechsel-vocabularies | multi-paper | 10 | none | none | none | 2 | none | none |
-| compression-and-accuracy | multi-paper | none | none | none | none | none | none | none |
-| one-sided-regularization | multi-paper | 8 | none | none | 6 | 7 | 9 | 1 |
-| tokenizer-swap-budget | multi-paper | 1 | none | none | none | none | 5 | 4 |
-| megabyte-and-blt-patches | multi-paper | none | 10 | none | none | none | none | none |
-| api-cost-by-language | multi-paper | none | 5 | none | none | 9 | none | none |
-| renyi-efficiency | multi-paper | none | none | none | none | none | none | none |
-| gpt-4-number-tokens | multi-paper | none | none | none | none | none | none | none |
-| wechsel-neighbours | follow-up | none | none | none | none | none | none | none |
-| canine-hashing | follow-up | none | none | none | none | none | none | none |
-| digits-fourth-digit | follow-up | none | none | none | none | none | none | none |
-| vocabulary-with-scarce-data | follow-up | none | none | 8 | none | none | 1 | none |
-| code-tokenizer-initialisation | follow-up | none | none | none | none | none | none | none |
-| magikarp-norm-indicator | follow-up | none | none | none | none | none | none | none |
-| superbpe-mmlu | follow-up | none | none | none | none | none | none | none |
-| tokenization-latency | follow-up | none | 1 | 1 | none | 1 | 2 | none |
+| Question | Type | bm25 | dense.bge-small | dense.bge-small+rerank | dense.bge-base | dense.openscholar | hybrid.bm25+bge-small | hybrid.bm25+bge-base | hybrid.bm25+openscholar |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| wechsel-freezing | single-paper | 5 | 2 | 4 | 4 | none | 1 | 3 | 1 |
+| sentencepiece-whitespace | single-paper | none | 4 | 1 | 3 | none | none | 10 | none |
+| bpe-dropout-rate | single-paper | 8 | 2 | 3 | 1 | 6 | 1 | 1 | 2 |
+| bpe-cyrillic | single-paper | none | 1 | 1 | 1 | none | 4 | 3 | none |
+| canine-amharic | single-paper | 1 | 1 | 1 | 1 | 2 | 1 | 1 | 1 |
+| byt5-span-length | single-paper | none | 6 | 1 | none | none | 6 | 9 | none |
+| digits-right-to-left | single-paper | none | none | none | none | none | none | none | none |
+| llama2-70b-vocabulary | single-paper | 2 | none | 1 | 5 | none | 2 | 2 | 2 |
+| xlm-r-tokens-per-language | single-paper | none | 1 | 1 | none | none | 3 | 3 | 3 |
+| magikarp-verified-share | single-paper | none | none | 1 | none | 9 | none | none | 6 |
+| superbpe-curriculum | single-paper | none | 8 | 9 | none | 3 | 5 | 10 | 4 |
+| fast-wordpiece-speed | single-paper | 4 | 1 | 1 | 1 | none | 1 | 1 | 3 |
+| bpe-and-wechsel-vocabularies | multi-paper | 10 | none | 3 | none | none | 2 | none | none |
+| compression-and-accuracy | multi-paper | none | none | 7 | none | none | none | none | none |
+| one-sided-regularization | multi-paper | 8 | none | none | none | 6 | 7 | 9 | 1 |
+| tokenizer-swap-budget | multi-paper | 1 | none | 5 | none | none | none | 5 | 4 |
+| megabyte-and-blt-patches | multi-paper | none | 10 | none | none | none | none | none | none |
+| api-cost-by-language | multi-paper | none | 5 | 4 | none | none | 9 | none | none |
+| renyi-efficiency | multi-paper | none | none | 5 | none | none | none | none | none |
+| gpt-4-number-tokens | multi-paper | none | none | none | none | none | none | none | none |
+| wechsel-neighbours | follow-up | none | none | none | none | none | none | none | none |
+| canine-hashing | follow-up | none | none | none | none | none | none | none | none |
+| digits-fourth-digit | follow-up | none | none | none | none | none | none | none | none |
+| vocabulary-with-scarce-data | follow-up | none | none | none | 8 | none | none | 1 | none |
+| code-tokenizer-initialisation | follow-up | none | none | none | none | none | none | none | none |
+| magikarp-norm-indicator | follow-up | none | none | none | none | none | none | none | none |
+| superbpe-mmlu | follow-up | none | none | none | none | none | none | none | none |
+| tokenization-latency | follow-up | none | 1 | 4 | 1 | none | 1 | 2 | none |
 
 ### First hit: Collapsed ranking
 
 The rank of each question's first hit within the top 10, by retriever.
 
-| Question | Type | bm25+collapsed | bm25+per-paper+collapsed | dense.bge-small+collapsed | dense.bge-small+per-paper+collapsed | dense.bge-base+collapsed | dense.bge-base+per-paper+collapsed | dense.openscholar+collapsed | dense.openscholar+per-paper+collapsed | hybrid.bm25+bge-small+collapsed | hybrid.bm25+bge-small+per-paper+collapsed | hybrid.bm25+bge-base+collapsed | hybrid.bm25+bge-base+per-paper+collapsed | hybrid.bm25+openscholar+collapsed | hybrid.bm25+openscholar+per-paper+collapsed |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| wechsel-freezing | single-paper | 3 | 3 | 2 | 2 | 2 | 2 | 7 | 7 | 1 | 1 | 2 | 2 | 1 | 1 |
-| sentencepiece-whitespace | single-paper | none | none | 3 | 3 | 2 | 2 | none | none | none | none | 7 | 7 | none | none |
-| bpe-dropout-rate | single-paper | 5 | 5 | 2 | 2 | 1 | 1 | 4 | 4 | 1 | 1 | 1 | 1 | 2 | 2 |
-| bpe-cyrillic | single-paper | none | none | 1 | 1 | 1 | 1 | none | none | 4 | 4 | 3 | 3 | 9 | 9 |
-| canine-amharic | single-paper | 1 | 1 | 1 | 1 | 1 | 1 | 2 | 2 | 1 | 1 | 1 | 1 | 1 | 1 |
-| byt5-span-length | single-paper | none | none | 3 | 3 | 8 | 8 | none | none | 3 | 3 | 6 | 6 | none | none |
-| digits-right-to-left | single-paper | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
-| llama2-70b-vocabulary | single-paper | 2 | 2 | none | none | 4 | 4 | none | none | 2 | 2 | 2 | 2 | 2 | 2 |
-| xlm-r-tokens-per-language | single-paper | none | none | 1 | 1 | 6 | 6 | none | none | 2 | 2 | 2 | 2 | 2 | 2 |
-| magikarp-verified-share | single-paper | none | none | 3 | 3 | 2 | 2 | 6 | 6 | 10 | 10 | 10 | 10 | 4 | 4 |
-| superbpe-curriculum | single-paper | none | none | 6 | 6 | none | none | 3 | 3 | 5 | 5 | 8 | 8 | 3 | 3 |
-| fast-wordpiece-speed | single-paper | 3 | 3 | 1 | 1 | 1 | 1 | 8 | 8 | 1 | 1 | 1 | 1 | 2 | 2 |
-| bpe-and-wechsel-vocabularies | multi-paper | 6 | 6 | none | none | none | none | none | none | 2 | 2 | none | none | none | none |
-| compression-and-accuracy | multi-paper | none | none | 8 | none | none | none | 9 | 8 | none | none | none | none | 7 | 10 |
-| one-sided-regularization | multi-paper | 5 | 5 | none | none | none | none | 3 | 3 | 4 | 4 | 4 | 4 | 1 | 1 |
-| tokenizer-swap-budget | multi-paper | 1 | 2 | none | 1 | none | 1 | none | 10 | 7 | 3 | 3 | 3 | 2 | 2 |
-| megabyte-and-blt-patches | multi-paper | none | none | 8 | 4 | 8 | 8 | none | none | none | 4 | none | 7 | none | 9 |
-| api-cost-by-language | multi-paper | none | none | 5 | 5 | none | none | none | none | 9 | 9 | none | none | 10 | 10 |
-| renyi-efficiency | multi-paper | none | 3 | none | 2 | none | 2 | none | 1 | none | 2 | 8 | 2 | none | 1 |
-| gpt-4-number-tokens | multi-paper | none | none | 10 | 10 | none | none | none | none | none | none | none | none | none | none |
-| wechsel-neighbours | follow-up | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
-| canine-hashing | follow-up | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
-| digits-fourth-digit | follow-up | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
-| vocabulary-with-scarce-data | follow-up | none | none | none | none | 7 | 7 | none | none | none | none | 1 | 1 | none | none |
-| code-tokenizer-initialisation | follow-up | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
-| magikarp-norm-indicator | follow-up | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
-| superbpe-mmlu | follow-up | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
-| tokenization-latency | follow-up | none | none | 1 | 1 | 1 | 1 | none | none | 1 | 1 | 2 | 2 | none | none |
+| Question | Type | bm25+collapsed | bm25+per-paper+collapsed | dense.bge-small+collapsed | dense.bge-small+per-paper+collapsed | dense.bge-small+rerank+collapsed | dense.bge-small+rerank+per-paper+collapsed | dense.bge-base+collapsed | dense.bge-base+per-paper+collapsed | dense.openscholar+collapsed | dense.openscholar+per-paper+collapsed | hybrid.bm25+bge-small+collapsed | hybrid.bm25+bge-small+per-paper+collapsed | hybrid.bm25+bge-base+collapsed | hybrid.bm25+bge-base+per-paper+collapsed | hybrid.bm25+openscholar+collapsed | hybrid.bm25+openscholar+per-paper+collapsed |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| wechsel-freezing | single-paper | 3 | 3 | 2 | 2 | 2 | 2 | 2 | 2 | 7 | 7 | 1 | 1 | 2 | 2 | 1 | 1 |
+| sentencepiece-whitespace | single-paper | none | none | 3 | 3 | 1 | 1 | 2 | 2 | none | none | none | none | 7 | 7 | none | none |
+| bpe-dropout-rate | single-paper | 5 | 5 | 2 | 2 | 2 | 2 | 1 | 1 | 4 | 4 | 1 | 1 | 1 | 1 | 2 | 2 |
+| bpe-cyrillic | single-paper | none | none | 1 | 1 | 1 | 1 | 1 | 1 | none | none | 4 | 4 | 3 | 3 | 9 | 9 |
+| canine-amharic | single-paper | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 2 | 2 | 1 | 1 | 1 | 1 | 1 | 1 |
+| byt5-span-length | single-paper | none | none | 3 | 3 | 1 | 1 | 8 | 8 | none | none | 3 | 3 | 6 | 6 | none | none |
+| digits-right-to-left | single-paper | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
+| llama2-70b-vocabulary | single-paper | 2 | 2 | none | none | 1 | 1 | 4 | 4 | none | none | 2 | 2 | 2 | 2 | 2 | 2 |
+| xlm-r-tokens-per-language | single-paper | none | none | 1 | 1 | 1 | 1 | 6 | 6 | none | none | 2 | 2 | 2 | 2 | 2 | 2 |
+| magikarp-verified-share | single-paper | none | none | 3 | 3 | 1 | 1 | 2 | 2 | 6 | 6 | 10 | 10 | 10 | 10 | 4 | 4 |
+| superbpe-curriculum | single-paper | none | none | 6 | 6 | 6 | 6 | none | none | 3 | 3 | 5 | 5 | 8 | 8 | 3 | 3 |
+| fast-wordpiece-speed | single-paper | 3 | 3 | 1 | 1 | 1 | 1 | 1 | 1 | 8 | 8 | 1 | 1 | 1 | 1 | 2 | 2 |
+| bpe-and-wechsel-vocabularies | multi-paper | 6 | 6 | none | none | 3 | 3 | none | none | none | none | 2 | 2 | none | none | none | none |
+| compression-and-accuracy | multi-paper | none | none | 8 | none | 4 | 5 | none | none | 9 | 8 | none | none | none | none | 7 | 10 |
+| one-sided-regularization | multi-paper | 5 | 5 | none | none | none | none | none | none | 3 | 3 | 4 | 4 | 4 | 4 | 1 | 1 |
+| tokenizer-swap-budget | multi-paper | 1 | 2 | none | 1 | 3 | 1 | none | 1 | none | 10 | 7 | 3 | 3 | 3 | 2 | 2 |
+| megabyte-and-blt-patches | multi-paper | none | none | 8 | 4 | none | 10 | 8 | 8 | none | none | none | 4 | none | 7 | none | 9 |
+| api-cost-by-language | multi-paper | none | none | 5 | 5 | 4 | 4 | none | none | none | none | 9 | 9 | none | none | 10 | 10 |
+| renyi-efficiency | multi-paper | none | 3 | none | 2 | 4 | 2 | none | 2 | none | 1 | none | 2 | 8 | 2 | none | 1 |
+| gpt-4-number-tokens | multi-paper | none | none | 10 | 10 | none | none | none | none | none | none | none | none | none | none | none | none |
+| wechsel-neighbours | follow-up | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
+| canine-hashing | follow-up | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
+| digits-fourth-digit | follow-up | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
+| vocabulary-with-scarce-data | follow-up | none | none | none | none | none | none | 7 | 7 | none | none | none | none | 1 | 1 | none | none |
+| code-tokenizer-initialisation | follow-up | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
+| magikarp-norm-indicator | follow-up | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
+| superbpe-mmlu | follow-up | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none | none |
+| tokenization-latency | follow-up | none | none | 1 | 1 | 4 | 4 | 1 | 1 | none | none | 1 | 1 | 2 | 2 | none | none |
 
 ## Crowding
 
@@ -605,6 +663,47 @@ What takes the top 5 slots of each answerable question, as a user would ask it (
 
 - Grouped: 25 of 28 questions have a Work group for every Edition in their top 5.
 - Mostly-numeric slots holding a Passage: 0 of 2
+- Pool: the top 50 raw Chunks held fewer than 5 distinct Chunks, once copies were merged, for 0 of 28 questions, and fewer than 10, the depth each query asks for, for 0.
+
+### Crowding: dense.bge-small+rerank
+
+| Measure | Top-5 slots | Share of slots | Questions | Share of questions |
+|---|---:|---:|---:|---:|
+| duplicate | 52/90 | 0.58 | 18/18 | 1.00 |
+| duplicate: another Edition or Version | 26/90 | 0.29 | 14/18 | 0.78 |
+| duplicate: same file | 26/90 | 0.29 | 11/18 | 0.61 |
+| restatement | 0/90 | 0.00 | 0/18 | 0.00 |
+| mostly numeric | 1/140 | 0.01 | 1/28 | 0.04 |
+
+- Grouped: 18 of 28 questions have a Work group for every Edition in their top 5.
+- Mostly-numeric slots holding a Passage: 0 of 1
+
+### Crowding: dense.bge-small+rerank+collapsed
+
+| Measure | Top-5 slots | Share of slots | Questions | Share of questions |
+|---|---:|---:|---:|---:|
+| duplicate | 40/70 | 0.57 | 13/14 | 0.93 |
+| duplicate: another Edition or Version | 6/70 | 0.09 | 5/14 | 0.36 |
+| duplicate: same file | 34/70 | 0.49 | 13/14 | 0.93 |
+| restatement | 0/70 | 0.00 | 0/14 | 0.00 |
+| mostly numeric | 3/140 | 0.02 | 2/28 | 0.07 |
+
+- Grouped: 14 of 28 questions have a Work group for every Edition in their top 5.
+- Mostly-numeric slots holding a Passage: 0 of 3
+- Pool: the top 50 raw Chunks held fewer than 5 distinct Chunks, once copies were merged, for 0 of 28 questions, and fewer than 10, the depth each query asks for, for 0.
+
+### Crowding: dense.bge-small+rerank+per-paper+collapsed
+
+| Measure | Top-5 slots | Share of slots | Questions | Share of questions |
+|---|---:|---:|---:|---:|
+| duplicate | 44/75 | 0.59 | 14/15 | 0.93 |
+| duplicate: another Edition or Version | 5/75 | 0.07 | 4/15 | 0.27 |
+| duplicate: same file | 39/75 | 0.52 | 14/15 | 0.93 |
+| restatement | 0/75 | 0.00 | 0/15 | 0.00 |
+| mostly numeric | 3/140 | 0.02 | 2/28 | 0.07 |
+
+- Grouped: 15 of 28 questions have a Work group for every Edition in their top 5.
+- Mostly-numeric slots holding a Passage: 0 of 3
 - Pool: the top 50 raw Chunks held fewer than 5 distinct Chunks, once copies were merged, for 0 of 28 questions, and fewer than 10, the depth each query asks for, for 0.
 
 ### Crowding: dense.bge-base
@@ -824,6 +923,9 @@ Each retriever's raw ranking and its Collapsed ranking, over the answerable ques
 | dense.bge-small | raw | 70/140 | 33/140 | 37/140 | 28/28 | 0.30 | 0.244 | 0.32 |
 | dense.bge-small | collapsed | 52/130 | 5/130 | 47/130 | 26/28 | 0.38 | 0.276 | 0.39 |
 | dense.bge-small | per paper, collapsed | 52/125 | 5/125 | 47/125 | 25/28 | 0.43 | 0.329 | 0.50 |
+| dense.bge-small | reranked | 52/90 | 26/90 | 26/90 | 18/28 | 0.46 | 0.360 | 0.54 |
+| dense.bge-small | reranked, collapsed | 40/70 | 6/70 | 34/70 | 14/28 | 0.48 | 0.387 | 0.57 |
+| dense.bge-small | reranked, per paper, collapsed | 44/75 | 5/75 | 39/75 | 15/28 | 0.48 | 0.421 | 0.57 |
 | dense.bge-base | raw | 57/100 | 24/100 | 33/100 | 20/28 | 0.29 | 0.211 | 0.29 |
 | dense.bge-base | collapsed | 54/90 | 5/90 | 49/90 | 18/28 | 0.32 | 0.261 | 0.32 |
 | dense.bge-base | per paper, collapsed | 51/85 | 4/85 | 47/85 | 17/28 | 0.36 | 0.315 | 0.39 |
@@ -874,6 +976,8 @@ None.
 
 Editions in any retriever's top 5 for an answerable question, in any query but the rewriter's, with no Work group. `evaluate --export-ungrouped` writes them, with their titles, for grouping.
 
+- 10.1007/s40747-024-01641-7
+- 10.26615/978-954-452-098-4-111
 - 10.5121/ijci.2024.130204
 - 10.54254/2755-2721/2026.37609
 - 1506.02338v3
@@ -888,20 +992,25 @@ Editions in any retriever's top 5 for an answerable question, in any query but t
 - 2021.emnlp-main.161
 - 2021.mrl-1.3
 - 2021.naacl-main.17
+- 2021.stil-1.30
 - 2021.wat-1.21
 - 2022.findings-acl.194
+- 2022.insights-1.24
 - 2022.naacl-main.179
+- 2022.sigmorphon-1.14
 - 2023.acl-long.284
 - 2023.acl-long.326
 - 2023.acl-long.699
 - 2023.acl-short.34
 - 2023.americasnlp-1.9
 - 2023.eamt-1.14
+- 2023.emnlp-industry.58
 - 2023.findings-acl.548
 - 2023.findings-eacl.128
 - 2023.icon-1.19
 - 2023.paclic-1.64
 - 2024.emnlp-main.230
+- 2024.emnlp-main.543
 - 2024.findings-eacl.9
 - 2024.findings-emnlp.860
 - 2024.ltedi-1.16
@@ -912,28 +1021,40 @@ Editions in any retriever's top 5 for an answerable question, in any query but t
 - 2025.findings-emnlp.379
 - 2025.findings-emnlp.595
 - 2025.latechclfl-1.22
+- 2026.africanlp-main.10
 - 2026.mellm-1.27
 - 2109.02550v2
 - 2202.12142v1
 - 2204.04748v1
 - 2206.02608v1
 - 2208.05225v2
+- 2211.15965v1
 - 2212.11281v2
 - 2305.05461v1
 - 2306.01393v3
+- 2309.10668v2
 - 2310.08754v4
 - 2402.10712v3
 - 2403.16854v3
+- 2404.00397v1
+- 2404.03626v3
 - 2404.18810v2
 - 2406.11214v3
+- 2406.20086v3
 - 2408.04653v1
 - 2408.08541v2
+- 2409.06216v2
+- 2410.04335v1
+- 2410.05864v4
 - 2410.16410v1
 - 2411.18553v3
 - 2501.10322v2
+- 2502.14553v1
 - 2502.20273v4
+- 2506.03101v1
 - 2506.11115v1
 - 2506.14123v3
+- 2508.02591v3
 - 2508.11857v3
 - 2509.18750v2
 - 2511.20849v2
@@ -942,23 +1063,31 @@ Editions in any retriever's top 5 for an answerable question, in any query but t
 - 2602.05347v1
 - 2602.07698v2
 - 2603.22774v3
+- 2605.09751v2
+- 2605.13436v1
+- 2606.31796v2
 - 2607.29065v1
 - 2608.00582v1
 - 2608.03494v1
 - 2608.07249v1
+- 2608.10690v2
 - 2608.12756v1
 - 2608.13129v1
 - 2608.17325v1
+- 2608.21384v1
 - 2608.29930v1
 - 2609.01151v1
 - 2609.01386v1
+- 2609.40016v1
 - C16-1301
 - D19-1141
 - D19-1534
 - P16-2058
 - W17-4109
+- W17-4706
 - W18-1205
 - W19-4602
+- W19-5304
 
 ## Questions
 
@@ -1406,6 +1535,201 @@ Each query that names a paper, method or model the query holds, with the Works e
 | byt5-learning-rate | unanswerable | as asked | left out | — | — | — | — | 2506.04079v2 + 2506.04079v1; 2022.tacl-1.17; 2602.05879v1; 2105.13626v3 + 2105.13626v1; 2023.findings-emnlp.923 |
 | vitamin-d | unanswerable | as asked | left out | — | — | — | — | 2502.03275v2; 2603.15644v1; 2603.15644v1; 2402.12030v1; 2405.04163v2 + 2405.04163v1 |
 | world-cup-2018 | unanswerable | as asked | left out | — | — | — | — | 2408.07065v1; 2408.07065v1; 2408.07065v1; 2022.tacl-1.5 + 2103.06874v4 + 2103.06874v1; 2408.07065v1 |
+
+### Questions: dense.bge-small+rerank
+
+| Question | Type | Query | First hit | Passages found | Duplicate slots | Restatement slots | Numeric slots |
+|---|---|---|---:|---:|---:|---:|---:|
+| wechsel-freezing | single-paper | as asked | 4 | 1/1 | 4 | 0 | 0 |
+| sentencepiece-whitespace | single-paper | as asked | 1 | 1/1 | ungrouped | ungrouped | 0 |
+| bpe-dropout-rate | single-paper | as asked | 3 | 2/2 | 4 | 0 | 0 |
+| bpe-cyrillic | single-paper | as asked | 1 | 1/1 | ungrouped | ungrouped | 0 |
+| canine-amharic | single-paper | as asked | 1 | 1/1 | 4 | 0 | 1 |
+| byt5-span-length | single-paper | as asked | 1 | 1/1 | 3 | 0 | 0 |
+| digits-right-to-left | single-paper | as asked | none | 0/1 | 3 | 0 | 0 |
+| llama2-70b-vocabulary | single-paper | as asked | 1 | 1/1 | ungrouped | ungrouped | 0 |
+| xlm-r-tokens-per-language | single-paper | as asked | 1 | 1/1 | 4 | 0 | 0 |
+| magikarp-verified-share | single-paper | as asked | 1 | 1/1 | 4 | 0 | 0 |
+| superbpe-curriculum | single-paper | as asked | 9 | 0/1 | 2 | 0 | 0 |
+| fast-wordpiece-speed | single-paper | as asked | 1 | 1/1 | 4 | 0 | 0 |
+| bpe-and-wechsel-vocabularies | multi-paper | as asked | 3 | 1/2 | ungrouped | ungrouped | 0 |
+| compression-and-accuracy | multi-paper | as asked | 7 | 0/3 | 3 | 0 | 0 |
+| one-sided-regularization | multi-paper | as asked | none | 0/3 | ungrouped | ungrouped | 0 |
+| tokenizer-swap-budget | multi-paper | as asked | 5 | 1/2 | 2 | 0 | 0 |
+| megabyte-and-blt-patches | multi-paper | as asked | none | 0/2 | 3 | 0 | 0 |
+| api-cost-by-language | multi-paper | as asked | 4 | 1/2 | 1 | 0 | 0 |
+| renyi-efficiency | multi-paper | as asked | 5 | 1/2 | 2 | 0 | 0 |
+| gpt-4-number-tokens | multi-paper | as asked | none | 0/2 | 1 | 0 | 0 |
+| wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 |
+| wechsel-neighbours | follow-up | history + follow-up | 1 | 1/1 | 4 | 0 | 0 |
+| wechsel-neighbours | follow-up | reference rewrite | 2 | 1/1 | 4 | 0 | 0 |
+| wechsel-neighbours | follow-up | rewriter | 1 | 1/1 | 4 | 0 | 0 |
+| canine-hashing | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
+| canine-hashing | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 2 |
+| canine-hashing | follow-up | reference rewrite | 4 | 1/1 | 1 | 1 | 0 |
+| canine-hashing | follow-up | rewriter | 2 | 1/1 | 3 | 0 | 0 |
+| digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 |
+| digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
+| digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 3 | 0 | 0 |
+| digits-fourth-digit | follow-up | rewriter | none | 0/1 | 3 | 0 | 0 |
+| vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
+| vocabulary-with-scarce-data | follow-up | history + follow-up | 5 | 1/1 | 4 | 0 | 0 |
+| vocabulary-with-scarce-data | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 |
+| vocabulary-with-scarce-data | follow-up | rewriter | 1 | 1/1 | 4 | 0 | 0 |
+| code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | 4 | 0 | 0 |
+| code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 |
+| code-tokenizer-initialisation | follow-up | reference rewrite | none | 0/1 | ungrouped | ungrouped | 0 |
+| code-tokenizer-initialisation | follow-up | rewriter | none | 0/1 | 3 | 0 | 0 |
+| magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
+| magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 |
+| magikarp-norm-indicator | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 |
+| magikarp-norm-indicator | follow-up | rewriter | 2 | 1/1 | 4 | 0 | 0 |
+| superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 |
+| superbpe-mmlu | follow-up | history + follow-up | 1 | 1/1 | 2 | 0 | 0 |
+| superbpe-mmlu | follow-up | reference rewrite | 3 | 1/1 | 4 | 0 | 0 |
+| superbpe-mmlu | follow-up | rewriter | 2 | 1/1 | 4 | 0 | 2 |
+| tokenization-latency | follow-up | follow-up alone | 4 | 1/1 | ungrouped | ungrouped | 0 |
+| tokenization-latency | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 |
+| tokenization-latency | follow-up | reference rewrite | 2 | 1/1 | ungrouped | ungrouped | 0 |
+| tokenization-latency | follow-up | rewriter | none | 0/1 | 3 | 0 | 0 |
+| bpe-english-french | unanswerable | as asked | left out | — | — | — | — |
+| blt-70b-mmlu | unanswerable | as asked | left out | — | — | — | — |
+| blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — |
+| fast-wordpiece-gpu | unanswerable | as asked | left out | — | — | — | — |
+| sentencepiece-korean-speed | unanswerable | as asked | left out | — | — | — | — |
+| byt5-learning-rate | unanswerable | as asked | left out | — | — | — | — |
+| vitamin-d | unanswerable | as asked | left out | — | — | — | — |
+| world-cup-2018 | unanswerable | as asked | left out | — | — | — | — |
+
+### Questions: dense.bge-small+rerank+collapsed
+
+| Question | Type | Query | First hit | Passages found | Duplicate slots | Restatement slots | Numeric slots | Top-5 files + merged |
+|---|---|---|---:|---:|---:|---:|---:|---|
+| wechsel-freezing | single-paper | as asked | 2 | 1/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1 |
+| sentencepiece-whitespace | single-paper | as asked | 1 | 1/1 | ungrouped | ungrouped | 0 | D18-2012 + 1808.06226v1; 10.22260/isarc2023/0057; 2211.15965v1; 2505.16868v1; 2405.17067v2 + 2405.17067v1 |
+| bpe-dropout-rate | single-paper | as asked | 2 | 2/2 | ungrouped | ungrouped | 1 | 2020.acl-main.170 + 1910.13267v2; 2020.acl-main.170 + 1910.13267v2 + 1910.13267v1; 2020.acl-main.170 + 1910.13267v2 + 1910.13267v1; 1910.13267v1; W19-5304 + 1907.05854v1 |
+| bpe-cyrillic | single-paper | as asked | 1 | 1/1 | ungrouped | ungrouped | 0 | P16-1162 + 1508.07909v5 + 1508.07909v1; 2020.lrec-1.450; 2404.00397v1; 2023.eamt-1.14 + 2306.01393v1 + 2306.01393v3; 2020.lrec-1.450 |
+| canine-amharic | single-paper | as asked | 1 | 1/1 | 4 | 0 | 2 | 2022.tacl-1.5 + 2103.06874v4; 2103.06874v4; 2103.06874v4; 2022.tacl-1.5 + 2103.06874v4; 2022.tacl-1.5 + 2103.06874v4 |
+| byt5-span-length | single-paper | as asked | 1 | 1/1 | 3 | 0 | 0 | 2022.tacl-1.17 + 2105.13626v3 + 2105.13626v1; 2410.20771v3; 2410.20771v1; 2022.tacl-1.17 + 2105.13626v1 + 2105.13626v3; 2105.13626v1 |
+| digits-right-to-left | single-paper | as asked | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2602.10416v1; 2402.14903v1; 2402.14903v1 |
+| llama2-70b-vocabulary | single-paper | as asked | 1 | 1/1 | ungrouped | ungrouped | 0 | 2407.13623v3 + 2407.13623v1; 2406.14670v2; 2024.emnlp-main.543 + 2406.20086v3; 10.1007/s40747-024-01641-7; 2410.05864v4 |
+| xlm-r-tokens-per-language | single-paper | as asked | 1 | 1/1 | 4 | 0 | 0 | 2301.10472v2 + 2301.10472v1; 2301.10472v2 + 2301.10472v1; 2301.10472v2 + 2301.10472v1; 2301.10472v2; 2301.10472v2 |
+| magikarp-verified-share | single-paper | as asked | 1 | 1/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v2 + 2405.05417v1; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2405.05417v1; 2405.05417v1 |
+| superbpe-curriculum | single-paper | as asked | 6 | 0/1 | 2 | 0 | 0 | 2025.babylm-main.16; 2504.00178v2 + 2504.00178v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1 |
+| fast-wordpiece-speed | single-paper | as asked | 1 | 1/1 | 4 | 0 | 0 | 2021.emnlp-main.160 + 2012.15524v3; 2012.15524v1; 2021.emnlp-main.160 + 2012.15524v3; 2021.emnlp-main.160 + 2012.15524v3; 2021.emnlp-main.160 + 2012.15524v3 |
+| bpe-and-wechsel-vocabularies | multi-paper | as asked | 3 | 1/2 | ungrouped | ungrouped | 0 | W17-4706; 10.26615/978-954-452-098-4-111; P16-1162 + 1508.07909v5; 2022.insights-1.24; 2023.insights-1.7 |
+| compression-and-accuracy | multi-paper | as asked | 4 | 1/3 | 3 | 0 | 0 | 2024.emnlp-main.40 + 2402.18376v2 + 2402.18376v1; 2403.06265v2 + 2403.06265v1; 2403.06265v2 + 2403.06265v1; 2403.06265v2 + 2403.06265v1; 2403.06265v2 + 2403.06265v1 |
+| one-sided-regularization | multi-paper | as asked | none | 0/3 | ungrouped | ungrouped | 0 | 2020.acl-main.170 + 1910.13267v2 + 1910.13267v1; 2022.sigmorphon-1.14; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2020.acl-main.170 + 1910.13267v2 + 1910.13267v1; 2605.13436v1 |
+| tokenizer-swap-budget | multi-paper | as asked | 3 | 1/2 | 2 | 0 | 0 | 2026.findings-eacl.341 + 2512.03989v1 + 2512.03989v2; 2405.07883v2 + 2405.07883v1; 2402.01035v2 + 2402.01035v1; 2405.07883v2 + 2405.07883v1; 2405.07883v1 |
+| megabyte-and-blt-patches | multi-paper | as asked | none | 0/2 | ungrouped | ungrouped | 0 | 2412.09871v1; 2412.09871v1; 2404.14408v3 + 2404.14408v1; 2412.09871v1; 2502.14553v1 |
+| api-cost-by-language | multi-paper | as asked | 4 | 1/2 | 1 | 0 | 0 | 2609.39001v1; 2410.10665v1; 2506.06446v2; 2305.13707v1; 2506.06446v2 |
+| renyi-efficiency | multi-paper | as asked | 4 | 1/2 | ungrouped | ungrouped | 0 | 2512.03989v1; 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2504.00178v1; 2024.emnlp-main.40 + 2402.18376v2; 2506.03101v1 |
+| gpt-4-number-tokens | multi-paper | as asked | none | 0/2 | 0 | 0 | 0 | 2608.18062v3 + 2608.18062v1; 2402.14903v1; 2604.11582v1; 2412.10924v11 + 2412.10924v1; 2512.20757v2 + 2512.20757v1 |
+| wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2311.08849v1; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 1805.03710v1; 2021.findings-emnlp.141 + 2010.12730v3; 2410.16410v1 |
+| wechsel-neighbours | follow-up | history + follow-up | 1 | 1/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2112.06598v1 |
+| wechsel-neighbours | follow-up | reference rewrite | 2 | 1/1 | 3 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2; 2112.06598v1; 2022.naacl-main.293; 2025.findings-acl.109 |
+| wechsel-neighbours | follow-up | rewriter | 1 | 1/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2112.06598v1 |
+| canine-hashing | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2605.09751v1; 2001.05316v1; 2605.09751v1; 2605.09751v2; 2605.09751v1 |
+| canine-hashing | follow-up | history + follow-up | 7 | 0/1 | 3 | 0 | 2 | 2022.tacl-1.5 + 2103.06874v4; 2103.06874v4; 2022.tacl-1.5 + 2103.06874v4; 2023.mrl-1.6 + 2310.08078v1; 2022.tacl-1.5 + 2103.06874v4 |
+| canine-hashing | follow-up | reference rewrite | 2 | 1/1 | 1 | 1 | 0 | 2022.emnlp-main.536; 2022.tacl-1.5 + 2103.06874v1 + 2103.06874v4; 2112.10508v1; 2022.tacl-1.5 + 2103.06874v4; 2305.15425v2 + 2305.15425v1 |
+| canine-hashing | follow-up | rewriter | 1 | 1/1 | 3 | 0 | 0 | 2022.tacl-1.5 + 2103.06874v1 + 2103.06874v4; 2022.tacl-1.5 + 2103.06874v4; 2103.06874v1; 2022.emnlp-main.536; 2022.tacl-1.5 + 2103.06874v1 + 2103.06874v4 |
+| digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2602.10416v1; 2402.14903v1; 2102.13019v3 |
+| digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2402.14903v1; 2602.10416v1 |
+| digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2402.14903v1; 2602.10416v1 |
+| digits-fourth-digit | follow-up | rewriter | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2602.10416v1; 2402.14903v1 |
+| vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2404.03626v3; 2407.13623v1; 2021.stil-1.30; 2405.14159v2 + 2405.14159v1; 2402.02791v4 + 2402.02791v1 |
+| vocabulary-with-scarce-data | follow-up | history + follow-up | 3 | 1/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 |
+| vocabulary-with-scarce-data | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v1 |
+| vocabulary-with-scarce-data | follow-up | rewriter | 1 | 1/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v1; 2407.13623v3 + 2407.13623v1 |
+| code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | 4 | 0 | 0 | 2505.20133v3; 2505.20133v3; 2505.20133v3 + 2505.20133v1; 2505.20133v3; 2505.20133v3 + 2505.20133v1 |
+| code-tokenizer-initialisation | follow-up | history + follow-up | none | 0/1 | 2 | 0 | 0 | 2405.07883v2 + 2405.07883v1; 2405.07883v1; 2510.21954v1; 2026.findings-eacl.341 + 2512.03989v2; 2405.07883v2 + 2405.07883v1 |
+| code-tokenizer-initialisation | follow-up | reference rewrite | none | 0/1 | ungrouped | ungrouped | 0 | 2607.15232v1; 2410.04335v1; 2405.07883v2 + 2405.07883v1; 2025.acl-srw.57; 2607.15232v1 |
+| code-tokenizer-initialisation | follow-up | rewriter | none | 0/1 | 3 | 0 | 0 | 2505.20133v3; 2505.20133v3; 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2505.20133v3; 2505.20133v3 + 2505.20133v1 |
+| magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2606.31796v2; 2112.09348v1; 2609.40016v1; 2608.10690v2 + 2608.10690v1; 2409.06216v2 |
+| magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2 + 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2 |
+| magikarp-norm-indicator | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1; 2405.05417v1; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2 |
+| magikarp-norm-indicator | follow-up | rewriter | 2 | 1/1 | 4 | 0 | 0 | 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2 + 2405.05417v1 |
+| superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2410.18836v1; 2607.15232v1; 2510.13481v1; 2403.16854v3 + 2403.16854v1; 2410.09644v3 + 2410.09644v1 |
+| superbpe-mmlu | follow-up | history + follow-up | 1 | 1/1 | 1 | 0 | 0 | 2503.13423v3 + 2503.13423v1; 2025.babylm-main.16; 2504.00178v2 + 2504.00178v1; 2604.05192v2; 2503.13423v3 + 2503.13423v1 |
+| superbpe-mmlu | follow-up | reference rewrite | 2 | 1/1 | 4 | 0 | 0 | 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1 |
+| superbpe-mmlu | follow-up | rewriter | 1 | 1/1 | 4 | 0 | 1 | 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v1; 2503.13423v3 + 2503.13423v1 |
+| tokenization-latency | follow-up | follow-up alone | 4 | 1/1 | ungrouped | ungrouped | 0 | 2511.20849v1; 2508.02591v3; 2309.10668v2; 2305.15425v2 + 2305.15425v1; 2023.emnlp-industry.58 + 2402.09949v1 + 2402.09949v2 |
+| tokenization-latency | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2305.13707v1; 2305.15425v2 + 2305.15425v1; 2305.13707v1; 2305.15425v1; 2305.15425v1 |
+| tokenization-latency | follow-up | reference rewrite | 2 | 1/1 | ungrouped | ungrouped | 0 | 2305.15425v1; 2305.15425v2 + 2305.15425v1; 2026.africanlp-main.10; 2305.15425v1; 2608.21384v1 |
+| tokenization-latency | follow-up | rewriter | none | 0/1 | 3 | 0 | 0 | 2305.13707v1; 2305.15425v2 + 2305.15425v1; 2305.13707v1; 2305.15425v1; 2305.15425v1 |
+| bpe-english-french | unanswerable | as asked | left out | — | — | — | — | P16-1162 + 1508.07909v5; 2403.02366v1; 2023.icon-1.24; 2505.16868v1; 2505.16868v1 |
+| blt-70b-mmlu | unanswerable | as asked | left out | — | — | — | — | 2412.09871v1; 2605.08044v1; 2412.09871v1; 2412.09871v1; 2605.08044v1 |
+| blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — | 2023.acl-long.353 + 2211.09761v2; 10.1038/s42003-025-08982-0; 2402.18376v2 + 2402.18376v1; 2507.22543v1; 2023.acl-long.284 + 2306.16842v1 |
+| fast-wordpiece-gpu | unanswerable | as asked | left out | — | — | — | — | 2021.emnlp-main.160 + 2012.15524v3; D18-2012 + 1808.06226v1; 2021.emnlp-main.160 + 2012.15524v3; 1508.06615v1; 2024.repl4nlp-1.10 + 2401.07923v2 |
+| sentencepiece-korean-speed | unanswerable | as asked | left out | — | — | — | — | D18-2012 + 1808.06226v1; D18-2012 + 1808.06226v1; D18-2012 + 1808.06226v1; 10.7469/JKSQM.2020.48.3.421; 2025.loresmt-1.8 |
+| byt5-learning-rate | unanswerable | as asked | left out | — | — | — | — | 2022.tacl-1.17 + 2105.13626v3; 2201.13242v2 + 2201.13242v1; 2105.13626v3 + 2105.13626v1; 2105.13626v1; 2203.09963v1 |
+| vitamin-d | unanswerable | as asked | left out | — | — | — | — | 2502.03275v2; 2603.15644v1; 2208.02554v1; 2603.15644v1; 2510.15346v2 + 2510.15346v1 |
+| world-cup-2018 | unanswerable | as asked | left out | — | — | — | — | 2408.07065v1; 2408.07065v1; 2408.07065v1; 2408.07065v1; 2607.17689v1 |
+
+### Questions: dense.bge-small+rerank+per-paper+collapsed
+
+| Question | Type | Query | First hit | Passages found | Duplicate slots | Restatement slots | Numeric slots | Top-5 files + merged |
+|---|---|---|---:|---:|---:|---:|---:|---|
+| wechsel-freezing | single-paper | as asked | 2 | 1/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1 |
+| sentencepiece-whitespace | single-paper | as asked | 1 | 1/1 | ungrouped | ungrouped | 0 | D18-2012 + 1808.06226v1; 10.22260/isarc2023/0057; 2211.15965v1; 2505.16868v1; 2405.17067v2 + 2405.17067v1 |
+| bpe-dropout-rate | single-paper | as asked | 2 | 2/2 | ungrouped | ungrouped | 1 | 2020.acl-main.170 + 1910.13267v2; 2020.acl-main.170 + 1910.13267v2 + 1910.13267v1; 2020.acl-main.170 + 1910.13267v2 + 1910.13267v1; 1910.13267v1; W19-5304 + 1907.05854v1 |
+| bpe-cyrillic | single-paper | as asked | 1 | 1/1 | ungrouped | ungrouped | 0 | P16-1162 + 1508.07909v5 + 1508.07909v1; 2020.lrec-1.450; 2404.00397v1; 2023.eamt-1.14 + 2306.01393v1 + 2306.01393v3; 2020.lrec-1.450 |
+| canine-amharic | single-paper | as asked | 1 | 1/1 | 4 | 0 | 2 | 2022.tacl-1.5 + 2103.06874v4; 2103.06874v4; 2103.06874v4; 2022.tacl-1.5 + 2103.06874v4; 2022.tacl-1.5 + 2103.06874v4 |
+| byt5-span-length | single-paper | as asked | 1 | 1/1 | 3 | 0 | 0 | 2022.tacl-1.17 + 2105.13626v3 + 2105.13626v1; 2410.20771v3; 2410.20771v1; 2022.tacl-1.17 + 2105.13626v1 + 2105.13626v3; 2105.13626v1 |
+| digits-right-to-left | single-paper | as asked | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2602.10416v1; 2402.14903v1; 2402.14903v1 |
+| llama2-70b-vocabulary | single-paper | as asked | 1 | 1/1 | ungrouped | ungrouped | 0 | 2407.13623v3 + 2407.13623v1; 2406.14670v2; 2024.emnlp-main.543 + 2406.20086v3; 10.1007/s40747-024-01641-7; 2410.05864v4 |
+| xlm-r-tokens-per-language | single-paper | as asked | 1 | 1/1 | 4 | 0 | 0 | 2301.10472v2 + 2301.10472v1; 2301.10472v2 + 2301.10472v1; 2301.10472v2 + 2301.10472v1; 2301.10472v2; 2301.10472v2 |
+| magikarp-verified-share | single-paper | as asked | 1 | 1/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v2 + 2405.05417v1; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2405.05417v1; 2405.05417v1 |
+| superbpe-curriculum | single-paper | as asked | 6 | 0/1 | 2 | 0 | 0 | 2025.babylm-main.16; 2504.00178v2 + 2504.00178v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1 |
+| fast-wordpiece-speed | single-paper | as asked | 1 | 1/1 | 4 | 0 | 0 | 2021.emnlp-main.160 + 2012.15524v3; 2012.15524v1; 2021.emnlp-main.160 + 2012.15524v3; 2021.emnlp-main.160 + 2012.15524v3; 2021.emnlp-main.160 + 2012.15524v3 |
+| bpe-and-wechsel-vocabularies | multi-paper | as asked | 3 | 1/2 | ungrouped | ungrouped | 0 | W17-4706; 10.26615/978-954-452-098-4-111; P16-1162 + 1508.07909v5; 2022.insights-1.24; 2023.insights-1.7 |
+| compression-and-accuracy | multi-paper | as asked | 5 | 1/3 | 3 | 0 | 0 | 2024.emnlp-main.40 + 2402.18376v2 + 2402.18376v1; 2403.06265v2 + 2403.06265v1; 2403.06265v2 + 2403.06265v1; 2024.emnlp-main.40 + 2402.18376v2; 2403.06265v2 + 2403.06265v1 |
+| one-sided-regularization | multi-paper | as asked | none | 0/3 | ungrouped | ungrouped | 0 | 2020.acl-main.170 + 1910.13267v2 + 1910.13267v1; 2022.sigmorphon-1.14; 2020.acl-main.170 + 1910.13267v1 + 1910.13267v2; 2020.acl-main.170 + 1910.13267v2 + 1910.13267v1; 2605.13436v1 |
+| tokenizer-swap-budget | multi-paper | as asked | 1 | 1/2 | 3 | 0 | 0 | 2402.01035v2 + 2402.01035v1; 2405.07883v2 + 2405.07883v1; 2402.01035v2 + 2402.01035v1; 2405.07883v2 + 2405.07883v1; 2402.01035v2 + 2402.01035v1 |
+| megabyte-and-blt-patches | multi-paper | as asked | 10 | 0/2 | 3 | 0 | 0 | 2305.07185v2 + 2305.07185v1; 2412.09871v1; 2412.09871v1; 2305.07185v2 + 2305.07185v1; 2412.09871v1 |
+| api-cost-by-language | multi-paper | as asked | 4 | 1/2 | 1 | 0 | 0 | 2609.39001v1; 2410.10665v1; 2506.06446v2; 2305.13707v1; 2506.06446v2 |
+| renyi-efficiency | multi-paper | as asked | 2 | 1/2 | ungrouped | ungrouped | 0 | 2023.acl-long.284 + 2306.16842v1; 2024.emnlp-main.40 + 2402.18376v2; 2023.acl-long.284 + 2306.16842v1; 2024.emnlp-main.40 + 2402.18376v2; 2023.acl-long.284 + 2306.16842v1 |
+| gpt-4-number-tokens | multi-paper | as asked | none | 0/2 | 0 | 0 | 0 | 2608.18062v3 + 2608.18062v1; 2402.14903v1; 2604.11582v1; 2412.10924v11 + 2412.10924v1; 2512.20757v2 + 2512.20757v1 |
+| wechsel-neighbours | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2311.08849v1; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 1805.03710v1; 2021.findings-emnlp.141 + 2010.12730v3; 2410.16410v1 |
+| wechsel-neighbours | follow-up | history + follow-up | 1 | 1/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2112.06598v1 |
+| wechsel-neighbours | follow-up | reference rewrite | 2 | 1/1 | 3 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2; 2112.06598v1; 2022.naacl-main.293; 2025.findings-acl.109 |
+| wechsel-neighbours | follow-up | rewriter | 1 | 1/1 | 4 | 0 | 0 | 2022.naacl-main.293 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2022.naacl-main.293 + 2112.06598v1 + 2112.06598v2; 2022.naacl-main.293 + 2112.06598v2 + 2112.06598v1; 2112.06598v1 |
+| canine-hashing | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2605.09751v1; 2001.05316v1; 2605.09751v1; 2605.09751v2; 2605.09751v1 |
+| canine-hashing | follow-up | history + follow-up | 7 | 0/1 | 3 | 0 | 2 | 2022.tacl-1.5 + 2103.06874v4; 2103.06874v4; 2022.tacl-1.5 + 2103.06874v4; 2023.mrl-1.6 + 2310.08078v1; 2022.tacl-1.5 + 2103.06874v4 |
+| canine-hashing | follow-up | reference rewrite | 2 | 1/1 | 1 | 1 | 0 | 2022.emnlp-main.536; 2022.tacl-1.5 + 2103.06874v1 + 2103.06874v4; 2112.10508v1; 2022.tacl-1.5 + 2103.06874v4; 2305.15425v2 + 2305.15425v1 |
+| canine-hashing | follow-up | rewriter | 1 | 1/1 | 3 | 0 | 0 | 2022.tacl-1.5 + 2103.06874v1 + 2103.06874v4; 2022.tacl-1.5 + 2103.06874v4; 2103.06874v1; 2022.emnlp-main.536; 2022.tacl-1.5 + 2103.06874v1 + 2103.06874v4 |
+| digits-fourth-digit | follow-up | follow-up alone | none | 0/1 | 2 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2602.10416v1; 2402.14903v1; 2102.13019v3 |
+| digits-fourth-digit | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2402.14903v1; 2602.10416v1 |
+| digits-fourth-digit | follow-up | reference rewrite | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2402.14903v1; 2602.10416v1 |
+| digits-fourth-digit | follow-up | rewriter | none | 0/1 | 3 | 0 | 0 | 2402.14903v1; 2402.14903v1; 2402.14903v1; 2602.10416v1; 2402.14903v1 |
+| vocabulary-with-scarce-data | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2404.03626v3; 2407.13623v1; 2021.stil-1.30; 2405.14159v2 + 2405.14159v1; 2402.02791v4 + 2402.02791v1 |
+| vocabulary-with-scarce-data | follow-up | history + follow-up | 3 | 1/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 |
+| vocabulary-with-scarce-data | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v1 |
+| vocabulary-with-scarce-data | follow-up | rewriter | 1 | 1/1 | 4 | 0 | 0 | 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v3 + 2407.13623v1; 2407.13623v1; 2407.13623v3 + 2407.13623v1 |
+| code-tokenizer-initialisation | follow-up | follow-up alone | none | 0/1 | 4 | 0 | 0 | 2505.20133v3; 2505.20133v3; 2505.20133v3 + 2505.20133v1; 2505.20133v3; 2505.20133v3 + 2505.20133v1 |
+| code-tokenizer-initialisation | follow-up | history + follow-up | 4 | 1/1 | 3 | 0 | 0 | 2402.01035v2 + 2402.01035v1; 2405.07883v2 + 2405.07883v1; 2405.07883v1; 2402.01035v2 + 2402.01035v1; 2405.07883v2 + 2405.07883v1 |
+| code-tokenizer-initialisation | follow-up | reference rewrite | none | 0/1 | ungrouped | ungrouped | 0 | 2607.15232v1; 2410.04335v1; 2405.07883v2 + 2405.07883v1; 2025.acl-srw.57; 2607.15232v1 |
+| code-tokenizer-initialisation | follow-up | rewriter | none | 0/1 | 3 | 0 | 0 | 2505.20133v3; 2505.20133v3; 2026.findings-eacl.341 + 2512.03989v2 + 2512.03989v1; 2505.20133v3; 2505.20133v3 + 2505.20133v1 |
+| magikarp-norm-indicator | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2606.31796v2; 2112.09348v1; 2609.40016v1; 2608.10690v2 + 2608.10690v1; 2409.06216v2 |
+| magikarp-norm-indicator | follow-up | history + follow-up | none | 0/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2 + 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2 |
+| magikarp-norm-indicator | follow-up | reference rewrite | 1 | 1/1 | 4 | 0 | 0 | 2024.emnlp-main.649 + 2405.05417v2; 2405.05417v1; 2405.05417v1; 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2 |
+| magikarp-norm-indicator | follow-up | rewriter | 2 | 1/1 | 4 | 0 | 0 | 2405.05417v1; 2024.emnlp-main.649 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v1 + 2405.05417v2; 2024.emnlp-main.649 + 2405.05417v2 + 2405.05417v1 |
+| superbpe-mmlu | follow-up | follow-up alone | none | 0/1 | ungrouped | ungrouped | 0 | 2410.18836v1; 2607.15232v1; 2510.13481v1; 2403.16854v3 + 2403.16854v1; 2410.09644v3 + 2410.09644v1 |
+| superbpe-mmlu | follow-up | history + follow-up | 1 | 1/1 | 1 | 0 | 0 | 2503.13423v3 + 2503.13423v1; 2025.babylm-main.16; 2504.00178v2 + 2504.00178v1; 2604.05192v2; 2503.13423v3 + 2503.13423v1 |
+| superbpe-mmlu | follow-up | reference rewrite | 2 | 1/1 | 4 | 0 | 0 | 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1 |
+| superbpe-mmlu | follow-up | rewriter | 1 | 1/1 | 4 | 0 | 1 | 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v3 + 2503.13423v1; 2503.13423v1; 2503.13423v3 + 2503.13423v1 |
+| tokenization-latency | follow-up | follow-up alone | 4 | 1/1 | ungrouped | ungrouped | 0 | 2511.20849v1; 2508.02591v3; 2309.10668v2; 2305.15425v2 + 2305.15425v1; 2023.emnlp-industry.58 + 2402.09949v1 + 2402.09949v2 |
+| tokenization-latency | follow-up | history + follow-up | none | 0/1 | 3 | 0 | 0 | 2305.13707v1; 2305.15425v2 + 2305.15425v1; 2305.13707v1; 2305.15425v1; 2305.15425v1 |
+| tokenization-latency | follow-up | reference rewrite | 2 | 1/1 | ungrouped | ungrouped | 0 | 2305.15425v1; 2305.15425v2 + 2305.15425v1; 2026.africanlp-main.10; 2305.15425v1; 2608.21384v1 |
+| tokenization-latency | follow-up | rewriter | none | 0/1 | 3 | 0 | 0 | 2305.13707v1; 2305.15425v2 + 2305.15425v1; 2305.13707v1; 2305.15425v1; 2305.15425v1 |
+| bpe-english-french | unanswerable | as asked | left out | — | — | — | — | P16-1162 + 1508.07909v5; 2403.02366v1; 2023.icon-1.24; 2505.16868v1; 2505.16868v1 |
+| blt-70b-mmlu | unanswerable | as asked | left out | — | — | — | — | 2412.09871v1; 2605.08044v1; 2412.09871v1; 2412.09871v1; 2605.08044v1 |
+| blt-8b-gpu-hours | unanswerable | as asked | left out | — | — | — | — | 2023.acl-long.353 + 2211.09761v2; 10.1038/s42003-025-08982-0; 2402.18376v2 + 2402.18376v1; 2507.22543v1; 2023.acl-long.284 + 2306.16842v1 |
+| fast-wordpiece-gpu | unanswerable | as asked | left out | — | — | — | — | 2021.emnlp-main.160 + 2012.15524v3; D18-2012 + 1808.06226v1; 2021.emnlp-main.160 + 2012.15524v3; 1508.06615v1; 2024.repl4nlp-1.10 + 2401.07923v2 |
+| sentencepiece-korean-speed | unanswerable | as asked | left out | — | — | — | — | D18-2012 + 1808.06226v1; D18-2012 + 1808.06226v1; D18-2012 + 1808.06226v1; 10.7469/JKSQM.2020.48.3.421; 2025.loresmt-1.8 |
+| byt5-learning-rate | unanswerable | as asked | left out | — | — | — | — | 2022.tacl-1.17 + 2105.13626v3; 2201.13242v2 + 2201.13242v1; 2105.13626v3 + 2105.13626v1; 2105.13626v1; 2203.09963v1 |
+| vitamin-d | unanswerable | as asked | left out | — | — | — | — | 2502.03275v2; 2603.15644v1; 2208.02554v1; 2603.15644v1; 2510.15346v2 + 2510.15346v1 |
+| world-cup-2018 | unanswerable | as asked | left out | — | — | — | — | 2408.07065v1; 2408.07065v1; 2408.07065v1; 2408.07065v1; 2607.17689v1 |
 
 ### Questions: dense.bge-base
 
@@ -2384,28 +2708,31 @@ Each query that names a paper, method or model the query holds, with the Works e
 
 ## Cost
 
-Each retriever's model and index, with how long the index took to build and each query took. A hybrid's parameters, dimension and index are its members' summed (BM25 has no model and no vectors), and its build time is theirs; a `+collapsed` twin uses its retriever's index. The times depend on the machine and change from run to run.
+Each retriever's model and index, with how long the index took to build and each query took. A hybrid's parameters, dimension and index are its members' summed (BM25 has no model and no vectors), and its build time is theirs; a `+collapsed` twin uses its retriever's index. A `+rerank` twin's parameters are its retriever's and the cross-encoder's, summed, and its latency includes the cross-encoder's pass over the pool. The times depend on the machine and change from run to run.
 
 | Retriever | Parameters | Dimension | Index on disk | Built on | Build time | Queries | Queried on | Latency p50 | Latency p95 |
 |---|---:|---:|---:|---|---:|---:|---|---:|---:|
-| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 222.96 ms | 325.77 ms |
-| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 244.00 ms | 349.83 ms |
-| bm25+per-paper+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 245.01 ms | 447.06 ms |
-| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 28.89 ms | 32.68 ms |
-| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 40.93 ms | 63.36 ms |
-| dense.bge-small+per-paper+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 42.20 ms | 188.16 ms |
-| dense.bge-base | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 38.67 ms | 43.58 ms |
-| dense.bge-base+collapsed | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 49.63 ms | 76.38 ms |
-| dense.bge-base+per-paper+collapsed | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 49.75 ms | 200.63 ms |
-| dense.openscholar | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 39.13 ms | 42.67 ms |
-| dense.openscholar+collapsed | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 48.89 ms | 66.46 ms |
-| dense.openscholar+per-paper+collapsed | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 49.67 ms | 192.23 ms |
-| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 245.51 ms | 388.67 ms |
-| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 263.19 ms | 379.85 ms |
-| hybrid.bm25+bge-small+per-paper+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 260.19 ms | 376.70 ms |
-| hybrid.bm25+bge-base | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 282.02 ms | 417.80 ms |
-| hybrid.bm25+bge-base+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 275.20 ms | 412.09 ms |
-| hybrid.bm25+bge-base+per-paper+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 270.73 ms | 398.79 ms |
-| hybrid.bm25+openscholar | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 259.59 ms | 402.01 ms |
-| hybrid.bm25+openscholar+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 274.20 ms | 391.05 ms |
-| hybrid.bm25+openscholar+per-paper+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 285.29 ms | 402.47 ms |
+| bm25 | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 220.94 ms | 328.81 ms |
+| bm25+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 237.13 ms | 341.36 ms |
+| bm25+per-paper+collapsed | — | — | 140.3 MB | cpu | 9.35 s | 60 | cpu | 247.53 ms | 428.80 ms |
+| dense.bge-small | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 28.29 ms | 30.71 ms |
+| dense.bge-small+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 41.30 ms | 63.12 ms |
+| dense.bge-small+per-paper+collapsed | 33.4M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 41.97 ms | 186.84 ms |
+| dense.bge-small+rerank | 593.3M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 2431.06 ms | 2818.76 ms |
+| dense.bge-small+rerank+collapsed | 593.3M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 2616.44 ms | 2997.29 ms |
+| dense.bge-small+rerank+per-paper+collapsed | 593.3M | 384 | 220.6 MB | mps | 1318.64 s | 60 | mps | 2865.56 ms | 3300.19 ms |
+| dense.bge-base | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 38.39 ms | 44.00 ms |
+| dense.bge-base+collapsed | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 50.78 ms | 75.84 ms |
+| dense.bge-base+per-paper+collapsed | 109.5M | 768 | 437.8 MB | mps | 2878.28 s | 60 | mps | 52.53 ms | 199.06 ms |
+| dense.openscholar | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 38.00 ms | 42.67 ms |
+| dense.openscholar+collapsed | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 48.86 ms | 66.95 ms |
+| dense.openscholar+per-paper+collapsed | 109.5M | 768 | 437.8 MB | mps | 5081.47 s | 60 | mps | 50.14 ms | 199.92 ms |
+| hybrid.bm25+bge-small | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 238.43 ms | 370.22 ms |
+| hybrid.bm25+bge-small+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 247.13 ms | 351.77 ms |
+| hybrid.bm25+bge-small+per-paper+collapsed | 33.4M | 384 | 361.0 MB | cpu+mps | 1327.99 s | 60 | cpu+mps | 250.05 ms | 351.71 ms |
+| hybrid.bm25+bge-base | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 249.83 ms | 374.90 ms |
+| hybrid.bm25+bge-base+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 265.41 ms | 378.06 ms |
+| hybrid.bm25+bge-base+per-paper+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 2887.63 s | 60 | cpu+mps | 263.67 ms | 379.44 ms |
+| hybrid.bm25+openscholar | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 254.19 ms | 372.56 ms |
+| hybrid.bm25+openscholar+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 261.39 ms | 374.78 ms |
+| hybrid.bm25+openscholar+per-paper+collapsed | 109.5M | 768 | 578.1 MB | cpu+mps | 5090.82 s | 60 | cpu+mps | 268.92 ms | 383.93 ms |
