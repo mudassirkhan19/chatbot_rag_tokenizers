@@ -132,17 +132,17 @@ def evaluate(
         rankings: list[tuple[Retriever, RerankConfig | None]] = [(built.retriever, None)]
         if scorer and config.name in reranked:
             rankings.append((Reranked(built.retriever, chunks, scorer, rerank.pool), rerank))
-        for retriever, reranker in rankings:
+        for retriever, reranked_by in rankings:
             collapsed = Collapsed(retriever, chunks, rows.values(), pool, overlap)
             twins = [
-                RetrieverRun(config, built, retriever, score(questions, retriever, chunks, rule, rewriter.rewrites), rerank=reranker),
-                RetrieverRun(config, built, collapsed, score(questions, collapsed, chunks, rule, rewriter.rewrites), pool, overlap, rerank=reranker),
+                RetrieverRun(config, built, retriever, score(questions, retriever, chunks, rule, rewriter.rewrites), rerank=reranked_by),
+                RetrieverRun(config, built, collapsed, score(questions, collapsed, chunks, rule, rewriter.rewrites), pool, overlap, rerank=reranked_by),
             ]
             if names.ran:
                 split = PerPaper(retriever, chunks, named_works, lambda text: names.names[text])
                 per_paper = Collapsed(split, chunks, rows.values(), pool, overlap)
                 scored = score(questions, per_paper, chunks, rule, rewriter.rewrites)
-                twins.append(RetrieverRun(config, built, per_paper, scored, pool, overlap, per_paper=True, rerank=reranker))
+                twins.append(RetrieverRun(config, built, per_paper, scored, pool, overlap, per_paper=True, rerank=reranked_by))
             for run in twins:
                 runs.append(run)
                 if overall := metrics(all_answerable(run.scored)):

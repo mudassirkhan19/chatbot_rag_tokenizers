@@ -100,24 +100,16 @@ class Reranked:
 class CrossEncoder:
     def __init__(self, config: RerankConfig, device: str) -> None:
         import torch
-        from transformers import AutoModelForSequenceClassification, AutoTokenizer
+        from transformers import AutoModelForSequenceClassification
 
         self._torch = torch
         self.model, self.revision, self.device, self._max_tokens = config.model, config.revision, device, config.max_tokens
-        weights = embedder.weights_file(config.model, config.revision)
-        if (found := embedder.sha256(weights)) != config.model_sha256:
-            raise ConfigError(f"the weights of {config.model}@{config.revision} have sha256 {found[:12]}, not the pinned {config.model_sha256[:12]}")
-        print(f"reranker: loading {config.model}@{config.revision[:12]} on {device}", file=sys.stderr)
-        self.tokenizer = AutoTokenizer.from_pretrained(config.model, revision=config.revision)
-        network, loading = AutoModelForSequenceClassification.from_pretrained(
-            config.model, revision=config.revision, dtype=torch.float32, use_safetensors=weights.name == embedder.WEIGHTS[0], output_loading_info=True
+        self.tokenizer, self._network, _ = embedder.load_pinned(
+            "reranker", AutoModelForSequenceClassification, config.model, config.revision, config.model_sha256, device
         )
-        embedder.check_loading(config.model, loading)
-        if network.config.num_labels != 1:
-            raise ConfigError(f"{config.model} gives {network.config.num_labels} logits per pair, not the one score a cross-encoder gives")
-        self.parameters = sum(parameter.numel() for parameter in network.parameters())
-        # transformers types .to() as taking a model, not a device.
-        self._network = network.to(device).eval()  # type: ignore[arg-type]
+        if (labels := self._network.config.num_labels) != 1:
+            raise ConfigError(f"{config.model} gives {labels} logits per pair, not the one score a cross-encoder gives")
+        self.parameters = sum(parameter.numel() for parameter in self._network.parameters())
         # The first pass on MPS compiles its kernels; doing it here keeps that out of the first query's latency.
         self.score("warm-up", ["warm-up"])
 
@@ -126,13 +118,17 @@ class CrossEncoder:
         scores = [0.0] * len(texts)
         # Texts of similar length share a batch, so little of it is padding.
         order = sorted(range(len(texts)), key=lambda i: len(texts[i]))
+        cut = 0
         with torch.inference_mode():
             for start in range(0, len(order), _BATCH):
                 rows = order[start : start + _BATCH]
+                cut += sum(len(ids) > self._max_tokens for ids in self.tokenizer([query] * len(rows), [texts[i] for i in rows])["input_ids"])
                 encoded = self.tokenizer(
                     [query] * len(rows), [texts[i] for i in rows], padding=True, truncation="only_second", max_length=self._max_tokens, return_tensors="pt"
                 ).to(self.device)
                 logits = self._network(**encoded).logits[:, 0].float().cpu().tolist()
                 for row, logit in zip(rows, logits):
                     scores[row] = logit
+        if cut:
+            print(f"reranker: {cut} of {len(texts)} Chunks were cut to fit {self._max_tokens} tokens with the query", file=sys.stderr)
         return scores

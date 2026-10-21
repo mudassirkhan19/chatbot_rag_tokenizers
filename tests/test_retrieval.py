@@ -1206,7 +1206,10 @@ def test_the_comparison_counts_wins_ties_and_losses_against_the_baseline_as_the_
         rows = comparison(report, metric)
         assert list(rows) == runs
         for name in runs:
-            baseline = "dense.bge-small+collapsed" if name.endswith("+collapsed") else "dense.bge-small"
+            if name.startswith("dense.bge-small+rerank"):  # against the same ranking without the reranker
+                baseline = name.replace("+rerank", "")
+            else:
+                baseline = "dense.bge-small+collapsed" if name.endswith("+collapsed") else "dense.bge-small"
             assert rows[name][0] == baseline
             pairs = list(zip(map(value, per_question(report, name, column)), map(value, per_question(report, baseline, column))))
             counts = [sum(1 for ours, theirs in pairs if test(ours, theirs)) for test in (float.__gt__, float.__eq__, float.__lt__)]
@@ -1310,7 +1313,10 @@ def test_the_reranked_twins_reorder_the_raw_pool_by_the_cross_encoder_and_record
     # Compared against the baseline's raw and Collapsed rankings, as any twin is.
     compared = {row[0]: row[1] for row in table(report, "### Comparison: Recall@5")}
     assert compared["dense.bge-small+rerank"] == "dense.bge-small"
-    assert compared["dense.bge-small+rerank+collapsed"] == compared["dense.bge-small+rerank+per-paper+collapsed"] == "dense.bge-small+collapsed"
+    # A reranked twin against the same ranking of the baseline without the reranker, so the difference is the reranker's.
+    assert compared["dense.bge-small+rerank+collapsed"] == "dense.bge-small+collapsed"
+    assert compared["dense.bge-small+rerank+per-paper+collapsed"] == "dense.bge-small+per-paper+collapsed"
+    assert compared["dense.bge-small+per-paper+collapsed"] == "dense.bge-small+collapsed"  # as before
     # Its cost: the embedder's parameters and the cross-encoder's, over the dense index.
     row, raw_cost = cost(report)["dense.bge-small+rerank"], cost(report)["dense.bge-small"]
     assert float(row[0].rstrip("M")) == pytest.approx(float(raw_cost[0].rstrip("M")) + 0.001, abs=0.1)

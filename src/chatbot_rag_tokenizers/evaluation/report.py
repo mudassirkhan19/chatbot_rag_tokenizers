@@ -188,8 +188,10 @@ def write_eval_report(
         f" `{reranking.SUFFIX}{per_paper.SUFFIX}{SUFFIX}`: the retriever's top *pool* Chunks are reordered by the"
         " cross-encoder's score for the query and each Chunk's context header and text, a tie to the raw order, with the"
         " rest of the raw ranking after them; then copies are merged, or the names fill the slots and copies are merged,"
-        f" as in the other twins (#62). A `{reranking.SUFFIX}` twin is compared with the baseline's raw ranking, the others"
-        f" with its `{SUFFIX}` twin.",
+        f" as in the other twins (#62). In the Comparison, each is set against the baseline's same ranking without the"
+        f" reranker: `{reranking.SUFFIX}` against its raw ranking, `{reranking.SUFFIX}{SUFFIX}` against its `{SUFFIX}` twin and"
+        f" `{reranking.SUFFIX}{per_paper.SUFFIX}{SUFFIX}` against its `{per_paper.SUFFIX}{SUFFIX}` twin. Past the pool the raw"
+        " scores follow the cross-encoder's, so only the order is comparable; a name's Chunks past the pool keep the raw order.",
         "",
         "## Results",
         "",
@@ -335,13 +337,17 @@ def _comparison(runs: Sequence[RetrieverRun], config: ComparisonConfig) -> list[
     by_name = {run.name: run for run in runs}
 
     def baseline(run: RetrieverRun) -> RetrieverRun:
-        return by_name[config.baseline + (SUFFIX if run.pool else "")]
+        # A reranked twin is set against the baseline's ranking with the same steps but the reranker, so the difference
+        # is the reranker's; any other twin against the baseline's raw or Collapsed ranking.
+        steps = (per_paper.SUFFIX if run.per_paper and run.rerank else "") + (SUFFIX if run.pool else "")
+        return by_name[config.baseline + steps]
 
     questions = len(all_answerable(by_name[config.baseline].scored))
     lines = [
         "## Comparison",
         "",
-        f"Each retriever against the baseline, {config.baseline}, and each `{SUFFIX}` twin against {config.baseline}{SUFFIX},"
+        f"Each retriever against the baseline, {config.baseline}, each `{SUFFIX}` twin against {config.baseline}{SUFFIX}, and"
+        f" each `{reranking.SUFFIX}` twin against the baseline's same ranking without the reranker,"
         f" on the {questions} answerable questions as a user asks them (the *all answerable* row's queries). The report"
         " names no winner: the decision rule of spec #55 is applied in an ADR.",
         "",
