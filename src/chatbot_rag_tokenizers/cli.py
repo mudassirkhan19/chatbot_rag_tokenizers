@@ -352,6 +352,7 @@ def main(argv: list[str] | None = None) -> None:
                 retrieval.collapse_pool,
                 retrieval.collapse_overlap,
                 retrieval.comparison,
+                retrieval.rerank,
                 args.config,
                 args.export_ungrouped,
             )

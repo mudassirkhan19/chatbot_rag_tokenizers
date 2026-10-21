@@ -15,7 +15,7 @@ import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 import numpy as np
 
@@ -67,25 +67,13 @@ def load_embedder(settings: EmbeddingModel, device: str | None = None) -> Embedd
 class TransformersEmbedder:
     def __init__(self, settings: EmbeddingModel, device: str) -> None:
         import torch
-        from transformers import AutoModel, AutoTokenizer
+        from transformers import AutoModel
 
         self._torch = torch
         self.model, self.revision, self.device = settings.model, settings.revision, device
         self._pooling, self._max_tokens = settings.pooling, settings.max_tokens
-        weights = weights_file(settings.model, settings.revision)
-        self.weights_file = weights.name  # the file the pin's sha256 was checked against
-        if (found := _sha256(weights)) != settings.sha256:
-            raise ConfigError(f"the weights of {settings.model}@{settings.revision} have sha256 {found[:12]}, not the pinned {settings.sha256[:12]}")
-        print(f"embedder: loading {settings.model}@{settings.revision[:12]} on {device}", file=sys.stderr)
-        self.tokenizer = AutoTokenizer.from_pretrained(settings.model, revision=settings.revision)
-        # Loaded from the file whose hash was checked, never from another format the repo also holds.
-        network, loading = AutoModel.from_pretrained(
-            settings.model, revision=settings.revision, dtype=torch.float32, use_safetensors=weights.name == WEIGHTS[0], output_loading_info=True
-        )
-        check_loading(settings.model, loading)
-        self.parameters = sum(parameter.numel() for parameter in network.parameters())
-        # transformers types .to() as taking a model, not a device.
-        self._network = network.to(device).eval()  # type: ignore[arg-type]
+        self.tokenizer, self._network, self.weights_file = load_pinned("embedder", AutoModel, settings.model, settings.revision, settings.sha256, device)
+        self.parameters = sum(parameter.numel() for parameter in self._network.parameters())
         # The first pass on MPS compiles its kernels; doing it here keeps that out of the first query's latency.
         self.embed(["warm-up"])
 
@@ -117,6 +105,27 @@ class TransformersEmbedder:
         if cut:
             print(f"embedder: {cut} of {len(texts)} texts were cut to their first {self._max_tokens} tokens", file=sys.stderr)
         return vectors
+
+
+def load_pinned(role: str, auto_class, model: str, revision: str, model_sha256: str, device: str) -> tuple[Any, Any, str]:
+    """The tokenizer and network of a model at a pinned revision, in eval mode on the device, and the name of the
+    weights file its sha256 was checked against. ``auto_class`` is the transformers class that loads it, such as
+    AutoModel; ``role`` names it in the progress line. Raises ConfigError when the weights don't match the pin or
+    don't fill the network exactly."""
+    import torch
+    from transformers import AutoTokenizer
+
+    weights = weights_file(model, revision)
+    if (found := sha256(weights)) != model_sha256:
+        raise ConfigError(f"the weights of {model}@{revision} have sha256 {found[:12]}, not the pinned {model_sha256[:12]}")
+    print(f"{role}: loading {model}@{revision[:12]} on {device}", file=sys.stderr)
+    tokenizer = AutoTokenizer.from_pretrained(model, revision=revision)
+    # Loaded from the file whose hash was checked, never from another format the repo also holds.
+    network, loading = auto_class.from_pretrained(
+        model, revision=revision, dtype=torch.float32, use_safetensors=weights.name == WEIGHTS[0], output_loading_info=True
+    )
+    check_loading(model, loading)
+    return tokenizer, network.to(device).eval(), weights.name
 
 
 def weights_file(model: str, revision: str) -> Path:
@@ -153,7 +162,7 @@ def check_loading(model: str, loading: dict) -> None:
         raise ConfigError(f"{model} did not load: {'; '.join(loading['error_msgs'])}")
 
 
-def _sha256(path: Path) -> str:
+def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as f:
         for block in iter(lambda: f.read(1 << 20), b""):

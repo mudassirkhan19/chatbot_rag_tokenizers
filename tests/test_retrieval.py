@@ -472,7 +472,7 @@ def test_with_no_answer_model_the_rewriter_row_is_skipped_and_the_other_rows_are
 def without_per_paper(text: str) -> str:
     """The report text without its per-paper twins: their ### subsections and their table rows."""
     kept = [part for part in text.split("\n### ") if not part.split("\n", 1)[0].endswith("+per-paper+collapsed")]
-    rows = ("| per paper, collapsed |", "+per-paper+collapsed |")
+    rows = ("per paper, collapsed |", "+per-paper+collapsed |")  # a reranked twin's ranking is "reranked, per paper, collapsed"
     return "\n".join(line for line in "\n### ".join(kept).splitlines() if not (line.startswith("|") and any(row in line for row in rows))) + "\n"
 
 
@@ -887,6 +887,12 @@ def headings(report: str) -> list[str]:
 
 
 TWINS = ("", "+collapsed", "+per-paper+collapsed")
+RERANKED = ("+rerank", "+rerank+collapsed", "+rerank+per-paper+collapsed")  # for a retriever [rerank] names
+
+
+def runs_of(name: str) -> list[str]:
+    """The runs `evaluate` scores of a retriever, with the repo config: its twins, and bge-small's reranked twins."""
+    return [f"{name}{twin}" for twin in TWINS + (RERANKED if name == "dense.bge-small" else ())]
 
 
 def test_every_retriever_gets_a_collapsed_twin_and_a_per_paper_collapsed_twin_in_every_table(indexed):
@@ -896,10 +902,10 @@ def test_every_retriever_gets_a_collapsed_twin_and_a_per_paper_collapsed_twin_in
     names += ["hybrid.bm25+bge-small", "hybrid.bm25+bge-base", "hybrid.bm25+openscholar"]
     for section in ("Results", "Crowding", "Questions"):
         assert [h for h in headings(report) if h.startswith(f"### {section}: ")] == [
-            f"### {section}: {name}{twin}" for name in names for twin in TWINS
+            f"### {section}: {run}" for name in names for run in runs_of(name)
         ]
     retrievers = report.split("## Retrievers\n", 1)[1].split("\n## ", 1)[0]
-    assert list(cost(report)) == [f"{name}{twin}" for name in names for twin in TWINS]
+    assert list(cost(report)) == [run for name in names for run in runs_of(name)]
     for name in names:
         assert f"- {name}+collapsed: {name}'s index, with copies from other files of a Work merged" in retrievers
         assert f"- {name}+per-paper+collapsed: {name}'s index, the papers the query names in rotation, then copies merged" in retrievers
@@ -956,11 +962,19 @@ def test_before_and_after_puts_each_retrievers_raw_collapsed_and_per_paper_ranki
     report = run_evaluate(with_venue_edition)
 
     rows = {(row[0], row[1]): row[2:] for row in table(report, "## Before and after")}
-    names = [h.removeprefix("### Results: ") for h in headings(report) if h.startswith("### Results: ") and not h.endswith("+collapsed")]
-    assert list(rows) == [(name, ranking) for name in names for ranking in ("raw", "collapsed", "per paper, collapsed")]
+    names = [h.removeprefix("### Results: ") for h in headings(report) if h.startswith("### Results: ") and "+collapsed" not in h and "+rerank" not in h]
+    rankings = {
+        "": "raw",
+        "+collapsed": "collapsed",
+        "+per-paper+collapsed": "per paper, collapsed",
+        "+rerank": "reranked",
+        "+rerank+collapsed": "reranked, collapsed",
+        "+rerank+per-paper+collapsed": "reranked, per paper, collapsed",
+    }
+    assert list(rows) == [(name, rankings[run.removeprefix(name)]) for name in names for run in runs_of(name)]
     assert report.index("## Crowding") < report.index("## Before and after") < report.index("## Grouping")
     for name in names:
-        for ranking, twin in (("raw", name), ("collapsed", f"{name}+collapsed"), ("per paper, collapsed", f"{name}+per-paper+collapsed")):
+        for ranking, twin in ((rankings[run.removeprefix(name)], run) for run in runs_of(name)):
             crowded = {row[0]: row[1] for row in table(report, f"### Crowding: {twin}")}
             scored = {row[0]: row[3:] for row in table(report, f"### Results: {twin}")}["all answerable"]
             grouped = report.split(f"### Crowding: {twin}\n", 1)[1].split("- Grouped: ", 1)[1].split(" questions", 1)[0]
@@ -1192,7 +1206,10 @@ def test_the_comparison_counts_wins_ties_and_losses_against_the_baseline_as_the_
         rows = comparison(report, metric)
         assert list(rows) == runs
         for name in runs:
-            baseline = "dense.bge-small+collapsed" if name.endswith("+collapsed") else "dense.bge-small"
+            if name.startswith("dense.bge-small+rerank"):  # against the same ranking without the reranker
+                baseline = name.replace("+rerank", "")
+            else:
+                baseline = "dense.bge-small+collapsed" if name.endswith("+collapsed") else "dense.bge-small"
             assert rows[name][0] == baseline
             pairs = list(zip(map(value, per_question(report, name, column)), map(value, per_question(report, baseline, column))))
             counts = [sum(1 for ours, theirs in pairs if test(ours, theirs)) for test in (float.__gt__, float.__eq__, float.__lt__)]
@@ -1274,3 +1291,49 @@ def test_the_cost_table_gives_each_retrievers_parameters_dimension_and_index_siz
     # Four questions as asked and one follow-up four ways.
     assert (built_on, queries, queried_on) == ("cpu", "8", "cpu")
     assert build.endswith(" s") and p50.endswith(" ms") and p95.endswith(" ms")
+
+
+# The reranker (#62): a cross-encoder reorders the top `pool` of each retriever [rerank] names.
+
+
+def test_the_reranked_twins_reorder_the_raw_pool_by_the_cross_encoder_and_record_its_pin(indexed, fake_scorer):
+    report = run_evaluate(indexed, options=("--retriever", "bm25", "--retriever", "dense.bge-small"))
+
+    assert [h for h in headings(report) if h.startswith("### Results: ")] == [f"### Results: {run}" for name in ("bm25", "dense.bge-small") for run in runs_of(name)]
+    # One cross-encoder, made once, at the pin, for the three twins.
+    assert [(scorer.model, scorer.revision) for scorer in fake_scorer] == [("OpenSciLM/OpenScholar_Reranker", "f371d9d9a5c47d5b89dfa130d8d6fa303f27126e")]
+    retrievers = section(report, "## Retrievers")
+    assert "- dense.bge-small+rerank: dense.bge-small's index, its top 50 Chunks reordered by the cross-encoder" in retrievers
+    assert "  - model: `OpenSciLM/OpenScholar_Reranker`" in retrievers and "  - pool: `50`" in retrievers
+    assert "- dense.bge-small+rerank+collapsed: dense.bge-small's index, reranked, with copies from other files of a Work merged" in retrievers
+    # Word overlap ranks the fixture's questions differently from the fake embedder.
+    raw = {(row[0], row[2]): row[3] for row in table(report, "### Questions: dense.bge-small")}
+    reranked = {(row[0], row[2]): row[3] for row in table(report, "### Questions: dense.bge-small+rerank")}
+    assert raw.keys() == reranked.keys() and raw != reranked
+    # Compared against the baseline's raw and Collapsed rankings, as any twin is.
+    compared = {row[0]: row[1] for row in table(report, "### Comparison: Recall@5")}
+    assert compared["dense.bge-small+rerank"] == "dense.bge-small"
+    # A reranked twin against the same ranking of the baseline without the reranker, so the difference is the reranker's.
+    assert compared["dense.bge-small+rerank+collapsed"] == "dense.bge-small+collapsed"
+    assert compared["dense.bge-small+rerank+per-paper+collapsed"] == "dense.bge-small+per-paper+collapsed"
+    assert compared["dense.bge-small+per-paper+collapsed"] == "dense.bge-small+collapsed"  # as before
+    # Its cost: the embedder's parameters and the cross-encoder's, over the dense index.
+    row, raw_cost = cost(report)["dense.bge-small+rerank"], cost(report)["dense.bge-small"]
+    assert float(row[0].rstrip("M")) == pytest.approx(float(raw_cost[0].rstrip("M")) + 0.001, abs=0.1)
+    assert row[1:6] == raw_cost[1:6] and row[6] == "cpu"
+
+
+def test_a_retriever_the_reranker_does_not_name_gets_no_reranked_twins_and_loads_no_cross_encoder(indexed, fake_scorer):
+    report = run_evaluate(indexed, options=("--retriever", "bm25", "--retriever", "dense.bge-small", "--retriever", "dense.bge-base"))
+
+    assert not any(h.startswith("### Results: dense.bge-base+rerank") or h.startswith("### Results: bm25+rerank") for h in headings(report))
+
+    run_evaluate(indexed, options=("--retriever", "dense.bge-small"), retrieval_config=without_rerank(indexed))
+
+    assert len(fake_scorer) == 1  # the first run's
+
+
+def without_rerank(tmp_path: Path) -> Path:
+    path = tmp_path / "retrieval-no-rerank.toml"
+    path.write_text(RETRIEVAL_CONFIG.read_text().replace('retrievers = ["dense.bge-small"]', "retrievers = []"))
+    return path
